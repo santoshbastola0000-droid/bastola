@@ -1,25 +1,28 @@
 "use client";
 
+import React from "react";
 import {
   Building2,
   MapPin,
   Users,
   Bath,
+  Bed,
   DollarSign,
   Phone,
   Mail,
   Calendar,
   Clock,
   CheckCircle,
+  XCircle,
   Wifi,
   Car,
   Snowflake,
   Tv,
+  Utensils,
   Home,
-  User,
   Droplets,
-  Layers,
   Square,
+  User,
 } from "lucide-react";
 import {
   Drawer,
@@ -31,54 +34,77 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
 import { formatPrice, formatDate } from "@/lib/utils";
-import { RoomStatus, RoomCategory } from "@/types/room.types";
+import { Room, RoomStatus } from "@/types/room.types";
+import Link from "next/link";
 
 interface RoomDrawerProps {
-  room: any;
+  room: Room;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
+const getStatusBadge = (status: RoomStatus) => {
+  switch (status) {
+    case RoomStatus.AVAILABLE:
+      return (
+        <Badge className="bg-green-100 text-green-800 hover:bg-green-100 border-green-200 gap-1">
+          <CheckCircle className="h-3 w-3" />
+          Available
+        </Badge>
+      );
+    case RoomStatus.PENDING:
+      return (
+        <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100 border-yellow-200 gap-1">
+          <Clock className="h-3 w-3" />
+          Pending Approval
+        </Badge>
+      );
+    case RoomStatus.OCCUPIED:
+      return (
+        <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100 border-blue-200 gap-1">
+          <Users className="h-3 w-3" />
+          Occupied
+        </Badge>
+      );
+    case RoomStatus.RENTED:
+      return (
+        <Badge className="bg-purple-100 text-purple-800 hover:bg-purple-100 border-purple-200 gap-1">
+          <CheckCircle className="h-3 w-3" />
+          Rented
+        </Badge>
+      );
+    case RoomStatus.REJECTED:
+      return (
+        <Badge className="bg-red-100 text-red-800 hover:bg-red-100 border-red-200 gap-1">
+          <XCircle className="h-3 w-3" />
+          Rejected
+        </Badge>
+      );
+    default:
+      return <Badge variant="outline">{status}</Badge>;
+  }
+};
+
+const getAmenityIcon = (amenity: string) => {
+  switch (amenity.toLowerCase()) {
+    case "wifi":
+      return <Wifi className="h-4 w-4" />;
+    case "ac":
+      return <Snowflake className="h-4 w-4" />;
+    case "parking":
+      return <Car className="h-4 w-4" />;
+    case "tv":
+      return <Tv className="h-4 w-4" />;
+    case "kitchen":
+      return <Utensils className="h-4 w-4" />;
+    default:
+      return <Home className="h-4 w-4" />;
+  }
+};
+
 export function RoomDrawer({ room, open, onOpenChange }: RoomDrawerProps) {
-  const getStatusBadge = (status: RoomStatus) => {
-    switch (status) {
-      case RoomStatus.AVAILABLE:
-        return (
-          <Badge className="bg-green-100 text-green-800 hover:bg-green-100 border-green-200 gap-1">
-            <CheckCircle className="h-3 w-3" />
-            Available
-          </Badge>
-        );
-      case RoomStatus.PENDING:
-        return (
-          <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100 border-yellow-200 gap-1">
-            <Clock className="h-3 w-3" />
-            Pending Approval
-          </Badge>
-        );
-      default:
-        return <Badge variant="outline">{status}</Badge>;
-    }
-  };
-
-  const getAmenityIcon = (amenity: string) => {
-    switch (amenity.toLowerCase()) {
-      case "wifi":
-        return <Wifi className="h-4 w-4" />;
-      case "ac":
-        return <Snowflake className="h-4 w-4" />;
-      case "parking":
-        return <Car className="h-4 w-4" />;
-      case "tv":
-        return <Tv className="h-4 w-4" />;
-      case "kitchen":
-        return <Home className="h-4 w-4" />;
-      default:
-        return <Home className="h-4 w-4" />;
-    }
-  };
-
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
       <DrawerContent className="max-h-[90vh]">
@@ -91,7 +117,7 @@ export function RoomDrawer({ room, open, onOpenChange }: RoomDrawerProps) {
                   {room.title}
                 </DrawerTitle>
                 <DrawerDescription className="mt-1">
-                  {room.category} • {room.address}
+                  {room.category.replace("_", " ")} • {room.address}
                 </DrawerDescription>
               </div>
               {getStatusBadge(room.status)}
@@ -116,17 +142,11 @@ export function RoomDrawer({ room, open, onOpenChange }: RoomDrawerProps) {
                     </p>
                   </div>
                   <div className="flex gap-2">
-                    <Button variant="outline" size="sm">
-                      Edit Room
+                    <Button variant="outline" size="sm" asChild>
+                      <Link href={`/admin/dashboard/rooms/${room.id}/edit`}>
+                        Edit Room
+                      </Link>
                     </Button>
-                    {room.status === RoomStatus.PENDING && (
-                      <Button
-                        size="sm"
-                        className="bg-green-600 hover:bg-green-700"
-                      >
-                        Approve
-                      </Button>
-                    )}
                   </div>
                 </div>
               </CardContent>
@@ -177,7 +197,7 @@ export function RoomDrawer({ room, open, onOpenChange }: RoomDrawerProps) {
                         </div>
                         <div className="flex items-center gap-3">
                           <div className="p-2 bg-green-50 rounded-lg">
-                            <Layers className="h-5 w-5 text-green-600" />
+                            <Bed className="h-5 w-5 text-green-600" />
                           </div>
                           <div>
                             <p className="text-sm text-gray-500">
@@ -262,24 +282,26 @@ export function RoomDrawer({ room, open, onOpenChange }: RoomDrawerProps) {
                 </Card>
 
                 {/* Amenities */}
-                <Card>
-                  <CardContent className="p-4">
-                    <h3 className="font-semibold text-gray-900 mb-4">
-                      Amenities
-                    </h3>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                      {room.amenities?.map((amenity: string) => (
-                        <div
-                          key={amenity}
-                          className="flex items-center gap-2 p-3 border rounded-lg hover:border-primary transition-colors"
-                        >
-                          {getAmenityIcon(amenity)}
-                          <span className="text-sm">{amenity}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
+                {room.amenities && room.amenities.length > 0 && (
+                  <Card>
+                    <CardContent className="p-4">
+                      <h3 className="font-semibold text-gray-900 mb-4">
+                        Amenities
+                      </h3>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                        {room.amenities.map((amenity) => (
+                          <div
+                            key={amenity}
+                            className="flex items-center gap-2 p-3 border rounded-lg hover:border-primary transition-colors"
+                          >
+                            {getAmenityIcon(amenity)}
+                            <span className="text-sm">{amenity}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
               </div>
 
               {/* Right Column - Contact & Info */}
@@ -369,35 +391,45 @@ export function RoomDrawer({ room, open, onOpenChange }: RoomDrawerProps) {
                 </Card>
 
                 {/* Location Info */}
-                <Card>
-                  <CardContent className="p-4">
-                    <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                      <MapPin className="h-4 w-4" />
-                      Location Details
-                    </h3>
-                    <div className="space-y-3">
-                      {room.location?.city && (
+                {room.location && (
+                  <Card>
+                    <CardContent className="p-4">
+                      <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                        <MapPin className="h-4 w-4" />
+                        Location Details
+                      </h3>
+                      <div className="space-y-3">
+                        {room.location.city && (
+                          <div>
+                            <p className="text-sm text-gray-500">City</p>
+                            <p className="font-medium">{room.location.city}</p>
+                          </div>
+                        )}
+                        {room.location.state && (
+                          <div>
+                            <p className="text-sm text-gray-500">State</p>
+                            <p className="font-medium">{room.location.state}</p>
+                          </div>
+                        )}
+                        {room.location.country && (
+                          <div>
+                            <p className="text-sm text-gray-500">Country</p>
+                            <p className="font-medium">
+                              {room.location.country}
+                            </p>
+                          </div>
+                        )}
                         <div>
-                          <p className="text-sm text-gray-500">City</p>
-                          <p className="font-medium">{room.location.city}</p>
+                          <p className="text-sm text-gray-500">Coordinates</p>
+                          <p className="font-mono text-xs">
+                            {room.location.latitude.toFixed(6)},{" "}
+                            {room.location.longitude.toFixed(6)}
+                          </p>
                         </div>
-                      )}
-                      {room.location?.state && (
-                        <div>
-                          <p className="text-sm text-gray-500">State</p>
-                          <p className="font-medium">{room.location.state}</p>
-                        </div>
-                      )}
-                      <div>
-                        <p className="text-sm text-gray-500">Coordinates</p>
-                        <p className="font-mono text-xs">
-                          {room.location?.latitude?.toFixed(6)},{" "}
-                          {room.location?.longitude?.toFixed(6)}
-                        </p>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                    </CardContent>
+                  </Card>
+                )}
 
                 {/* Additional Info */}
                 <Card>
@@ -414,7 +446,7 @@ export function RoomDrawer({ room, open, onOpenChange }: RoomDrawerProps) {
                       <div className="flex justify-between">
                         <span className="text-gray-500">Category</span>
                         <Badge variant="outline" className="capitalize">
-                          {room.category}
+                          {room.category.replace("_", " ")}
                         </Badge>
                       </div>
                       <div className="flex justify-between">

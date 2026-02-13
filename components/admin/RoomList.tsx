@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import React, { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
 import {
   Building2,
   MapPin,
@@ -25,6 +26,11 @@ import {
   Snowflake,
   Tv,
   Utensils,
+  RefreshCw,
+  ChevronLeft,
+  ChevronRight,
+  X,
+  Loader2,
 } from "lucide-react";
 import {
   Table,
@@ -51,89 +57,77 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { RoomDrawer } from "./RoomDrawer";
 import { formatPrice, formatDate } from "@/lib/utils";
-import { RoomStatus, RoomCategory } from "@/types/room.types";
-
-// Mock data - replace with API call
-const mockRooms = [
-  {
-    id: "1",
-    title: "Modern Studio Apartment",
-    description: "Beautiful studio with city view",
-    category: RoomCategory.STUDIO,
-    price: 1200,
-    address: "123 Main St, New York",
-    status: RoomStatus.AVAILABLE,
-    bathroomCapacity: 1,
-    floorNumber: 3,
-    ownerLivesInHouse: false,
-    totalHouseCapacity: 4,
-    rentedRoomsCount: 2,
-    currentOccupants: 2,
-    allowsWomen: true,
-    roomCapacity: 2,
-    roomArea: 45,
-    contactPerson: "John Doe",
-    contactPhone: "+1 234 567 8900",
-    contactEmail: "john@example.com",
-    amenities: ["WiFi", "AC", "Parking", "TV", "Kitchen"],
-    images: [],
-    createdAt: new Date().toISOString(),
-    user: {
-      id: "1",
-      name: "John Doe",
-      email: "john@example.com",
-    },
-    location: {
-      name: "Downtown Apartment",
-      latitude: 40.7128,
-      longitude: -74.006,
-      city: "New York",
-      state: "NY",
-      country: "USA",
-    },
-    waterSupplyTimings: {
-      morning: "06:00-09:00",
-      evening: "17:00-20:00",
-    },
-  },
-  // Add more mock rooms...
-];
+import {
+  RoomStatus,
+  RoomCategory,
+  RoomFilters,
+  Room,
+} from "@/types/room.types";
+import { roomService } from "@/http/services/room.service";
+import {
+  useDeleteRoomMutation,
+  useUpdateRoomStatusMutation,
+} from "@/http/mutations/room.mutation";
+import { Label } from "@/components/ui/label";
+import { PAGE_SIZE_OPTIONS } from "@/lib/constants/app.constants";
+import Link from "next/link";
 
 const getStatusBadge = (status: RoomStatus) => {
   switch (status) {
     case RoomStatus.AVAILABLE:
       return (
-        <Badge className="bg-green-100 text-green-800 hover:bg-green-100 border-green-200 gap-1">
+        <Badge className="bg-green-100 text-green-800 hover:bg-green-100 border-green-200 gap-1 cursor-default">
           <CheckCircle className="h-3 w-3" />
           Available
         </Badge>
       );
     case RoomStatus.PENDING:
       return (
-        <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100 border-yellow-200 gap-1">
+        <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100 border-yellow-200 gap-1 cursor-default">
           <Clock className="h-3 w-3" />
           Pending
         </Badge>
       );
     case RoomStatus.OCCUPIED:
       return (
-        <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100 border-blue-200 gap-1">
+        <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100 border-blue-200 gap-1 cursor-default">
           <Users className="h-3 w-3" />
           Occupied
         </Badge>
       );
+    case RoomStatus.RENTED:
+      return (
+        <Badge className="bg-purple-100 text-purple-800 hover:bg-purple-100 border-purple-200 gap-1 cursor-default">
+          <CheckCircle className="h-3 w-3" />
+          Rented
+        </Badge>
+      );
     case RoomStatus.REJECTED:
       return (
-        <Badge className="bg-red-100 text-red-800 hover:bg-red-100 border-red-200 gap-1">
+        <Badge className="bg-red-100 text-red-800 hover:bg-red-100 border-red-200 gap-1 cursor-default">
           <XCircle className="h-3 w-3" />
           Rejected
         </Badge>
       );
     default:
-      return <Badge variant="outline">{status}</Badge>;
+      return (
+        <Badge variant="outline" className="cursor-default">
+          {status}
+        </Badge>
+      );
   }
 };
 
@@ -144,6 +138,12 @@ const getCategoryIcon = (category: RoomCategory) => {
     case RoomCategory.STUDIO:
       return <Building2 className="h-4 w-4" />;
     case RoomCategory.HOSTEL:
+      return <Users className="h-4 w-4" />;
+    case RoomCategory.PG:
+      return <Users className="h-4 w-4" />;
+    case RoomCategory.SINGLE:
+      return <Bed className="h-4 w-4" />;
+    case RoomCategory.SHARED:
       return <Users className="h-4 w-4" />;
     default:
       return <Building2 className="h-4 w-4" />;
@@ -167,53 +167,223 @@ const getAmenityIcon = (amenity: string) => {
   }
 };
 
-export function RoomList() {
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [selectedRoom, setSelectedRoom] = useState<any>(null);
+interface RoomListProps {
+  initialFilters?: RoomFilters;
+}
+
+export function RoomList({ initialFilters = {} }: RoomListProps) {
+  const router = useRouter();
+  const queryClient = useQueryClient();
+
+  // Filter states
+  const [searchTerm, setSearchTerm] = useState(initialFilters.search || "");
+  const [appliedSearchTerm, setAppliedSearchTerm] = useState(
+    initialFilters.search || "",
+  );
+  const [statusFilter, setStatusFilter] = useState<string>(
+    initialFilters.status || "all",
+  );
+  const [categoryFilter, setCategoryFilter] = useState<string>(
+    initialFilters.category || "all",
+  );
+  const [priceRange, setPriceRange] = useState<{ min?: number; max?: number }>({
+    min: initialFilters.minPrice,
+    max: initialFilters.maxPrice,
+  });
+  const [allowsWomen, setAllowsWomen] = useState<string>(
+    initialFilters.allowsWomen !== undefined
+      ? initialFilters.allowsWomen.toString()
+      : "all",
+  );
+  const [ownerLivesInHouse, setOwnerLivesInHouse] = useState<string>(
+    initialFilters.ownerLivesInHouse !== undefined
+      ? initialFilters.ownerLivesInHouse.toString()
+      : "all",
+  );
+
+  // Pagination states
+  const [page, setPage] = useState(initialFilters.page || 0);
+  const [take, setTake] = useState(initialFilters.take || 10);
+
+  // UI states
+  const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [roomToDelete, setRoomToDelete] = useState<string | null>(null);
+  const [showFilters, setShowFilters] = useState(false);
 
-  // Mock API call
-  const { data: rooms = mockRooms, isLoading } = useQuery({
-    queryKey: ["rooms", search, statusFilter],
-    queryFn: async () => {
-      // Simulate API delay
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      let filteredRooms = [...mockRooms];
+  // Build filters for API
+  const buildFilters = (): RoomFilters => {
+    const filters: RoomFilters = {
+      page,
+      take,
+      search: appliedSearchTerm || undefined,
+    };
 
-      if (search) {
-        filteredRooms = filteredRooms.filter(
-          (room) =>
-            room.title.toLowerCase().includes(search.toLowerCase()) ||
-            room.address.toLowerCase().includes(search.toLowerCase()),
-        );
-      }
+    if (statusFilter !== "all") {
+      filters.status = statusFilter as RoomStatus;
+    }
 
-      if (statusFilter !== "all") {
-        filteredRooms = filteredRooms.filter(
-          (room) => room.status === statusFilter,
-        );
-      }
+    if (categoryFilter !== "all") {
+      filters.category = categoryFilter as RoomCategory;
+    }
 
-      return filteredRooms;
-    },
+    if (priceRange.min !== undefined) {
+      filters.minPrice = priceRange.min;
+    }
+
+    if (priceRange.max !== undefined) {
+      filters.maxPrice = priceRange.max;
+    }
+
+    if (allowsWomen !== "all") {
+      filters.allowsWomen = allowsWomen === "true";
+    }
+
+    if (ownerLivesInHouse !== "all") {
+      filters.ownerLivesInHouse = ownerLivesInHouse === "true";
+    }
+
+    return filters;
+  };
+
+  // Queries
+  const {
+    data: roomsResponse,
+    isLoading,
+    isFetching,
+    refetch,
+  } = useQuery({
+    queryKey: ["rooms", buildFilters()],
+    queryFn: () => roomService.getRooms(buildFilters()),
   });
 
-  const handleViewRoom = (room: any) => {
+  // Mutations
+  const deleteRoomMutation = useDeleteRoomMutation();
+  const updateStatusMutation = useUpdateRoomStatusMutation();
+
+  const handleSearch = () => {
+    setAppliedSearchTerm(searchTerm);
+    setPage(0);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") handleSearch();
+  };
+
+  const handleClearFilters = () => {
+    setSearchTerm("");
+    setAppliedSearchTerm("");
+    setStatusFilter("all");
+    setCategoryFilter("all");
+    setPriceRange({});
+    setAllowsWomen("all");
+    setOwnerLivesInHouse("all");
+    setPage(0);
+  };
+
+  const handleViewRoom = (room: Room) => {
     setSelectedRoom(room);
     setIsDrawerOpen(true);
   };
 
+  const handleDeleteClick = (id: string) => {
+    setRoomToDelete(id);
+    setShowDeleteDialog(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!roomToDelete) return;
+    await deleteRoomMutation.mutateAsync(roomToDelete);
+    setShowDeleteDialog(false);
+    setRoomToDelete(null);
+  };
+
+  const handleStatusChange = async (id: string, status: RoomStatus) => {
+    await updateStatusMutation.mutateAsync({ id, status });
+  };
+
+  const rooms = roomsResponse?.data || [];
+  const pagination = roomsResponse?.pagination || {
+    page: 0,
+    take: 10,
+    total: 0,
+    count: 0,
+    previousPage: null,
+    nextPage: null,
+  };
+
+  const totalItems = pagination.total || 0;
+  const showingFrom = totalItems > 0 ? page * take + 1 : 0;
+  const showingTo = Math.min((page + 1) * take, totalItems);
+  const totalPages = Math.max(1, Math.ceil(totalItems / take));
+
+  // Stats calculation
   const stats = {
-    total: rooms.length,
+    total: totalItems,
     available: rooms.filter((r) => r.status === RoomStatus.AVAILABLE).length,
     occupied: rooms.filter((r) => r.status === RoomStatus.OCCUPIED).length,
     pending: rooms.filter((r) => r.status === RoomStatus.PENDING).length,
+    rented: rooms.filter((r) => r.status === RoomStatus.RENTED).length,
+  };
+
+  const renderPageNumbers = () => {
+    const pages = [];
+
+    pages.push(
+      <Button
+        key="prev"
+        variant="outline"
+        size="sm"
+        onClick={() => setPage(Math.max(0, page - 1))}
+        disabled={page === 0}
+        className="h-8 w-8 p-0 cursor-pointer"
+      >
+        <ChevronLeft className="h-4 w-4" />
+      </Button>,
+    );
+
+    const maxVisible = 5;
+    let start = Math.max(0, page - Math.floor(maxVisible / 2));
+    const end = Math.min(totalPages - 1, start + maxVisible - 1);
+
+    if (end - start + 1 < maxVisible) {
+      start = Math.max(0, end - maxVisible + 1);
+    }
+
+    for (let i = start; i <= end; i++) {
+      pages.push(
+        <Button
+          key={i}
+          variant={page === i ? "default" : "outline"}
+          size="sm"
+          onClick={() => setPage(i)}
+          className="h-8 w-8 p-0 cursor-pointer"
+        >
+          {i + 1}
+        </Button>,
+      );
+    }
+
+    pages.push(
+      <Button
+        key="next"
+        variant="outline"
+        size="sm"
+        onClick={() => setPage(Math.min(totalPages - 1, page + 1))}
+        disabled={page >= totalPages - 1}
+        className="h-8 w-8 p-0 cursor-pointer"
+      >
+        <ChevronRight className="h-4 w-4" />
+      </Button>,
+    );
+
+    return pages;
   };
 
   if (isLoading) {
     return (
-      <div className="space-y-6">
+      <div className="p-4 md:p-6 space-y-6">
         <div className="flex justify-between items-center">
           <Skeleton className="h-10 w-48" />
           <Skeleton className="h-10 w-32" />
@@ -229,7 +399,7 @@ export function RoomList() {
 
   return (
     <>
-      <div className="space-y-6">
+      <div className="p-4 md:p-6 space-y-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
@@ -241,16 +411,31 @@ export function RoomList() {
               Manage all room listings and approvals
             </p>
           </div>
-          <Button asChild className="bg-primary hover:bg-primary/90">
-            <a href="/admin/dashboard/rooms/create">
-              <Plus className="h-4 w-4 mr-2" />
-              Add New Room
-            </a>
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              onClick={() => refetch()}
+              disabled={isFetching}
+              className="cursor-pointer border-gray-300"
+            >
+              <RefreshCw
+                className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`}
+              />
+            </Button>
+            <Button
+              asChild
+              className="bg-primary hover:bg-primary/90 cursor-pointer"
+            >
+              <Link href="/admin/dashboard/rooms/create">
+                <Plus className="h-4 w-4 mr-2" />
+                Add New Room
+              </Link>
+            </Button>
+          </div>
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
           <Card className="border border-gray-200">
             <CardContent className="p-4 flex items-center justify-between">
               <div>
@@ -295,57 +480,290 @@ export function RoomList() {
               <Clock className="h-8 w-8 text-yellow-500" />
             </CardContent>
           </Card>
+          <Card className="border border-purple-200 bg-purple-50">
+            <CardContent className="p-4 flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-purple-700">Rented</p>
+                <p className="text-2xl font-bold text-purple-900">
+                  {stats.rented}
+                </p>
+              </div>
+              <CheckCircle className="h-8 w-8 text-purple-500" />
+            </CardContent>
+          </Card>
         </div>
 
-        {/* Filters */}
+        {/* Search and Filters */}
         <Card className="border border-gray-200">
           <CardContent className="p-4 md:p-6">
-            <div className="flex flex-col sm:flex-row gap-4">
-              <div className="flex-1">
-                <div className="relative">
+            <div className="space-y-4">
+              {/* Search Row */}
+              <div className="flex flex-col sm:flex-row gap-3">
+                <div className="flex-1 relative">
                   <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
                   <Input
                     placeholder="Search rooms by title or address..."
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    className="pl-9"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    className="pl-9 cursor-text"
                   />
+                  {searchTerm && (
+                    <button
+                      onClick={() => {
+                        setSearchTerm("");
+                        setAppliedSearchTerm("");
+                      }}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 cursor-pointer"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    onClick={handleSearch}
+                    className="cursor-pointer bg-primary hover:bg-primary/90"
+                  >
+                    Search
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowFilters(!showFilters)}
+                    className="cursor-pointer border-gray-300"
+                  >
+                    <Filter className="h-4 w-4 mr-2" />
+                    Filters
+                  </Button>
                 </div>
               </div>
-              <div className="flex gap-2">
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="w-[180px]">
-                    <Filter className="h-4 w-4 mr-2" />
-                    <SelectValue placeholder="Filter by status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Status</SelectItem>
-                    <SelectItem value={RoomStatus.AVAILABLE}>
-                      Available
-                    </SelectItem>
-                    <SelectItem value={RoomStatus.PENDING}>Pending</SelectItem>
-                    <SelectItem value={RoomStatus.OCCUPIED}>
-                      Occupied
-                    </SelectItem>
-                    <SelectItem value={RoomStatus.RENTED}>Rented</SelectItem>
-                    <SelectItem value={RoomStatus.REJECTED}>
-                      Rejected
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setSearch("");
-                    setStatusFilter("all");
-                  }}
-                >
-                  Reset
-                </Button>
-              </div>
+
+              {/* Advanced Filters */}
+              {showFilters && (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 pt-4 border-t">
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Status</Label>
+                    <Select
+                      value={statusFilter}
+                      onValueChange={setStatusFilter}
+                    >
+                      <SelectTrigger className="cursor-pointer border-gray-300">
+                        <SelectValue placeholder="All Status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all" className="cursor-pointer">
+                          All Status
+                        </SelectItem>
+                        <SelectItem
+                          value={RoomStatus.AVAILABLE}
+                          className="cursor-pointer"
+                        >
+                          Available
+                        </SelectItem>
+                        <SelectItem
+                          value={RoomStatus.PENDING}
+                          className="cursor-pointer"
+                        >
+                          Pending
+                        </SelectItem>
+                        <SelectItem
+                          value={RoomStatus.OCCUPIED}
+                          className="cursor-pointer"
+                        >
+                          Occupied
+                        </SelectItem>
+                        <SelectItem
+                          value={RoomStatus.RENTED}
+                          className="cursor-pointer"
+                        >
+                          Rented
+                        </SelectItem>
+                        <SelectItem
+                          value={RoomStatus.REJECTED}
+                          className="cursor-pointer"
+                        >
+                          Rejected
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Category</Label>
+                    <Select
+                      value={categoryFilter}
+                      onValueChange={setCategoryFilter}
+                    >
+                      <SelectTrigger className="cursor-pointer border-gray-300">
+                        <SelectValue placeholder="All Categories" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all" className="cursor-pointer">
+                          All Categories
+                        </SelectItem>
+                        {Object.values(RoomCategory).map((cat) => (
+                          <SelectItem
+                            key={cat}
+                            value={cat}
+                            className="cursor-pointer capitalize"
+                          >
+                            {cat.replace("_", " ")}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Price Range</Label>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="number"
+                        placeholder="Min"
+                        value={priceRange.min || ""}
+                        onChange={(e) =>
+                          setPriceRange({
+                            ...priceRange,
+                            min: e.target.value
+                              ? Number(e.target.value)
+                              : undefined,
+                          })
+                        }
+                        className="cursor-text"
+                      />
+                      <span>-</span>
+                      <Input
+                        type="number"
+                        placeholder="Max"
+                        value={priceRange.max || ""}
+                        onChange={(e) =>
+                          setPriceRange({
+                            ...priceRange,
+                            max: e.target.value
+                              ? Number(e.target.value)
+                              : undefined,
+                          })
+                        }
+                        className="cursor-text"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Women Allowed</Label>
+                    <Select value={allowsWomen} onValueChange={setAllowsWomen}>
+                      <SelectTrigger className="cursor-pointer border-gray-300">
+                        <SelectValue placeholder="All" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all" className="cursor-pointer">
+                          All
+                        </SelectItem>
+                        <SelectItem value="true" className="cursor-pointer">
+                          Yes
+                        </SelectItem>
+                        <SelectItem value="false" className="cursor-pointer">
+                          No
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">
+                      Owner Lives In House
+                    </Label>
+                    <Select
+                      value={ownerLivesInHouse}
+                      onValueChange={setOwnerLivesInHouse}
+                    >
+                      <SelectTrigger className="cursor-pointer border-gray-300">
+                        <SelectValue placeholder="All" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all" className="cursor-pointer">
+                          All
+                        </SelectItem>
+                        <SelectItem value="true" className="cursor-pointer">
+                          Yes
+                        </SelectItem>
+                        <SelectItem value="false" className="cursor-pointer">
+                          No
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="flex items-end">
+                    <Button
+                      variant="outline"
+                      onClick={handleClearFilters}
+                      className="cursor-pointer border-gray-300"
+                    >
+                      Clear Filters
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
+
+        {/* Results Summary */}
+        <div className="flex items-center justify-between">
+          <div className="text-sm text-gray-600">
+            {totalItems > 0 ? (
+              <>
+                Showing{" "}
+                <span className="font-semibold text-gray-900">
+                  {showingFrom}
+                </span>{" "}
+                to{" "}
+                <span className="font-semibold text-gray-900">{showingTo}</span>{" "}
+                of{" "}
+                <span className="font-semibold text-gray-900">
+                  {totalItems}
+                </span>{" "}
+                rooms
+              </>
+            ) : (
+              "No rooms found"
+            )}
+            {isFetching && (
+              <Loader2 className="inline ml-2 h-3 w-3 animate-spin" />
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <Label htmlFor="items-per-page" className="text-sm text-gray-600">
+              Show
+            </Label>
+            <Select
+              value={take.toString()}
+              onValueChange={(value) => {
+                setTake(parseInt(value));
+                setPage(0);
+              }}
+            >
+              <SelectTrigger
+                id="items-per-page"
+                className="h-8 w-20 cursor-pointer border-gray-300"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {PAGE_SIZE_OPTIONS.map((size) => (
+                  <SelectItem
+                    key={size}
+                    value={size.toString()}
+                    className="cursor-pointer"
+                  >
+                    {size}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
 
         {/* Table */}
         <Card className="border border-gray-200 overflow-hidden">
@@ -353,23 +771,31 @@ export function RoomList() {
             <Table>
               <TableHeader>
                 <TableRow className="bg-gray-50">
-                  <TableHead className="font-semibold">Room Details</TableHead>
-                  <TableHead className="font-semibold">
+                  <TableHead className="font-semibold text-gray-700">
+                    Room Details
+                  </TableHead>
+                  <TableHead className="font-semibold text-gray-700">
                     Capacity & Facilities
                   </TableHead>
-                  <TableHead className="font-semibold">
+                  <TableHead className="font-semibold text-gray-700">
                     Location & Contact
                   </TableHead>
-                  <TableHead className="font-semibold">
+                  <TableHead className="font-semibold text-gray-700">
                     Status & Price
                   </TableHead>
-                  <TableHead className="font-semibold text-right">
+                  <TableHead className="font-semibold text-gray-700 text-right">
                     Actions
                   </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {rooms.length > 0 ? (
+                {isFetching && rooms.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center py-8">
+                      <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+                    </TableCell>
+                  </TableRow>
+                ) : rooms.length > 0 ? (
                   rooms.map((room) => (
                     <TableRow key={room.id} className="hover:bg-gray-50">
                       <TableCell>
@@ -377,7 +803,7 @@ export function RoomList() {
                           <div className="flex items-center gap-2">
                             {getCategoryIcon(room.category)}
                             <span className="text-sm font-medium text-gray-500 capitalize">
-                              {room.category}
+                              {room.category.replace("_", " ")}
                             </span>
                           </div>
                           <h3 className="font-semibold text-gray-900">
@@ -391,14 +817,17 @@ export function RoomList() {
                               <Badge
                                 key={amenity}
                                 variant="outline"
-                                className="text-xs gap-1"
+                                className="text-xs gap-1 cursor-default"
                               >
                                 {getAmenityIcon(amenity)}
                                 {amenity}
                               </Badge>
                             ))}
                             {room.amenities?.length > 3 && (
-                              <Badge variant="outline" className="text-xs">
+                              <Badge
+                                variant="outline"
+                                className="text-xs cursor-default"
+                              >
                                 +{room.amenities.length - 3} more
                               </Badge>
                             )}
@@ -437,8 +866,8 @@ export function RoomList() {
                               variant={room.allowsWomen ? "default" : "outline"}
                               className={
                                 room.allowsWomen
-                                  ? "bg-green-100 text-green-800"
-                                  : ""
+                                  ? "bg-green-100 text-green-800 border-green-200 cursor-default"
+                                  : "cursor-default"
                               }
                             >
                               {room.allowsWomen
@@ -465,7 +894,7 @@ export function RoomList() {
                               <Phone className="h-3 w-3 text-gray-500" />
                               <a
                                 href={`tel:${room.contactPhone}`}
-                                className="text-blue-600 hover:underline"
+                                className="text-blue-600 hover:underline cursor-pointer"
                               >
                                 {room.contactPhone}
                               </a>
@@ -476,10 +905,16 @@ export function RoomList() {
                               <Mail className="h-3 w-3 text-gray-500" />
                               <a
                                 href={`mailto:${room.contactEmail}`}
-                                className="text-blue-600 hover:underline"
+                                className="text-blue-600 hover:underline cursor-pointer"
                               >
                                 {room.contactEmail}
                               </a>
+                            </div>
+                          )}
+                          {room.location?.city && (
+                            <div className="flex items-center gap-2 text-xs text-gray-500">
+                              <MapPin className="h-3 w-3" />
+                              {room.location.city}, {room.location.country}
                             </div>
                           )}
                         </div>
@@ -508,7 +943,7 @@ export function RoomList() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8 hover:bg-blue-50 hover:text-blue-600"
+                            className="h-8 w-8 hover:bg-blue-50 hover:text-blue-600 cursor-pointer"
                             onClick={() => handleViewRoom(room)}
                             title="View Details"
                           >
@@ -517,20 +952,22 @@ export function RoomList() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8 hover:bg-green-50 hover:text-green-600"
+                            className="h-8 w-8 hover:bg-green-50 hover:text-green-600 cursor-pointer"
                             asChild
                             title="Edit"
                           >
-                            <a href={`/admin/dashboard/rooms/${room.id}/edit`}>
+                            <Link
+                              href={`/admin/dashboard/rooms/${room.id}/edit`}
+                            >
                               <Edit className="h-4 w-4" />
-                            </a>
+                            </Link>
                           </Button>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-8 w-8 hover:bg-red-50 hover:text-red-600"
+                                className="h-8 w-8 hover:bg-red-50 hover:text-red-600 cursor-pointer"
                                 title="More actions"
                               >
                                 <Trash2 className="h-4 w-4" />
@@ -538,30 +975,62 @@ export function RoomList() {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                               <DropdownMenuItem
-                                className="text-red-600"
-                                onClick={() => {
-                                  // Handle delete
-                                }}
+                                className="text-red-600 cursor-pointer"
+                                onClick={() => handleDeleteClick(room.id)}
                               >
                                 Delete Room
                               </DropdownMenuItem>
                               {room.status === RoomStatus.PENDING && (
                                 <>
                                   <DropdownMenuItem
-                                    onClick={() => {
-                                      // Handle approve
-                                    }}
+                                    className="text-green-600 cursor-pointer"
+                                    onClick={() =>
+                                      handleStatusChange(
+                                        room.id,
+                                        RoomStatus.AVAILABLE,
+                                      )
+                                    }
                                   >
                                     Approve Room
                                   </DropdownMenuItem>
                                   <DropdownMenuItem
-                                    onClick={() => {
-                                      // Handle reject
-                                    }}
+                                    className="text-red-600 cursor-pointer"
+                                    onClick={() =>
+                                      handleStatusChange(
+                                        room.id,
+                                        RoomStatus.REJECTED,
+                                      )
+                                    }
                                   >
                                     Reject Room
                                   </DropdownMenuItem>
                                 </>
+                              )}
+                              {room.status === RoomStatus.AVAILABLE && (
+                                <DropdownMenuItem
+                                  className="text-blue-600 cursor-pointer"
+                                  onClick={() =>
+                                    handleStatusChange(
+                                      room.id,
+                                      RoomStatus.OCCUPIED,
+                                    )
+                                  }
+                                >
+                                  Mark as Occupied
+                                </DropdownMenuItem>
+                              )}
+                              {room.status === RoomStatus.OCCUPIED && (
+                                <DropdownMenuItem
+                                  className="text-purple-600 cursor-pointer"
+                                  onClick={() =>
+                                    handleStatusChange(
+                                      room.id,
+                                      RoomStatus.RENTED,
+                                    )
+                                  }
+                                >
+                                  Mark as Rented
+                                </DropdownMenuItem>
                               )}
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -579,19 +1048,21 @@ export function RoomList() {
                             No Rooms Found
                           </h3>
                           <p className="text-gray-500 mt-1">
-                            {search
-                              ? "No rooms match your search"
+                            {appliedSearchTerm ||
+                            statusFilter !== "all" ||
+                            categoryFilter !== "all"
+                              ? "No rooms match your filters"
                               : "Start by adding your first room"}
                           </p>
                         </div>
                         <Button
                           asChild
-                          className="mt-2 bg-primary hover:bg-primary/90"
+                          className="mt-2 bg-primary hover:bg-primary/90 cursor-pointer"
                         >
-                          <a href="/admin/dashboard/rooms/create">
+                          <Link href="/admin/dashboard/rooms/create">
                             <Plus className="h-4 w-4 mr-2" />
                             Add Room
-                          </a>
+                          </Link>
                         </Button>
                       </div>
                     </TableCell>
@@ -601,6 +1072,18 @@ export function RoomList() {
             </Table>
           </div>
         </Card>
+
+        {/* Pagination */}
+        {totalItems > 0 && (
+          <nav className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="text-sm text-gray-600">
+              Page {page + 1} of {totalPages}
+            </div>
+            <div className="flex items-center gap-2" aria-label="Pagination">
+              {renderPageNumbers()}
+            </div>
+          </nav>
+        )}
       </div>
 
       {/* Room Details Drawer */}
@@ -611,6 +1094,44 @@ export function RoomList() {
           onOpenChange={setIsDrawerOpen}
         />
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the
+              room and remove it from our servers.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              onClick={() => {
+                setShowDeleteDialog(false);
+                setRoomToDelete(null);
+              }}
+              className="cursor-pointer"
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              className="cursor-pointer bg-red-600 hover:bg-red-700 text-white"
+              disabled={deleteRoomMutation.isPending}
+            >
+              {deleteRoomMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                "Delete Room"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

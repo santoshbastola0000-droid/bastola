@@ -9,7 +9,6 @@ import { motion } from "framer-motion";
 import {
   Building2,
   MapPin,
-  Check,
   Plus,
   Clock,
   Droplets,
@@ -59,6 +58,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
 import { RoomCategory } from "@/types/room.types";
 import { cn } from "@/lib/utils";
+import { useCreateRoomMutation } from "@/http/mutations/room.mutation";
 
 // Dynamically import MapPicker to avoid SSR issues
 const MapPicker = dynamic(() => import("@/components/admin/rooms/MapPicker"), {
@@ -67,7 +67,7 @@ const MapPicker = dynamic(() => import("@/components/admin/rooms/MapPicker"), {
     <Card>
       <CardContent className="p-6">
         <div className="space-y-4">
-          <div className="h-[400px] w-full bg-muted rounded-lg animate-pulse flex items-center justify-center">
+          <div className="h-[600px] w-full bg-muted rounded-lg animate-pulse flex items-center justify-center">
             <div className="text-center">
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground mx-auto mb-3" />
               <p className="text-sm text-muted-foreground">Loading map...</p>
@@ -142,14 +142,14 @@ const timeSlots = [
 
 export default function CreateRoomPage() {
   const router = useRouter();
+  const createRoomMutation = useCreateRoomMutation();
   const [selectedAmenities, setSelectedAmenities] = useState<string[]>([
     "wifi",
     "ac",
     "parking",
   ]);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState("basic");
-  const locationSet = useRef(false); // 🔥 Prevent duplicate location sets
+  const locationSet = useRef(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -197,7 +197,6 @@ export default function CreateRoomPage() {
     );
   };
 
-  // 🔥 FIXED: Prevent duplicate location calls
   const handleLocationSelect = (location: any) => {
     if (locationSet.current) return;
     locationSet.current = true;
@@ -231,30 +230,18 @@ export default function CreateRoomPage() {
       description: location.formattedAddress || "Location has been set",
     });
 
-    // Switch to details tab after location is selected
     setActiveTab("details");
   };
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
-    try {
-      setIsSubmitting(true);
-      values.amenities = selectedAmenities;
+    values.amenities = selectedAmenities;
 
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-
-      toast.success("Room created successfully!", {
-        description: "Your room is now pending admin approval.",
-      });
-
-      router.push("/admin/dashboard/rooms");
-    } catch (error) {
-      toast.error("Failed to create room", {
-        description: "Please try again later.",
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
+    createRoomMutation.mutate({
+      data: values,
+      onSuccess: () => {
+        router.push("/admin/dashboard/rooms");
+      },
+    });
   };
 
   const isValidLocation = form.watch("location.latitude") !== 27.7172;
@@ -931,27 +918,16 @@ export default function CreateRoomPage() {
                 type="button"
                 variant="outline"
                 onClick={() => router.back()}
-                disabled={isSubmitting}
+                disabled={createRoomMutation.isPending}
               >
                 Cancel
               </Button>
               <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  toast.info("Preview feature coming soon!");
-                }}
-                disabled={isSubmitting}
-              >
-                <Eye className="h-4 w-4 mr-2" />
-                Preview
-              </Button>
-              <Button
                 type="submit"
                 className="bg-primary hover:bg-primary/90 min-w-[140px]"
-                disabled={isSubmitting || !isValidLocation}
+                disabled={createRoomMutation.isPending || !isValidLocation}
               >
-                {isSubmitting ? (
+                {createRoomMutation.isPending ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                     Creating...
