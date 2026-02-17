@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import { useState, useRef } from "react";
 import dynamic from "next/dynamic";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -9,14 +9,6 @@ import { motion } from "framer-motion";
 import {
   Building2,
   MapPin,
-  Plus,
-  Clock,
-  Droplets,
-  Users,
-  Bath,
-  Home,
-  Phone,
-  Mail,
   Loader2,
   AlertCircle,
   ChevronLeft,
@@ -156,7 +148,7 @@ export default function CreateRoomPage() {
     defaultValues: {
       title: "",
       description: "",
-      category: RoomCategory.STUDIO,
+      category: RoomCategory.APARTMENT,
       price: 500,
       address: "",
       amenities: selectedAmenities,

@@ -20,3 +20,10 @@ export const SUCCESSTOAST = "#4CAF50";
 export const FAILURETOAST = "#F44336";
 
 export const PAGE_SIZE_OPTIONS = [5, 10, 20, 50] as const;
+
+export const sizeConstants = {
+  email: {
+    minLength: 1,
+    message: "Email is required",
+  },
+};
