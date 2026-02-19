@@ -5,6 +5,8 @@ import { Hero } from "@/components/hero";
 import { SearchBar } from "@/components/search-bar";
 import { RoomGrid } from "@/components/room-grid";
 import { useRooms } from "@/hooks/use-rooms";
+import { NavBar } from "@/components/common/navbar";
+import { Footer } from "@/components/common/footer";
 
 export default function Home() {
   const [location, setLocation] = useState<{
@@ -14,7 +16,8 @@ export default function Home() {
   const { rooms, loading, error } = useRooms(location);
 
   return (
-    <div>
+    <>
+      <NavBar />
       <Hero />
       <div className="container mx-auto px-4 py-12">
         <SearchBar onLocationFound={setLocation} />
@@ -24,6 +27,7 @@ export default function Home() {
         {error && <div className="text-center py-12 text-red-500">{error}</div>}
         {rooms && <RoomGrid rooms={rooms} />}
       </div>
-    </div>
+      <Footer />
+    </>
   );
 }

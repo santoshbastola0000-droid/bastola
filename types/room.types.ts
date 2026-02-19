@@ -66,6 +66,7 @@ export interface Room {
     email: string;
   };
   location?: Location;
+  tiktokUrl: string;
 }
 
 export interface RoomStats {

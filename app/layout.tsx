@@ -2,10 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { QueryClientProviderWrapper } from "@/app/providers";
-import { NavBar } from "@/components/common/navbar";
-import { Footer } from "@/components/common/footer";
 import { Toaster } from "sonner";
-<Toaster />;
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -33,9 +30,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <QueryClientProviderWrapper>
-          <NavBar />
           {children}
-          <Footer />
           <Toaster />;
         </QueryClientProviderWrapper>
       </body>

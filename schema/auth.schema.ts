@@ -18,7 +18,7 @@ export type TLogin = z.infer<typeof loginSchema>;
 export const registerSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
   email: z.string().email("Please enter a valid email address"),
-  phone: z.string().optional(),
+  phoneNumber: z.string(),
 });
 
 export const verifySchema = z.object({

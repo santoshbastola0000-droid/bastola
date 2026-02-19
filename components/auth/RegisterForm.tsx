@@ -28,7 +28,7 @@ const RegisterForm = ({ onSuccess }: RegisterFormProps) => {
     defaultValues: {
       name: "",
       email: "",
-      phone: "",
+      phoneNumber: "",
     },
   });
 
@@ -92,13 +92,13 @@ const RegisterForm = ({ onSuccess }: RegisterFormProps) => {
 
           <FormField
             control={form.control}
-            name="phone"
+            name="phoneNumber"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Phone Number (Optional)</FormLabel>
+                <FormLabel>Phone Number</FormLabel>
                 <FormControl>
                   <Input
-                    placeholder="+1 234 567 890"
+                    placeholder="+977-9817323233"
                     className="h-12 px-4 border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20"
                     {...field}
                     disabled={isPending}

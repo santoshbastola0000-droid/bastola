@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import { useState } from "react";
 import {
   Building2,
   MapPin,
@@ -23,6 +23,11 @@ import {
   Droplets,
   Square,
   User,
+  ChevronLeft,
+  ChevronRight,
+  Instagram,
+  Globe,
+  Maximize2,
 } from "lucide-react";
 import {
   Drawer,
@@ -34,10 +39,32 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import { formatPrice, formatDate } from "@/lib/utils";
 import { Room, RoomStatus } from "@/types/room.types";
 import Link from "next/link";
+import Image from "next/image";
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  DialogHeader,
+} from "@/components/ui/dialog";
+
+// Add dynamic import for map to avoid SSR issues
+const MapComponent = dynamic(() => import("@/components/ui/map"), {
+  ssr: false,
+  loading: () => (
+    <div className="h-[200px] w-full bg-gray-100 animate-pulse rounded-lg flex items-center justify-center">
+      <Globe className="h-8 w-8 text-gray-400" />
+    </div>
+  ),
+});
+
+import dynamic from "next/dynamic";
+
+// Get the base URL from environment variable
+// axios instance cannot be added directly to the image url
+const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "";
 
 interface RoomDrawerProps {
   room: Room;
@@ -49,35 +76,35 @@ const getStatusBadge = (status: RoomStatus) => {
   switch (status) {
     case RoomStatus.AVAILABLE:
       return (
-        <Badge className="bg-green-100 text-green-800 hover:bg-green-100 border-green-200 gap-1">
+        <Badge className="bg-green-100 text-green-800 hover:bg-green-100 border-green-200 gap-1 cursor-default">
           <CheckCircle className="h-3 w-3" />
           Available
         </Badge>
       );
     case RoomStatus.PENDING:
       return (
-        <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100 border-yellow-200 gap-1">
+        <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100 border-yellow-200 gap-1 cursor-default">
           <Clock className="h-3 w-3" />
           Pending Approval
         </Badge>
       );
     case RoomStatus.OCCUPIED:
       return (
-        <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100 border-blue-200 gap-1">
+        <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100 border-blue-200 gap-1 cursor-default">
           <Users className="h-3 w-3" />
           Occupied
         </Badge>
       );
     case RoomStatus.RENTED:
       return (
-        <Badge className="bg-purple-100 text-purple-800 hover:bg-purple-100 border-purple-200 gap-1">
+        <Badge className="bg-purple-100 text-purple-800 hover:bg-purple-100 border-purple-200 gap-1 cursor-default">
           <CheckCircle className="h-3 w-3" />
           Rented
         </Badge>
       );
     case RoomStatus.REJECTED:
       return (
-        <Badge className="bg-red-100 text-red-800 hover:bg-red-100 border-red-200 gap-1">
+        <Badge className="bg-red-100 text-red-800 hover:bg-red-100 border-red-200 gap-1 cursor-default">
           <XCircle className="h-3 w-3" />
           Rejected
         </Badge>
@@ -104,12 +131,184 @@ const getAmenityIcon = (amenity: string) => {
   }
 };
 
+// Image Carousel Component
+interface ImageCarouselProps {
+  images: string[];
+  title: string;
+}
+
+const ImageCarousel = ({ images, title }: ImageCarouselProps) => {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [showFullscreen, setShowFullscreen] = useState(false);
+
+  const goToPrevious = () => {
+    setCurrentIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
+  };
+
+  const goToNext = () => {
+    setCurrentIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
+  };
+
+  // Construct the full image URL
+  const getImageUrl = (imagePath: string) => {
+    if (imagePath.startsWith("http")) {
+      return imagePath;
+    }
+    // Remove any leading slash from imagePath and ensure API_BASE_URL doesn't have trailing slash
+    const cleanImagePath = imagePath.replace(/^\//, "");
+    const baseUrl = API_BASE_URL.replace(/\/$/, "");
+
+    return `${baseUrl}/${cleanImagePath}`;
+  };
+
+  if (!images || images.length === 0) {
+    return (
+      <div className="h-[300px] w-full bg-gray-100 rounded-lg flex items-center justify-center">
+        <Building2 className="h-16 w-16 text-gray-400" />
+        <p className="text-gray-500 mt-2">No images available</p>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <div className="relative h-[300px] w-full group">
+        {/* Main Image */}
+        <div className="relative h-full w-full rounded-lg overflow-hidden">
+          <img
+            src={getImageUrl(images[currentIndex])}
+            alt={`${title} - Image ${currentIndex + 1}`}
+            className="w-full h-full object-cover"
+            onError={(e) => {
+              // Fallback to placeholder on error
+              const target = e.target as HTMLImageElement;
+              target.src = "/placeholder-image.jpg";
+            }}
+          />
+        </div>
+
+        {/* Navigation Arrows */}
+        {images.length > 1 && (
+          <>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+              onClick={goToPrevious}
+            >
+              <ChevronLeft className="h-6 w-6" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+              onClick={goToNext}
+            >
+              <ChevronRight className="h-6 w-6" />
+            </Button>
+          </>
+        )}
+
+        {/* Image Counter */}
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/50 text-white px-3 py-1 rounded-full text-sm">
+          {currentIndex + 1} / {images.length}
+        </div>
+
+        {/* Fullscreen Button */}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="absolute top-4 right-4 bg-black/50 hover:bg-black/70 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+          onClick={() => setShowFullscreen(true)}
+        >
+          <Maximize2 className="h-4 w-4" />
+        </Button>
+
+        {/* Thumbnail Strip */}
+        {images.length > 1 && (
+          <div className="absolute -bottom-16 left-0 right-0 flex justify-center gap-2 p-2 bg-white/90 backdrop-blur-sm rounded-lg shadow-lg">
+            {images.map((image, index) => (
+              <button
+                key={index}
+                onClick={() => setCurrentIndex(index)}
+                className={`relative w-12 h-12 rounded-md overflow-hidden transition-all ${
+                  index === currentIndex
+                    ? "ring-2 ring-primary scale-110"
+                    : "opacity-70 hover:opacity-100"
+                }`}
+              >
+                <Image
+                  src={getImageUrl(image)}
+                  alt={`Thumbnail ${index + 1}`}
+                  fill
+                  className="object-cover"
+                  sizes="48px"
+                />
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Fullscreen Dialog */}
+      <Dialog open={showFullscreen} onOpenChange={setShowFullscreen}>
+        <DialogContent className="max-w-5xl w-[95vw] h-[90vh]">
+          <DialogHeader>
+            <DialogTitle className="sr-only">Room Images</DialogTitle>
+          </DialogHeader>
+          <div className="relative h-full w-full">
+            <img
+              src={getImageUrl(images[currentIndex])}
+              alt={`${title} - Fullscreen ${currentIndex + 1}`}
+              className="object-contain"
+              sizes="(max-width: 1280px) 100vw, 1200px"
+            />
+            {images.length > 1 && (
+              <>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white rounded-full"
+                  onClick={goToPrevious}
+                >
+                  <ChevronLeft className="h-8 w-8" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white rounded-full"
+                  onClick={goToNext}
+                >
+                  <ChevronRight className="h-8 w-8" />
+                </Button>
+                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/50 text-white px-4 py-2 rounded-full text-sm">
+                  {currentIndex + 1} / {images.length}
+                </div>
+              </>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+};
+
 export function RoomDrawer({ room, open, onOpenChange }: RoomDrawerProps) {
+  // Ensure latitude and longitude are numbers
+  const latitude = room.location?.latitude
+    ? Number(room.location.latitude)
+    : null;
+  const longitude = room.location?.longitude
+    ? Number(room.location.longitude)
+    : null;
+  const hasValidCoordinates =
+    latitude && longitude && !isNaN(latitude) && !isNaN(longitude);
+
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
       <DrawerContent className="max-h-[90vh]">
         <div className="overflow-y-auto">
-          <DrawerHeader className="border-b">
+          <DrawerHeader className="border-b sticky top-0 bg-white z-10">
             <div className="flex items-start justify-between">
               <div>
                 <DrawerTitle className="text-xl flex items-center gap-2">
@@ -125,6 +324,13 @@ export function RoomDrawer({ room, open, onOpenChange }: RoomDrawerProps) {
           </DrawerHeader>
 
           <div className="p-6 space-y-6">
+            {/* Image Carousel */}
+            {room.images && room.images.length > 0 && (
+              <div className="mb-8 pb-4">
+                <ImageCarousel images={room.images} title={room.title} />
+              </div>
+            )}
+
             {/* Price & Quick Info */}
             <Card className="bg-primary/5 border-primary/20">
               <CardContent className="p-4">
@@ -152,6 +358,36 @@ export function RoomDrawer({ room, open, onOpenChange }: RoomDrawerProps) {
               </CardContent>
             </Card>
 
+            {/* TikTok Link */}
+            {room.tiktokUrl && (
+              <Card>
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="p-2 bg-black rounded-lg">
+                        <Instagram className="h-5 w-5 text-white" />
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-500">TikTok Profile</p>
+                        <a
+                          href={room.tiktokUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="font-medium text-blue-600 hover:underline flex items-center gap-1"
+                        >
+                          {room.tiktokUrl.replace(
+                            /^https?:\/\/(www\.)?tiktok\.com\/@?/,
+                            "@",
+                          )}
+                          <Globe className="h-3 w-3" />
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Left Column - Details */}
               <div className="lg:col-span-2 space-y-6">
@@ -161,7 +397,9 @@ export function RoomDrawer({ room, open, onOpenChange }: RoomDrawerProps) {
                     <h3 className="font-semibold text-gray-900 mb-3">
                       Description
                     </h3>
-                    <p className="text-gray-600">{room.description}</p>
+                    <p className="text-gray-600 whitespace-pre-wrap">
+                      {room.description}
+                    </p>
                   </CardContent>
                 </Card>
 
@@ -302,6 +540,25 @@ export function RoomDrawer({ room, open, onOpenChange }: RoomDrawerProps) {
                     </CardContent>
                   </Card>
                 )}
+
+                {/* Location Map */}
+                {hasValidCoordinates && (
+                  <Card>
+                    <CardContent className="p-4">
+                      <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                        <MapPin className="h-4 w-4" />
+                        Location on Map
+                      </h3>
+                      <div className="h-[300px] w-full rounded-lg overflow-hidden">
+                        <MapComponent
+                          latitude={latitude}
+                          longitude={longitude}
+                          popupText={room.title}
+                        />
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
               </div>
 
               {/* Right Column - Contact & Info */}
@@ -331,6 +588,20 @@ export function RoomDrawer({ room, open, onOpenChange }: RoomDrawerProps) {
                           >
                             <Phone className="h-4 w-4" />
                             {room.contactPhone}
+                          </a>
+                        </div>
+                      )}
+                      {room.contactWhatsapp && (
+                        <div>
+                          <p className="text-sm text-gray-500">WhatsApp</p>
+                          <a
+                            href={`https://wa.me/${room.contactWhatsapp.replace(/\D/g, "")}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="font-medium text-green-600 hover:underline flex items-center gap-2"
+                          >
+                            <Phone className="h-4 w-4" />
+                            {room.contactWhatsapp}
                           </a>
                         </div>
                       )}
@@ -399,6 +670,14 @@ export function RoomDrawer({ room, open, onOpenChange }: RoomDrawerProps) {
                         Location Details
                       </h3>
                       <div className="space-y-3">
+                        {room.location.formattedAddress && (
+                          <div>
+                            <p className="text-sm text-gray-500">Address</p>
+                            <p className="font-medium text-sm">
+                              {room.location.formattedAddress}
+                            </p>
+                          </div>
+                        )}
                         {room.location.city && (
                           <div>
                             <p className="text-sm text-gray-500">City</p>
@@ -419,13 +698,22 @@ export function RoomDrawer({ room, open, onOpenChange }: RoomDrawerProps) {
                             </p>
                           </div>
                         )}
-                        <div>
-                          <p className="text-sm text-gray-500">Coordinates</p>
-                          <p className="font-mono text-xs">
-                            {room.location.latitude.toFixed(6)},{" "}
-                            {room.location.longitude.toFixed(6)}
-                          </p>
-                        </div>
+                        {room.location.postalCode && (
+                          <div>
+                            <p className="text-sm text-gray-500">Postal Code</p>
+                            <p className="font-medium">
+                              {room.location.postalCode}
+                            </p>
+                          </div>
+                        )}
+                        {hasValidCoordinates && (
+                          <div>
+                            <p className="text-sm text-gray-500">Coordinates</p>
+                            <p className="font-mono text-xs">
+                              {latitude.toFixed(6)}, {longitude.toFixed(6)}
+                            </p>
+                          </div>
+                        )}
                       </div>
                     </CardContent>
                   </Card>

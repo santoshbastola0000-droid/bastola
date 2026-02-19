@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
-    domains: ["avatars.githubusercontent.com", "github.com"],
+    domains: ["avatars.githubusercontent.com", "github.com", "localhost"],
   },
   // Fix for SameSite cookie issues
   async headers() {

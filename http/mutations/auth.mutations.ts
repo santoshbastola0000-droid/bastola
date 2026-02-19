@@ -77,7 +77,7 @@ export const useRegisterMutation = () => {
   return useMutation({
     mutationKey: [AUTH_QUERY_KEYS.REGISTER],
     mutationFn: async (data: TRegister) => {
-      const response = await api.post("/user/register", data);
+      const response = await api.post("/user", data);
       return {
         ...response.data,
         email: data.email,

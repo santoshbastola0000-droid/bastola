@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import dynamic from "next/dynamic";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -11,18 +11,16 @@ import {
   AlertCircle,
   CheckCircle2,
   Search,
-  Navigation,
   Maximize2,
   Minimize2,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { motion, AnimatePresence } from "framer-motion";
-import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 // Fix for default Leaflet icons
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -33,82 +31,39 @@ L.Icon.Default.mergeOptions({
   shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
 });
 
-// Custom red theme marker icons
-const selectedMarkerIcon = L.divIcon({
-  html: `<div class="relative">
-    <div class="w-10 h-10 bg-[#E11D48] rounded-full border-3 border-white shadow-lg flex items-center justify-center">
-      <div class="w-3 h-3 bg-white rounded-full"></div>
-    </div>
-    <div class="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-8 border-r-8 border-t-8 border-transparent border-t-[#E11D48]"></div>
-  </div>`,
-  className: "bg-transparent border-none",
-  iconSize: [40, 40],
-  iconAnchor: [20, 40],
-  popupAnchor: [0, -40],
-});
+// Default center: Pokhara, Nepal
+const DEFAULT_CENTER: [number, number] = [28.2096, 83.9856];
+const DEFAULT_ZOOM = 13;
 
-const currentLocationMarkerIcon = L.divIcon({
-  html: `<div class="relative">
-    <div class="w-8 h-8 bg-[#2563EB] rounded-full border-3 border-white shadow-lg flex items-center justify-center animate-pulse">
-      <div class="w-3 h-3 bg-white rounded-full"></div>
-    </div>
-    <div class="absolute -inset-2 bg-[#2563EB]/30 rounded-full animate-ping"></div>
-  </div>`,
-  className: "bg-transparent border-none",
-  iconSize: [32, 32],
-  iconAnchor: [16, 16],
-  popupAnchor: [0, -16],
-});
+const createSelectedIcon = () =>
+  L.divIcon({
+    html: `<div style="position:relative;display:inline-block;">
+      <div style="width:40px;height:40px;background:#E23744;border-radius:50%;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;">
+        <div style="width:12px;height:12px;background:white;border-radius:50%;"></div>
+      </div>
+      <div style="position:absolute;bottom:-8px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:8px solid transparent;border-right:8px solid transparent;border-top:8px solid #E23744;"></div>
+    </div>`,
+    className: "bg-transparent border-none",
+    iconSize: [40, 48],
+    iconAnchor: [20, 48],
+    popupAnchor: [0, -48],
+  });
 
-// Dynamically import Leaflet components
-const MapContainer = dynamic(
-  () => import("react-leaflet").then((mod) => mod.MapContainer),
-  {
-    ssr: false,
-    loading: () => <Skeleton className="h-[600px] w-full rounded-lg" />,
-  },
-);
+const createCurrentLocationIcon = () =>
+  L.divIcon({
+    html: `<div style="position:relative;display:flex;align-items:center;justify-content:center;width:48px;height:48px;">
+      <div style="width:32px;height:32px;background:#3B82F6;border-radius:50%;border:3px solid white;box-shadow:0 2px 8px rgba(59,130,246,0.5);display:flex;align-items:center;justify-content:center;z-index:2;position:relative;">
+        <div style="width:10px;height:10px;background:white;border-radius:50%;"></div>
+      </div>
+      <div style="position:absolute;width:48px;height:48px;background:rgba(59,130,246,0.2);border-radius:50%;animation:mapPing 1.5s cubic-bezier(0,0,0.2,1) infinite;"></div>
+    </div>`,
+    className: "bg-transparent border-none",
+    iconSize: [48, 48],
+    iconAnchor: [24, 24],
+    popupAnchor: [0, -24],
+  });
 
-const TileLayer = dynamic(
-  () => import("react-leaflet").then((mod) => mod.TileLayer),
-  { ssr: false },
-);
-
-const Marker = dynamic(
-  () => import("react-leaflet").then((mod) => mod.Marker),
-  { ssr: false },
-);
-
-const Popup = dynamic(() => import("react-leaflet").then((mod) => mod.Popup), {
-  ssr: false,
-});
-
-const MapEvents = dynamic(
-  () =>
-    import("react-leaflet").then((mod) => {
-      const Component = ({
-        onMapClick,
-        onMapReady,
-      }: {
-        onMapClick: (e: L.LeafletMouseEvent) => void;
-        onMapReady: (map: L.Map) => void;
-      }) => {
-        const map = mod.useMapEvents({
-          click: onMapClick,
-        });
-
-        useEffect(() => {
-          onMapReady(map);
-        }, []);
-
-        return null;
-      };
-      return Component;
-    }),
-  { ssr: false },
-);
-
-interface Location {
+export interface Location {
   lat: number;
   lng: number;
   name?: string;
@@ -124,29 +79,18 @@ interface MapPickerProps {
   initialLocation?: Location | null;
 }
 
-// Cache for reverse geocoding
-const geocodeCache = new Map<string, any>();
-
-async function reverseGeocode(lat: number, lng: number) {
-  const key = `${lat},${lng}`;
-
-  if (geocodeCache.has(key)) {
-    return geocodeCache.get(key);
-  }
-
+async function reverseGeocode(
+  lat: number,
+  lng: number,
+): Promise<Omit<Location, "lat" | "lng">> {
   try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 8000);
-
     const response = await fetch(
       `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`,
-      { signal: controller.signal },
+      { headers: { "Accept-Language": "en-US,en;q=0.9" } },
     );
-
-    clearTimeout(timeoutId);
+    if (!response.ok) throw new Error("Request failed");
     const data = await response.json();
-
-    const result = {
+    return {
       formattedAddress:
         data.display_name || `${lat.toFixed(6)}, ${lng.toFixed(6)}`,
       name:
@@ -154,275 +98,341 @@ async function reverseGeocode(lat: number, lng: number) {
         data.address?.road ||
         data.display_name?.split(",")[0] ||
         "Selected Location",
-      city: data.address?.city || data.address?.town || data.address?.village,
-      state: data.address?.state,
-      country: data.address?.country,
-      postalCode: data.address?.postcode,
+      city:
+        data.address?.city || data.address?.town || data.address?.village || "",
+      state: data.address?.state || "",
+      country: data.address?.country || "",
+      postalCode: data.address?.postcode || "",
     };
-
-    geocodeCache.set(key, result);
-    return result;
-  } catch (error) {
-    console.error("Reverse geocoding failed:", error);
+  } catch {
     return {
       formattedAddress: `${lat.toFixed(6)}, ${lng.toFixed(6)}`,
       name: "Selected Location",
+      city: "",
+      state: "",
+      country: "",
+      postalCode: "",
     };
   }
 }
 
-async function searchLocation(query: string) {
+async function searchLocation(query: string): Promise<any[]> {
   try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 8000);
-
     const response = await fetch(
-      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5`,
-      { signal: controller.signal },
+      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&addressdetails=1`,
+      { headers: { "Accept-Language": "en-US,en;q=0.9" } },
     );
-
-    clearTimeout(timeoutId);
+    if (!response.ok) return [];
     return await response.json();
-  } catch (error) {
-    console.error("Location search failed:", error);
+  } catch {
     return [];
   }
 }
+
+// ── ClickHandler ──────────────────────────────────────────────────────────────
+
+const ClickHandler = dynamic(
+  () =>
+    import("react-leaflet").then((mod) => {
+      const Comp = ({
+        onSelect,
+      }: {
+        onSelect: (lat: number, lng: number) => void;
+      }) => {
+        mod.useMapEvents({
+          click: (e) => onSelect(e.latlng.lat, e.latlng.lng),
+        });
+        return null;
+      };
+      Comp.displayName = "ClickHandler";
+      return Comp;
+    }),
+  { ssr: false },
+);
+
+// ── MapController ─────────────────────────────────────────────────────────────
+
+const MapController = dynamic(
+  () =>
+    import("react-leaflet").then((mod) => {
+      const Comp = ({
+        flyTarget,
+      }: {
+        flyTarget: [number, number, number] | null;
+      }) => {
+        const map = mod.useMap();
+        const prevTargetRef = useRef<[number, number, number] | null>(null);
+
+        useEffect(() => {
+          if (!flyTarget) return;
+          const [lat, lng, zoom] = flyTarget;
+          const prev = prevTargetRef.current;
+          if (prev && prev[0] === lat && prev[1] === lng && prev[2] === zoom)
+            return;
+          prevTargetRef.current = [lat, lng, zoom];
+
+          const timerId = setTimeout(() => {
+            try {
+              map.flyTo([lat, lng], zoom, { animate: true, duration: 1.5 });
+            } catch {
+              try {
+                map.setView([lat, lng], zoom);
+              } catch {
+                // silently ignore
+              }
+            }
+          }, 150);
+
+          return () => clearTimeout(timerId);
+        }, [flyTarget, map]);
+
+        return null;
+      };
+      Comp.displayName = "MapController";
+      return Comp;
+    }),
+  { ssr: false },
+);
+
+// ── InvalidateSizeOnFullscreen ────────────────────────────────────────────────
+// When the map container changes size (fullscreen toggle), Leaflet needs
+// invalidateSize() to recalculate tile positions correctly.
+
+const InvalidateSizeOnFullscreen = dynamic(
+  () =>
+    import("react-leaflet").then((mod) => {
+      const Comp = ({ isFullscreen }: { isFullscreen: boolean }) => {
+        const map = mod.useMap();
+        useEffect(() => {
+          // Small delay so the CSS transition finishes before we recalc
+          const t = setTimeout(() => {
+            map.invalidateSize({ animate: false });
+          }, 320);
+          return () => clearTimeout(t);
+        }, [isFullscreen, map]);
+        return null;
+      };
+      Comp.displayName = "InvalidateSizeOnFullscreen";
+      return Comp;
+    }),
+  { ssr: false },
+);
+
+// ── Leaflet dynamic imports ───────────────────────────────────────────────────
+
+const MapContainer = dynamic(
+  () => import("react-leaflet").then((m) => m.MapContainer),
+  { ssr: false },
+);
+const TileLayer = dynamic(
+  () => import("react-leaflet").then((m) => m.TileLayer),
+  { ssr: false },
+);
+const Marker = dynamic(() => import("react-leaflet").then((m) => m.Marker), {
+  ssr: false,
+});
+const Popup = dynamic(() => import("react-leaflet").then((m) => m.Popup), {
+  ssr: false,
+});
+
+// ── Main Component ────────────────────────────────────────────────────────────
 
 export default function MapPicker({
   onLocationSelect,
   initialLocation,
 }: MapPickerProps) {
   const [position, setPosition] = useState<Location | null>(
-    initialLocation || null,
+    initialLocation ?? null,
   );
   const [currentLocation, setCurrentLocation] = useState<Location | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isGettingLocation, setIsGettingLocation] = useState(false);
-  const [locationError, setLocationError] = useState<string | null>(null);
+  const [isMounted, setIsMounted] = useState(false);
+  const [isGeolocating, setIsGeolocating] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [flyTarget, setFlyTarget] = useState<[number, number, number] | null>(
+    null,
+  );
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [showSearchResults, setShowSearchResults] = useState(false);
-  const [isFullscreen, setIsFullscreen] = useState(false);
-  const [isMounted, setIsMounted] = useState(false);
+  const [mapError, setMapError] = useState<string | null>(null);
 
-  const mapRef = useRef<L.Map | null>(null);
-  const flyToTimeoutRef = useRef<NodeJS.Timeout>();
-  const searchTimeoutRef = useRef<NodeJS.Timeout>();
-  const locationRequested = useRef(false);
-  const isClicking = useRef(false);
+  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const geoWatchIdRef = useRef<number | null>(null);
+  const fullscreenContainerRef = useRef<HTMLDivElement | null>(null);
 
-  // Handle client-side mounting
   useEffect(() => {
     setIsMounted(true);
-    setIsLoading(false);
-
     return () => {
-      if (flyToTimeoutRef.current) clearTimeout(flyToTimeoutRef.current);
       if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+      if (geoWatchIdRef.current !== null) {
+        navigator.geolocation.clearWatch(geoWatchIdRef.current);
+      }
     };
   }, []);
 
-  // Get user's current location
-  const getCurrentLocation = useCallback(() => {
-    if (locationRequested.current) return;
-    locationRequested.current = true;
-
-    setIsGettingLocation(true);
-    setLocationError(null);
-
-    if (!navigator.geolocation) {
-      setLocationError("Geolocation is not supported by your browser");
-      setIsGettingLocation(false);
-      return;
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const { latitude, longitude } = position.coords;
-        const newPos = { lat: latitude, lng: longitude };
-
-        console.log("📍 Current location found:", newPos);
-
-        setCurrentLocation(newPos);
-
-        // Only set position if no position is selected
-        if (!position) {
-          const address = await reverseGeocode(latitude, longitude);
-          const locationData = {
-            ...newPos,
-            ...address,
-          };
-
-          setPosition(locationData);
-          onLocationSelect(locationData);
-        }
-
-        setIsGettingLocation(false);
-      },
-      (error) => {
-        console.error("❌ Geolocation error:", error);
-
-        switch (error.code) {
-          case error.PERMISSION_DENIED:
-            setLocationError(
-              "Please allow location access to use this feature",
-            );
-            break;
-          case error.POSITION_UNAVAILABLE:
-            setLocationError("Location information is unavailable");
-            break;
-          case error.TIMEOUT:
-            // Don't show error if we already have location
-            if (!currentLocation) {
-              setLocationError("Location request timed out. Please try again.");
-            }
-            break;
-          default:
-            setLocationError("An unknown error occurred");
-        }
-        setIsGettingLocation(false);
-        locationRequested.current = false;
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 15000,
-        maximumAge: 60000,
-      },
-    );
-  }, [onLocationSelect, currentLocation]);
-
-  // Try to get current location when component mounts
+  // Close fullscreen on Escape key
   useEffect(() => {
-    if (isMounted && !locationRequested.current) {
-      getCurrentLocation();
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isFullscreen) {
+        setIsFullscreen(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isFullscreen]);
+
+  // Lock body scroll when fullscreen
+  useEffect(() => {
+    if (isFullscreen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
     }
-  }, [isMounted, getCurrentLocation]);
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isFullscreen]);
 
-  // Handle map click
+  // ── Map click ─────────────────────────────────────────────────────────────
+
   const handleMapClick = useCallback(
-    async (e: L.LeafletMouseEvent) => {
-      if (isClicking.current) return;
-      isClicking.current = true;
-
-      const { lat, lng } = e.latlng;
-      const newPos = { lat, lng };
-
-      setPosition(newPos);
-
+    async (lat: number, lng: number) => {
+      setPosition({ lat, lng });
+      setMapError(null);
       const address = await reverseGeocode(lat, lng);
-      const locationData = {
-        ...newPos,
-        ...address,
-      };
-
+      const locationData: Location = { lat, lng, ...address };
       setPosition(locationData);
       onLocationSelect(locationData);
-
-      setTimeout(() => {
-        isClicking.current = false;
-      }, 500);
     },
     [onLocationSelect],
   );
 
-  // Handle map ready
-  const handleMapReady = useCallback(
-    (mapInstance: L.Map) => {
-      mapRef.current = mapInstance;
+  // ── Current location ──────────────────────────────────────────────────────
 
-      // If we have initial location, fly to it
-      if (initialLocation) {
-        setTimeout(() => {
-          mapInstance.flyTo([initialLocation.lat, initialLocation.lng], 18, {
-            duration: 1.5,
-            easeLinearity: 0.25,
-          });
-        }, 100);
-      }
-    },
-    [initialLocation],
-  );
+  const handleUseCurrentLocation = useCallback(() => {
+    if (!navigator.geolocation) {
+      toast.error("Geolocation is not supported by your browser");
+      return;
+    }
 
-  // Debounced flyTo
-  useEffect(() => {
-    if (mapRef.current && position) {
-      if (flyToTimeoutRef.current) {
-        clearTimeout(flyToTimeoutRef.current);
-      }
+    if (geoWatchIdRef.current !== null) {
+      navigator.geolocation.clearWatch(geoWatchIdRef.current);
+      geoWatchIdRef.current = null;
+    }
 
-      flyToTimeoutRef.current = setTimeout(() => {
-        if (mapRef.current && position) {
-          mapRef.current.flyTo([position.lat, position.lng], 18, {
-            duration: 1.2,
-            easeLinearity: 0.25,
-          });
+    setIsGeolocating(true);
+    setMapError(null);
+
+    geoWatchIdRef.current = navigator.geolocation.watchPosition(
+      async (pos) => {
+        if (geoWatchIdRef.current !== null) {
+          navigator.geolocation.clearWatch(geoWatchIdRef.current);
+          geoWatchIdRef.current = null;
         }
-        flyToTimeoutRef.current = undefined;
-      }, 300);
-    }
 
-    return () => {
-      if (flyToTimeoutRef.current) {
-        clearTimeout(flyToTimeoutRef.current);
-      }
-    };
-  }, [position]);
+        const { latitude: lat, longitude: lng, accuracy } = pos.coords;
 
-  // Handle search input
-  const handleSearch = async (query: string) => {
+        if (accuracy > 500) {
+          toast.warning(
+            `Low accuracy (~${Math.round(accuracy)}m). Try moving to an open area.`,
+          );
+        }
+
+        const address = await reverseGeocode(lat, lng);
+        const locationData: Location = { lat, lng, ...address };
+
+        setCurrentLocation({ lat, lng });
+        setPosition(locationData);
+        onLocationSelect(locationData);
+        setFlyTarget([lat, lng, 16]);
+
+        toast.success("Current location detected!");
+        setIsGeolocating(false);
+        setMapError(null);
+      },
+      (err) => {
+        if (geoWatchIdRef.current !== null) {
+          navigator.geolocation.clearWatch(geoWatchIdRef.current);
+          geoWatchIdRef.current = null;
+        }
+        setIsGeolocating(false);
+
+        switch (err.code) {
+          case err.PERMISSION_DENIED:
+            toast.error(
+              "Location access denied. Please allow it in your browser settings.",
+            );
+            break;
+          case err.POSITION_UNAVAILABLE:
+            toast.error(
+              "Location unavailable. Check your GPS or network connection.",
+            );
+            break;
+          case err.TIMEOUT:
+            toast.error("Location request timed out. Please try again.");
+            break;
+          default:
+            toast.error("Could not get your location. Please try again.");
+        }
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 },
+    );
+  }, [onLocationSelect]);
+
+  // ── Search ────────────────────────────────────────────────────────────────
+
+  const handleSearch = (query: string) => {
     setSearchQuery(query);
-
-    if (searchTimeoutRef.current) {
-      clearTimeout(searchTimeoutRef.current);
-    }
-
+    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
     if (query.length < 3) {
       setSearchResults([]);
       setShowSearchResults(false);
       return;
     }
-
     searchTimeoutRef.current = setTimeout(async () => {
       setIsSearching(true);
-      const results = await searchLocation(query);
-      setSearchResults(results);
-      setShowSearchResults(true);
-      setIsSearching(false);
+      try {
+        const results = await searchLocation(query);
+        setSearchResults(results);
+        setShowSearchResults(results.length > 0);
+      } catch {
+        toast.error("Search failed. Please try again.");
+      } finally {
+        setIsSearching(false);
+      }
     }, 500);
   };
 
-  // Handle location selection from search
   const handleSearchSelect = async (result: any) => {
-    const lat = parseFloat(result.lat);
-    const lng = parseFloat(result.lon);
-
-    const newPos = { lat, lng };
-    setPosition(newPos);
-
-    const address = await reverseGeocode(lat, lng);
-    const locationData = {
-      ...newPos,
-      ...address,
-      name: result.display_name.split(",")[0],
-      formattedAddress: result.display_name,
-    };
-
-    onLocationSelect(locationData);
-    setShowSearchResults(false);
-    setSearchQuery(result.display_name.split(",")[0]);
+    try {
+      const lat = parseFloat(result.lat);
+      const lng = parseFloat(result.lon);
+      const address: Omit<Location, "lat" | "lng"> = {
+        formattedAddress: result.display_name,
+        name: result.display_name.split(",")[0],
+        city:
+          result.address?.city ||
+          result.address?.town ||
+          result.address?.village ||
+          "",
+        state: result.address?.state || "",
+        country: result.address?.country || "",
+        postalCode: result.address?.postcode || "",
+      };
+      const locationData: Location = { lat, lng, ...address };
+      setPosition(locationData);
+      onLocationSelect(locationData);
+      setShowSearchResults(false);
+      setSearchQuery(address.name ?? "");
+      setFlyTarget([lat, lng, 16]);
+      setMapError(null);
+    } catch {
+      toast.error("Failed to select this location.");
+    }
   };
 
-  // Toggle fullscreen
-  const toggleFullscreen = () => {
-    setIsFullscreen(!isFullscreen);
-    setTimeout(() => {
-      if (mapRef.current) {
-        mapRef.current.invalidateSize();
-      }
-    }, 100);
-  };
+  // ── Render ────────────────────────────────────────────────────────────────
 
   if (!isMounted) {
     return (
@@ -434,32 +444,205 @@ export default function MapPicker({
     );
   }
 
-  return (
-    <div
-      className={cn(
-        "space-y-4 transition-all duration-300",
-        isFullscreen && "fixed inset-4 z-50",
+  const mapCenter: [number, number] = position
+    ? [position.lat, position.lng]
+    : DEFAULT_CENTER;
+  const mapZoom = position ? 15 : DEFAULT_ZOOM;
+
+  // ── Shared map UI (rendered in both normal + fullscreen modes) ────────────
+
+  const MapUI = (
+    <div className="relative h-full w-full">
+      {/* Top-right controls row */}
+      <div className="absolute right-3 top-3 z-[1000] flex flex-col gap-2 items-end">
+        {/* Fullscreen toggle */}
+        <button
+          onClick={() => setIsFullscreen((v) => !v)}
+          type="button"
+          className="flex items-center gap-2 rounded-lg bg-white px-3 py-2 text-sm shadow-lg hover:bg-gray-100 active:bg-gray-200 transition-colors border border-gray-200 select-none"
+          title={isFullscreen ? "Exit fullscreen (Esc)" : "Enter fullscreen"}
+        >
+          {isFullscreen ? (
+            <Minimize2 size={16} className="text-gray-700" />
+          ) : (
+            <Maximize2 size={16} className="text-gray-700" />
+          )}
+          <span>{isFullscreen ? "Exit fullscreen" : "Fullscreen"}</span>
+        </button>
+
+        {/* Current location button */}
+        <button
+          onClick={handleUseCurrentLocation}
+          type="button"
+          disabled={isGeolocating}
+          className="flex items-center gap-2 rounded-lg bg-white px-3 py-2 text-sm shadow-lg hover:bg-gray-100 active:bg-gray-200 transition-colors border border-gray-200 disabled:opacity-60 disabled:cursor-not-allowed select-none"
+        >
+          {isGeolocating ? (
+            <Loader2 size={16} className="animate-spin text-blue-600" />
+          ) : (
+            <LocateFixed size={16} className="text-blue-600" />
+          )}
+          {isGeolocating ? "Getting location…" : "Use current location"}
+        </button>
+      </div>
+
+      {/* Search bar — inside the map when fullscreen */}
+      {isFullscreen && (
+        <div className="absolute left-3 top-3 z-[1000] w-72 sm:w-96">
+          <div className="relative bg-white rounded-lg border shadow-lg">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
+            <input
+              placeholder="Search for a location..."
+              value={searchQuery}
+              onChange={(e) => handleSearch(e.target.value)}
+              className="w-full pl-9 pr-4 py-2 text-sm rounded-lg outline-none"
+              onFocus={() =>
+                searchResults.length > 0 && setShowSearchResults(true)
+              }
+              onBlur={() => setTimeout(() => setShowSearchResults(false), 200)}
+            />
+            <AnimatePresence>
+              {showSearchResults && (
+                <motion.div
+                  initial={{ opacity: 0, y: -6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -6 }}
+                  className="absolute z-50 mt-1 w-full bg-white rounded-lg border shadow-lg max-h-60 overflow-y-auto"
+                >
+                  {isSearching ? (
+                    <div className="p-4 text-center text-gray-500">
+                      <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2" />
+                      <p className="text-sm">Searching...</p>
+                    </div>
+                  ) : (
+                    searchResults.map((result, index) => (
+                      <button
+                        key={index}
+                        type="button"
+                        className="w-full px-4 py-2 text-left hover:bg-gray-50 transition-colors flex items-start gap-2"
+                        onMouseDown={() => handleSearchSelect(result)}
+                      >
+                        <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0 text-gray-500" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">
+                            {result.display_name.split(",")[0]}
+                          </p>
+                          <p className="text-xs text-gray-500 truncate">
+                            {result.display_name}
+                          </p>
+                        </div>
+                      </button>
+                    ))
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </div>
       )}
-    >
-      {/* Search and Location Controls */}
-      <Card className="border-2 border-primary/10 shadow-lg">
-        <CardContent className="p-4">
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="flex-1 relative">
+
+      <MapContainer
+        center={mapCenter}
+        zoom={mapZoom}
+        className="h-full w-full"
+        scrollWheelZoom
+        style={{ background: "#f0f0f0" }}
+      >
+        <TileLayer
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        />
+
+        <MapController flyTarget={flyTarget} />
+        <ClickHandler onSelect={handleMapClick} />
+        <InvalidateSizeOnFullscreen isFullscreen={isFullscreen} />
+
+        {position && (
+          <Marker
+            position={[position.lat, position.lng]}
+            icon={createSelectedIcon()}
+          >
+            <Popup>
+              <div className="p-2 min-w-[200px]">
+                <p className="font-medium text-sm text-[#E23744]">
+                  Selected Location
+                </p>
+                <p className="text-xs text-gray-600 mt-1">
+                  {position.name || "Location selected"}
+                </p>
+                <p className="text-xs text-gray-500 mt-1">
+                  {position.lat.toFixed(6)}, {position.lng.toFixed(6)}
+                </p>
+              </div>
+            </Popup>
+          </Marker>
+        )}
+
+        {currentLocation && (
+          <Marker
+            position={[currentLocation.lat, currentLocation.lng]}
+            icon={createCurrentLocationIcon()}
+          >
+            <Popup>
+              <div className="p-2">
+                <p className="font-medium text-sm text-blue-600 flex items-center gap-1">
+                  <LocateFixed className="h-3 w-3" />
+                  Your Current Location
+                </p>
+                <p className="text-xs text-gray-500 mt-1">
+                  {currentLocation.lat.toFixed(6)},{" "}
+                  {currentLocation.lng.toFixed(6)}
+                </p>
+              </div>
+            </Popup>
+          </Marker>
+        )}
+      </MapContainer>
+
+      {/* Bottom instruction bar */}
+      <div className="absolute bottom-4 left-4 right-4 z-[1000] pointer-events-none">
+        <div className="bg-white/90 backdrop-blur-sm rounded-lg shadow-lg p-3 border">
+          <div className="flex items-center gap-2 text-sm">
+            <MapPin className="h-4 w-4 text-[#E23744] flex-shrink-0" />
+            <p className="text-gray-600">
+              <span className="font-medium text-[#E23744]">
+                Click on the map
+              </span>{" "}
+              to select a location, or use the buttons above
+              {isFullscreen && (
+                <span className="text-gray-400 ml-1">
+                  · Press Esc to exit fullscreen
+                </span>
+              )}
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="space-y-4">
+      {/* Search Bar (normal mode only — in fullscreen it moves inside the map) */}
+      {!isFullscreen && (
+        <Card className="border shadow-lg">
+          <CardContent className="p-4">
+            <div className="relative">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
               <Input
                 placeholder="Search for a location..."
                 value={searchQuery}
                 onChange={(e) => handleSearch(e.target.value)}
-                className="pl-9 border-primary/20 focus-visible:ring-primary"
+                className="pl-9"
                 onFocus={() =>
                   searchResults.length > 0 && setShowSearchResults(true)
                 }
+                onBlur={() =>
+                  setTimeout(() => setShowSearchResults(false), 200)
+                }
               />
-
-              {/* Search Results Dropdown */}
               <AnimatePresence>
-                {showSearchResults && searchResults.length > 0 && (
+                {showSearchResults && (
                   <motion.div
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -476,8 +659,8 @@ export default function MapPicker({
                         <button
                           key={index}
                           type="button"
-                          className="w-full px-4 py-2 text-left hover:bg-primary/5 transition-colors flex items-start gap-2"
-                          onClick={() => handleSearchSelect(result)}
+                          className="w-full px-4 py-2 text-left hover:bg-gray-50 transition-colors flex items-start gap-2"
+                          onMouseDown={() => handleSearchSelect(result)}
                         >
                           <MapPin className="h-4 w-4 mt-0.5 flex-shrink-0 text-gray-500" />
                           <div className="flex-1 min-w-0">
@@ -495,274 +678,72 @@ export default function MapPicker({
                 )}
               </AnimatePresence>
             </div>
+          </CardContent>
+        </Card>
+      )}
 
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={getCurrentLocation}
-                disabled={isGettingLocation}
-                className="border-primary/20 hover:bg-primary/5 hover:text-primary min-w-[140px]"
-              >
-                {isGettingLocation ? (
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                ) : (
-                  <LocateFixed className="h-4 w-4 mr-2" />
-                )}
-                {isGettingLocation ? "Getting..." : "My Location"}
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={toggleFullscreen}
-                className="border-primary/20 hover:bg-primary/5 hover:text-primary"
-              >
-                {isFullscreen ? (
-                  <Minimize2 className="h-4 w-4" />
-                ) : (
-                  <Maximize2 className="h-4 w-4" />
-                )}
-              </Button>
-            </div>
-          </div>
+      {mapError && !isFullscreen && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{mapError}</AlertDescription>
+        </Alert>
+      )}
 
-          {/* Location Error Alert */}
-          <AnimatePresence>
-            {locationError && !currentLocation && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-                className="mt-3"
-              >
-                <Alert variant="destructive">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>{locationError}</AlertDescription>
-                </Alert>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </CardContent>
-      </Card>
+      {/* ── Normal map card ── */}
+      {!isFullscreen && (
+        <Card className="overflow-hidden border shadow-lg">
+          <div className="relative h-[600px]">{MapUI}</div>
+        </Card>
+      )}
 
-      {/* Map */}
-      <Card className="overflow-hidden border-2 hover:border-primary/20 transition-colors shadow-lg">
-        <div
-          className={cn(
-            "relative",
-            isFullscreen ? "h-[calc(100vh-200px)]" : "h-[600px]",
-          )}
-        >
-          <MapContainer
-            center={
-              position ? [position.lat, position.lng] : [20.5937, 78.9629]
-            }
-            zoom={position ? 18 : 5}
-            className="h-full w-full"
-            scrollWheelZoom={true}
-            zoomControl={false}
-            style={{ background: "#f8f9fa" }}
-          >
-            <TileLayer
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            />
-
-            {/* Map Events Handler */}
-            <MapEvents
-              onMapClick={handleMapClick}
-              onMapReady={handleMapReady}
-            />
-
-            {/* Custom Zoom Control */}
-            <div className="absolute top-4 right-4 z-[1000] flex flex-col gap-2">
-              <Button
-                type="button"
-                size="sm"
-                variant="secondary"
-                className="bg-white shadow-md hover:bg-gray-50 w-10 h-10 p-0 rounded-full"
-                onClick={() => {
-                  if (mapRef.current) {
-                    mapRef.current.setZoom(
-                      (mapRef.current.getZoom() || 18) + 1,
-                    );
-                  }
-                }}
-              >
-                +
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant="secondary"
-                className="bg-white shadow-md hover:bg-gray-50 w-10 h-10 p-0 rounded-full"
-                onClick={() => {
-                  if (mapRef.current) {
-                    mapRef.current.setZoom(
-                      (mapRef.current.getZoom() || 18) - 1,
-                    );
-                  }
-                }}
-              >
-                −
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant="secondary"
-                className="bg-white shadow-md hover:bg-gray-50 w-10 h-10 p-0 rounded-full"
-                onClick={() => {
-                  if (position && mapRef.current) {
-                    mapRef.current.flyTo([position.lat, position.lng], 18, {
-                      duration: 1,
-                      easeLinearity: 0.25,
-                    });
-                  }
-                }}
-              >
-                <Navigation className="h-4 w-4" />
-              </Button>
-            </div>
-
-            {/* Selected Location Marker */}
-            {position && (
-              <Marker
-                position={[position.lat, position.lng]}
-                icon={selectedMarkerIcon}
-              >
-                <Popup>
-                  <div className="p-2 min-w-[200px]">
-                    <p className="font-medium text-sm text-primary">
-                      Selected Location
-                    </p>
-                    <p className="text-xs text-gray-600 mt-1">
-                      {position.name || "Location selected"}
-                    </p>
-                    <p className="text-xs text-gray-500 mt-1">
-                      Lat: {position.lat.toFixed(6)}, Lng:{" "}
-                      {position.lng.toFixed(6)}
-                    </p>
-                  </div>
-                </Popup>
-              </Marker>
-            )}
-
-            {/* Current Location Marker */}
-            {currentLocation && (
-              <Marker
-                position={[currentLocation.lat, currentLocation.lng]}
-                icon={currentLocationMarkerIcon}
-              >
-                <Popup>
-                  <div className="p-2">
-                    <p className="font-medium text-sm text-blue-600 flex items-center gap-1">
-                      <LocateFixed className="h-3 w-3" />
-                      Your Current Location
-                    </p>
-                    <p className="text-xs text-gray-600 mt-1">
-                      Lat: {currentLocation.lat.toFixed(6)}, Lng:{" "}
-                      {currentLocation.lng.toFixed(6)}
-                    </p>
-                  </div>
-                </Popup>
-              </Marker>
-            )}
-          </MapContainer>
-
-          {/* Map Overlay Instructions */}
-          <div className="absolute bottom-4 left-4 right-4 z-[1000] pointer-events-none">
-            <div className="bg-white/90 backdrop-blur-sm rounded-lg shadow-lg p-3 border border-primary/20">
-              <div className="flex items-center gap-2 text-sm">
-                <div className="w-6 h-6 bg-primary/10 rounded-full flex items-center justify-center">
-                  <MapPin className="h-3 w-3 text-primary" />
-                </div>
-                <p className="text-gray-600 flex-1">
-                  <span className="font-medium text-primary">
-                    Click on the map
-                  </span>{" "}
-                  to select a location
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </Card>
-
-      {/* Selected Location Details */}
+      {/* ── Fullscreen overlay ── */}
       <AnimatePresence>
-        {position && (
+        {isFullscreen && (
+          <motion.div
+            ref={fullscreenContainerRef}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-[9999] bg-black"
+            style={{ height: "100dvh", width: "100dvw" }}
+          >
+            {MapUI}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Selected location summary */}
+      <AnimatePresence>
+        {position && !isFullscreen && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 20 }}
           >
-            <Card className="border-primary/20 bg-primary/5">
+            <Card className="border-green-200 bg-green-50">
               <CardContent className="p-4">
                 <div className="flex items-start gap-3">
-                  <div className="p-2 bg-primary/10 rounded-lg">
-                    <CheckCircle2 className="h-5 w-5 text-primary" />
+                  <div className="p-2 bg-green-100 rounded-lg flex-shrink-0">
+                    <CheckCircle2 className="h-5 w-5 text-green-600" />
                   </div>
-                  <div className="flex-1 space-y-2">
-                    <div className="flex items-center justify-between">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
                       <h4 className="font-semibold text-gray-900">
                         Selected Location
                       </h4>
                       <Badge
                         variant="outline"
-                        className="bg-white border-primary/20 text-primary"
+                        className="bg-white font-mono text-xs"
                       >
-                        {position.lat.toFixed(6)}, {position.lng.toFixed(6)}
+                        {position.lat.toFixed(5)}, {position.lng.toFixed(5)}
                       </Badge>
                     </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                      {position.name && (
-                        <div className="space-y-1">
-                          <p className="text-gray-500 text-xs">Location Name</p>
-                          <p className="font-medium">{position.name}</p>
-                        </div>
-                      )}
-
-                      {position.city && (
-                        <div className="space-y-1">
-                          <p className="text-gray-500 text-xs">City</p>
-                          <p className="font-medium">{position.city}</p>
-                        </div>
-                      )}
-
-                      {position.state && (
-                        <div className="space-y-1">
-                          <p className="text-gray-500 text-xs">State</p>
-                          <p className="font-medium">{position.state}</p>
-                        </div>
-                      )}
-
-                      {position.country && (
-                        <div className="space-y-1">
-                          <p className="text-gray-500 text-xs">Country</p>
-                          <p className="font-medium">{position.country}</p>
-                        </div>
-                      )}
-
-                      {position.formattedAddress && (
-                        <div className="space-y-1 md:col-span-2">
-                          <p className="text-gray-500 text-xs">Full Address</p>
-                          <p className="text-sm bg-white/50 p-2 rounded border border-primary/20">
-                            {position.formattedAddress}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Current Location Indicator */}
-                    {currentLocation &&
-                      currentLocation.lat === position.lat &&
-                      currentLocation.lng === position.lng && (
-                        <Badge className="bg-blue-100 text-blue-700 border-blue-200 mt-2">
-                          <LocateFixed className="h-3 w-3 mr-1" />
-                          Your Current Location
-                        </Badge>
-                      )}
+                    {position.formattedAddress && (
+                      <p className="text-sm text-gray-700 bg-white p-2 rounded border border-green-200 break-words">
+                        {position.formattedAddress}
+                      </p>
+                    )}
                   </div>
                 </div>
               </CardContent>
@@ -771,37 +752,36 @@ export default function MapPicker({
         )}
       </AnimatePresence>
 
-      {/* No Location Selected */}
-      {!position && (
-        <Card className="border-dashed border-primary/30">
+      {/* Empty state */}
+      {!position && !isFullscreen && (
+        <Card className="border-dashed">
           <CardContent className="p-6 text-center">
-            <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-3">
-              <MapPin className="h-6 w-6 text-primary" />
-            </div>
+            <MapPin className="h-12 w-12 text-gray-400 mx-auto mb-3" />
             <h4 className="font-medium text-gray-900 mb-1">
               No Location Selected
             </h4>
-            <p className="text-sm text-gray-500 mb-4">
-              Click on the map or use your current location to set the property
+            <p className="text-sm text-gray-500">
+              Click on the map or press "Use current location" to set the
               address
             </p>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={getCurrentLocation}
-              disabled={isGettingLocation}
-              className="mx-auto border-primary/20 hover:bg-primary/5 hover:text-primary"
-            >
-              {isGettingLocation ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              ) : (
-                <LocateFixed className="h-4 w-4 mr-2" />
-              )}
-              Use My Current Location
-            </Button>
           </CardContent>
         </Card>
       )}
+
+      {/* Global styles */}
+      <style jsx global>{`
+        @keyframes mapPing {
+          0% {
+            transform: scale(0.8);
+            opacity: 0.8;
+          }
+          75%,
+          100% {
+            transform: scale(2.2);
+            opacity: 0;
+          }
+        }
+      `}</style>
     </div>
   );
 }

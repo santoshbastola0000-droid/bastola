@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import {
   Building2,
@@ -135,12 +135,6 @@ const getCategoryIcon = (category: RoomCategory) => {
   switch (category) {
     case RoomCategory.APARTMENT:
       return <Building2 className="h-4 w-4" />;
-    case RoomCategory.STUDIO:
-      return <Building2 className="h-4 w-4" />;
-    case RoomCategory.HOSTEL:
-      return <Users className="h-4 w-4" />;
-    case RoomCategory.PG:
-      return <Users className="h-4 w-4" />;
     case RoomCategory.SINGLE:
       return <Bed className="h-4 w-4" />;
     case RoomCategory.SHARED:

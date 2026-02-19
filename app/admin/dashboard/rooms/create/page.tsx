@@ -4,7 +4,6 @@ import { useState, useRef } from "react";
 import dynamic from "next/dynamic";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import { motion } from "framer-motion";
 import {
   Building2,
@@ -13,7 +12,8 @@ import {
   AlertCircle,
   ChevronLeft,
   Save,
-  Eye,
+  Instagram,
+  Image as ImageIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -51,6 +51,7 @@ import { toast } from "sonner";
 import { RoomCategory } from "@/types/room.types";
 import { cn } from "@/lib/utils";
 import { useCreateRoomMutation } from "@/http/mutations/room.mutation";
+import { createRoomSchema, CreateRoomFormValues } from "@/schema/room";
 
 // Dynamically import MapPicker to avoid SSR issues
 const MapPicker = dynamic(() => import("@/components/admin/rooms/MapPicker"), {
@@ -69,41 +70,6 @@ const MapPicker = dynamic(() => import("@/components/admin/rooms/MapPicker"), {
       </CardContent>
     </Card>
   ),
-});
-
-const formSchema = z.object({
-  title: z.string().min(3, "Title must be at least 3 characters"),
-  description: z.string().min(10, "Description must be at least 10 characters"),
-  category: z.nativeEnum(RoomCategory),
-  price: z.coerce.number().min(1, "Price must be greater than 0"),
-  address: z.string().min(5, "Address must be at least 5 characters"),
-  amenities: z.array(z.string()),
-  bathroomCapacity: z.coerce.number().min(1).max(10),
-  floorNumber: z.coerce.number().min(0),
-  ownerLivesInHouse: z.boolean().default(false),
-  totalHouseCapacity: z.coerce.number().min(1),
-  allowsWomen: z.boolean().default(true),
-  roomCapacity: z.coerce.number().min(1),
-  roomArea: z.coerce.number().min(1),
-  contactPerson: z.string().optional(),
-  contactPhone: z.string().optional(),
-  contactEmail: z.string().email().optional().or(z.literal("")),
-  contactWhatsapp: z.string().optional(),
-  waterSupplyTimings: z.object({
-    morning: z.string(),
-    evening: z.string(),
-    notes: z.string().optional(),
-  }),
-  location: z.object({
-    name: z.string(),
-    formattedAddress: z.string().optional(),
-    latitude: z.number(),
-    longitude: z.number(),
-    city: z.string().optional(),
-    state: z.string().optional(),
-    country: z.string().optional(),
-    postalCode: z.string().optional(),
-  }),
 });
 
 const amenitiesList = [
@@ -132,6 +98,9 @@ const timeSlots = [
   "19:00-21:00",
 ];
 
+const DEFAULT_LAT = 27.7172;
+const DEFAULT_LNG = 85.324;
+
 export default function CreateRoomPage() {
   const router = useRouter();
   const createRoomMutation = useCreateRoomMutation();
@@ -141,10 +110,12 @@ export default function CreateRoomPage() {
     "parking",
   ]);
   const [activeTab, setActiveTab] = useState("basic");
-  const locationSet = useRef(false);
+  const [images, setImages] = useState<File[]>([]);
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
+  const form = useForm<CreateRoomFormValues>({
+    resolver: zodResolver(createRoomSchema),
     defaultValues: {
       title: "",
       description: "",
@@ -156,6 +127,8 @@ export default function CreateRoomPage() {
       floorNumber: 0,
       ownerLivesInHouse: false,
       totalHouseCapacity: 4,
+      rentedRoomsCount: 0,
+      currentOccupants: 0,
       allowsWomen: true,
       roomCapacity: 2,
       roomArea: 30,
@@ -163,6 +136,7 @@ export default function CreateRoomPage() {
       contactPhone: "",
       contactEmail: "",
       contactWhatsapp: "",
+      tiktokUrl: "",
       waterSupplyTimings: {
         morning: "06:00-08:00",
         evening: "17:00-19:00",
@@ -171,8 +145,8 @@ export default function CreateRoomPage() {
       location: {
         name: "",
         formattedAddress: "",
-        latitude: 27.7172,
-        longitude: 85.324,
+        latitude: DEFAULT_LAT,
+        longitude: DEFAULT_LNG,
         city: "",
         state: "",
         country: "",
@@ -182,78 +156,127 @@ export default function CreateRoomPage() {
   });
 
   const toggleAmenity = (amenityId: string) => {
-    setSelectedAmenities((prev) =>
-      prev.includes(amenityId)
+    setSelectedAmenities((prev) => {
+      const newAmenities = prev.includes(amenityId)
         ? prev.filter((a) => a !== amenityId)
-        : [...prev, amenityId],
-    );
+        : [...prev, amenityId];
+      form.setValue("amenities", newAmenities);
+      return newAmenities;
+    });
   };
 
+  // ── FIXED: No auto tab navigation, properly populate all address fields ──
   const handleLocationSelect = (location: any) => {
-    if (locationSet.current) return;
-    locationSet.current = true;
+    // Update all location fields in the form
+    form.setValue("location.latitude", location.lat);
+    form.setValue("location.longitude", location.lng);
+    form.setValue("location.name", location.name || "Selected Location");
+    form.setValue("location.formattedAddress", location.formattedAddress || "");
+    form.setValue("location.city", location.city || "");
+    form.setValue("location.state", location.state || "");
+    form.setValue("location.country", location.country || "");
+    form.setValue("location.postalCode", location.postalCode || "");
 
-    form.setValue("location", {
-      name:
-        location.name ||
-        location.formattedAddress?.split(",")[0] ||
-        "Selected Location",
-      formattedAddress: location.formattedAddress,
-      latitude: location.lat,
-      longitude: location.lng,
-      city: location.city,
-      state: location.state,
-      country: location.country,
-      postalCode: location.postalCode,
-    });
-
+    // Also update the top-level address field
     if (location.formattedAddress) {
       form.setValue("address", location.formattedAddress);
     }
 
-    if (location.city) {
-      form.setValue("location.city", location.city);
-    }
-    if (location.country) {
-      form.setValue("location.country", location.country);
-    }
+    // Trigger validation so the form knows the fields are filled
+    form.trigger("location");
 
-    toast.success("Location selected successfully!", {
-      description: location.formattedAddress || "Location has been set",
-    });
-
-    setActiveTab("details");
+    toast.success(
+      "Location selected! You can review the address fields below.",
+    );
+    // ✅ REMOVED: setActiveTab("details") — no more unwanted tab switch
   };
 
-  const onSubmit = async (values: z.infer<typeof formSchema>) => {
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+
+    const validFiles = files.filter((file) => file.size <= 5 * 1024 * 1024);
+    const invalidFiles = files.filter((file) => file.size > 5 * 1024 * 1024);
+
+    if (invalidFiles.length > 0) {
+      toast.error(`${invalidFiles.length} image(s) exceed 5MB limit`);
+    }
+
+    if (images.length + validFiles.length > 10) {
+      toast.error("Maximum 10 images allowed");
+      return;
+    }
+
+    setImages((prev) => [...prev, ...validFiles]);
+
+    validFiles.forEach((file) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreviews((prev) => [...prev, reader.result as string]);
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const removeImage = (index: number) => {
+    setImages((prev) => prev.filter((_, i) => i !== index));
+    setImagePreviews((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const onSubmit = async (values: CreateRoomFormValues) => {
+    if (images.length === 0) {
+      toast.error("Please upload at least one image");
+      setActiveTab("images");
+      return;
+    }
+
     values.amenities = selectedAmenities;
 
+    const formData = new FormData();
+
+    Object.entries(values).forEach(([key, value]) => {
+      if (key === "location" || key === "waterSupplyTimings") {
+        formData.append(key, JSON.stringify(value));
+      } else if (key !== "amenities" && value !== undefined && value !== null) {
+        formData.append(key, String(value));
+      }
+    });
+
+    formData.append("amenities", JSON.stringify(values.amenities));
+
+    images.forEach((image) => {
+      formData.append("images", image);
+    });
+
     createRoomMutation.mutate({
-      data: values,
+      data: formData,
       onSuccess: () => {
         router.push("/admin/dashboard/rooms");
       },
     });
   };
 
-  const isValidLocation = form.watch("location.latitude") !== 27.7172;
+  // A location is considered "valid" (user has selected one) if it differs from defaults
+  const currentLat = form.watch("location.latitude");
+  const currentLng = form.watch("location.longitude");
+  const isValidLocation =
+    currentLat !== DEFAULT_LAT || currentLng !== DEFAULT_LNG;
 
   return (
     <div className="space-y-6">
-      {/* Header with Breadcrumb */}
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div className="space-y-1">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Link
               href="/admin/dashboard"
-              className="hover:text-primary transition-colors"
+              className="hover:text-primary transition-colors cursor-pointer"
             >
               Dashboard
             </Link>
             <span>/</span>
             <Link
               href="/admin/dashboard/rooms"
-              className="hover:text-primary transition-colors"
+              className="hover:text-primary transition-colors cursor-pointer"
             >
               Rooms
             </Link>
@@ -276,7 +299,7 @@ export default function CreateRoomPage() {
         <Button
           variant="outline"
           onClick={() => router.back()}
-          className="hidden sm:flex items-center gap-2"
+          className="hidden sm:flex items-center gap-2 cursor-pointer"
         >
           <ChevronLeft className="h-4 w-4" />
           Back
@@ -290,37 +313,23 @@ export default function CreateRoomPage() {
             onValueChange={setActiveTab}
             className="space-y-6"
           >
-            <TabsList className="grid grid-cols-3 lg:grid-cols-5 w-full h-auto p-1 bg-muted/50">
-              <TabsTrigger
-                value="basic"
-                className="data-[state=active]:bg-primary data-[state=active]:text-white"
-              >
-                Basic Info
-              </TabsTrigger>
-              <TabsTrigger
-                value="location"
-                className="data-[state=active]:bg-primary data-[state=active]:text-white"
-              >
-                Location
-              </TabsTrigger>
-              <TabsTrigger
-                value="details"
-                className="data-[state=active]:bg-primary data-[state=active]:text-white"
-              >
-                Details
-              </TabsTrigger>
-              <TabsTrigger
-                value="amenities"
-                className="data-[state=active]:bg-primary data-[state=active]:text-white"
-              >
-                Amenities
-              </TabsTrigger>
-              <TabsTrigger
-                value="contact"
-                className="data-[state=active]:bg-primary data-[state=active]:text-white"
-              >
-                Contact
-              </TabsTrigger>
+            <TabsList className="grid grid-cols-2 lg:grid-cols-6 w-full h-auto p-1 bg-muted/50">
+              {[
+                { value: "basic", label: "Basic Info" },
+                { value: "location", label: "Location" },
+                { value: "details", label: "Details" },
+                { value: "amenities", label: "Amenities" },
+                { value: "images", label: "Images" },
+                { value: "contact", label: "Contact" },
+              ].map((tab) => (
+                <TabsTrigger
+                  key={tab.value}
+                  value={tab.value}
+                  className="data-[state=active]:bg-primary data-[state=active]:text-white cursor-pointer"
+                >
+                  {tab.label}
+                </TabsTrigger>
+              ))}
             </TabsList>
 
             {/* Basic Information Tab */}
@@ -435,7 +444,8 @@ export default function CreateRoomPage() {
                     Location & Map
                   </CardTitle>
                   <CardDescription>
-                    Set the exact location of the room on the map
+                    Click on the map or use "Use current location" to set the
+                    room's location. The address fields below will auto-fill.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
@@ -443,25 +453,28 @@ export default function CreateRoomPage() {
                     <Alert>
                       <AlertCircle className="h-4 w-4" />
                       <AlertDescription>
-                        Please select a location on the map to continue. This is
-                        required for listing your room.
+                        Please select a location on the map. Click anywhere on
+                        the map or use the "Use current location" button.
                       </AlertDescription>
                     </Alert>
                   )}
 
+                  {/* Map */}
                   <MapPicker
                     onLocationSelect={handleLocationSelect}
                     initialLocation={
-                      form.watch("location.latitude") !== 27.7172
-                        ? {
-                            lat: form.watch("location.latitude"),
-                            lng: form.watch("location.longitude"),
-                          }
+                      isValidLocation
+                        ? { lat: currentLat, lng: currentLng }
                         : null
                     }
                   />
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+                  {/* Address fields — auto-populated from map, but still editable */}
+                  <div className="space-y-4 pt-2">
+                    <h3 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">
+                      Address Details (auto-filled from map selection)
+                    </h3>
+
                     <FormField
                       control={form.control}
                       name="location.name"
@@ -481,59 +494,117 @@ export default function CreateRoomPage() {
 
                     <FormField
                       control={form.control}
-                      name="location.city"
+                      name="location.formattedAddress"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>City</FormLabel>
+                          <FormLabel>Full Address</FormLabel>
                           <FormControl>
-                            <Input placeholder="e.g., New York" {...field} />
+                            <Textarea
+                              placeholder="Full address will appear here after selecting on map"
+                              className="min-h-[70px] resize-none"
+                              {...field}
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
 
-                    <FormField
-                      control={form.control}
-                      name="location.state"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>State</FormLabel>
-                          <FormControl>
-                            <Input placeholder="e.g., NY" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="location.city"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>City</FormLabel>
+                            <FormControl>
+                              <Input placeholder="e.g., Kathmandu" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
 
-                    <FormField
-                      control={form.control}
-                      name="location.country"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Country</FormLabel>
-                          <FormControl>
-                            <Input placeholder="e.g., USA" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                      <FormField
+                        control={form.control}
+                        name="location.state"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>State / Province</FormLabel>
+                            <FormControl>
+                              <Input placeholder="e.g., Bagmati" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
 
-                    <FormField
-                      control={form.control}
-                      name="location.postalCode"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Postal Code</FormLabel>
-                          <FormControl>
-                            <Input placeholder="e.g., 10001" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                      <FormField
+                        control={form.control}
+                        name="location.country"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Country</FormLabel>
+                            <FormControl>
+                              <Input placeholder="e.g., Nepal" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="location.postalCode"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Postal Code</FormLabel>
+                            <FormControl>
+                              <Input placeholder="e.g., 44600" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    {/* Show coordinates when a location is selected */}
+                    {isValidLocation && (
+                      <div className="flex gap-4">
+                        <FormField
+                          control={form.control}
+                          name="location.latitude"
+                          render={({ field }) => (
+                            <FormItem className="flex-1">
+                              <FormLabel>Latitude</FormLabel>
+                              <FormControl>
+                                <Input
+                                  readOnly
+                                  className="bg-muted text-muted-foreground"
+                                  value={field.value.toFixed(6)}
+                                />
+                              </FormControl>
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="location.longitude"
+                          render={({ field }) => (
+                            <FormItem className="flex-1">
+                              <FormLabel>Longitude</FormLabel>
+                              <FormControl>
+                                <Input
+                                  readOnly
+                                  className="bg-muted text-muted-foreground"
+                                  value={field.value.toFixed(6)}
+                                />
+                              </FormControl>
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -806,7 +877,7 @@ export default function CreateRoomPage() {
                               : "outline"
                           }
                           className={cn(
-                            "w-full h-auto py-3 flex flex-col items-center gap-2",
+                            "w-full h-auto py-3 flex flex-col items-center gap-2 cursor-pointer",
                             selectedAmenities.includes(amenity.id) &&
                               "bg-primary hover:bg-primary/90",
                           )}
@@ -817,6 +888,81 @@ export default function CreateRoomPage() {
                         </Button>
                       </motion.div>
                     ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Images Tab */}
+            <TabsContent value="images">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <ImageIcon className="h-5 w-5 text-primary" />
+                    Room Images
+                  </CardTitle>
+                  <CardDescription>
+                    Upload photos of the room (max 10 images, 5MB each)
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      onChange={handleImageUpload}
+                      accept="image/jpeg,image/png,image/gif,image/webp"
+                      multiple
+                      className="hidden"
+                    />
+
+                    <div className="flex flex-wrap gap-4">
+                      <Button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="cursor-pointer"
+                        variant="outline"
+                      >
+                        <ImageIcon className="h-4 w-4 mr-2" />
+                        Select Images
+                      </Button>
+
+                      <p className="text-sm text-muted-foreground flex items-center">
+                        {images.length}/10 images selected
+                      </p>
+                    </div>
+
+                    {images.length > 0 && (
+                      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 mt-4">
+                        {imagePreviews.map((preview, index) => (
+                          <div key={index} className="relative group">
+                            <img
+                              src={preview}
+                              alt={`Room ${index + 1}`}
+                              className="w-full h-32 object-cover rounded-lg border"
+                            />
+                            <Button
+                              type="button"
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => removeImage(index)}
+                              className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                            >
+                              ×
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {images.length === 0 && (
+                      <div className="text-center py-12 border-2 border-dashed rounded-lg">
+                        <ImageIcon className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                        <p className="text-muted-foreground">
+                          No images selected. Click the button above to upload.
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -893,6 +1039,31 @@ export default function CreateRoomPage() {
                       </FormItem>
                     )}
                   />
+
+                  <Separator />
+
+                  <FormField
+                    control={form.control}
+                    name="tiktokUrl"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="flex items-center gap-2">
+                          <Instagram className="h-4 w-4" />
+                          TikTok URL
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="https://tiktok.com/@username"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          Optional: Link to your TikTok profile
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </CardContent>
               </Card>
             </TabsContent>
@@ -911,13 +1082,18 @@ export default function CreateRoomPage() {
                 variant="outline"
                 onClick={() => router.back()}
                 disabled={createRoomMutation.isPending}
+                className="cursor-pointer"
               >
                 Cancel
               </Button>
               <Button
                 type="submit"
-                className="bg-primary hover:bg-primary/90 min-w-[140px]"
-                disabled={createRoomMutation.isPending || !isValidLocation}
+                className="bg-primary hover:bg-primary/90 min-w-[140px] cursor-pointer"
+                disabled={
+                  createRoomMutation.isPending ||
+                  !isValidLocation ||
+                  images.length === 0
+                }
               >
                 {createRoomMutation.isPending ? (
                   <>
