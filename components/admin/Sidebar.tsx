@@ -19,7 +19,6 @@ import {
   BarChart3,
   LogOut,
   HelpCircle,
-  ChevronDown,
   Menu,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -30,7 +29,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { useMediaQuery } from "@/hooks/use-media-query";
 

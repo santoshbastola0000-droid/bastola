@@ -20,13 +20,10 @@ export const DEFAULT_AMENITIES = [
 ] as const;
 
 export const ROOM_CATEGORIES = [
-  { value: RoomCategory.STUDIO, label: "Studio" },
-  { value: RoomCategory.ONE_BEDROOM, label: "One Bedroom" },
-  { value: RoomCategory.TWO_BEDROOM, label: "Two Bedroom" },
-  { value: RoomCategory.THREE_BEDROOM, label: "Three Bedroom" },
-  { value: RoomCategory.FOUR_BEDROOM, label: "Four Bedroom" },
-  { value: RoomCategory.DORMITORY, label: "Dormitory" },
-  { value: RoomCategory.PG, label: "Paying Guest (PG)" },
+  { value: RoomCategory.FLAT, label: "Flat" },
+  { value: RoomCategory.SINGLE, label: "Single" },
+  { value: RoomCategory.APARTMENT, label: "Apartment" },
+  { value: RoomCategory.SHARED, label: "Shared" },
 ] as const;
 
 export const BATHROOM_CAPACITY_OPTIONS = [

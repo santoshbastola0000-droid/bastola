@@ -1,14 +1,14 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { UserRole, SingleUserDetail } from "@/types/user.types";
+import { UserRole, UserDetail } from "@/types/user.types";
 
 interface UserState {
-  user: SingleUserDetail | null;
+  user: UserDetail | null;
   isLoaded: boolean;
 
   // Actions
-  setUser: (user: SingleUserDetail | null) => void;
-  updateUser: (updates: Partial<SingleUserDetail>) => void;
+  setUser: (user: UserDetail | null) => void;
+  updateUser: (updates: Partial<UserDetail>) => void;
   clearUser: () => void;
   setIsLoaded: (loaded: boolean) => void;
 }
@@ -55,12 +55,10 @@ export const useUserRole = () => {
   const isLoaded = useUserStore((state) => state.isLoaded);
 
   const isAdmin = user?.role === UserRole.ADMIN;
-  const isOrganization = user?.role === UserRole.ORGANIZATION;
   const isUser = user?.role === UserRole.USER;
 
   return {
     isAdmin,
-    isOrganization,
     isUser,
     user,
     setUser,

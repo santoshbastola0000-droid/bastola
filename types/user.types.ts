@@ -1,21 +1,27 @@
-export interface SingleUserDetail {
+export interface UserDetail {
   id: string;
   createdAt: string;
   updatedAt: string;
   name: string;
   email: string;
-  isEmailVerified: boolean;
-  image: string;
+  isVerified: boolean;
   role: UserRole;
+  phoneNumber: string;
 }
 
 export enum UserRole {
   ADMIN = "Admin",
   USER = "User",
-  ORGANIZATION = "Organization",
 }
 
-export enum OrganizationType {
-  INSTITUTE = "Institute",
-  INDIVIDUAL = "Individual",
+export interface PaginatedUserResponse {
+  data: UserDetail[];
+  pagination: {
+    previousPage: number | null;
+    nextPage: number | null;
+    total: number;
+    count: number;
+    page?: number;
+    take?: number;
+  };
 }

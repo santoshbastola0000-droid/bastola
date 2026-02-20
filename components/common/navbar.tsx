@@ -55,7 +55,7 @@ export function NavBar() {
               Login
             </Link>
             <Link
-              href="/signup"
+              href="/auth/register"
               className="px-4 py-2 rounded-lg bg-[var(--primary)] text-white hover:bg-[var(--primary-dark)] transition"
             >
               Sign Up

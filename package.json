@@ -68,6 +68,7 @@
     "react-leaflet": "5.0.0-rc.2",
     "react-resizable-panels": "^2.1.7",
     "recharts": "2.15.4",
+    "rental-service-web": "link:",
     "save-dev": "0.0.1-security",
     "sonner": "^1.7.4",
     "tailwind-merge": "^2.5.5",

@@ -185,6 +185,9 @@ importers:
       recharts:
         specifier: 2.15.4
         version: 2.15.4(react-dom@19.0.0-rc.1(react@19.0.0-rc.1))(react@19.0.0-rc.1)
+      rental-service-web:
+        specifier: 'link:'
+        version: 'link:'
       save-dev:
         specifier: 0.0.1-security
         version: 0.0.1-security

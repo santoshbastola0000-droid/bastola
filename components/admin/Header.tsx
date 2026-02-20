@@ -1,6 +1,5 @@
 "use client";
 
-import React from "react";
 import { usePathname } from "next/navigation";
 import { Search, Bell, Settings, ChevronDown, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -21,8 +20,17 @@ import {
 } from "@/components/ui/tooltip";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 
-export function AdminHeader() {
+interface AdminHeaderProps {
+  isSidebarCollapsed?: boolean; // Made optional with default value
+  onMenuClick?: () => void; // Made optional
+}
+
+export function AdminHeader({
+  isSidebarCollapsed = false,
+  onMenuClick,
+}: AdminHeaderProps) {
   const pathname = usePathname();
 
   const getPageTitle = () => {
@@ -39,6 +47,7 @@ export function AdminHeader() {
           <Button
             variant="ghost"
             size="icon"
+            onClick={onMenuClick}
             className="md:hidden hover:bg-primary/10"
           >
             <Menu className="h-5 w-5" />
@@ -62,13 +71,18 @@ export function AdminHeader() {
 
         {/* Right Section */}
         <div className="flex items-center gap-2 md:gap-4">
-          {/* Search Bar */}
+          {/* Search Bar - Adjust width based on sidebar state */}
           <div className="hidden md:flex relative">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               type="search"
               placeholder="Search..."
-              className="w-[200px] lg:w-[300px] pl-9 bg-muted/50 border-0 focus-visible:ring-1 focus-visible:ring-primary"
+              className={cn(
+                "pl-9 bg-muted/50 border-0 focus-visible:ring-1 focus-visible:ring-primary",
+                isSidebarCollapsed
+                  ? "w-[250px] lg:w-[350px]"
+                  : "w-[200px] lg:w-[300px]",
+              )}
             />
             <kbd className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none hidden lg:flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground">
               <span className="text-xs">⌘</span>K
