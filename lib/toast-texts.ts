@@ -30,8 +30,8 @@ export const Register = {
 
 export const Verify = {
   success: {
-    title: "Email verified! ✨",
-    description: "Welcome to RoomHub! You can now start exploring.",
+    title: "OTP verified! ✨",
+    description: "Welcome to RentalServise! You can now start exploring.",
   },
   expired: {
     title: "OTP expired",

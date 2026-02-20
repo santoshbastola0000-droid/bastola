@@ -1,4 +1,3 @@
-// src/components/auth/VerifyOTPForm.tsx
 "use client";
 
 import { useState, useEffect } from "react";
@@ -34,6 +33,7 @@ const VerifyOTPForm = () => {
     isPending: isVerifying,
     error: verifyError,
   } = useVerifyMutation();
+
   const { mutate: resend, isPending: isResending } =
     useResendVerificationMutation();
 

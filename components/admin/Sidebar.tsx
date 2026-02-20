@@ -98,29 +98,6 @@ const mainNavItems: NavItem[] = [
     badge: "$45.2k",
     badgeColor: "bg-green-500",
   },
-  {
-    title: "Analytics",
-    href: "/admin/dashboard/analytics",
-    icon: BarChart3,
-  },
-  {
-    title: "Settings",
-    href: "/admin/dashboard/settings",
-    icon: Settings,
-  },
-];
-
-const bottomNavItems: NavItem[] = [
-  {
-    title: "Help & Support",
-    href: "/admin/help",
-    icon: HelpCircle,
-  },
-  {
-    title: "Logout",
-    href: "#",
-    icon: LogOut,
-  },
 ];
 
 interface AdminSidebarProps {
@@ -467,45 +444,6 @@ export function AdminSidebar({
                     </Tooltip>
                   );
                 })}
-              </div>
-
-              {/* Bottom Navigation */}
-              <div className="pt-4 mt-4 border-t border-border">
-                {bottomNavItems.map((item) => (
-                  <Tooltip key={item.title}>
-                    <TooltipTrigger asChild>
-                      <Link
-                        href={item.href}
-                        className={cn(
-                          "flex items-center h-10 px-3 rounded-lg font-medium",
-                          "transition-all duration-200",
-                          !showFullSidebar && "justify-center px-2",
-                          "text-muted-foreground hover:text-foreground hover:bg-accent/5",
-                        )}
-                      >
-                        <div className="flex items-center gap-3">
-                          <item.icon className="h-5 w-5 flex-shrink-0" />
-
-                          <AnimatePresence>
-                            {showFullSidebar && (
-                              <motion.span
-                                initial={{ opacity: 0, width: 0 }}
-                                animate={{ opacity: 1, width: "auto" }}
-                                exit={{ opacity: 0, width: 0 }}
-                                className="flex-1 text-left truncate"
-                              >
-                                {item.title}
-                              </motion.span>
-                            )}
-                          </AnimatePresence>
-                        </div>
-                      </Link>
-                    </TooltipTrigger>
-                    {!showFullSidebar && (
-                      <TooltipContent side="right">{item.title}</TooltipContent>
-                    )}
-                  </Tooltip>
-                ))}
               </div>
             </nav>
           </TooltipProvider>
