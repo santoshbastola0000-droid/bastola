@@ -76,6 +76,7 @@ import {
   getRoleOptions,
 } from "@/lib/user-utils";
 import { UsersListSkeleton } from "@/components/user/UsersListSkeleton";
+import { log } from "console";
 
 export default function UsersList() {
   const queryClient = useQueryClient();
@@ -120,6 +121,8 @@ export default function UsersList() {
     staleTime: 1000 * 60 * 5,
     gcTime: 1000 * 60 * 10,
   });
+
+  console.log("users", usersResponse);
 
   // Delete user mutation
   const deleteUserMutation = useMutation({
@@ -459,7 +462,7 @@ export default function UsersList() {
                         <div className="flex items-center gap-2 text-sm min-w-[150px]">
                           <Phone className="h-3 w-3 text-primary flex-shrink-0" />
                           <span className="truncate">
-                            {user.phoneNumber || "Not provided"}
+                            {user.phone || "Not provided"}
                           </span>
                         </div>
                       </TableCell>

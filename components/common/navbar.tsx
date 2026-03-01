@@ -168,7 +168,7 @@ export function NavBar() {
                   <DropdownMenuTrigger asChild>
                     <Button
                       variant="ghost"
-                      className="relative h-8 w-8 rounded-full"
+                      className="relative h-8 w-8 rounded-full cursor-pointer"
                     >
                       <UserAvatar user={user!} />
                     </Button>
@@ -223,7 +223,7 @@ export function NavBar() {
                     <DropdownMenuSeparator />
                     <DropdownMenuItem
                       onClick={handleLogout}
-                      className="text-red-600 focus:text-red-600 cursor-pointer"
+                      className="text-red-600 focus:text-slate-100 cursor-pointer"
                     >
                       <LogOut className="mr-2 h-4 w-4" />
                       <span>Log out</span>
