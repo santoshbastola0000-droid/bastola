@@ -3,8 +3,6 @@
 import { useState, useEffect } from "react";
 import { Inter } from "next/font/google";
 import { useRouter } from "next/navigation";
-import { AdminSidebar } from "@/components/admin/Sidebar";
-import { AdminHeader } from "@/components/admin/Header";
 import { cn } from "@/lib/utils";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { useUserRole } from "@/stores/user-store";
