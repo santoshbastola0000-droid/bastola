@@ -6,7 +6,7 @@ export interface UserDetail {
   email: string;
   isVerified: boolean;
   role: UserRole;
-  phoneNumber: string;
+  phone: string;
 }
 
 export enum UserRole {

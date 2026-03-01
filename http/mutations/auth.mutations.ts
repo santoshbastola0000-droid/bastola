@@ -7,7 +7,7 @@ import { AUTH_QUERY_KEYS } from "@/queries/keys";
 import { useUserStore } from "@/stores/user-store";
 import { TRegister } from "@/schema/auth.schema";
 import * as ToastText from "@/lib/toast-texts";
-import { STATUS_CODES } from "@/lib/constants/app.constants";
+import { FAILURETOAST, STATUS_CODES } from "@/lib/constants/app.constants";
 import useTokenStore from "@/store";
 import { privateApi } from "../api/privateApi";
 
@@ -35,7 +35,7 @@ export const useLoginMutation = () => {
       });
 
       // Navigate to verification page with email
-      router.push(`/auth/verify?email=${encodeURIComponent(email)}`);
+      router.push(`/auth/verify/email?email=${encodeURIComponent(email)}`);
     },
     onError: (error: AxiosError<any>) => {
       const errorData = error.response?.data;
@@ -248,6 +248,53 @@ export const useResendVerificationMutation = () => {
           border: "none",
         },
         duration: 4000,
+      });
+    },
+  });
+};
+
+export const useVerifyEmailMutation = () => {
+  const { setToken } = useTokenStore();
+
+  return useMutation({
+    mutationKey: [AUTH_QUERY_KEYS.VERIFY],
+    mutationFn: async (token: string) => {
+      const response = await api.post("/user/verify", { token });
+
+      return response.data;
+    },
+    onSuccess: (data) => {
+      if (data.accessToken) {
+        setToken(data.accessToken);
+      }
+      toast.dismiss();
+      toast.success("Otp verified successfully!", {
+        description: "You can now access the features",
+        duration: 3000,
+        style: {
+          background: "#4BB543",
+          color: "#fff",
+          border: "none",
+          fontSize: "14px",
+          fontFamily: "Inter, sans-serif",
+        },
+      });
+    },
+
+    onError: (error: any) => {
+      toast.dismiss();
+      toast.error("Verification failed", {
+        description:
+          error.response?.data?.message ||
+          "The link may be expired or invalid.",
+        duration: 3000,
+        style: {
+          background: FAILURETOAST,
+          color: "#fff",
+          border: "none",
+          fontSize: "14px",
+          fontFamily: "Inter, sans-serif",
+        },
       });
     },
   });

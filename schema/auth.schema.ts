@@ -6,7 +6,7 @@ export const loginSchema = z.object({
   email: z
     .string()
     .email({
-      message: "Required",
+      message: "Email is required to login",
     })
     .min(sizeConstants.email.minLength, {
       message: sizeConstants.email.message,
@@ -18,7 +18,7 @@ export type TLogin = z.infer<typeof loginSchema>;
 export const registerSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
   email: z.string().email("Please enter a valid email address"),
-  phoneNumber: z.string(),
+  phoneNumber: z.string().min(10, "Phone Number must be of 10 characters"),
 });
 
 export const verifySchema = z.object({

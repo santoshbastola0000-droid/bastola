@@ -111,7 +111,7 @@ const RegisterForm = ({ onSuccess }: RegisterFormProps) => {
 
           <Button
             type="submit"
-            className="w-full h-12 text-base font-medium bg-primary hover:bg-primary-dark rounded-xl transition-all duration-200"
+            className="w-full h-12 text-base font-medium bg-primary hover:bg-primary-dark rounded-xl transition-all duration-200 cursor-pointer"
             disabled={isPending}
             isLoading={isPending}
           >
