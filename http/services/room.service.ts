@@ -6,6 +6,7 @@ import {
   RoomFilters,
   RoomsResponse,
   RoomStats,
+  RoomStatus,
 } from "@/types/room.types";
 import { api } from "../api/api";
 
@@ -13,6 +14,30 @@ export const roomService = {
   // Get all rooms with pagination and filters
   getRooms: async (params: RoomFilters = {}): Promise<RoomsResponse> => {
     const response = await api.get("/rooms", { params });
+    return response.data;
+  },
+
+  // Get pending rooms (using status filter)
+  getPendingRooms: async (params: RoomFilters = {}): Promise<RoomsResponse> => {
+    const response = await api.get("/rooms", {
+      params: {
+        ...params,
+        status: "Pending", // Your enum value
+      },
+    });
+    return response.data;
+  },
+
+  // Get approved rooms (using status filter)
+  getApprovedRooms: async (
+    params: RoomFilters = {},
+  ): Promise<RoomsResponse> => {
+    const response = await api.get("/rooms", {
+      params: {
+        ...params,
+        status: "Approved", // Your enum value
+      },
+    });
     return response.data;
   },
 
@@ -34,15 +59,6 @@ export const roomService = {
     data: UpdateRoomDTO,
   ): Promise<{ data: Room }> => {
     const response = await privateApi.patch(`/rooms/${id}`, data);
-    return response.data;
-  },
-
-  // Update room status
-  updateRoomStatus: async (id: string, status: string, reason?: string) => {
-    const response = await privateApi.patch(`/rooms/${id}/status`, {
-      status,
-      reason,
-    });
     return response.data;
   },
 
@@ -68,6 +84,18 @@ export const roomService = {
       headers: {
         "Content-Type": "multipart/form-data",
       },
+    });
+    return response.data;
+  },
+
+  updateRoomStatus: async (
+    id: string,
+    status: RoomStatus,
+    reason?: string,
+  ): Promise<{ data: Room }> => {
+    const response = await privateApi.patch(`/rooms/${id}/status`, {
+      status,
+      reason,
     });
     return response.data;
   },
