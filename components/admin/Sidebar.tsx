@@ -9,17 +9,14 @@ import {
   Users,
   Building2,
   Wallet,
-  Settings,
   ChevronRight,
   ChevronLeft,
   Plus,
   List,
   CheckCircle,
   Clock,
-  BarChart3,
-  LogOut,
-  HelpCircle,
   Menu,
+  BadgePercent,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -83,6 +80,13 @@ const mainNavItems: NavItem[] = [
         badge: "124",
       },
     ],
+  },
+  {
+    title: "Commission",
+    href: "/admin/dashboard/commission",
+    icon: BadgePercent,
+    badge: "20%",
+    badgeColor: "bg-purple-500",
   },
   {
     title: "Users",

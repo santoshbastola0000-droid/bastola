@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import Link from "next/link";
 import { Search, Bell, Settings, ChevronDown, Menu, Home } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
