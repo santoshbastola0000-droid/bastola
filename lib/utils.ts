@@ -14,6 +14,17 @@ export function formatPrice(price: number): string {
   }).format(price);
 }
 
+// Format price in NPR (Nepalese Rupees)
+export function formatPriceNPR(price: string | number): string {
+  const numPrice = typeof price === "string" ? parseFloat(price) : price;
+
+  if (isNaN(numPrice)) {
+    return "रू 0";
+  }
+
+  return `रू ${numPrice.toLocaleString("en-US")}`;
+}
+
 export function formatDate(dateString: string): string {
   const date = new Date(dateString);
   return new Intl.DateTimeFormat("en-US", {

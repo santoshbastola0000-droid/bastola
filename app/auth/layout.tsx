@@ -1,4 +1,4 @@
-import { Footer } from "@/components/common/footer";
+import Footer from "@/components/common/footer";
 import { NavBar } from "@/components/common/navbar";
 import type { Metadata } from "next";
 import { Suspense } from "react";

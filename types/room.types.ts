@@ -62,6 +62,7 @@ export interface Room {
     id: string;
     name: string;
     email: string;
+    isVerified: boolean;
   };
   location?: Location;
   tiktokUrl: string;
@@ -127,12 +128,21 @@ export interface UpdateRoomDTO {
 export interface RoomFilters {
   page?: number;
   take?: number;
+  limit?: number;
   search?: string;
-  status?: RoomStatus;
   category?: RoomCategory;
+  city?: string;
+  state?: string;
   minPrice?: number;
   maxPrice?: number;
+  status?: RoomStatus;
+  amenities?: string[];
   allowsWomen?: boolean;
+  roomCapacity?: number;
+  // Location based filters
+  latitude?: number;
+  longitude?: number;
+  radius?: number;
   ownerLivesInHouse?: boolean;
 }
 
