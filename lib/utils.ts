@@ -33,3 +33,38 @@ export function formatDateTime(dateString: string): string {
     minute: "2-digit",
   }).format(date);
 }
+
+/**
+ * Format currency in NPR (Nepalese Rupees)
+ * @param amount - The amount to format
+ * @param options - Formatting options
+ * @returns Formatted currency string
+ */
+export function formatCurrency(
+  amount: number | string,
+  options?: {
+    compact?: boolean;
+    showSymbol?: boolean;
+    decimals?: number;
+  },
+): string {
+  const numAmount = typeof amount === "string" ? parseFloat(amount) : amount;
+
+  if (isNaN(numAmount)) {
+    return "Rs. 0";
+  }
+
+  const { compact = false, showSymbol = true, decimals = 2 } = options || {};
+
+  const formatter = new Intl.NumberFormat("ne-NP", {
+    style: showSymbol ? "currency" : "decimal",
+    currency: "NPR",
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+    notation: compact ? "compact" : "standard",
+    compactDisplay: "short",
+  });
+
+  // For NPR, Intl will use "Rs" as symbol
+  return formatter.format(numAmount);
+}

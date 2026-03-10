@@ -1,10 +1,8 @@
 export enum RoomStatus {
-  PENDING = "pending",
-  AVAILABLE = "available",
-  OCCUPIED = "occupied",
-  UNDER_MAINTENANCE = "under_maintenance",
-  RENTED = "rented",
-  REJECTED = "rejected",
+  PENDING = "Pending",
+  APPROVED = "Approved",
+  REJECTED = "Rejected",
+  ARCHIVED = "Archived",
 }
 
 export enum RoomCategory {

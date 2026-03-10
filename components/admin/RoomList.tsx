@@ -87,7 +87,7 @@ import Link from "next/link";
 
 const getStatusBadge = (status: RoomStatus) => {
   switch (status) {
-    case RoomStatus.AVAILABLE:
+    case RoomStatus.APPROVED:
       return (
         <Badge className="bg-green-100 text-green-800 hover:bg-green-100 border-green-200 gap-1 cursor-default">
           <CheckCircle className="h-3 w-3" />
@@ -101,20 +101,14 @@ const getStatusBadge = (status: RoomStatus) => {
           Pending
         </Badge>
       );
-    case RoomStatus.OCCUPIED:
+    case RoomStatus.ARCHIVED:
       return (
         <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100 border-blue-200 gap-1 cursor-default">
           <Users className="h-3 w-3" />
           Occupied
         </Badge>
       );
-    case RoomStatus.RENTED:
-      return (
-        <Badge className="bg-purple-100 text-purple-800 hover:bg-purple-100 border-purple-200 gap-1 cursor-default">
-          <CheckCircle className="h-3 w-3" />
-          Rented
-        </Badge>
-      );
+
     case RoomStatus.REJECTED:
       return (
         <Badge className="bg-red-100 text-red-800 hover:bg-red-100 border-red-200 gap-1 cursor-default">
@@ -315,10 +309,10 @@ export function RoomList({ initialFilters = {} }: RoomListProps) {
   // Stats calculation
   const stats = {
     total: totalItems,
-    available: rooms.filter((r) => r.status === RoomStatus.AVAILABLE).length,
-    occupied: rooms.filter((r) => r.status === RoomStatus.OCCUPIED).length,
+    available: rooms.filter((r) => r.status === RoomStatus.ARCHIVED).length,
+    occupied: rooms.filter((r) => r.status === RoomStatus.PENDING).length,
     pending: rooms.filter((r) => r.status === RoomStatus.PENDING).length,
-    rented: rooms.filter((r) => r.status === RoomStatus.RENTED).length,
+    rented: rooms.filter((r) => r.status === RoomStatus.APPROVED).length,
   };
 
   const renderPageNumbers = () => {
@@ -549,7 +543,7 @@ export function RoomList({ initialFilters = {} }: RoomListProps) {
                           All Status
                         </SelectItem>
                         <SelectItem
-                          value={RoomStatus.AVAILABLE}
+                          value={RoomStatus.APPROVED}
                           className="cursor-pointer"
                         >
                           Available
@@ -561,16 +555,16 @@ export function RoomList({ initialFilters = {} }: RoomListProps) {
                           Pending
                         </SelectItem>
                         <SelectItem
-                          value={RoomStatus.OCCUPIED}
+                          value={RoomStatus.ARCHIVED}
                           className="cursor-pointer"
                         >
-                          Occupied
+                          Archived
                         </SelectItem>
                         <SelectItem
-                          value={RoomStatus.RENTED}
+                          value={RoomStatus.APPROVED}
                           className="cursor-pointer"
                         >
-                          Rented
+                          Approved
                         </SelectItem>
                         <SelectItem
                           value={RoomStatus.REJECTED}
@@ -981,7 +975,7 @@ export function RoomList({ initialFilters = {} }: RoomListProps) {
                                     onClick={() =>
                                       handleStatusChange(
                                         room.id,
-                                        RoomStatus.AVAILABLE,
+                                        RoomStatus.PENDING,
                                       )
                                     }
                                   >
@@ -1000,26 +994,26 @@ export function RoomList({ initialFilters = {} }: RoomListProps) {
                                   </DropdownMenuItem>
                                 </>
                               )}
-                              {room.status === RoomStatus.AVAILABLE && (
+                              {room.status === RoomStatus.APPROVED && (
                                 <DropdownMenuItem
                                   className="text-blue-600 cursor-pointer"
                                   onClick={() =>
                                     handleStatusChange(
                                       room.id,
-                                      RoomStatus.OCCUPIED,
+                                      RoomStatus.APPROVED,
                                     )
                                   }
                                 >
                                   Mark as Occupied
                                 </DropdownMenuItem>
                               )}
-                              {room.status === RoomStatus.OCCUPIED && (
+                              {room.status === RoomStatus.REJECTED && (
                                 <DropdownMenuItem
                                   className="text-purple-600 cursor-pointer"
                                   onClick={() =>
                                     handleStatusChange(
                                       room.id,
-                                      RoomStatus.RENTED,
+                                      RoomStatus.REJECTED,
                                     )
                                   }
                                 >

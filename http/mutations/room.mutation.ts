@@ -5,6 +5,7 @@ import { roomService } from "@/http/services/room.service";
 import { ROOM_QUERY_KEYS } from "@/hooks/rooms/use-room-queries";
 import { STATUS_CODES } from "@/lib/constants/app.constants";
 import { SUCCESSTOAST, FAILURETOAST } from "@/lib/constants/app.constants";
+import { RoomStatus } from "@/types/room.types";
 
 // Toast messages
 export const CreateRoom = {
@@ -202,7 +203,7 @@ export const useUpdateRoomStatusMutation = () => {
       reason,
     }: {
       id: string;
-      status: string;
+      status: RoomStatus;
       reason?: string;
     }) => {
       const response = await roomService.updateRoomStatus(id, status, reason);

@@ -74,11 +74,11 @@ interface RoomDrawerProps {
 
 const getStatusBadge = (status: RoomStatus) => {
   switch (status) {
-    case RoomStatus.AVAILABLE:
+    case RoomStatus.APPROVED:
       return (
         <Badge className="bg-green-100 text-green-800 hover:bg-green-100 border-green-200 gap-1 cursor-default">
           <CheckCircle className="h-3 w-3" />
-          Available
+          Approved
         </Badge>
       );
     case RoomStatus.PENDING:
@@ -88,18 +88,11 @@ const getStatusBadge = (status: RoomStatus) => {
           Pending Approval
         </Badge>
       );
-    case RoomStatus.OCCUPIED:
+    case RoomStatus.ARCHIVED:
       return (
         <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100 border-blue-200 gap-1 cursor-default">
           <Users className="h-3 w-3" />
-          Occupied
-        </Badge>
-      );
-    case RoomStatus.RENTED:
-      return (
-        <Badge className="bg-purple-100 text-purple-800 hover:bg-purple-100 border-purple-200 gap-1 cursor-default">
-          <CheckCircle className="h-3 w-3" />
-          Rented
+          Archived
         </Badge>
       );
     case RoomStatus.REJECTED:
