@@ -190,7 +190,7 @@ export default function ApprovedRoomsPage() {
         </div>
         <div className="flex items-center gap-2">
           <Calendar className="h-3 w-3 text-primary" />
-          <span>{formatDate(room.createdAt, "short")}</span>
+          <span>{formatDate(room.createdAt)}</span>
         </div>
         <div className="flex items-center gap-2">
           <Star className="h-3 w-3 text-yellow-500" />
@@ -490,7 +490,7 @@ export default function ApprovedRoomsPage() {
                         </TableCell>
                         <TableCell>
                           <span className="text-sm">
-                            {formatDate(room.createdAt, "medium")}
+                            {formatDate(room.createdAt)}
                           </span>
                         </TableCell>
                         <TableCell>{getStatusBadge(room.status)}</TableCell>

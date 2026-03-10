@@ -1,5 +1,5 @@
 import {
-  WalletBalance,
+  WalletBalanceType,
   WalletStats,
   TransactionType,
   TransactionStatus,
@@ -29,7 +29,7 @@ export interface WithdrawalsQueryParams {
 class WalletService {
   private readonly baseUrl = "/wallet";
 
-  async getBalance(): Promise<WalletBalance> {
+  async getBalance(): Promise<WalletBalanceType> {
     const response = await privateApi.get(`${this.baseUrl}/balance`);
     return response.data.data;
   }

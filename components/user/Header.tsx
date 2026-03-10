@@ -323,7 +323,6 @@ export function UserHeader({
                   className="flex items-center gap-2 px-2 hover:bg-primary/10 cursor-pointer h-auto py-1"
                 >
                   <Avatar className="h-8 w-8 ring-2 ring-primary/20">
-                    <AvatarImage src={user?.avatar} />
                     <AvatarFallback className="bg-gradient-to-br from-primary to-primary-dark text-white">
                       {getInitials()}
                     </AvatarFallback>

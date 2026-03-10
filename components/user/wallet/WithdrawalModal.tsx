@@ -51,6 +51,7 @@ const withdrawalSchema = z.object({
     PaymentMethod.ESEWA,
     PaymentMethod.KHALTI,
     PaymentMethod.QR_CODE,
+    PaymentMethod.CASH,
   ]),
   remarks: z.string().optional(),
 });

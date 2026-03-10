@@ -126,7 +126,6 @@ export default function UserLayout({
           <UserHeader
             isSidebarCollapsed={isSidebarCollapsed}
             onMenuClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            isMobile={isMobile}
           />
 
           {/* Main Content Area */}

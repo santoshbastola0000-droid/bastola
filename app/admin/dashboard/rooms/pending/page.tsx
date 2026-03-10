@@ -122,7 +122,7 @@ export default function PendingRoomsPage() {
     page,
     take: pageSize,
     search: debouncedSearch || undefined,
-    status: RoomStatus.PENDING, // Filter by pending status
+    status: RoomStatus.PENDING,
   };
 
   const {
@@ -138,7 +138,6 @@ export default function PendingRoomsPage() {
     gcTime: 1000 * 60 * 10,
   });
 
-  // Update room status mutation
   const updateStatusMutation = useMutation({
     mutationFn: ({
       id,
@@ -297,7 +296,7 @@ export default function PendingRoomsPage() {
         </div>
         <div className="flex items-center gap-2">
           <Calendar className="h-3 w-3 text-primary" />
-          <span>{formatDate(room.createdAt, "short")}</span>
+          <span>{formatDate(room.createdAt)}</span>
         </div>
         <div className="flex justify-end">{getStatusBadge(room.status)}</div>
       </div>
@@ -575,7 +574,7 @@ export default function PendingRoomsPage() {
                           <div className="flex items-center gap-1">
                             <Calendar className="h-3 w-3 text-muted-foreground" />
                             <span className="text-sm">
-                              {formatDate(room.createdAt, "medium")}
+                              {formatDate(room.createdAt)}
                             </span>
                           </div>
                         </TableCell>

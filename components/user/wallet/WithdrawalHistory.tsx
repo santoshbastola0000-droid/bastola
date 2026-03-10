@@ -3,7 +3,7 @@ import {
   WithdrawalStatus,
   PaymentMethod,
 } from "@/types/wallet.types";
-import { formatDate } from "@/lib/utils";
+import { formatCurrency, formatDate } from "@/lib/utils";
 import {
   IndianRupee,
   Clock,
@@ -17,6 +17,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
+import { WithdrawalModal } from "./WithdrawalModal";
 
 interface Props {
   withdrawals: WithdrawalRequest[];
@@ -149,12 +150,6 @@ export function WithdrawalHistory({ withdrawals, limit, showAll }: Props) {
           </div>
         ))}
       </div>
-
-      <WithdrawalDetailsModal
-        withdrawal={selectedWithdrawal}
-        open={!!selectedWithdrawal}
-        onOpenChange={() => setSelectedWithdrawal(null)}
-      />
     </>
   );
 }
