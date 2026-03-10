@@ -27,3 +27,5 @@ export const sizeConstants = {
     message: "Email is required",
   },
 };
+
+export const GOOGLE_MAPS_URL = "https://maps.app.goo.gl/JLAQ5KnQBGMoSNa19";
