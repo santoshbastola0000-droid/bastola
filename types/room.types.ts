@@ -2,6 +2,8 @@ export enum RoomStatus {
   PENDING = "Pending",
   APPROVED = "Approved",
   REJECTED = "Rejected",
+  AVAILABLE = "Available",
+  RENTED = "Rented",
   ARCHIVED = "Archived",
 }
 
@@ -10,6 +12,13 @@ export enum RoomCategory {
   SINGLE = "Single",
   APARTMENT = "Apartment",
   SHARED = "Shared",
+  DOUBLE = "Double",
+  HOUSE = "House",
+  ATTACHED_BATHROOM = "Attached Bathroom",
+  SHUTTER = "Shutter",
+  HOTEL = "Hotel",
+  OFFICE_SPACE = "Office Space",
+  HOSTEL = "Hostel",
 }
 
 export interface Location {
@@ -38,7 +47,8 @@ export interface Room {
   price: number;
   address: string;
   amenities: string[];
-  status: RoomStatus;
+  approvalStatus: RoomStatus;
+  listingStatus: RoomStatus;
   bathroomCapacity: number;
   floorNumber: number;
   ownerLivesInHouse: boolean;
@@ -62,19 +72,30 @@ export interface Room {
     id: string;
     name: string;
     email: string;
+    phoneNumber: string;
     isVerified: boolean;
   };
   location?: Location;
-  tiktokUrl: string;
+  tiktokUrl?: string;
+  serviceCharge?: number;
+  commissionAmount?: number;
+  commissionPaidAt?: string;
+  transactionId?: string;
+  commissionSettingsId?: string;
+  adminRemarks?: string;
+  approvedAt?: string;
+  approvedById?: string;
 }
 
 export interface RoomStats {
   total: number;
+  pendingApproval: number;
+  approved: number;
+  rejected: number;
   available: number;
-  occupied: number;
-  pending: number;
   rented: number;
-  averagePrice: number;
+  archived: number;
+  byCategory: Record<string, number>;
 }
 
 export interface CreateRoomDTO {
@@ -96,8 +117,9 @@ export interface CreateRoomDTO {
   contactPhone?: string;
   contactEmail?: string;
   contactWhatsapp?: string;
-  images: string[];
+  images: File[];
   location: Omit<Location, "id">;
+  tiktokUrl?: string;
 }
 
 export interface UpdateRoomDTO {
@@ -107,7 +129,6 @@ export interface UpdateRoomDTO {
   price?: number;
   address?: string;
   amenities?: string[];
-  status?: RoomStatus;
   bathroomCapacity?: number;
   floorNumber?: number;
   ownerLivesInHouse?: boolean;
@@ -123,27 +144,27 @@ export interface UpdateRoomDTO {
   contactEmail?: string;
   contactWhatsapp?: string;
   images?: string[];
+  location?: Partial<Location>;
+  tiktokUrl?: string;
 }
 
 export interface RoomFilters {
+  city?: string;
   page?: number;
   take?: number;
-  limit?: number;
   search?: string;
+  approvalStatus?: RoomStatus;
+  listingStatus?: RoomStatus;
   category?: RoomCategory;
-  city?: string;
-  state?: string;
   minPrice?: number;
   maxPrice?: number;
-  status?: RoomStatus;
-  amenities?: string[];
   allowsWomen?: boolean;
-  roomCapacity?: number;
-  // Location based filters
+  ownerLivesInHouse?: boolean;
+  userId?: string;
+  includeAll?: boolean;
   latitude?: number;
   longitude?: number;
-  radius?: number;
-  ownerLivesInHouse?: boolean;
+  radius?: number; // in kilometers
 }
 
 export interface RoomsResponse {

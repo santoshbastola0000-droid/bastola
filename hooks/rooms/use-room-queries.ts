@@ -3,13 +3,14 @@ import { roomService } from "@/http/services/room.service";
 import { RoomFilters } from "@/types/room.types";
 
 export const ROOM_QUERY_KEYS = {
-  GET_ROOMS: "getRooms",
-  GET_ROOM: "getRoom",
-  GET_ROOM_STATS: "getRoomStats",
-  CREATE_ROOM: "createRoom",
-  UPDATE_ROOM: "updateRoom",
-  DELETE_ROOM: "deleteRoom",
-  UPDATE_ROOM_STATUS: "updateRoomStatus",
+  GET_ROOMS: "GetRooms",
+  GET_ROOM: "GetRoom",
+  GET_ROOM_STATS: "GetRoomStats",
+  CREATE_ROOM: "CreateRoom",
+  UPDATE_ROOM: "UpdateRoom",
+  DELETE_ROOM: "DeleteRoom",
+  UPDATE_LISTING_STATUS: "UpdateListingStatus",
+  UPDATE_APPROVAL_STATUS: "UpdateApprovalStatus",
 };
 
 /**

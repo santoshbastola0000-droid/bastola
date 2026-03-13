@@ -32,7 +32,7 @@ export default function RootLayout({
       >
         <QueryClientProviderWrapper>
           <TooltipProvider>{children}</TooltipProvider>
-          <Toaster />;
+          <Toaster />
         </QueryClientProviderWrapper>
       </body>
     </html>

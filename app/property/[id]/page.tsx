@@ -445,7 +445,7 @@ export default function PropertyDetailsPage() {
 
             <div className="flex items-center gap-2">
               {/* Status Badge */}
-              {getStatusBadge(room.status)}
+              {getStatusBadge(room.approvalStatus)}
 
               {/* Share Button */}
               <Button

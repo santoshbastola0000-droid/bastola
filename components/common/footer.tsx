@@ -23,7 +23,6 @@ import {
 } from "lucide-react";
 import { Logo } from "@/components/Logo";
 
-// This is a server component by default in Next.js App Router
 export default function Footer() {
   const currentYear = new Date().getFullYear();
 

@@ -10,72 +10,133 @@ export interface CommissionSettings {
 }
 
 export interface CommissionStats {
-  settings: {
-    serviceCharge: number;
-    commissionPercentage: number;
-    updatedAt: string;
-  };
+  activeSettings: CommissionSettings;
   stats: {
     totalRooms: number;
     approvedRooms: number;
     commissionedRooms: number;
-    pendingCommission: number;
+    pendingCommissionRooms: number;
     totalServiceCharge: number;
     totalCommission: number;
     totalPaidToUsers: number;
+    pendingServiceCharge: number;
+    pendingCommission: number;
+    pendingPayout: number;
+    platformRevenue: number;
+    userEarnings: number;
   };
 }
 
 export interface CommissionCalculation {
   serviceCharge: number;
+  commissionPercentage: number;
   commissionAmount: number;
   netAmount: number;
   roomId: string;
   roomTitle: string;
   userId: string;
+  userName: string;
+  userPhone: string;
+}
+
+export interface CommissionHistoryItem {
+  id: string;
+  roomId: string;
+  roomTitle: string;
+  userId: string;
+  userName: string;
+  serviceCharge: number;
+  commissionAmount: number;
+  netAmount: number;
+  appliedAt: string;
+  transactionId: string;
 }
 
 export const commissionService = {
-  // Get settings
+  // Get active settings
   getSettings: async (): Promise<CommissionSettings> => {
-    const response = await privateApi.get("/admin/commission/settings");
+    const response = await privateApi.get("/commission/settings");
+    return response.data.data;
+  },
+
+  // Get all settings
+  getAllSettings: async (): Promise<CommissionSettings[]> => {
+    const response = await privateApi.get("/commission/settings/all");
+    return response.data.data;
+  },
+
+  // Get settings by ID
+  getSettingsById: async (id: string): Promise<CommissionSettings> => {
+    const response = await privateApi.get(`/commission/settings/${id}`);
+    return response.data.data;
+  },
+
+  // Create settings
+  createSettings: async (data: {
+    serviceCharge: number;
+    commissionPercentage: number;
+    isActive?: boolean;
+  }): Promise<CommissionSettings> => {
+    const response = await privateApi.post("/commission/settings", data);
     return response.data.data;
   },
 
   // Update settings
-  updateSettings: async (data: {
-    serviceCharge?: number;
-    commissionPercentage?: number;
-  }): Promise<CommissionSettings> => {
-    const response = await privateApi.put("/admin/commission/settings", data);
+  updateSettings: async (
+    id: string,
+    data: {
+      serviceCharge?: number;
+      commissionPercentage?: number;
+    },
+  ): Promise<CommissionSettings> => {
+    const response = await privateApi.put(`/commission/settings/${id}`, data);
     return response.data.data;
   },
 
-  // Apply commission to a specific room
-  applyCommissionToRoom: async (roomId: string) => {
-    const response = await privateApi.post(`/admin/commission/apply/${roomId}`);
-    return response.data;
+  // Update status
+  updateStatus: async (
+    id: string,
+    data: { isActive: boolean },
+  ): Promise<CommissionSettings> => {
+    const response = await privateApi.patch(
+      `/commission/settings/${id}/status`,
+      data,
+    );
+    return response.data.data;
   },
 
-  // Apply commission to all pending rooms
-  applyCommissionToAll: async () => {
-    const response = await privateApi.post("/admin/commission/apply-all");
-    return response.data;
+  // Delete settings
+  deleteSettings: async (id: string): Promise<void> => {
+    await privateApi.delete(`/commission/settings/${id}`);
   },
 
   // Get commission stats
   getCommissionStats: async (): Promise<CommissionStats> => {
-    const response = await privateApi.get("/admin/commission/stats");
+    const response = await privateApi.get("/commission/stats");
     return response.data.data;
   },
 
-  // Calculate commission preview
+  // Calculate commission for a room
   calculateCommission: async (
     roomId: string,
   ): Promise<CommissionCalculation> => {
-    const response = await privateApi.get(
-      `/admin/commission/calculate/${roomId}`,
-    );
+    const response = await privateApi.get(`/commission/calculate/${roomId}`);
+    return response.data.data;
+  },
+
+  // Apply commission to all pending rooms
+  recalculatePendingCommissions: async (): Promise<{
+    totalProcessed: number;
+    successful: number;
+    failed: number;
+    results: Array<{
+      roomId: string;
+      success: boolean;
+      transactionId?: string;
+      error?: string;
+    }>;
+  }> => {
+    const response = await privateApi.post("/commission/recalculate");
     return response.data.data;
   },
 };

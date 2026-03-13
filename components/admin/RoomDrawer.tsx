@@ -312,7 +312,10 @@ export function RoomDrawer({ room, open, onOpenChange }: RoomDrawerProps) {
                   {room.category.replace("_", " ")} • {room.address}
                 </DrawerDescription>
               </div>
-              {getStatusBadge(room.status)}
+              <div className="flex gap-2 justify-center items-center">
+                {getStatusBadge(room.approvalStatus)}
+                {getStatusBadge(room.listingStatus)}
+              </div>
             </div>
           </DrawerHeader>
 
