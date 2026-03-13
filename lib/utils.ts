@@ -79,3 +79,19 @@ export function formatCurrency(
   // For NPR, Intl will use "Rs" as symbol
   return formatter.format(numAmount);
 }
+
+// src/lib/utils.ts
+export const formatNepaliCurrency = (amount: number | string): string => {
+  const num = typeof amount === "string" ? parseFloat(amount) : amount;
+  if (isNaN(num)) return "Rs. 0";
+
+  // Format with commas for Nepali numbering system
+  const formatter = new Intl.NumberFormat("ne-NP", {
+    style: "currency",
+    currency: "NPR",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  });
+
+  return formatter.format(num).replace("NPR", "Rs.");
+};

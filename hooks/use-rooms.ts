@@ -41,9 +41,7 @@ export function useRooms(initialFilters?: RoomFilters): UseRoomsReturn {
       setLoading(true);
       setError(null);
 
-      const response = await roomService.getApprovedRooms(
-        filters || initialFilters,
-      );
+      const response = await roomService.getRooms(filters || initialFilters);
 
       // Store raw rooms
       setRawRooms(response.data);

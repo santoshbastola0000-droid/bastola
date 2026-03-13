@@ -13,31 +13,33 @@ import { api } from "../api/api";
 export const roomService = {
   // Get all rooms with pagination and filters
   getRooms: async (params: RoomFilters = {}): Promise<RoomsResponse> => {
-    const response = await api.get("/rooms", { params });
+    const response = await privateApi.get("/rooms", { params });
     return response.data;
   },
 
-  // Get pending rooms (using status filter)
+  // Get public rooms (approved and available)
+  getPublicRooms: async (params: RoomFilters = {}): Promise<RoomsResponse> => {
+    const response = await api.get("/rooms/public", { params });
+    return response.data;
+  },
+
+  // Get user's own rooms
+  getMyRooms: async (params: RoomFilters = {}): Promise<RoomsResponse> => {
+    const response = await privateApi.get("/rooms/my-rooms", { params });
+    return response.data;
+  },
+
+  // Get pending rooms (admin only)
   getPendingRooms: async (params: RoomFilters = {}): Promise<RoomsResponse> => {
-    const response = await api.get("/rooms", {
-      params: {
-        ...params,
-        status: "Pending", // Your enum value
-      },
+    const response = await privateApi.get("/rooms/pending", {
+      params: { ...params, approvalStatus: RoomStatus.PENDING },
     });
     return response.data;
   },
 
-  // Get approved rooms (using status filter)
-  getApprovedRooms: async (
-    params: RoomFilters = {},
-  ): Promise<RoomsResponse> => {
-    const response = await api.get("/rooms", {
-      params: {
-        ...params,
-        status: "Approved", // Your enum value
-      },
-    });
+  // Get room stats (admin only)
+  getRoomStats: async (): Promise<{ data: RoomStats }> => {
+    const response = await privateApi.get("/rooms/stats");
     return response.data;
   },
 
@@ -48,8 +50,12 @@ export const roomService = {
   },
 
   // Create new room
-  createRoom: async (data: CreateRoomDTO): Promise<{ data: Room }> => {
-    const response = await privateApi.post("/rooms", data);
+  createRoom: async (data: FormData): Promise<{ data: Room }> => {
+    const response = await privateApi.post("/rooms", data, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
     return response.data;
   },
 
@@ -62,40 +68,31 @@ export const roomService = {
     return response.data;
   },
 
-  // Delete room
+  // Delete room (archive)
   deleteRoom: async (id: string): Promise<void> => {
     await privateApi.delete(`/rooms/${id}`);
   },
 
-  // Get room statistics
-  getRoomStats: async (): Promise<{ data: RoomStats }> => {
-    const response = await privateApi.get("/rooms/stats");
-    return response.data;
-  },
-
-  // Upload room images
-  uploadImages: async (images: File[]): Promise<{ data: string[] }> => {
-    const formData = new FormData();
-    images.forEach((image) => {
-      formData.append("images", image);
-    });
-
-    const response = await privateApi.post("/rooms/upload-images", formData, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    });
-    return response.data;
-  },
-
-  updateRoomStatus: async (
+  // Update approval status (admin only)
+  updateApprovalStatus: async (
     id: string,
-    status: RoomStatus,
+    status: RoomStatus.APPROVED | RoomStatus.REJECTED,
     reason?: string,
   ): Promise<{ data: Room }> => {
-    const response = await privateApi.patch(`/rooms/${id}/status`, {
-      status,
-      reason,
+    const response = await privateApi.patch(`/rooms/${id}/approval`, {
+      approvalStatus: status,
+      remarks: reason,
+    });
+    return response.data;
+  },
+
+  // Update listing status (admin only)
+  updateListingStatus: async (
+    id: string,
+    status: RoomStatus.AVAILABLE | RoomStatus.RENTED | RoomStatus.ARCHIVED,
+  ): Promise<{ data: Room }> => {
+    const response = await privateApi.patch(`/rooms/${id}/listing`, {
+      listingStatus: status,
     });
     return response.data;
   },

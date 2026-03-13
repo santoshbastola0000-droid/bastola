@@ -1,22 +1,26 @@
+// src/components/admin/Sidebar.tsx
 "use client";
 
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
+import { usePathname, useRouter } from "next/navigation";
 import {
-  Home,
-  Users,
+  LayoutDashboard,
   Building2,
-  Wallet,
-  ChevronRight,
+  Users,
+  Settings,
+  LogOut,
   ChevronLeft,
-  Plus,
-  List,
-  CheckCircle,
-  Clock,
+  ChevronRight,
   Menu,
-  BadgePercent,
+  X,
+  Home,
+  Wallet,
+  Percent,
+  HelpCircle,
+  Bell,
+  BarChart3,
+  ChevronDown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -27,468 +31,381 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Badge } from "@/components/ui/badge";
-import { useMediaQuery } from "@/hooks/use-media-query";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { useUserStore } from "@/stores/user-store";
+import { useLogout } from "@/hooks/useLogout";
+import { LogoutConfirmDialog } from "@/components/LogoutConfirmDialog";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+
+interface SidebarProps {
+  isCollapsed: boolean;
+  setIsCollapsed: (collapsed: boolean) => void;
+}
 
 interface NavItem {
   title: string;
   href: string;
   icon: React.ElementType;
-  badge?: string;
-  badgeColor?: string;
-  subItems?: {
-    title: string;
-    href: string;
-    icon: React.ElementType;
-    badge?: string;
-  }[];
+  badge?: number;
+  roles?: string[];
 }
 
-const mainNavItems: NavItem[] = [
+const navItems: NavItem[] = [
   {
     title: "Dashboard",
     href: "/admin/dashboard",
-    icon: Home,
+    icon: LayoutDashboard,
   },
   {
     title: "Rooms",
-    href: "#",
+    href: "/admin/dashboard/rooms",
     icon: Building2,
-    badge: "12",
-    badgeColor: "bg-red-500",
-    subItems: [
-      {
-        title: "All Rooms",
-        href: "/admin/dashboard/rooms",
-        icon: List,
-        badge: "156",
-      },
-      {
-        title: "Create Room",
-        href: "/admin/dashboard/rooms/create",
-        icon: Plus,
-      },
-      {
-        title: "Pending Approval",
-        href: "/admin/dashboard/rooms/pending",
-        icon: Clock,
-        badge: "8",
-      },
-      {
-        title: "Approved",
-        href: "/admin/dashboard/rooms/approved",
-        icon: CheckCircle,
-        badge: "124",
-      },
-    ],
+    badge: 12, // This should come from API
   },
   {
-    title: "Commission",
-    href: "/admin/dashboard/commission",
-    icon: BadgePercent,
-    badge: "20%",
-    badgeColor: "bg-purple-500",
+    title: "Pending Approvals",
+    href: "/admin/dashboard/rooms/pending",
+    icon: Building2,
+    badge: 5, // This should come from API
+  },
+  {
+    title: "Approved Rooms",
+    href: "/admin/dashboard/rooms/approved",
+    icon: Building2,
   },
   {
     title: "Users",
     href: "/admin/dashboard/users",
     icon: Users,
-    badge: "2.4k",
-    badgeColor: "bg-blue-500",
   },
   {
     title: "Wallet",
     href: "/admin/dashboard/wallet",
     icon: Wallet,
-    badge: "$45.2k",
-    badgeColor: "bg-green-500",
+  },
+  {
+    title: "Commission",
+    href: "/admin/dashboard/commission",
+    icon: Percent,
+  },
+  {
+    title: "Analytics",
+    href: "/admin/dashboard/analytics",
+    icon: BarChart3,
+  },
+  {
+    title: "Settings",
+    href: "/admin/dashboard/settings",
+    icon: Settings,
   },
 ];
 
-interface AdminSidebarProps {
-  isCollapsed: boolean;
-  setIsCollapsed: (collapsed: boolean) => void;
-}
-
-export function AdminSidebar({
-  isCollapsed,
-  setIsCollapsed,
-}: AdminSidebarProps) {
+export function AdminSidebar({ isCollapsed, setIsCollapsed }: SidebarProps) {
   const pathname = usePathname();
-  const isMobile = useMediaQuery("(max-width: 768px)");
-  const [openSections, setOpenSections] = useState<string[]>(["Rooms"]);
-  const [isHovered, setIsHovered] = useState(false);
+  const router = useRouter();
+  const { user } = useUserStore();
+  const { logout } = useLogout();
+  const [showLogoutDialog, setShowLogoutDialog] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const [expandedItems, setExpandedItems] = useState<string[]>([]);
 
-  // Auto collapse on mobile
+  // Close mobile sidebar on route change
   useEffect(() => {
-    if (isMobile) {
-      setIsCollapsed(true);
-      setIsMobileOpen(false);
-    }
-  }, [isMobile, setIsCollapsed]);
+    setIsMobileOpen(false);
+  }, [pathname]);
 
-  const toggleSection = (title: string) => {
-    if (isCollapsed && !isHovered) return;
-    setOpenSections((prev) =>
+  const toggleExpand = (title: string) => {
+    setExpandedItems((prev) =>
       prev.includes(title)
         ? prev.filter((item) => item !== title)
         : [...prev, title],
     );
   };
 
-  const isActiveRoute = (href: string) => {
-    if (href === "#") return false;
-    return pathname === href || pathname?.startsWith(href);
+  const handleLogout = async () => {
+    await logout();
+    router.push("/auth/login");
   };
 
-  const isSubItemActive = (subItems: NavItem["subItems"]) => {
-    return subItems?.some((item) => pathname === item.href) || false;
+  const getInitials = () => {
+    if (user?.name) {
+      return user.name
+        .split(" ")
+        .map((n) => n[0])
+        .join("")
+        .toUpperCase()
+        .slice(0, 2);
+    }
+    return "AD";
   };
 
-  const sidebarWidth = isCollapsed && !isHovered ? "w-20" : "w-64";
-  const showFullSidebar = !isCollapsed || isHovered;
-
-  return (
-    <>
-      {/* Mobile Menu Button */}
-      {isMobile && (
+  // Mobile Sidebar using Sheet
+  const MobileSidebar = () => (
+    <Sheet open={isMobileOpen} onOpenChange={setIsMobileOpen}>
+      <SheetTrigger asChild>
         <Button
           variant="ghost"
           size="icon"
-          className="fixed top-4 left-4 z-50 md:hidden bg-white shadow-lg"
-          onClick={() => setIsMobileOpen(!isMobileOpen)}
+          className="md:hidden fixed top-4 left-4 z-40 cursor-pointer"
         >
           <Menu className="h-5 w-5" />
         </Button>
-      )}
-
-      {/* Mobile Sidebar Overlay */}
-      <AnimatePresence>
-        {isMobile && isMobileOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 z-40 md:hidden"
-            onClick={() => setIsMobileOpen(false)}
-          />
-        )}
-      </AnimatePresence>
-
-      {/* Sidebar */}
-      <motion.aside
-        className={cn(
-          "fixed top-0 left-0 z-40 h-full glass border-r border-border",
-          "flex flex-col transition-all duration-300 ease-in-out",
-          isMobile ? "fixed" : "sticky",
-          isMobile && !isMobileOpen && "-translate-x-full",
-          isMobile && isMobileOpen && "translate-x-0",
-          !isMobile && sidebarWidth,
-        )}
-        onMouseEnter={() => !isMobile && setIsHovered(true)}
-        onMouseLeave={() => !isMobile && setIsHovered(false)}
-        initial={false}
-        animate={{
-          width: isMobile
-            ? isMobileOpen
-              ? 256
-              : 0
-            : isCollapsed && !isHovered
-              ? 80
-              : 256,
-        }}
-      >
-        {/* Sidebar Header */}
-        <div className="flex items-center h-16 px-4 border-b border-border">
-          <Link
-            href="/admin/dashboard"
-            className={cn(
-              "flex items-center gap-2 transition-all duration-300",
-              showFullSidebar ? "opacity-100" : "opacity-0 w-0",
-            )}
-          >
-            <div className="relative">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-primary-dark flex items-center justify-center shadow-lg shadow-primary/20">
-                <Building2 className="h-5 w-5 text-white" />
+      </SheetTrigger>
+      <SheetContent side="left" className="w-[280px] p-0">
+        <div className="flex flex-col h-full bg-gradient-to-b from-gray-900 to-gray-800 text-white">
+          {/* Logo */}
+          <div className="p-6 border-b border-gray-700">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary to-primary-dark flex items-center justify-center">
+                <Home className="h-5 w-5 text-white" />
               </div>
-              <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white" />
+              <div>
+                <h2 className="font-bold text-lg">RentalService</h2>
+                <p className="text-xs text-gray-400">Admin Panel</p>
+              </div>
             </div>
-            <span className="text-xl font-bold bg-gradient-to-r from-primary to-primary-dark bg-clip-text text-transparent">
-              Rental
-            </span>
-          </Link>
+          </div>
 
-          {/* Collapse Button - Desktop */}
-          {!isMobile && (
+          {/* User Info */}
+          <div className="p-4 border-b border-gray-700">
+            <div className="flex items-center gap-3">
+              <Avatar className="h-10 w-10 ring-2 ring-primary/50">
+                <AvatarFallback className="bg-primary/20 text-primary">
+                  {getInitials()}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium truncate">
+                  {user?.name || "Admin User"}
+                </p>
+                <p className="text-xs text-gray-400 truncate">
+                  {user?.email || "admin@example.com"}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Navigation */}
+          <nav className="flex-1 overflow-y-auto p-4 space-y-1">
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = pathname === item.href;
+              const isExpanded = expandedItems.includes(item.title);
+
+              return (
+                <div key={item.href}>
+                  <Link
+                    href={item.href}
+                    onClick={() => setIsMobileOpen(false)}
+                    className={cn(
+                      "flex items-center gap-3 px-3 py-2 rounded-lg transition-all cursor-pointer",
+                      isActive
+                        ? "bg-primary text-white"
+                        : "text-gray-300 hover:bg-gray-800 hover:text-white",
+                    )}
+                  >
+                    <Icon className="h-5 w-5 flex-shrink-0" />
+                    <span className="flex-1 text-sm">{item.title}</span>
+                    {item.badge && (
+                      <Badge className="bg-primary/20 text-primary border-0 text-xs">
+                        {item.badge}
+                      </Badge>
+                    )}
+                  </Link>
+                </div>
+              );
+            })}
+          </nav>
+
+          {/* Footer */}
+          <div className="p-4 border-t border-gray-700 space-y-2">
             <Button
               variant="ghost"
-              size="icon"
-              className={cn(
-                "ml-auto h-8 w-8 rounded-lg hover:bg-accent/10 transition-all duration-300",
-                !showFullSidebar && "mx-auto",
-              )}
-              onClick={() => setIsCollapsed(!isCollapsed)}
+              className="w-full justify-start text-gray-300 hover:text-white hover:bg-gray-800 cursor-pointer"
+              onClick={() => router.push("/")}
             >
-              {isCollapsed ? (
-                <ChevronRight className="h-4 w-4" />
-              ) : (
-                <ChevronLeft className="h-4 w-4" />
-              )}
+              <Home className="h-4 w-4 mr-3" />
+              <span>View Site</span>
             </Button>
-          )}
-        </div>
-
-        {/* Navigation */}
-        <div className="flex-1 overflow-y-auto scrollbar-thin px-3 py-4">
-          <TooltipProvider delayDuration={0}>
-            <nav className="space-y-1">
-              {/* Main Navigation */}
-              <div className="space-y-1">
-                {mainNavItems.map((item) => {
-                  const isActive = isActiveRoute(item.href);
-                  const hasSubItems = item.subItems && item.subItems.length > 0;
-                  const isSectionOpen = openSections.includes(item.title);
-                  const isSubActive = isSubItemActive(item.subItems);
-                  const showSubItems = showFullSidebar && hasSubItems;
-
-                  if (hasSubItems) {
-                    return (
-                      <div key={item.title} className="space-y-1">
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              className={cn(
-                                "w-full justify-start h-10 px-3 font-medium rounded-lg",
-                                "transition-all duration-200",
-                                !showFullSidebar && "justify-center px-2",
-                                (isActive || isSubActive) &&
-                                  "bg-accent/10 text-primary",
-                                "hover:bg-accent/10 hover:text-primary",
-                              )}
-                              onClick={() => toggleSection(item.title)}
-                            >
-                              <div className="flex items-center gap-3">
-                                <div
-                                  className={cn(
-                                    "relative",
-                                    (isActive || isSubActive) && "text-primary",
-                                  )}
-                                >
-                                  <item.icon className="h-5 w-5" />
-                                  {item.badge && showFullSidebar && (
-                                    <span
-                                      className={cn(
-                                        "absolute -top-1 -right-1 w-4 h-4 rounded-full text-[10px]",
-                                        "flex items-center justify-center text-white",
-                                        item.badgeColor || "bg-primary",
-                                      )}
-                                    >
-                                      {item.badge}
-                                    </span>
-                                  )}
-                                </div>
-
-                                <AnimatePresence>
-                                  {showFullSidebar && (
-                                    <motion.span
-                                      initial={{ opacity: 0, width: 0 }}
-                                      animate={{ opacity: 1, width: "auto" }}
-                                      exit={{ opacity: 0, width: 0 }}
-                                      className="flex-1 text-left truncate"
-                                    >
-                                      {item.title}
-                                    </motion.span>
-                                  )}
-                                </AnimatePresence>
-                              </div>
-
-                              {showFullSidebar && (
-                                <ChevronRight
-                                  className={cn(
-                                    "h-4 w-4 transition-transform duration-200",
-                                    isSectionOpen && "transform rotate-90",
-                                  )}
-                                />
-                              )}
-                            </Button>
-                          </TooltipTrigger>
-                          {!showFullSidebar && (
-                            <TooltipContent
-                              side="right"
-                              className="flex items-center gap-2"
-                            >
-                              <span>{item.title}</span>
-                              {item.badge && (
-                                <Badge
-                                  className={cn("text-xs", item.badgeColor)}
-                                >
-                                  {item.badge}
-                                </Badge>
-                              )}
-                            </TooltipContent>
-                          )}
-                        </Tooltip>
-
-                        {/* Sub Items */}
-                        <AnimatePresence>
-                          {showSubItems && isSectionOpen && (
-                            <motion.div
-                              initial={{ opacity: 0, height: 0 }}
-                              animate={{ opacity: 1, height: "auto" }}
-                              exit={{ opacity: 0, height: 0 }}
-                              className="overflow-hidden pl-9 space-y-1"
-                            >
-                              {item.subItems?.map((subItem) => {
-                                const isSubActive = pathname === subItem.href;
-                                return (
-                                  <Tooltip key={subItem.title}>
-                                    <TooltipTrigger asChild>
-                                      <Link
-                                        href={subItem.href}
-                                        className={cn(
-                                          "flex items-center gap-3 h-9 px-3 rounded-lg text-sm",
-                                          "transition-all duration-200 group relative",
-                                          isSubActive
-                                            ? "bg-primary text-white shadow-lg shadow-primary/20"
-                                            : "text-muted-foreground hover:text-foreground hover:bg-accent/5",
-                                        )}
-                                      >
-                                        <subItem.icon className="h-4 w-4 flex-shrink-0" />
-                                        <span className="flex-1 truncate">
-                                          {subItem.title}
-                                        </span>
-                                        {subItem.badge && (
-                                          <Badge
-                                            className={cn(
-                                              "text-xs",
-                                              isSubActive
-                                                ? "bg-white/20"
-                                                : "bg-muted",
-                                            )}
-                                          >
-                                            {subItem.badge}
-                                          </Badge>
-                                        )}
-                                      </Link>
-                                    </TooltipTrigger>
-                                    {!showFullSidebar && (
-                                      <TooltipContent side="right">
-                                        {subItem.title}
-                                      </TooltipContent>
-                                    )}
-                                  </Tooltip>
-                                );
-                              })}
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
-                      </div>
-                    );
-                  }
-
-                  return (
-                    <Tooltip key={item.title}>
-                      <TooltipTrigger asChild>
-                        <Link
-                          href={item.href}
-                          className={cn(
-                            "flex items-center h-10 px-3 rounded-lg font-medium",
-                            "transition-all duration-200 group",
-                            !showFullSidebar && "justify-center px-2",
-                            isActive
-                              ? "bg-primary text-white shadow-lg shadow-primary/20"
-                              : "text-muted-foreground hover:text-foreground hover:bg-accent/5",
-                          )}
-                        >
-                          <div className="flex items-center gap-3">
-                            <div className="relative">
-                              <item.icon className="h-5 w-5 flex-shrink-0" />
-                              {item.badge && showFullSidebar && (
-                                <span
-                                  className={cn(
-                                    "absolute -top-1 -right-1 w-4 h-4 rounded-full text-[10px]",
-                                    "flex items-center justify-center text-white",
-                                    item.badgeColor || "bg-primary",
-                                  )}
-                                >
-                                  {item.badge}
-                                </span>
-                              )}
-                            </div>
-
-                            <AnimatePresence>
-                              {showFullSidebar && (
-                                <motion.span
-                                  initial={{ opacity: 0, width: 0 }}
-                                  animate={{ opacity: 1, width: "auto" }}
-                                  exit={{ opacity: 0, width: 0 }}
-                                  className="flex-1 text-left truncate"
-                                >
-                                  {item.title}
-                                </motion.span>
-                              )}
-                            </AnimatePresence>
-                          </div>
-                        </Link>
-                      </TooltipTrigger>
-                      {!showFullSidebar && (
-                        <TooltipContent
-                          side="right"
-                          className="flex items-center gap-2"
-                        >
-                          <span>{item.title}</span>
-                          {item.badge && (
-                            <Badge className={cn("text-xs", item.badgeColor)}>
-                              {item.badge}
-                            </Badge>
-                          )}
-                        </TooltipContent>
-                      )}
-                    </Tooltip>
-                  );
-                })}
-              </div>
-            </nav>
-          </TooltipProvider>
-        </div>
-
-        {/* Sidebar Footer */}
-        <div className="border-t border-border p-4">
-          <div
-            className={cn(
-              "flex items-center gap-3",
-              !showFullSidebar && "justify-center",
-            )}
-          >
-            <div className="flex -space-x-2">
-              <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center ring-2 ring-background">
-                <span className="text-[10px] font-bold text-white">JD</span>
-              </div>
-              <div className="w-6 h-6 rounded-full bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center ring-2 ring-background">
-                <span className="text-[10px] font-bold text-white">AS</span>
-              </div>
-              <div className="w-6 h-6 rounded-full bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center ring-2 ring-background">
-                <span className="text-[10px] font-bold text-white">+3</span>
-              </div>
-            </div>
-
-            <AnimatePresence>
-              {showFullSidebar && (
-                <motion.div
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -10 }}
-                  className="flex-1"
-                >
-                  <p className="text-xs text-muted-foreground">Team members</p>
-                  <p className="text-xs font-medium">5 active now</p>
-                </motion.div>
-              )}
-            </AnimatePresence>
+            <Button
+              variant="ghost"
+              className="w-full justify-start text-red-400 hover:text-red-300 hover:bg-red-500/10 cursor-pointer"
+              onClick={() => setShowLogoutDialog(true)}
+            >
+              <LogOut className="h-4 w-4 mr-3" />
+              <span>Logout</span>
+            </Button>
           </div>
         </div>
-      </motion.aside>
+      </SheetContent>
+    </Sheet>
+  );
+
+  // Desktop Sidebar
+  const DesktopSidebar = () => (
+    <aside
+      className={cn(
+        "hidden md:flex flex-col h-screen sticky top-0 bg-gradient-to-b from-gray-900 to-gray-800 text-white transition-all duration-300",
+        isCollapsed ? "w-20" : "w-64",
+      )}
+    >
+      {/* Logo */}
+      <div className="flex items-center justify-between p-6 border-b border-gray-700">
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary to-primary-dark flex items-center justify-center flex-shrink-0">
+            <Home className="h-5 w-5 text-white" />
+          </div>
+          {!isCollapsed && (
+            <div>
+              <h2 className="font-bold text-lg">RentalService</h2>
+              <p className="text-xs text-gray-400">Admin Panel</p>
+            </div>
+          )}
+        </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setIsCollapsed(!isCollapsed)}
+          className="text-gray-400 hover:text-white hover:bg-gray-800 cursor-pointer"
+        >
+          {isCollapsed ? (
+            <ChevronRight className="h-4 w-4" />
+          ) : (
+            <ChevronLeft className="h-4 w-4" />
+          )}
+        </Button>
+      </div>
+
+      {/* User Info */}
+      <div
+        className={cn(
+          "p-4 border-b border-gray-700",
+          isCollapsed && "text-center",
+        )}
+      >
+        <div
+          className={cn(
+            "flex items-center gap-3",
+            isCollapsed && "justify-center",
+          )}
+        >
+          <Avatar className="h-10 w-10 ring-2 ring-primary/50 flex-shrink-0">
+            <AvatarFallback className="bg-primary/20 text-primary">
+              {getInitials()}
+            </AvatarFallback>
+          </Avatar>
+          {!isCollapsed && (
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium truncate">
+                {user?.name || "Admin User"}
+              </p>
+              <p className="text-xs text-gray-400 truncate">
+                {user?.email || "admin@example.com"}
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Navigation */}
+      <nav className="flex-1 overflow-y-auto p-4 space-y-1">
+        <TooltipProvider delayDuration={0}>
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = pathname === item.href;
+
+            return (
+              <Tooltip key={item.href}>
+                <TooltipTrigger asChild>
+                  <Link
+                    href={item.href}
+                    className={cn(
+                      "flex items-center gap-3 px-3 py-2 rounded-lg transition-all cursor-pointer group",
+                      isCollapsed ? "justify-center" : "",
+                      isActive
+                        ? "bg-primary text-white"
+                        : "text-gray-300 hover:bg-gray-800 hover:text-white",
+                    )}
+                  >
+                    <Icon className="h-5 w-5 flex-shrink-0" />
+                    {!isCollapsed && (
+                      <>
+                        <span className="flex-1 text-sm">{item.title}</span>
+                        {item.badge && (
+                          <Badge className="bg-primary/20 text-primary border-0 text-xs">
+                            {item.badge}
+                          </Badge>
+                        )}
+                      </>
+                    )}
+                  </Link>
+                </TooltipTrigger>
+                {isCollapsed && (
+                  <TooltipContent side="right">
+                    <p>{item.title}</p>
+                    {item.badge && <Badge className="ml-2">{item.badge}</Badge>}
+                  </TooltipContent>
+                )}
+              </Tooltip>
+            );
+          })}
+        </TooltipProvider>
+      </nav>
+
+      {/* Footer */}
+      <div className="p-4 border-t border-gray-700 space-y-2">
+        <TooltipProvider delayDuration={0}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                className={cn(
+                  "w-full text-gray-300 hover:text-white hover:bg-gray-800 cursor-pointer",
+                  isCollapsed ? "px-2" : "justify-start",
+                )}
+                onClick={() => router.push("/")}
+              >
+                <Home className={cn("h-4 w-4", isCollapsed ? "" : "mr-3")} />
+                {!isCollapsed && <span>View Site</span>}
+              </Button>
+            </TooltipTrigger>
+            {isCollapsed && (
+              <TooltipContent side="right">View Site</TooltipContent>
+            )}
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                className={cn(
+                  "w-full text-red-400 hover:text-red-300 hover:bg-red-500/10 cursor-pointer",
+                  isCollapsed ? "px-2" : "justify-start",
+                )}
+                onClick={() => setShowLogoutDialog(true)}
+              >
+                <LogOut className={cn("h-4 w-4", isCollapsed ? "" : "mr-3")} />
+                {!isCollapsed && <span>Logout</span>}
+              </Button>
+            </TooltipTrigger>
+            {isCollapsed && (
+              <TooltipContent side="right">Logout</TooltipContent>
+            )}
+          </Tooltip>
+        </TooltipProvider>
+      </div>
+    </aside>
+  );
+
+  return (
+    <>
+      <MobileSidebar />
+      <DesktopSidebar />
+      <LogoutConfirmDialog
+        open={showLogoutDialog}
+        onOpenChange={setShowLogoutDialog}
+        onConfirm={handleLogout}
+      />
     </>
   );
 }

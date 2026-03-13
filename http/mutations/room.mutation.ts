@@ -1,3 +1,4 @@
+// src/http/mutations/room.mutation.ts
 import { AxiosError } from "axios";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -49,14 +50,25 @@ export const DeleteRoom = {
   },
 };
 
-export const UpdateRoomStatus = {
+export const UpdateApprovalStatus = {
   success: {
-    title: "Status Updated",
-    description: "Room status has been updated successfully.",
+    title: "Approval Status Updated",
+    description: "Room approval status has been updated successfully.",
   },
   error: {
-    title: "Failed to Update Status",
-    description: "An error occurred while updating the status.",
+    title: "Failed to Update Approval Status",
+    description: "An error occurred while updating the approval status.",
+  },
+};
+
+export const UpdateListingStatus = {
+  success: {
+    title: "Listing Status Updated",
+    description: "Room listing status has been updated successfully.",
+  },
+  error: {
+    title: "Failed to Update Listing Status",
+    description: "An error occurred while updating the listing status.",
   },
 };
 
@@ -190,28 +202,32 @@ export const useDeleteRoomMutation = () => {
 };
 
 /**
- * Mutation for updating room status
+ * Mutation for updating approval status
  */
-export const useUpdateRoomStatusMutation = () => {
+export const useUpdateApprovalStatusMutation = () => {
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
-    mutationKey: [ROOM_QUERY_KEYS.UPDATE_ROOM_STATUS],
+    mutationKey: [ROOM_QUERY_KEYS.UPDATE_APPROVAL_STATUS],
     mutationFn: async ({
       id,
       status,
       reason,
     }: {
       id: string;
-      status: RoomStatus;
+      status: RoomStatus.APPROVED | RoomStatus.REJECTED;
       reason?: string;
     }) => {
-      const response = await roomService.updateRoomStatus(id, status, reason);
+      const response = await roomService.updateApprovalStatus(
+        id,
+        status,
+        reason,
+      );
       return response;
     },
     onSuccess: (_, variables) => {
-      toast.success(UpdateRoomStatus.success.title, {
-        description: UpdateRoomStatus.success.description,
+      toast.success(UpdateApprovalStatus.success.title, {
+        description: UpdateApprovalStatus.success.description,
         style: { background: SUCCESSTOAST, color: "#fff" },
       });
       queryClient.invalidateQueries({
@@ -220,10 +236,57 @@ export const useUpdateRoomStatusMutation = () => {
       queryClient.invalidateQueries({
         queryKey: [ROOM_QUERY_KEYS.GET_ROOM, variables.id],
       });
+      queryClient.invalidateQueries({
+        queryKey: [ROOM_QUERY_KEYS.GET_ROOM_STATS],
+      });
     },
     onError: () => {
-      toast.error(UpdateRoomStatus.error.title, {
-        description: UpdateRoomStatus.error.description,
+      toast.error(UpdateApprovalStatus.error.title, {
+        description: UpdateApprovalStatus.error.description,
+        style: { background: FAILURETOAST, color: "#fff" },
+      });
+    },
+  });
+
+  return mutation;
+};
+
+/**
+ * Mutation for updating listing status
+ */
+export const useUpdateListingStatusMutation = () => {
+  const queryClient = useQueryClient();
+
+  const mutation = useMutation({
+    mutationKey: [ROOM_QUERY_KEYS.UPDATE_LISTING_STATUS],
+    mutationFn: async ({
+      id,
+      status,
+    }: {
+      id: string;
+      status: RoomStatus.AVAILABLE | RoomStatus.RENTED | RoomStatus.ARCHIVED;
+    }) => {
+      const response = await roomService.updateListingStatus(id, status);
+      return response;
+    },
+    onSuccess: (_, variables) => {
+      toast.success(UpdateListingStatus.success.title, {
+        description: UpdateListingStatus.success.description,
+        style: { background: SUCCESSTOAST, color: "#fff" },
+      });
+      queryClient.invalidateQueries({
+        queryKey: [ROOM_QUERY_KEYS.GET_ROOMS],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [ROOM_QUERY_KEYS.GET_ROOM, variables.id],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [ROOM_QUERY_KEYS.GET_ROOM_STATS],
+      });
+    },
+    onError: () => {
+      toast.error(UpdateListingStatus.error.title, {
+        description: UpdateListingStatus.error.description,
         style: { background: FAILURETOAST, color: "#fff" },
       });
     },

@@ -11,7 +11,7 @@ import { useRooms } from "@/hooks/use-rooms";
 
 export function FeaturedRooms() {
   const [activeTab, setActiveTab] = useState("featured");
-  const { rooms, loading } = useRooms({ limit: 6 });
+  const { rooms, loading } = useRooms();
 
   const tabs = [
     { value: "featured", label: "Featured", icon: Sparkles },

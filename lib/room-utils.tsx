@@ -26,7 +26,12 @@ export const getStatusBadge = (status: RoomStatus) => {
     },
   };
 
-  const variant = variants[status] || variants[RoomStatus.PENDING];
+  const variant =
+    variants[RoomStatus.APPROVED] ||
+    variants[RoomStatus.PENDING] ||
+    variants[RoomStatus.REJECTED] ||
+    variants[RoomStatus.ARCHIVED] ||
+    variants[RoomStatus.PENDING];
   const Icon = variant.icon;
 
   return (
