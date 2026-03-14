@@ -1,3 +1,4 @@
+// src/http/services/commission.service.ts
 import { privateApi } from "@/http/api/privateApi";
 
 export interface CommissionSettings {
@@ -11,6 +12,7 @@ export interface CommissionSettings {
 
 export interface CommissionStats {
   activeSettings: CommissionSettings;
+  settingsHistory: CommissionSettings[];
   stats: {
     totalRooms: number;
     approvedRooms: number;
@@ -27,42 +29,40 @@ export interface CommissionStats {
   };
 }
 
-export interface CommissionCalculation {
-  serviceCharge: number;
-  commissionPercentage: number;
-  commissionAmount: number;
-  netAmount: number;
-  roomId: string;
-  roomTitle: string;
-  userId: string;
-  userName: string;
-  userPhone: string;
+export interface CommissionFilters {
+  page?: number;
+  take?: number;
+  search?: string;
+  sort?: "newest" | "oldest";
 }
 
-export interface CommissionHistoryItem {
-  id: string;
-  roomId: string;
-  roomTitle: string;
-  userId: string;
-  userName: string;
-  serviceCharge: number;
-  commissionAmount: number;
-  netAmount: number;
-  appliedAt: string;
-  transactionId: string;
+export interface CommissionsResponse {
+  data: CommissionSettings[];
+  pagination: {
+    page: number;
+    take: number;
+    total: number;
+    count: number;
+    previousPage: number | null;
+    nextPage: number | null;
+  };
 }
 
 export const commissionService = {
   // Get active settings
-  getSettings: async (): Promise<CommissionSettings> => {
+  getActiveSettings: async (): Promise<CommissionSettings> => {
     const response = await privateApi.get("/commission/settings");
     return response.data.data;
   },
 
-  // Get all settings
-  getAllSettings: async (): Promise<CommissionSettings[]> => {
-    const response = await privateApi.get("/commission/settings/all");
-    return response.data.data;
+  // Get all settings with pagination
+  getAllSettings: async (
+    params?: CommissionFilters,
+  ): Promise<CommissionsResponse> => {
+    const response = await privateApi.get("/commission/settings/all", {
+      params,
+    });
+    return response.data;
   },
 
   // Get settings by ID
@@ -116,15 +116,7 @@ export const commissionService = {
     return response.data.data;
   },
 
-  // Calculate commission for a room
-  calculateCommission: async (
-    roomId: string,
-  ): Promise<CommissionCalculation> => {
-    const response = await privateApi.get(`/commission/calculate/${roomId}`);
-    return response.data.data;
-  },
-
-  // Apply commission to all pending rooms
+  // Recalculate pending commissions
   recalculatePendingCommissions: async (): Promise<{
     totalProcessed: number;
     successful: number;

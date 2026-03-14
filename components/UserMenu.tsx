@@ -24,6 +24,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
+import { UserRole } from "@/types/user.types";
 
 interface UserMenuProps {
   user: any;
@@ -43,21 +44,21 @@ export function UserMenu({
   // Get dashboard link based on user role
   const getDashboardLink = () => {
     switch (user?.role) {
-      case "ADMIN":
+      case user.role === UserRole.ADMIN:
         return "/admin/dashboard";
-      case "USER":
+      case user.role === UserRole.USER:
         return "/user/dashboard";
       default:
-        return "/dashboard";
+        return "/user/dashboard";
     }
   };
 
   // Get dashboard label based on user role
   const getDashboardLabel = () => {
     switch (user?.role) {
-      case "ADMIN":
+      case user.role === UserRole.ADMIN:
         return "Admin Dashboard";
-      case "USER":
+      case user.role === UserRole.USER:
         return "My Dashboard";
       default:
         return "Dashboard";
@@ -67,7 +68,7 @@ export function UserMenu({
   // Get role badge color
   const getRoleBadgeVariant = () => {
     switch (user?.role) {
-      case "ADMIN":
+      case UserRole.ADMIN:
         return "destructive";
       case "USER":
         return "default";
@@ -78,9 +79,9 @@ export function UserMenu({
 
   const getRoleIcon = () => {
     switch (user?.role) {
-      case "ADMIN":
+      case UserRole.ADMIN:
         return <Shield className="w-3 h-3 mr-1" />;
-      case "USER":
+      case UserRole.USER:
         return <Star className="w-3 h-3 mr-1" />;
       default:
         return null;

@@ -21,6 +21,14 @@ export default function UserLayout({
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const isMobile = useMediaQuery("(max-width: 768px)");
+  const isTablet = useMediaQuery("(min-width: 769px) and (max-width: 1024px)");
+
+  // Auto collapse sidebar on tablet
+  useEffect(() => {
+    if (isTablet) {
+      setIsSidebarCollapsed(true);
+    }
+  }, [isTablet]);
 
   // Close mobile menu on route change
   useEffect(() => {
@@ -82,7 +90,7 @@ export default function UserLayout({
         {/* Sidebar - Desktop */}
         <div
           className={cn(
-            "hidden md:block fixed inset-y-0 left-0 z-50",
+            "hidden md:block fixed inset-y-0 left-0 z-50 transition-all duration-300",
             isSidebarCollapsed ? "w-20" : "w-64",
           )}
         >
@@ -95,7 +103,7 @@ export default function UserLayout({
         {/* Mobile Menu Overlay */}
         {isMobile && isMobileMenuOpen && (
           <div
-            className="fixed inset-0 bg-black/50 z-40 md:hidden"
+            className="fixed inset-0 bg-black/50 z-40 md:hidden animate-fade-in"
             onClick={() => setIsMobileMenuOpen(false)}
           />
         )}
@@ -130,7 +138,7 @@ export default function UserLayout({
 
           {/* Main Content Area */}
           <main className="min-h-[calc(100vh-4rem)] bg-gradient-to-br from-gray-50 via-white to-gray-50">
-            <div className="p-4 md:p-6 lg:p-8">
+            <div className="p-3 sm:p-4 md:p-6 lg:p-8">
               <div className="max-w-7xl mx-auto">
                 {/* Page Content */}
                 {children}
