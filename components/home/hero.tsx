@@ -7,18 +7,20 @@ import {
   ArrowRight,
   Home,
   MapPin,
-  Play,
   Shield,
   Star,
   Users,
 } from "lucide-react";
 import Image from "next/image";
 import { Button } from "../ui/button";
+import { useRouter } from "next/navigation";
 
 export function Hero() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
   const [isMounted, setIsMounted] = useState(false);
+
+  const router = useRouter();
 
   const { scrollYProgress } = useScroll({
     target: containerRef,
@@ -187,7 +189,8 @@ export function Hero() {
         >
           <Button
             size="lg"
-            className="group relative overflow-hidden rounded-full px-8 py-6 text-base bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
+            className="group relative overflow-hidden rounded-full px-8 py-6 text-base bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer"
+            onClick={() => router.push("/rooms")}
           >
             <span className="relative z-10 flex items-center gap-2">
               Start Exploring
@@ -199,14 +202,6 @@ export function Hero() {
               whileHover={{ x: "100%" }}
               transition={{ duration: 0.5 }}
             />
-          </Button>
-          <Button
-            size="lg"
-            variant="outline"
-            className="rounded-full px-8 py-6 text-base border-white/20 text-white hover:bg-white/10 hover:border-white/30 transition-all duration-300"
-          >
-            <Play className="w-4 h-4 mr-2" />
-            Watch Demo
           </Button>
         </motion.div>
 

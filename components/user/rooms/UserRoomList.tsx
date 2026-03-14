@@ -339,7 +339,7 @@ export function UserRoomList({ initialFilters = {} }: UserRoomListProps) {
               asChild
               className="bg-primary hover:bg-primary/90 cursor-pointer"
             >
-              <Link href="/user/dashboard/rooms/add">
+              <Link href="/user/dashboard/rooms/create">
                 <Plus className="h-4 w-4 mr-2" />
                 List New Room
               </Link>

@@ -1,8 +1,17 @@
+// src/components/Navlinks.tsx
 "use client";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Hotel, Calendar, LayoutDashboard, Sparkles } from "lucide-react";
+import {
+  Home,
+  Hotel,
+  Calendar,
+  LayoutDashboard,
+  Sparkles,
+  Search,
+  Compass,
+} from "lucide-react";
 
 interface NavLinksProps {
   variant?: "desktop" | "mobile";
@@ -47,9 +56,10 @@ export function NavLinks({
     }
   };
 
-  // Public navigation items
+  // Public navigation items - Added Browse Rooms
   const publicLinks = [
     { href: "/", label: "Home", icon: Home },
+    { href: "/rooms", label: "Browse Rooms", icon: Compass },
     { href: "/about", label: "About", icon: Sparkles },
     { href: "/contact", label: "Contact", icon: Hotel },
   ];
@@ -62,8 +72,9 @@ export function NavLinks({
           label: getDashboardLabel(),
           icon: LayoutDashboard,
         },
+        { href: "/rooms", label: "Browse Rooms", icon: Compass },
         { href: "/bookings", label: "My Bookings", icon: Calendar },
-        ...publicLinks.slice(1),
+        ...publicLinks.slice(2),
       ]
     : publicLinks;
 
