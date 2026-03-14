@@ -14,7 +14,6 @@ import {
   Menu,
   Clock,
   CheckCircle,
-  CreditCard,
   Download,
 } from "lucide-react";
 import { cn } from "@/lib/utils";

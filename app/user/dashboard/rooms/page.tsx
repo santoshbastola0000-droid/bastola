@@ -1,5 +1,5 @@
-const page = () => {
-  return <div>page</div>;
-};
+import { UserRoomList } from "@/components/user/rooms/UserRoomList";
 
-export default page;
+export default function UserRoomsPage() {
+  return <UserRoomList />;
+}

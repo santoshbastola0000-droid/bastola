@@ -76,7 +76,6 @@ import {
   getRoleOptions,
 } from "@/lib/user-utils";
 import { UsersListSkeleton } from "@/components/user/UsersListSkeleton";
-import { log } from "console";
 
 export default function UsersList() {
   const queryClient = useQueryClient();
