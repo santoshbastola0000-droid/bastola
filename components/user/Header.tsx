@@ -1,3 +1,4 @@
+// src/components/user/Header.tsx
 "use client";
 
 import { useState } from "react";
@@ -17,6 +18,8 @@ import {
   Moon,
   Sun,
   User,
+  Star,
+  Calendar,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,7 +39,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { useUserStore } from "@/stores/user-store";
@@ -90,6 +93,11 @@ export function UserHeader({
   const { user } = useUserStore();
   const { logout } = useLogout();
   const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useState(() => {
+    setMounted(true);
+  });
 
   const getPageTitle = () => {
     const path = pathname?.split("/").pop() || "Dashboard";
@@ -143,7 +151,7 @@ export function UserHeader({
 
   return (
     <>
-      <header className="sticky top-0 z-30 h-16 bg-white/80 backdrop-blur-md border-b border-border/50">
+      <header className="sticky top-0 z-30 h-16 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-border/50">
         <div className="flex items-center justify-between h-full px-4 md:px-6 lg:px-8">
           {/* Left Section */}
           <div className="flex items-center gap-4">
@@ -164,7 +172,7 @@ export function UserHeader({
 
             {/* Page Title */}
             <div>
-              <h1 className="text-xl md:text-2xl font-bold text-gray-800">
+              <h1 className="text-xl md:text-2xl font-bold text-gray-800 dark:text-gray-100">
                 {getPageTitle()}
               </h1>
               <p className="text-xs text-muted-foreground hidden sm:flex items-center gap-1">
@@ -231,7 +239,7 @@ export function UserHeader({
                       setTheme(theme === "dark" ? "light" : "dark")
                     }
                   >
-                    {theme === "dark" ? (
+                    {mounted && theme === "dark" ? (
                       <Sun className="h-5 w-5" />
                     ) : (
                       <Moon className="h-5 w-5" />
@@ -268,7 +276,7 @@ export function UserHeader({
                       variant="ghost"
                       size="sm"
                       onClick={markAllAsRead}
-                      className="text-xs h-8"
+                      className="text-xs h-8 cursor-pointer"
                     >
                       Mark all as read
                     </Button>
@@ -366,7 +374,7 @@ export function UserHeader({
 
                   <DropdownMenuItem
                     className="cursor-pointer hover:bg-primary/10"
-                    onClick={() => router.push("/user/wallet")}
+                    onClick={() => router.push("/user/dashboard/wallet")}
                   >
                     <Wallet className="mr-2 h-4 w-4" />
                     <span>Wallet</span>
@@ -375,7 +383,7 @@ export function UserHeader({
 
                   <DropdownMenuItem
                     className="cursor-pointer hover:bg-primary/10"
-                    onClick={() => router.push("/user/saved")}
+                    onClick={() => router.push("/user/dashboard/saved")}
                   >
                     <Heart className="mr-2 h-4 w-4" />
                     <span>Saved Rooms</span>
@@ -384,11 +392,29 @@ export function UserHeader({
 
                   <DropdownMenuItem
                     className="cursor-pointer hover:bg-primary/10"
-                    onClick={() => router.push("/user/messages")}
+                    onClick={() => router.push("/user/dashboard/bookings")}
+                  >
+                    <Calendar className="mr-2 h-4 w-4" />
+                    <span>Bookings</span>
+                    <Badge className="ml-auto bg-purple-500">2</Badge>
+                  </DropdownMenuItem>
+
+                  <DropdownMenuItem
+                    className="cursor-pointer hover:bg-primary/10"
+                    onClick={() => router.push("/user/dashboard/messages")}
                   >
                     <MessageSquare className="mr-2 h-4 w-4" />
                     <span>Messages</span>
                     <Badge className="ml-auto bg-red-500">5</Badge>
+                  </DropdownMenuItem>
+
+                  <DropdownMenuItem
+                    className="cursor-pointer hover:bg-primary/10"
+                    onClick={() => router.push("/user/dashboard/reviews")}
+                  >
+                    <Star className="mr-2 h-4 w-4" />
+                    <span>Reviews</span>
+                    <Badge className="ml-auto bg-yellow-500">3</Badge>
                   </DropdownMenuItem>
                 </DropdownMenuGroup>
 
@@ -397,7 +423,7 @@ export function UserHeader({
                 <DropdownMenuGroup>
                   <DropdownMenuItem
                     className="cursor-pointer hover:bg-primary/10"
-                    onClick={() => router.push("/user/settings")}
+                    onClick={() => router.push("/user/dashboard/settings")}
                   >
                     <Settings className="mr-2 h-4 w-4" />
                     <span>Settings</span>
@@ -405,7 +431,7 @@ export function UserHeader({
 
                   <DropdownMenuItem
                     className="cursor-pointer hover:bg-primary/10"
-                    onClick={() => router.push("/support")}
+                    onClick={() => router.push("/user/dashboard/support")}
                   >
                     <HelpCircle className="mr-2 h-4 w-4" />
                     <span>Help & Support</span>
@@ -423,7 +449,7 @@ export function UserHeader({
                 <DropdownMenuSeparator />
 
                 <DropdownMenuItem
-                  className="cursor-pointer text-red-600 hover:text-red-700 hover:bg-red-50 focus:text-red-700 focus:bg-red-50"
+                  className="cursor-pointer text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950 focus:text-red-700 focus:bg-red-50"
                   onClick={handleLogoutClick}
                 >
                   <LogOut className="mr-2 h-4 w-4" />

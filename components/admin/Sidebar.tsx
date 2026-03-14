@@ -1,4 +1,3 @@
-// src/components/admin/Sidebar.tsx
 "use client";
 
 import { useState, useEffect } from "react";
@@ -8,19 +7,13 @@ import {
   LayoutDashboard,
   Building2,
   Users,
-  Settings,
   LogOut,
   ChevronLeft,
   ChevronRight,
   Menu,
-  X,
   Home,
   Wallet,
   Percent,
-  HelpCircle,
-  Bell,
-  BarChart3,
-  ChevronDown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -87,16 +80,6 @@ const navItems: NavItem[] = [
     title: "Commission",
     href: "/admin/dashboard/commission",
     icon: Percent,
-  },
-  {
-    title: "Analytics",
-    href: "/admin/dashboard/analytics",
-    icon: BarChart3,
-  },
-  {
-    title: "Settings",
-    href: "/admin/dashboard/settings",
-    icon: Settings,
   },
 ];
 

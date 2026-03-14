@@ -23,9 +23,28 @@ export const roomService = {
     return response.data;
   },
 
-  // Get user's own rooms
-  getMyRooms: async (params: RoomFilters = {}): Promise<RoomsResponse> => {
-    const response = await privateApi.get("/rooms/my-rooms", { params });
+  getMyRooms: async (filters?: RoomFilters): Promise<RoomsResponse> => {
+    const params = new URLSearchParams();
+
+    if (filters?.approvalStatus) {
+      params.append("approvalStatus", filters.approvalStatus);
+    }
+    if (filters?.listingStatus) {
+      params.append("listingStatus", filters.listingStatus);
+    }
+    if (filters?.search) {
+      params.append("search", filters.search);
+    }
+    if (filters?.page !== undefined) {
+      params.append("page", filters.page.toString());
+    }
+    if (filters?.take !== undefined) {
+      params.append("take", filters.take.toString());
+    }
+
+    const response = await privateApi.get(
+      `/rooms/my-rooms?${params.toString()}`,
+    );
     return response.data;
   },
 
