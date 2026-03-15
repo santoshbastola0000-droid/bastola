@@ -10,6 +10,12 @@ const nextConfig = {
       },
       {
         protocol: "https",
+        hostname: "api.rentalservise.com",
+        port: "4001",
+        pathname: "/uploads/**",
+      },
+      {
+        protocol: "https",
         hostname: "plus.unsplash.com",
         port: "",
         pathname: "/**",
