@@ -31,12 +31,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <ThemeProvider
-          attribute="class" // adds class="dark" to <html>
-          defaultTheme="system" // respect OS preference on first visit
-          enableSystem // allows "system" as a theme value
-          disableTransitionOnChange // prevents flash of unstyled content on toggle
-        >
+        <ThemeProvider>
           <QueryClientProviderWrapper>
             <TooltipProvider>{children}</TooltipProvider>
             <Toaster />

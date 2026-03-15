@@ -1,7 +1,6 @@
 import { privateApi } from "@/http/api/privateApi";
 import {
   Room,
-  CreateRoomDTO,
   UpdateRoomDTO,
   RoomFilters,
   RoomsResponse,
