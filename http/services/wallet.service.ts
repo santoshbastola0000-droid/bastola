@@ -73,7 +73,7 @@ class WalletService {
       transactionReference?: string;
     },
   ) {
-    const response = await privateApi.put(
+    const response = await privateApi.patch(
       `${this.baseUrl}/admin/withdrawals/${id}/process`,
       data,
     );

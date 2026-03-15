@@ -14,6 +14,7 @@ import {
   Home,
   Wallet,
   Percent,
+  BarChart,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -53,13 +54,11 @@ const navItems: NavItem[] = [
     title: "Rooms",
     href: "/admin/dashboard/rooms",
     icon: Building2,
-    badge: 12, // This should come from API
   },
   {
     title: "Pending Approvals",
     href: "/admin/dashboard/rooms/pending",
     icon: Building2,
-    badge: 5, // This should come from API
   },
   {
     title: "Approved Rooms",
@@ -80,6 +79,11 @@ const navItems: NavItem[] = [
     title: "Commission",
     href: "/admin/dashboard/commission",
     icon: Percent,
+  },
+  {
+    title: "Records",
+    href: "/admin/dashboard/records",
+    icon: BarChart,
   },
 ];
 

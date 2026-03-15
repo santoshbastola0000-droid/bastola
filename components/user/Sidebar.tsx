@@ -76,12 +76,6 @@ const mainNavItems: NavItem[] = [
     href: "/user/dashboard/wallet",
     icon: Wallet,
   },
-
-  {
-    title: "Withdrawals",
-    href: "/user/dashboard/wallet/withdrawals",
-    icon: Download,
-  },
 ];
 
 export function UserSidebar({
