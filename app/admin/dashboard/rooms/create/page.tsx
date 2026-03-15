@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import dynamic from "next/dynamic";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import {
   Building2,
   MapPin,
@@ -448,17 +448,26 @@ export default function CreateRoomPage() {
       description: "Please wait while we process your request.",
     });
 
-    // Call mutation without onSuccess/onError in the options
     createRoomMutation.mutate(
       { data: formData },
       {
         onSuccess: () => {
           toast.dismiss(loadingToast);
-          toast.success("🎉 Room created successfully!", {
-            description: "Your room has been submitted for admin approval.",
-            duration: 5000,
-          });
-          router.push("/admin/dashboard/rooms");
+
+          // Role-based success message and routing
+          if (user?.role === "Admin") {
+            toast.success("🎉 Room added successfully!", {
+              description: "The room has been added to the system.",
+              duration: 5000,
+            });
+            router.push("/admin/dashboard/rooms");
+          } else {
+            toast.success("🎉 Room created successfully!", {
+              description: "Your room has been submitted for admin approval.",
+              duration: 5000,
+            });
+            router.push("/user/dashboard/rooms");
+          }
         },
         onError: (error: any) => {
           toast.dismiss(loadingToast);
@@ -750,28 +759,6 @@ export default function CreateRoomPage() {
                         )}
                       />
                     </div>
-
-                    <FormField
-                      control={form.control}
-                      name="address"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>
-                            Full Address <span className="text-red-500">*</span>
-                          </FormLabel>
-                          <FormControl>
-                            <Textarea
-                              placeholder="Enter the complete address of your property"
-                              className={cn(
-                                formErrors.address && "border-red-500",
-                              )}
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
                   </CardContent>
                 </Card>
               </TabsContent>

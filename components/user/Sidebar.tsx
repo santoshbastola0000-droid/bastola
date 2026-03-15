@@ -30,8 +30,6 @@ import { useUserStore } from "@/stores/user-store";
 import { useLogout } from "@/hooks/useLogout";
 import { LogoutConfirmDialog } from "@/components/LogoutConfirmDialog";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import Image from "next/image";
-import { useTheme } from "next-themes";
 
 interface UserSidebarProps {
   isCollapsed: boolean;
@@ -57,7 +55,6 @@ const mainNavItems: NavItem[] = [
     title: "My Rooms",
     href: "/user/dashboard/rooms",
     icon: Building2,
-    badge: 5,
   },
   {
     title: "Add New Room",
@@ -68,19 +65,16 @@ const mainNavItems: NavItem[] = [
     title: "Pending Approvals",
     href: "/user/dashboard/rooms/pending",
     icon: Clock,
-    badge: 2,
   },
   {
     title: "Approved Rooms",
     href: "/user/dashboard/rooms/approved",
     icon: CheckCircle,
-    badge: 3,
   },
   {
     title: "Wallet",
     href: "/user/dashboard/wallet",
     icon: Wallet,
-    badge: "₹12.5k",
   },
 
   {
@@ -100,7 +94,6 @@ export function UserSidebar({
   const router = useRouter();
   const { user } = useUserStore();
   const { logout } = useLogout();
-  const { theme } = useTheme();
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [mounted, setMounted] = useState(false);

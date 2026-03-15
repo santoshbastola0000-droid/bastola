@@ -90,9 +90,6 @@ export default function UserApprovedRoomsPage() {
               Refresh
             </Button>
           </div>
-
-          {/* Status Tabs */}
-          <StatusTabs />
         </div>
 
         {/* Search Bar */}
@@ -206,7 +203,7 @@ export default function UserApprovedRoomsPage() {
               {!searchTerm && (
                 <Button
                   onClick={() =>
-                    (window.location.href = "/user/dashboard/rooms/add")
+                    (window.location.href = "/user/dashboard/rooms/create")
                   }
                   className="mt-6 bg-primary hover:bg-primary/90"
                 >

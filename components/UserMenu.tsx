@@ -1,17 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import {
-  LogOut,
-  User,
-  Settings,
-  Calendar,
-  LayoutDashboard,
-  HelpCircle,
-  Star,
-  Shield,
-} from "lucide-react";
+import { LogOut, LayoutDashboard, Star, Shield } from "lucide-react";
 import { UserAvatar } from "@/components/UserAvatar";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -39,9 +29,6 @@ export function UserMenu({
   variant = "desktop",
   scrolled,
 }: UserMenuProps) {
-  const router = useRouter();
-
-  // Get dashboard link based on user role
   const getDashboardLink = () => {
     switch (user?.role) {
       case user.role === UserRole.ADMIN:
@@ -65,7 +52,6 @@ export function UserMenu({
     }
   };
 
-  // Get role badge color
   const getRoleBadgeVariant = () => {
     switch (user?.role) {
       case UserRole.ADMIN:
@@ -92,7 +78,7 @@ export function UserMenu({
     return (
       <div className="space-y-4">
         {/* User Info */}
-        <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-[var(--primary)]/5 to-transparent rounded-xl">
+        <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-[var(--primary)]/5 to-transparent rounded-xl cursor-pointer">
           <UserAvatar
             user={user}
             className="h-12 w-12 ring-2 ring-[var(--primary)]/20"
@@ -121,27 +107,6 @@ export function UserMenu({
             <LayoutDashboard className="w-5 h-5 text-[var(--primary)]" />
             {getDashboardLabel()}
           </Link>
-          <Link
-            href="/bookings"
-            className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-xl transition-all"
-          >
-            <Calendar className="w-5 h-5 text-[var(--primary)]" />
-            My Bookings
-          </Link>
-          <Link
-            href="/settings"
-            className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-xl transition-all"
-          >
-            <Settings className="w-5 h-5 text-[var(--primary)]" />
-            Settings
-          </Link>
-          <Link
-            href="/help"
-            className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-slate-600 hover:bg-slate-50 rounded-xl transition-all"
-          >
-            <HelpCircle className="w-5 h-5 text-[var(--primary)]" />
-            Help & Support
-          </Link>
           <button
             onClick={onLogout}
             className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-red-600 hover:bg-red-50 rounded-xl transition-all"
@@ -163,7 +128,7 @@ export function UserMenu({
             scrolled ? "" : "border-2 border-white/20"
           }`}
         >
-          <UserAvatar user={user} />
+          <UserAvatar className="cursor-pointer" user={user} />
           <span className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 border-2 border-white rounded-full" />
         </Button>
       </DropdownMenuTrigger>
@@ -194,18 +159,6 @@ export function UserMenu({
             <Link href={getDashboardLink()} className="cursor-pointer">
               <LayoutDashboard className="mr-2 h-4 w-4 text-[var(--primary)]" />
               <span>{getDashboardLabel()}</span>
-            </Link>
-          </DropdownMenuItem>
-          <DropdownMenuItem asChild>
-            <Link href="/bookings" className="cursor-pointer">
-              <Calendar className="mr-2 h-4 w-4 text-[var(--primary)]" />
-              <span>My Bookings</span>
-            </Link>
-          </DropdownMenuItem>
-          <DropdownMenuItem asChild>
-            <Link href="/settings" className="cursor-pointer">
-              <Settings className="mr-2 h-4 w-4 text-[var(--primary)]" />
-              <span>Settings</span>
             </Link>
           </DropdownMenuItem>
         </DropdownMenuGroup>
