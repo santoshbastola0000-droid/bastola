@@ -4,6 +4,7 @@ import "./globals.css";
 import { QueryClientProviderWrapper } from "@/app/providers";
 import { Toaster } from "sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { ThemeProvider } from "@/components/theme-provider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -30,10 +31,17 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <QueryClientProviderWrapper>
-          <TooltipProvider>{children}</TooltipProvider>
-          <Toaster />
-        </QueryClientProviderWrapper>
+        <ThemeProvider
+          attribute="class" // adds class="dark" to <html>
+          defaultTheme="system" // respect OS preference on first visit
+          enableSystem // allows "system" as a theme value
+          disableTransitionOnChange // prevents flash of unstyled content on toggle
+        >
+          <QueryClientProviderWrapper>
+            <TooltipProvider>{children}</TooltipProvider>
+            <Toaster />
+          </QueryClientProviderWrapper>
+        </ThemeProvider>
       </body>
     </html>
   );

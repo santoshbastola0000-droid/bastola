@@ -14,7 +14,6 @@ import {
   Menu,
   Clock,
   CheckCircle,
-  Download,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -30,8 +29,6 @@ import { useUserStore } from "@/stores/user-store";
 import { useLogout } from "@/hooks/useLogout";
 import { LogoutConfirmDialog } from "@/components/LogoutConfirmDialog";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import Image from "next/image";
-import { useTheme } from "next-themes";
 
 interface UserSidebarProps {
   isCollapsed: boolean;
@@ -57,7 +54,6 @@ const mainNavItems: NavItem[] = [
     title: "My Rooms",
     href: "/user/dashboard/rooms",
     icon: Building2,
-    badge: 5,
   },
   {
     title: "Add New Room",
@@ -68,25 +64,16 @@ const mainNavItems: NavItem[] = [
     title: "Pending Approvals",
     href: "/user/dashboard/rooms/pending",
     icon: Clock,
-    badge: 2,
   },
   {
     title: "Approved Rooms",
     href: "/user/dashboard/rooms/approved",
     icon: CheckCircle,
-    badge: 3,
   },
   {
     title: "Wallet",
     href: "/user/dashboard/wallet",
     icon: Wallet,
-    badge: "₹12.5k",
-  },
-
-  {
-    title: "Withdrawals",
-    href: "/user/dashboard/wallet/withdrawals",
-    icon: Download,
   },
 ];
 
@@ -100,7 +87,6 @@ export function UserSidebar({
   const router = useRouter();
   const { user } = useUserStore();
   const { logout } = useLogout();
-  const { theme } = useTheme();
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -250,7 +236,7 @@ export function UserSidebar({
           </div>
           {!isCollapsed && (
             <div>
-              <h2 className="font-bold text-lg">RoomServise</h2>
+              <h2 className="font-bold text-lg">RentalServise</h2>
               <p className="text-xs text-gray-400">User Dashboard</p>
             </div>
           )}

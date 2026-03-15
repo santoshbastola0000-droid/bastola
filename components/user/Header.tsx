@@ -1,26 +1,8 @@
-// src/components/user/Header.tsx
 "use client";
 
 import { useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import {
-  Menu,
-  Search,
-  Bell,
-  ChevronDown,
-  Settings,
-  LogOut,
-  Home,
-  Heart,
-  MessageSquare,
-  Wallet,
-  HelpCircle,
-  Moon,
-  Sun,
-  User,
-  Star,
-  Calendar,
-} from "lucide-react";
+import { Search, ChevronDown, LogOut, Home, Moon, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -31,7 +13,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   DropdownMenuGroup,
-  DropdownMenuShortcut,
 } from "@/components/ui/dropdown-menu";
 import {
   Tooltip,
@@ -41,52 +22,20 @@ import {
 } from "@/components/ui/tooltip";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
 import { useUserStore } from "@/stores/user-store";
 import { useLogout } from "@/hooks/useLogout";
 import { useTheme } from "next-themes";
 import { LogoutConfirmDialog } from "@/components/LogoutConfirmDialog";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
 
 interface UserHeaderProps {
   isSidebarCollapsed?: boolean;
   onMenuClick?: () => void;
 }
 
-export function UserHeader({
-  isSidebarCollapsed = false,
-  onMenuClick,
-}: UserHeaderProps) {
+export function UserHeader({ onMenuClick }: UserHeaderProps) {
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [notifications, setNotifications] = useState([
-    {
-      id: 1,
-      title: "Your room listing is approved",
-      read: false,
-      time: "5 min ago",
-    },
-    { id: 2, title: "New booking request", read: false, time: "1 hour ago" },
-    {
-      id: 3,
-      title: "Payment of ₹1500 received",
-      read: true,
-      time: "2 hours ago",
-    },
-    {
-      id: 4,
-      title: "Withdrawal request processed",
-      read: true,
-      time: "1 day ago",
-    },
-  ]);
 
   const pathname = usePathname();
   const router = useRouter();
@@ -119,8 +68,6 @@ export function UserHeader({
     return user?.email?.slice(0, 2).toUpperCase() || "GU";
   };
 
-  const unreadCount = notifications.filter((n) => !n.read).length;
-
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
@@ -138,39 +85,11 @@ export function UserHeader({
     await logout();
   };
 
-  const handleNotificationClick = (id: number) => {
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, read: true } : n)),
-    );
-    router.push("/user/notifications");
-  };
-
-  const markAllAsRead = () => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
-  };
-
   return (
     <>
       <header className="sticky top-0 z-30 h-16 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-border/50">
         <div className="flex items-center justify-between h-full px-4 md:px-6 lg:px-8">
-          {/* Left Section */}
           <div className="flex items-center gap-4">
-            {/* Mobile Menu Button */}
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onMenuClick}
-              className="md:hidden hover:bg-primary/10 cursor-pointer relative"
-            >
-              <Menu className="h-5 w-5" />
-              {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full text-[10px] flex items-center justify-center text-white">
-                  {unreadCount}
-                </span>
-              )}
-            </Button>
-
-            {/* Page Title */}
             <div>
               <h1 className="text-xl md:text-2xl font-bold text-gray-800 dark:text-gray-100">
                 {getPageTitle()}
@@ -192,41 +111,7 @@ export function UserHeader({
             </div>
           </div>
 
-          {/* Right Section */}
           <div className="flex items-center gap-2 md:gap-4">
-            {/* Mobile Search Toggle */}
-            <Button
-              variant="ghost"
-              size="icon"
-              className="md:hidden hover:bg-primary/10 cursor-pointer"
-              onClick={() => setShowSearch(!showSearch)}
-            >
-              <Search className="h-5 w-5" />
-            </Button>
-
-            {/* Search Bar - Desktop */}
-            <form
-              onSubmit={handleSearch}
-              className={cn(
-                "hidden md:flex relative transition-all duration-300",
-                isSidebarCollapsed
-                  ? "w-[300px] lg:w-[400px]"
-                  : "w-[250px] lg:w-[350px]",
-              )}
-            >
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                type="search"
-                placeholder="Search rooms, locations..."
-                className="pl-9 pr-4 h-10 bg-muted/30 border-0 focus-visible:ring-1 focus-visible:ring-primary rounded-full"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-              <kbd className="absolute right-3 top-1/2 -translate-y-1/2 hidden lg:flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground">
-                <span className="text-xs">⌘</span>K
-              </kbd>
-            </form>
-
             {/* Theme Toggle */}
             <TooltipProvider>
               <Tooltip>
@@ -251,77 +136,6 @@ export function UserHeader({
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
-
-            {/* Notifications */}
-            <Sheet>
-              <SheetTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="relative hover:bg-primary/10 cursor-pointer"
-                >
-                  <Bell className="h-5 w-5" />
-                  {unreadCount > 0 && (
-                    <Badge className="absolute -top-1 -right-1 h-5 min-w-[20px] px-1 flex items-center justify-center bg-primary">
-                      {unreadCount}
-                    </Badge>
-                  )}
-                </Button>
-              </SheetTrigger>
-              <SheetContent className="w-full sm:w-[400px] p-0">
-                <SheetHeader className="p-4 border-b flex flex-row items-center justify-between">
-                  <SheetTitle>Notifications</SheetTitle>
-                  {unreadCount > 0 && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={markAllAsRead}
-                      className="text-xs h-8 cursor-pointer"
-                    >
-                      Mark all as read
-                    </Button>
-                  )}
-                </SheetHeader>
-                <div className="divide-y max-h-[calc(100vh-80px)] overflow-y-auto">
-                  {notifications.length > 0 ? (
-                    notifications.map((notification) => (
-                      <div
-                        key={notification.id}
-                        className={cn(
-                          "p-4 hover:bg-muted/50 cursor-pointer transition-colors",
-                          !notification.read && "bg-primary/5",
-                        )}
-                        onClick={() => handleNotificationClick(notification.id)}
-                      >
-                        <div className="flex items-start gap-3">
-                          <div className="relative">
-                            <Bell className="h-4 w-4 text-primary" />
-                            {!notification.read && (
-                              <span className="absolute -top-1 -right-1 w-2 h-2 bg-primary rounded-full" />
-                            )}
-                          </div>
-                          <div className="flex-1">
-                            <p className="text-sm font-medium">
-                              {notification.title}
-                            </p>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              {notification.time}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="p-8 text-center">
-                      <Bell className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-                      <p className="text-sm text-muted-foreground">
-                        No notifications
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </SheetContent>
-            </Sheet>
 
             {/* User Menu */}
             <DropdownMenu>
@@ -362,81 +176,9 @@ export function UserHeader({
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
 
-                <DropdownMenuGroup>
-                  <DropdownMenuItem
-                    className="cursor-pointer hover:bg-primary/10"
-                    onClick={() => router.push("/user/profile")}
-                  >
-                    <User className="mr-2 h-4 w-4" />
-                    <span>Profile</span>
-                    <DropdownMenuShortcut>⌘P</DropdownMenuShortcut>
-                  </DropdownMenuItem>
-
-                  <DropdownMenuItem
-                    className="cursor-pointer hover:bg-primary/10"
-                    onClick={() => router.push("/user/dashboard/wallet")}
-                  >
-                    <Wallet className="mr-2 h-4 w-4" />
-                    <span>Wallet</span>
-                    <Badge className="ml-auto bg-green-500">₹12.5k</Badge>
-                  </DropdownMenuItem>
-
-                  <DropdownMenuItem
-                    className="cursor-pointer hover:bg-primary/10"
-                    onClick={() => router.push("/user/dashboard/saved")}
-                  >
-                    <Heart className="mr-2 h-4 w-4" />
-                    <span>Saved Rooms</span>
-                    <Badge className="ml-auto bg-pink-500">8</Badge>
-                  </DropdownMenuItem>
-
-                  <DropdownMenuItem
-                    className="cursor-pointer hover:bg-primary/10"
-                    onClick={() => router.push("/user/dashboard/bookings")}
-                  >
-                    <Calendar className="mr-2 h-4 w-4" />
-                    <span>Bookings</span>
-                    <Badge className="ml-auto bg-purple-500">2</Badge>
-                  </DropdownMenuItem>
-
-                  <DropdownMenuItem
-                    className="cursor-pointer hover:bg-primary/10"
-                    onClick={() => router.push("/user/dashboard/messages")}
-                  >
-                    <MessageSquare className="mr-2 h-4 w-4" />
-                    <span>Messages</span>
-                    <Badge className="ml-auto bg-red-500">5</Badge>
-                  </DropdownMenuItem>
-
-                  <DropdownMenuItem
-                    className="cursor-pointer hover:bg-primary/10"
-                    onClick={() => router.push("/user/dashboard/reviews")}
-                  >
-                    <Star className="mr-2 h-4 w-4" />
-                    <span>Reviews</span>
-                    <Badge className="ml-auto bg-yellow-500">3</Badge>
-                  </DropdownMenuItem>
-                </DropdownMenuGroup>
-
                 <DropdownMenuSeparator />
 
                 <DropdownMenuGroup>
-                  <DropdownMenuItem
-                    className="cursor-pointer hover:bg-primary/10"
-                    onClick={() => router.push("/user/dashboard/settings")}
-                  >
-                    <Settings className="mr-2 h-4 w-4" />
-                    <span>Settings</span>
-                  </DropdownMenuItem>
-
-                  <DropdownMenuItem
-                    className="cursor-pointer hover:bg-primary/10"
-                    onClick={() => router.push("/user/dashboard/support")}
-                  >
-                    <HelpCircle className="mr-2 h-4 w-4" />
-                    <span>Help & Support</span>
-                  </DropdownMenuItem>
-
                   <DropdownMenuItem
                     className="cursor-pointer"
                     onClick={() => router.push("/")}

@@ -8,7 +8,11 @@ import {
   IndianRupee,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Transaction, TransactionStatus } from "@/types/wallet.types";
+import {
+  Transaction,
+  TransactionStatus,
+  TransactionType,
+} from "@/types/wallet.types";
 
 interface Props {
   transactions: Transaction[];
@@ -26,7 +30,6 @@ export function TransactionList({ transactions, limit, showAll }: Props) {
       case TransactionStatus.COMPLETED:
         return <CheckCircle className="h-4 w-4 text-green-500" />;
       case TransactionStatus.FAILED:
-      case TransactionStatus.CANCELLED:
         return <XCircle className="h-4 w-4 text-red-500" />;
       default:
         return <Clock className="h-4 w-4 text-yellow-500" />;
@@ -40,8 +43,6 @@ export function TransactionList({ transactions, limit, showAll }: Props) {
       [TransactionStatus.PENDING]:
         "bg-yellow-100 text-yellow-700 hover:bg-yellow-200",
       [TransactionStatus.FAILED]: "bg-red-100 text-red-700 hover:bg-red-200",
-      [TransactionStatus.CANCELLED]:
-        "bg-gray-100 text-gray-700 hover:bg-gray-200",
     };
 
     return (
@@ -75,14 +76,12 @@ export function TransactionList({ transactions, limit, showAll }: Props) {
           <div className="flex items-start gap-3">
             <div
               className={`p-2 rounded-full ${
-                transaction.type === "credit" ||
-                transaction.type === "commission"
+                transaction.type === TransactionType.COMMISSION
                   ? "bg-green-100"
                   : "bg-red-100"
               }`}
             >
-              {transaction.type === "credit" ||
-              transaction.type === "commission" ? (
+              {transaction.type === TransactionType.COMMISSION ? (
                 <ArrowDownLeft className={`h-4 w-4 text-green-600`} />
               ) : (
                 <ArrowUpRight className={`h-4 w-4 text-red-600`} />
@@ -111,16 +110,12 @@ export function TransactionList({ transactions, limit, showAll }: Props) {
           <div className="text-right">
             <p
               className={`font-semibold ${
-                transaction.type === "credit" ||
-                transaction.type === "commission"
+                transaction.type === TransactionType.COMMISSION
                   ? "text-green-600"
                   : "text-red-600"
               }`}
             >
-              {transaction.type === "credit" ||
-              transaction.type === "commission"
-                ? "+"
-                : "-"}
+              {transaction.type === TransactionType.COMMISSION ? "+" : "-"}
               Rs. {formatCurrency(transaction.netAmount)}
             </p>
             {transaction.commissionAmount > 0 && (

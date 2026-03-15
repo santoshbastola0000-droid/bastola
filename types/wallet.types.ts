@@ -1,34 +1,27 @@
-export enum TransactionType {
-  CREDIT = "credit",
-  DEBIT = "debit",
-  COMMISSION = "commission",
-  WITHDRAWAL = "withdrawal",
-  REFUND = "refund",
-  ADJUSTMENT = "adjustment",
-}
-
-export enum TransactionStatus {
-  PENDING = "pending",
-  COMPLETED = "completed",
-  FAILED = "failed",
-  CANCELLED = "cancelled",
+export enum PaymentMethod {
+  BANK_TRANSFER = "Bank Transfer",
+  ESEWA = "eSewa",
+  KHALTI = "Khalti",
+  QR_CODE = "QR Code",
+  CASH = "Cash",
 }
 
 export enum WithdrawalStatus {
-  PENDING = "pending",
-  APPROVED = "approved",
-  REJECTED = "rejected",
-  PROCESSING = "processing",
-  COMPLETED = "completed",
-  CANCELLED = "cancelled",
+  PENDING = "Pending",
+  APPROVED = "Approved",
+  REJECTED = "Rejected",
 }
 
-export enum PaymentMethod {
-  ESEWA = "esewa",
-  KHALTI = "khalti",
-  BANK_TRANSFER = "bank_transfer",
-  QR_CODE = "qr_code",
-  CASH = "cash",
+export enum TransactionType {
+  COMMISSION = "Commission",
+  WITHDRAWAL = "Withdrawal",
+  ADJUSTMENT = "Adjustment",
+}
+
+export enum TransactionStatus {
+  PENDING = "Pending",
+  COMPLETED = "Completed",
+  FAILED = "Failed",
 }
 
 export interface WalletBalanceType {
@@ -37,6 +30,15 @@ export interface WalletBalanceType {
   totalEarned: number;
   totalWithdrawn: number;
   commissionRate: number;
+}
+
+export interface WalletStats {
+  totalWallets: number;
+  totalBalance: number;
+  totalPending: number;
+  totalWithdrawn: number;
+  pendingWithdrawals: number;
+  totalCommissionEarned: number;
 }
 
 export interface Transaction {
@@ -48,39 +50,25 @@ export interface Transaction {
   netAmount: number;
   description: string;
   createdAt: string;
+  completedAt?: string;
   roomTitle?: string;
 }
 
-export interface WithdrawalRequest {
+export interface Withdrawal {
   id: string;
   amount: number;
   status: WithdrawalStatus;
   paymentMethod: PaymentMethod;
-  remarks: string;
-  adminRemarks: string;
+  paymentDetails?: string;
+  remarks?: string;
+  adminRemarks?: string;
   createdAt: string;
-  processedAt: string;
-  transactionReference: string;
+  processedAt?: string;
+  transactionReference?: string;
   user?: {
     id: string;
     name: string;
     email: string;
     phoneNumber: string;
   };
-  metadata?: {
-    bankName?: string;
-    accountNumber?: string;
-    accountName?: string;
-    qrCodeUrl?: string;
-    esewaNumber?: string;
-    khaltiNumber?: string;
-  };
-}
-
-export interface WalletStats {
-  totalWallets: number;
-  totalBalance: number;
-  totalPending: number;
-  totalWithdrawn: number;
-  pendingWithdrawals: number;
 }

@@ -1,4 +1,3 @@
-// src/app/user/dashboard/rooms/pending/page.tsx
 "use client";
 
 import { useState, useEffect } from "react";
@@ -11,7 +10,6 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { RoomCard } from "@/components/user/rooms/RoomCard";
-import { StatusTabs } from "@/components/user/rooms/StatusTabs";
 import { RoomDrawer } from "@/components/admin/RoomDrawer";
 
 export default function UserPendingRoomsPage() {
@@ -55,7 +53,6 @@ export default function UserPendingRoomsPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-4">
             <div>
@@ -71,7 +68,7 @@ export default function UserPendingRoomsPage() {
               variant="outline"
               onClick={() => refetch()}
               disabled={isFetching}
-              className="border-gray-300"
+              className="border-gray-300 cursor-pointer"
             >
               <RefreshCw
                 className={`h-4 w-4 mr-2 ${isFetching ? "animate-spin" : ""}`}
@@ -79,9 +76,6 @@ export default function UserPendingRoomsPage() {
               Refresh
             </Button>
           </div>
-
-          {/* Status Tabs */}
-          <StatusTabs />
         </div>
 
         {/* Search Bar */}
@@ -89,7 +83,7 @@ export default function UserPendingRoomsPage() {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             <Input
-              placeholder="Search your pending rooms by title or address..."
+              placeholder="Search your pending rooms by title"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10 bg-white border-gray-200"
@@ -163,9 +157,9 @@ export default function UserPendingRoomsPage() {
               {!searchTerm && (
                 <Button
                   onClick={() =>
-                    (window.location.href = "/user/dashboard/rooms/add")
+                    (window.location.href = "/user/dashboard/rooms/create")
                   }
-                  className="mt-6 bg-primary hover:bg-primary/90"
+                  className="mt-6 bg-primary hover:bg-primary/90 cursor-pointer"
                 >
                   List a New Room
                 </Button>

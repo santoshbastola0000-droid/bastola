@@ -21,6 +21,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Search,
+  Power,
+  PowerOff,
 } from "lucide-react";
 import { commissionService } from "@/http/services/commission.service";
 import {
@@ -86,15 +88,17 @@ export default function CommissionPage() {
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showRecalculateDialog, setShowRecalculateDialog] = useState(false);
+  const [showStatusDialog, setShowStatusDialog] = useState(false);
   const [selectedSettings, setSelectedSettings] = useState<any>(null);
+  const [newStatus, setNewStatus] = useState<boolean>(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [page, setPage] = useState(0);
   const [take, setTake] = useState(10);
   const [formData, setFormData] = useState({
-    serviceCharge: 2000,
-    commissionPercentage: 20,
-    isActive: true,
+    serviceCharge: "",
+    commissionPercentage: "",
+    isActive: false,
   });
 
   // Debounce search
@@ -138,7 +142,7 @@ export default function CommissionPage() {
 
   // Create settings mutation
   const createMutation = useMutation({
-    mutationFn: commissionService.createSettings,
+    mutationFn: (data: any) => commissionService.createSettings(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["commission-stats"] });
       queryClient.invalidateQueries({ queryKey: ["commission-settings-all"] });
@@ -150,13 +154,19 @@ export default function CommissionPage() {
       resetForm();
     },
     onError: (error: any) => {
-      toast.error(
-        error?.response?.data?.message || "Failed to create settings",
-        {
+      const message = error?.response?.data?.message;
+      if (Array.isArray(message)) {
+        message.forEach((msg: string) => {
+          toast.error(msg, {
+            style: { background: FAILURETOAST, color: "#fff" },
+          });
+        });
+      } else {
+        toast.error(message || "Failed to create settings", {
           description: "Please check your input and try again.",
           style: { background: FAILURETOAST, color: "#fff" },
-        },
-      );
+        });
+      }
     },
   });
 
@@ -173,15 +183,22 @@ export default function CommissionPage() {
       });
       setShowEditDialog(false);
       setSelectedSettings(null);
+      resetForm();
     },
     onError: (error: any) => {
-      toast.error(
-        error?.response?.data?.message || "Failed to update settings",
-        {
+      const message = error?.response?.data?.message;
+      if (Array.isArray(message)) {
+        message.forEach((msg: string) => {
+          toast.error(msg, {
+            style: { background: FAILURETOAST, color: "#fff" },
+          });
+        });
+      } else {
+        toast.error(message || "Failed to update settings", {
           description: "Please check your input and try again.",
           style: { background: FAILURETOAST, color: "#fff" },
-        },
-      );
+        });
+      }
     },
   });
 
@@ -196,9 +213,12 @@ export default function CommissionPage() {
         description: "The commission settings status has been changed.",
         style: { background: SUCCESSTOAST, color: "#fff" },
       });
+      setShowStatusDialog(false);
+      setSelectedSettings(null);
     },
     onError: (error: any) => {
-      toast.error(error?.response?.data?.message || "Failed to update status", {
+      const message = error?.response?.data?.message;
+      toast.error(message || "Failed to update status", {
         description: "Please try again later.",
         style: { background: FAILURETOAST, color: "#fff" },
       });
@@ -207,7 +227,7 @@ export default function CommissionPage() {
 
   // Delete settings mutation
   const deleteMutation = useMutation({
-    mutationFn: commissionService.deleteSettings,
+    mutationFn: (id: string) => commissionService.deleteSettings(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["commission-stats"] });
       queryClient.invalidateQueries({ queryKey: ["commission-settings-all"] });
@@ -219,27 +239,25 @@ export default function CommissionPage() {
       setSelectedSettings(null);
     },
     onError: (error: any) => {
+      const message = error?.response?.data?.message;
       if (error?.response?.status === 400) {
-        toast.error("Cannot delete active commission", {
+        toast.error(message || "Cannot delete active commission", {
           description:
             "Please deactivate the commission first before deleting.",
           style: { background: FAILURETOAST, color: "#fff" },
         });
       } else {
-        toast.error(
-          error?.response?.data?.message || "Failed to delete settings",
-          {
-            description: "Please try again later.",
-            style: { background: FAILURETOAST, color: "#fff" },
-          },
-        );
+        toast.error(message || "Failed to delete settings", {
+          description: "Please try again later.",
+          style: { background: FAILURETOAST, color: "#fff" },
+        });
       }
     },
   });
 
   // Recalculate mutation
   const recalculateMutation = useMutation({
-    mutationFn: commissionService.recalculatePendingCommissions,
+    mutationFn: () => commissionService.recalculatePendingCommissions(),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["commission-stats"] });
       const amountPerRoom =
@@ -256,29 +274,27 @@ export default function CommissionPage() {
       setShowRecalculateDialog(false);
     },
     onError: (error: any) => {
-      toast.error(
-        error?.response?.data?.message || "Failed to process commissions",
-        {
-          description: "Please try again later.",
-          style: { background: FAILURETOAST, color: "#fff" },
-        },
-      );
+      const message = error?.response?.data?.message;
+      toast.error(message || "Failed to process commissions", {
+        description: "Please try again later.",
+        style: { background: FAILURETOAST, color: "#fff" },
+      });
     },
   });
 
   const resetForm = () => {
     setFormData({
-      serviceCharge: 2000,
-      commissionPercentage: 20,
-      isActive: true,
+      serviceCharge: "",
+      commissionPercentage: "",
+      isActive: false,
     });
   };
 
   const handleEdit = (settings: any) => {
     setSelectedSettings(settings);
     setFormData({
-      serviceCharge: settings.serviceCharge,
-      commissionPercentage: settings.commissionPercentage,
+      serviceCharge: settings.serviceCharge.toString(),
+      commissionPercentage: settings.commissionPercentage.toString(),
       isActive: settings.isActive,
     });
     setShowEditDialog(true);
@@ -296,33 +312,134 @@ export default function CommissionPage() {
     setShowDeleteDialog(true);
   };
 
-  const handleCreate = () => {
-    createMutation.mutate(formData);
+  const handleStatusToggle = (settings: any) => {
+    setSelectedSettings(settings);
+    setNewStatus(!settings.isActive);
+    setShowStatusDialog(true);
   };
 
-  const handleUpdate = () => {
-    if (selectedSettings) {
-      updateMutation.mutate({
-        id: selectedSettings.id,
-        data: {
-          serviceCharge: formData.serviceCharge,
-          commissionPercentage: formData.commissionPercentage,
-        },
-      });
-    }
-  };
+  const confirmStatusChange = () => {
+    if (!selectedSettings) return;
 
-  const handleStatusToggle = (id: string, currentActive: boolean) => {
     // If trying to activate, check if there's already an active commission
-    if (!currentActive && hasActiveCommission && id !== activeCommissionId) {
+    if (
+      newStatus &&
+      hasActiveCommission &&
+      selectedSettings.id !== activeCommissionId
+    ) {
       toast.error("Cannot activate multiple commissions", {
         description:
           "There is already an active commission. Please deactivate it first.",
         style: { background: FAILURETOAST, color: "#fff" },
       });
+      setShowStatusDialog(false);
       return;
     }
-    updateStatusMutation.mutate({ id, isActive: !currentActive });
+
+    updateStatusMutation.mutate({
+      id: selectedSettings.id,
+      isActive: newStatus,
+    });
+  };
+
+  const handleCreate = () => {
+    // Check if fields are empty
+    if (!formData.serviceCharge.trim()) {
+      toast.error("Service charge is required", {
+        style: { background: FAILURETOAST, color: "#fff" },
+      });
+      return;
+    }
+
+    if (!formData.commissionPercentage.trim()) {
+      toast.error("Commission percentage is required", {
+        style: { background: FAILURETOAST, color: "#fff" },
+      });
+      return;
+    }
+
+    // Ensure numbers are properly parsed
+    const serviceCharge = Number(formData.serviceCharge);
+    const commissionPercentage = Number(formData.commissionPercentage);
+
+    // Validate numbers
+    if (isNaN(serviceCharge) || serviceCharge < 0) {
+      toast.error("Service charge must be a positive number", {
+        style: { background: FAILURETOAST, color: "#fff" },
+      });
+      return;
+    }
+
+    if (
+      isNaN(commissionPercentage) ||
+      commissionPercentage < 0 ||
+      commissionPercentage > 100
+    ) {
+      toast.error("Commission percentage must be between 0 and 100", {
+        style: { background: FAILURETOAST, color: "#fff" },
+      });
+      return;
+    }
+
+    const data = {
+      serviceCharge,
+      commissionPercentage,
+      isActive: formData.isActive,
+    };
+
+    createMutation.mutate(data);
+  };
+
+  const handleUpdate = () => {
+    if (selectedSettings) {
+      // Check if fields are empty
+      if (!formData.serviceCharge.trim()) {
+        toast.error("Service charge is required", {
+          style: { background: FAILURETOAST, color: "#fff" },
+        });
+        return;
+      }
+
+      if (!formData.commissionPercentage.trim()) {
+        toast.error("Commission percentage is required", {
+          style: { background: FAILURETOAST, color: "#fff" },
+        });
+        return;
+      }
+
+      // Ensure numbers are properly parsed
+      const serviceCharge = Number(formData.serviceCharge);
+      const commissionPercentage = Number(formData.commissionPercentage);
+
+      // Validate numbers
+      if (isNaN(serviceCharge) || serviceCharge < 0) {
+        toast.error("Service charge must be a positive number", {
+          style: { background: FAILURETOAST, color: "#fff" },
+        });
+        return;
+      }
+
+      if (
+        isNaN(commissionPercentage) ||
+        commissionPercentage < 0 ||
+        commissionPercentage > 100
+      ) {
+        toast.error("Commission percentage must be between 0 and 100", {
+          style: { background: FAILURETOAST, color: "#fff" },
+        });
+        return;
+      }
+
+      const data = {
+        serviceCharge,
+        commissionPercentage,
+      };
+
+      updateMutation.mutate({
+        id: selectedSettings.id,
+        data,
+      });
+    }
   };
 
   const handleRecalculate = () => {
@@ -359,7 +476,7 @@ export default function CommissionPage() {
   const calculateExample = () => {
     const serviceCharge = activeSettings?.serviceCharge || 2000;
     const percentage = activeSettings?.commissionPercentage || 20;
-    const commissionAmount = (serviceCharge * percentage) / 100; // User receives this (20%)
+    const commissionAmount = (serviceCharge * percentage) / 100;
     return { serviceCharge, percentage, commissionAmount };
   };
 
@@ -471,7 +588,6 @@ export default function CommissionPage() {
               setShowCreateDialog(true);
             }}
             className="bg-primary hover:bg-primary/90 cursor-pointer"
-            disabled={hasActiveCommission && formData.isActive}
           >
             <Plus className="h-4 w-4 mr-2" />
             New Settings
@@ -800,28 +916,6 @@ export default function CommissionPage() {
           <Card>
             <CardContent className="p-4">
               <div className="flex flex-col sm:flex-row gap-3">
-                <div className="flex-1 relative">
-                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    placeholder="Search by ID..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                    className="pl-9 text-sm"
-                  />
-                  {searchTerm && (
-                    <button
-                      onClick={() => {
-                        setSearchTerm("");
-                        setDebouncedSearch("");
-                        setPage(0);
-                      }}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  )}
-                </div>
                 <Select
                   value={take.toString()}
                   onValueChange={(value) => {
@@ -872,16 +966,11 @@ export default function CommissionPage() {
                       <Badge
                         className={
                           setting.isActive
-                            ? "bg-green-100 text-green-700 cursor-pointer text-[10px]"
-                            : "bg-gray-100 text-gray-700 cursor-pointer text-[10px]"
-                        }
-                        onClick={() =>
-                          !setting.isActive &&
-                          handleStatusToggle(setting.id, setting.isActive)
+                            ? "bg-green-100 text-green-700"
+                            : "bg-gray-100 text-gray-700"
                         }
                       >
                         {setting.isActive ? "Active" : "Inactive"}
-                        {!setting.isActive && " (Click to activate)"}
                       </Badge>
                       <span className="text-[10px] text-muted-foreground">
                         ID: {setting.id.slice(0, 8)}
@@ -917,6 +1006,24 @@ export default function CommissionPage() {
                     </div>
 
                     <div className="flex gap-2 pt-2 border-t">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1 h-7 text-xs cursor-pointer"
+                        onClick={() => handleStatusToggle(setting)}
+                      >
+                        {setting.isActive ? (
+                          <>
+                            <PowerOff className="h-3 w-3 mr-1" />
+                            Deactivate
+                          </>
+                        ) : (
+                          <>
+                            <Power className="h-3 w-3 mr-1" />
+                            Activate
+                          </>
+                        )}
+                      </Button>
                       <Button
                         variant="outline"
                         size="sm"
@@ -990,19 +1097,11 @@ export default function CommissionPage() {
                               <Badge
                                 className={
                                   setting.isActive
-                                    ? "bg-green-100 text-green-700 cursor-pointer"
-                                    : "bg-gray-100 text-gray-700 cursor-pointer"
-                                }
-                                onClick={() =>
-                                  !setting.isActive &&
-                                  handleStatusToggle(
-                                    setting.id,
-                                    setting.isActive,
-                                  )
+                                    ? "bg-green-100 text-green-700"
+                                    : "bg-gray-100 text-gray-700"
                                 }
                               >
                                 {setting.isActive ? "Active" : "Inactive"}
-                                {!setting.isActive && " (Click to activate)"}
                               </Badge>
                             </TableCell>
                             <TableCell>
@@ -1013,6 +1112,21 @@ export default function CommissionPage() {
                             </TableCell>
                             <TableCell className="text-right">
                               <div className="flex justify-end gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => handleStatusToggle(setting)}
+                                  className="h-8 w-8 cursor-pointer"
+                                  title={
+                                    setting.isActive ? "Deactivate" : "Activate"
+                                  }
+                                >
+                                  {setting.isActive ? (
+                                    <PowerOff className="h-4 w-4 text-yellow-600" />
+                                  ) : (
+                                    <Power className="h-4 w-4 text-green-600" />
+                                  )}
+                                </Button>
                                 <Button
                                   variant="ghost"
                                   size="icon"
@@ -1092,17 +1206,16 @@ export default function CommissionPage() {
                 <IndianRupee className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="serviceCharge"
-                  type="number"
+                  type="text"
+                  placeholder="Enter amount"
                   value={formData.serviceCharge}
                   onChange={(e) =>
                     setFormData({
                       ...formData,
-                      serviceCharge: Number(e.target.value),
+                      serviceCharge: e.target.value,
                     })
                   }
                   className="pl-9"
-                  min={0}
-                  step={100}
                 />
               </div>
             </div>
@@ -1115,18 +1228,16 @@ export default function CommissionPage() {
                 <Percent className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="commissionPercentage"
-                  type="number"
+                  type="text"
+                  placeholder="Enter percentage"
                   value={formData.commissionPercentage}
                   onChange={(e) =>
                     setFormData({
                       ...formData,
-                      commissionPercentage: Number(e.target.value),
+                      commissionPercentage: e.target.value,
                     })
                   }
                   className="pl-9"
-                  min={0}
-                  max={100}
-                  step={0.5}
                 />
               </div>
             </div>
@@ -1156,19 +1267,25 @@ export default function CommissionPage() {
                   <span className="text-muted-foreground">Service Charge:</span>
                   <span className="font-medium flex items-center gap-1">
                     <IndianRupee className="h-3 w-3" />
-                    {formatNepaliCurrency(formData.serviceCharge)}
+                    {formData.serviceCharge
+                      ? formatNepaliCurrency(Number(formData.serviceCharge))
+                      : "—"}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">
-                    Commission ({formData.commissionPercentage}% to user):
+                    Commission ({formData.commissionPercentage || "0"}% to
+                    user):
                   </span>
                   <span className="font-medium text-green-600 flex items-center gap-1">
                     <IndianRupee className="h-3 w-3" />
-                    {formatNepaliCurrency(
-                      (formData.serviceCharge * formData.commissionPercentage) /
-                        100,
-                    )}
+                    {formData.serviceCharge && formData.commissionPercentage
+                      ? formatNepaliCurrency(
+                          (Number(formData.serviceCharge) *
+                            Number(formData.commissionPercentage)) /
+                            100,
+                        )
+                      : "—"}
                   </span>
                 </div>
                 <Separator className="my-1" />
@@ -1176,14 +1293,18 @@ export default function CommissionPage() {
                   <span>User receives:</span>
                   <span className="text-green-600 flex items-center gap-1">
                     <IndianRupee className="h-3 w-3" />
-                    {formatNepaliCurrency(
-                      (formData.serviceCharge * formData.commissionPercentage) /
-                        100,
-                    )}
+                    {formData.serviceCharge && formData.commissionPercentage
+                      ? formatNepaliCurrency(
+                          (Number(formData.serviceCharge) *
+                            Number(formData.commissionPercentage)) /
+                            100,
+                        )
+                      : "—"}
                   </span>
                 </div>
                 <p className="text-[10px] text-muted-foreground mt-1">
-                  User gets {formData.commissionPercentage}% of service charge
+                  User gets {formData.commissionPercentage || "0"}% of service
+                  charge
                 </p>
               </div>
             </div>
@@ -1192,17 +1313,17 @@ export default function CommissionPage() {
           <DialogFooter>
             <Button
               variant="outline"
-              onClick={() => setShowCreateDialog(false)}
+              onClick={() => {
+                setShowCreateDialog(false);
+                resetForm();
+              }}
               className="cursor-pointer"
             >
               Cancel
             </Button>
             <Button
               onClick={handleCreate}
-              disabled={
-                createMutation.isPending ||
-                (hasActiveCommission && formData.isActive)
-              }
+              disabled={createMutation.isPending}
               className="bg-primary hover:bg-primary/90 cursor-pointer"
             >
               {createMutation.isPending ? (
@@ -1249,17 +1370,16 @@ export default function CommissionPage() {
                 <IndianRupee className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="edit-serviceCharge"
-                  type="number"
+                  type="text"
+                  placeholder="Enter amount"
                   value={formData.serviceCharge}
                   onChange={(e) =>
                     setFormData({
                       ...formData,
-                      serviceCharge: Number(e.target.value),
+                      serviceCharge: e.target.value,
                     })
                   }
                   className="pl-9"
-                  min={0}
-                  step={100}
                 />
               </div>
             </div>
@@ -1272,19 +1392,62 @@ export default function CommissionPage() {
                 <Percent className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="edit-commissionPercentage"
-                  type="number"
+                  type="text"
+                  placeholder="Enter percentage"
                   value={formData.commissionPercentage}
                   onChange={(e) =>
                     setFormData({
                       ...formData,
-                      commissionPercentage: Number(e.target.value),
+                      commissionPercentage: e.target.value,
                     })
                   }
                   className="pl-9"
-                  min={0}
-                  max={100}
-                  step={0.5}
                 />
+              </div>
+            </div>
+
+            <div className="bg-muted/50 rounded-lg p-3">
+              <p className="text-xs font-medium mb-2">Preview</p>
+              <div className="space-y-1 text-xs">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Service Charge:</span>
+                  <span className="font-medium flex items-center gap-1">
+                    <IndianRupee className="h-3 w-3" />
+                    {formData.serviceCharge
+                      ? formatNepaliCurrency(Number(formData.serviceCharge))
+                      : "—"}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">
+                    Commission ({formData.commissionPercentage || "0"}% to
+                    user):
+                  </span>
+                  <span className="font-medium text-green-600 flex items-center gap-1">
+                    <IndianRupee className="h-3 w-3" />
+                    {formData.serviceCharge && formData.commissionPercentage
+                      ? formatNepaliCurrency(
+                          (Number(formData.serviceCharge) *
+                            Number(formData.commissionPercentage)) /
+                            100,
+                        )
+                      : "—"}
+                  </span>
+                </div>
+                <Separator className="my-1" />
+                <div className="flex justify-between font-bold">
+                  <span>User receives:</span>
+                  <span className="text-green-600 flex items-center gap-1">
+                    <IndianRupee className="h-3 w-3" />
+                    {formData.serviceCharge && formData.commissionPercentage
+                      ? formatNepaliCurrency(
+                          (Number(formData.serviceCharge) *
+                            Number(formData.commissionPercentage)) /
+                            100,
+                        )
+                      : "—"}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
@@ -1292,7 +1455,11 @@ export default function CommissionPage() {
           <DialogFooter>
             <Button
               variant="outline"
-              onClick={() => setShowEditDialog(false)}
+              onClick={() => {
+                setShowEditDialog(false);
+                setSelectedSettings(null);
+                resetForm();
+              }}
               className="cursor-pointer"
             >
               Cancel
@@ -1314,6 +1481,81 @@ export default function CommissionPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Status Change Dialog */}
+      <AlertDialog open={showStatusDialog} onOpenChange={setShowStatusDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {newStatus ? "Activate" : "Deactivate"} Commission Settings
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {selectedSettings && (
+                <div className="space-y-2">
+                  <p>
+                    Are you sure you want to{" "}
+                    {newStatus ? "activate" : "deactivate"} these commission
+                    settings?
+                  </p>
+                  <div className="mt-2 p-3 bg-muted rounded-lg">
+                    <p className="text-sm">
+                      Service Charge:{" "}
+                      <span className="font-bold flex items-center gap-1 inline">
+                        <IndianRupee className="h-3 w-3" />
+                        {formatNepaliCurrency(selectedSettings.serviceCharge)}
+                      </span>
+                    </p>
+                    <p className="text-sm">
+                      Commission:{" "}
+                      <span className="font-bold">
+                        {selectedSettings.commissionPercentage}%
+                      </span>
+                    </p>
+                    <p className="text-sm">
+                      Created:{" "}
+                      <span className="font-bold">
+                        {formatDate(selectedSettings.createdAt)}
+                      </span>
+                    </p>
+                  </div>
+                  {newStatus &&
+                    hasActiveCommission &&
+                    selectedSettings.id !== activeCommissionId && (
+                      <p className="text-sm text-destructive mt-2">
+                        Note: This will deactivate the current active settings.
+                      </p>
+                    )}
+                </div>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="cursor-pointer">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmStatusChange}
+              className={
+                newStatus
+                  ? "bg-green-600 hover:bg-green-700"
+                  : "bg-yellow-600 hover:bg-yellow-700"
+              }
+              disabled={updateStatusMutation.isPending}
+            >
+              {updateStatusMutation.isPending ? (
+                <>
+                  <RefreshCw className="mr-2 h-3 w-3 animate-spin" />
+                  Updating...
+                </>
+              ) : newStatus ? (
+                "Activate"
+              ) : (
+                "Deactivate"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Delete Confirmation */}
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
