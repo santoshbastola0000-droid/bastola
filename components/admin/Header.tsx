@@ -14,13 +14,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
-import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
@@ -40,11 +33,7 @@ interface AdminHeaderProps {
 export function AdminHeader({ isSidebarCollapsed = false }: AdminHeaderProps) {
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
-  // ── mounted guard ──────────────────────────────────────────────────────────
-  // next-themes reads from localStorage/OS preference on the client only.
-  // Before the component mounts, `theme` is undefined, which would cause the
-  // icon to flash from one state to another on hydration. Rendering the toggle
-  // only after mount eliminates this flicker.
+
   const [mounted, setMounted] = useState(false);
 
   const pathname = usePathname();
@@ -89,7 +78,7 @@ export function AdminHeader({ isSidebarCollapsed = false }: AdminHeaderProps) {
 
   return (
     <>
-      <header className="sticky top-0 z-30 h-16 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border">
+      <header className="sticky top-0 z-30 h-16 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-border/50">
         <div className="flex items-center justify-between h-full px-4 md:px-6">
           {/* ── Left: Page title ── */}
           <div className="flex items-center gap-4">
@@ -110,10 +99,6 @@ export function AdminHeader({ isSidebarCollapsed = false }: AdminHeaderProps) {
 
           {/* ── Right: Actions ── */}
           <div className="flex items-center gap-1 md:gap-2">
-            {/* ── Theme toggle ──────────────────────────────────────────────
-                Rendered only after mount to prevent hydration mismatch.
-                The placeholder <div> keeps the layout stable while mounting.
-            ─────────────────────────────────────────────────────────────── */}
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>

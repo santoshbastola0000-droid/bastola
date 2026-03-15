@@ -14,7 +14,6 @@ import {
   Menu,
   Clock,
   CheckCircle,
-  Download,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -237,7 +236,7 @@ export function UserSidebar({
           </div>
           {!isCollapsed && (
             <div>
-              <h2 className="font-bold text-lg">RoomServise</h2>
+              <h2 className="font-bold text-lg">RentalServise</h2>
               <p className="text-xs text-gray-400">User Dashboard</p>
             </div>
           )}

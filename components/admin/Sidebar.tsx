@@ -34,6 +34,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 interface SidebarProps {
   isCollapsed: boolean;
   setIsCollapsed: (collapsed: boolean) => void;
+  isMobile?: boolean;
 }
 
 interface NavItem {
@@ -87,27 +88,27 @@ const navItems: NavItem[] = [
   },
 ];
 
-export function AdminSidebar({ isCollapsed, setIsCollapsed }: SidebarProps) {
+export function AdminSidebar({
+  isCollapsed,
+  setIsCollapsed,
+  isMobile = false,
+}: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { user } = useUserStore();
   const { logout } = useLogout();
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
-  const [expandedItems, setExpandedItems] = useState<string[]>([]);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Close mobile sidebar on route change
   useEffect(() => {
     setIsMobileOpen(false);
   }, [pathname]);
-
-  const toggleExpand = (title: string) => {
-    setExpandedItems((prev) =>
-      prev.includes(title)
-        ? prev.filter((item) => item !== title)
-        : [...prev, title],
-    );
-  };
 
   const handleLogout = async () => {
     await logout();
@@ -177,7 +178,6 @@ export function AdminSidebar({ isCollapsed, setIsCollapsed }: SidebarProps) {
             {navItems.map((item) => {
               const Icon = item.icon;
               const isActive = pathname === item.href;
-              const isExpanded = expandedItems.includes(item.title);
 
               return (
                 <div key={item.href}>
@@ -244,7 +244,7 @@ export function AdminSidebar({ isCollapsed, setIsCollapsed }: SidebarProps) {
           </div>
           {!isCollapsed && (
             <div>
-              <h2 className="font-bold text-lg">RentalService</h2>
+              <h2 className="font-bold text-lg">RentalServise</h2>
               <p className="text-xs text-gray-400">Admin Panel</p>
             </div>
           )}
@@ -327,10 +327,17 @@ export function AdminSidebar({ isCollapsed, setIsCollapsed }: SidebarProps) {
                     )}
                   </Link>
                 </TooltipTrigger>
-                {isCollapsed && (
-                  <TooltipContent side="right">
+                {isCollapsed && mounted && (
+                  <TooltipContent
+                    side="right"
+                    className="flex items-center gap-2"
+                  >
                     <p>{item.title}</p>
-                    {item.badge && <Badge className="ml-2">{item.badge}</Badge>}
+                    {item.badge && (
+                      <Badge className="bg-primary/20 text-primary border-0 text-xs">
+                        {item.badge}
+                      </Badge>
+                    )}
                   </TooltipContent>
                 )}
               </Tooltip>
@@ -348,15 +355,15 @@ export function AdminSidebar({ isCollapsed, setIsCollapsed }: SidebarProps) {
                 variant="ghost"
                 className={cn(
                   "w-full text-gray-300 hover:text-white hover:bg-gray-800 cursor-pointer",
-                  isCollapsed ? "px-2" : "justify-start",
+                  isCollapsed ? "px-2 justify-center" : "justify-start",
                 )}
                 onClick={() => router.push("/")}
               >
-                <Home className={cn("h-4 w-4", isCollapsed ? "" : "mr-3")} />
+                <Home className={cn("h-4 w-4", !isCollapsed && "mr-3")} />
                 {!isCollapsed && <span>View Site</span>}
               </Button>
             </TooltipTrigger>
-            {isCollapsed && (
+            {isCollapsed && mounted && (
               <TooltipContent side="right">View Site</TooltipContent>
             )}
           </Tooltip>
@@ -367,15 +374,15 @@ export function AdminSidebar({ isCollapsed, setIsCollapsed }: SidebarProps) {
                 variant="ghost"
                 className={cn(
                   "w-full text-red-400 hover:text-red-300 hover:bg-red-500/10 cursor-pointer",
-                  isCollapsed ? "px-2" : "justify-start",
+                  isCollapsed ? "px-2 justify-center" : "justify-start",
                 )}
                 onClick={() => setShowLogoutDialog(true)}
               >
-                <LogOut className={cn("h-4 w-4", isCollapsed ? "" : "mr-3")} />
+                <LogOut className={cn("h-4 w-4", !isCollapsed && "mr-3")} />
                 {!isCollapsed && <span>Logout</span>}
               </Button>
             </TooltipTrigger>
-            {isCollapsed && (
+            {isCollapsed && mounted && (
               <TooltipContent side="right">Logout</TooltipContent>
             )}
           </Tooltip>
@@ -386,8 +393,7 @@ export function AdminSidebar({ isCollapsed, setIsCollapsed }: SidebarProps) {
 
   return (
     <>
-      <MobileSidebar />
-      <DesktopSidebar />
+      {isMobile ? <MobileSidebar /> : <DesktopSidebar />}
       <LogoutConfirmDialog
         open={showLogoutDialog}
         onOpenChange={setShowLogoutDialog}
