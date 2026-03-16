@@ -309,7 +309,7 @@ export default function PropertyDetailsPage() {
   const handleWhatsApp = () => {
     if (!room) return;
 
-    const phoneNumber = "976-9493954";
+    const phoneNumber = "977976-9493954";
     const message =
       `Hello! I'm interested in your property: ${room.title}\n\n` +
       `📍 Location: ${room.location?.formattedAddress || room.address}\n` +
