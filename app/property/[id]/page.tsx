@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import dynamic from "next/dynamic";
 import {
   MapPin,
   Bath,
@@ -13,7 +12,6 @@ import {
   Check,
   Share2,
   Heart,
-  Calendar,
   Users,
   Home,
   Wifi,
@@ -53,18 +51,7 @@ import Footer from "@/components/common/footer";
 import { formatPriceNPR, formatDate } from "@/lib/utils";
 import { Room, RoomStatus } from "@/types/room.types";
 import { api } from "@/http/api/api";
-
-const MapComponent = dynamic(() => import("@/components/ui/enhanced-map"), {
-  ssr: false,
-  loading: () => (
-    <div className="h-[300px] w-full bg-gray-100 animate-pulse rounded-xl flex items-center justify-center">
-      <div className="text-center">
-        <Map className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-        <p className="text-sm text-gray-500">Loading map...</p>
-      </div>
-    </div>
-  ),
-});
+import { MapComponent } from "@/components/common/MapComponent";
 
 // Amenity icons mapping
 const amenityIcons: Record<string, any> = {
@@ -322,7 +309,7 @@ export default function PropertyDetailsPage() {
   const handleWhatsApp = () => {
     if (!room) return;
 
-    const phoneNumber = room.contactPhone || "9779800000000";
+    const phoneNumber = "976-9493954";
     const message =
       `Hello! I'm interested in your property: ${room.title}\n\n` +
       `📍 Location: ${room.location?.formattedAddress || room.address}\n` +
