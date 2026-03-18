@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { motion } from "framer-motion";
@@ -11,7 +11,6 @@ import {
   AlertCircle,
   ChevronLeft,
   Save,
-  Image as ImageIcon,
   Home,
   Bed,
   Users,
@@ -19,11 +18,7 @@ import {
   Droplets,
   User,
   Phone,
-  Mail,
-  MessageCircle,
   CheckCircle2,
-  XCircle,
-  HelpCircle,
   Wifi,
   Car,
   Snowflake,
@@ -36,7 +31,8 @@ import {
   Clock,
 } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -68,21 +64,17 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { toast } from "sonner";
-import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Skeleton } from "@/components/ui/skeleton";
 import { RoomCategory } from "@/types/room.types";
 import { cn } from "@/lib/utils";
-import { useCreateRoomMutation } from "@/http/mutations/room.mutation";
+import { roomService } from "@/http/services/room.service";
 import { createRoomSchema, CreateRoomFormValues } from "@/schema/room";
 import { UserRole } from "@/types/user.types";
 import { useUserRole } from "@/stores/user-store";
 import MapPicker from "@/components/admin/rooms/MapPicker";
+
+// ─── Constants (identical to create page) ───────────────────────────────────
 
 const amenitiesList = [
   { id: "wifi", label: "WiFi", icon: Wifi, description: "High-speed internet" },
@@ -121,7 +113,6 @@ const amenitiesList = [
   },
 ];
 
-// Water supply options
 const WATER_SUPPLY_OPTIONS = [
   { value: "24-hour", label: "२४ घण्टा पानी आउँछ" },
   { value: "morning-only", label: "बिहान मात्र" },
@@ -138,15 +129,12 @@ const morningSlots = [
   "७:०० - ९:०० बिहान",
   "८:०० - १०:०० बिहान",
 ];
-
 const eveningSlots = [
   "४:०० - ६:०० साँझ",
   "५:०० - ७:०० साँझ",
   "६:०० - ८:०० साँझ",
   "७:०० - ९:०० (राति)",
 ];
-
-// Internal slot values (English, stored in DB)
 const morningSlotValues = [
   "05:00-07:00",
   "06:00-08:00",
@@ -163,38 +151,83 @@ const eveningSlotValues = [
 const DEFAULT_LAT = 27.7172;
 const DEFAULT_LNG = 85.324;
 
-const calculateFormProgress = (
-  formValues: CreateRoomFormValues,
-  totalFields: number,
-) => {
-  const filledFields = Object.entries(formValues).filter(([key, value]) => {
-    if (key === "amenities") return (value as string[])?.length > 0;
-    if (key === "location") {
-      const loc = value as CreateRoomFormValues["location"];
-      return loc?.latitude !== DEFAULT_LAT || loc?.longitude !== DEFAULT_LNG;
-    }
-    if (key === "waterSupplyTimings") return true;
-    return value !== undefined && value !== null && value !== "";
-  }).length;
-  return Math.min(100, Math.round((filledFields / totalFields) * 100));
+const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "";
+
+const getImageUrl = (imagePath: string) => {
+  if (imagePath.startsWith("http")) return imagePath;
+  return `${API_BASE_URL.replace(/\/$/, "")}/${imagePath.replace(/^\//, "")}`;
 };
 
-export default function CreateRoomPage() {
+// ─── Water supply helpers ────────────────────────────────────────────────────
+// We store the type inside notes as "TYPE:<value>" prefix so we can restore it.
+// morning/evening are set to "" for non-timed options.
+
+const buildWaterTimings = (
+  type: string,
+  morning: string,
+  evening: string,
+  customNote: string,
+): { morning: string; evening: string; notes: string } => {
+  switch (type) {
+    case "24-hour":
+      return { morning: "", evening: "", notes: "TYPE:24-hour" };
+    case "morning-only":
+      return { morning, evening: "", notes: "TYPE:morning-only" };
+    case "evening-only":
+      return { morning: "", evening, notes: "TYPE:evening-only" };
+    case "morning-evening":
+      return { morning, evening, notes: "TYPE:morning-evening" };
+    case "alternate-days":
+      return { morning: "", evening: "", notes: "TYPE:alternate-days" };
+    case "tanker":
+      return { morning: "", evening: "", notes: "TYPE:tanker" };
+    case "custom":
+      return { morning: "", evening: "", notes: customNote };
+    default:
+      return { morning, evening, notes: "" };
+  }
+};
+
+const detectWaterType = (timings?: {
+  morning?: string;
+  evening?: string;
+  notes?: string;
+}): string => {
+  if (!timings) return "morning-evening";
+  const note = timings.notes || "";
+  if (note.startsWith("TYPE:")) return note.replace("TYPE:", "");
+  // Legacy fallback for old records
+  if (timings.morning === "00:00-24:00") return "24-hour";
+  if (note.includes("ट्याङ्कर")) return "tanker";
+  if (note.includes("एक दिन छाडी")) return "alternate-days";
+  if (timings.morning && !timings.evening) return "morning-only";
+  if (!timings.morning && timings.evening) return "evening-only";
+  return "morning-evening";
+};
+
+// ─── Component ───────────────────────────────────────────────────────────────
+
+export default function EditRoomPage() {
+  const params = useParams();
   const router = useRouter();
-  const createRoomMutation = useCreateRoomMutation();
+  const queryClient = useQueryClient();
+  const id = params?.id as string;
+  const { user } = useUserRole();
+  const isAdmin = user?.role === UserRole.ADMIN;
+
   const [selectedAmenities, setSelectedAmenities] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState("basic");
-  const [images, setImages] = useState<File[]>([]);
-  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [validationErrors, setValidationErrors] = useState<
-    Record<string, string>
-  >({});
   const [waterSupplyType, setWaterSupplyType] = useState("morning-evening");
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const { user } = useUserRole();
+  const [customWaterNote, setCustomWaterNote] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const isAdmin = user?.role === UserRole.ADMIN;
+  const { data, isLoading } = useQuery({
+    queryKey: ["room", id],
+    queryFn: () => roomService.getRoomById(id),
+    enabled: !!id,
+  });
+
+  const room = data?.data;
 
   const form = useForm<CreateRoomFormValues>({
     resolver: zodResolver(createRoomSchema),
@@ -235,41 +268,74 @@ export default function CreateRoomPage() {
     mode: "onChange",
   });
 
-  const formValues = form.watch();
-  const formErrors = form.formState.errors;
-  const totalFields = 25;
-  const progress = calculateFormProgress(formValues, totalFields);
-
+  // Pre-fill when room loads
   useEffect(() => {
-    const errors: Record<string, string> = {};
-    Object.entries(formErrors).forEach(([key, error]) => {
-      if ((error as { message?: string })?.message) {
-        errors[key] = (error as { message: string }).message;
-      }
-    });
-    setValidationErrors(errors);
-  }, [formErrors]);
+    if (!room) return;
 
-  // Sync water supply type to form notes
-  useEffect(() => {
-    if (waterSupplyType === "24-hour") {
-      form.setValue("waterSupplyTimings.notes", "२४ घण्टा पानी उपलब्ध");
-      form.setValue("waterSupplyTimings.morning", "00:00-24:00");
-      form.setValue("waterSupplyTimings.evening", "00:00-24:00");
-    } else if (waterSupplyType === "alternate-days") {
-      form.setValue("waterSupplyTimings.notes", "एक दिन छाडी पानी आउँछ");
-    } else if (waterSupplyType === "tanker") {
-      form.setValue("waterSupplyTimings.notes", "ट्याङ्कर पानी उपलब्ध");
+    const detectedType = detectWaterType(room.waterSupplyTimings);
+    setWaterSupplyType(detectedType);
+
+    // Restore custom note if type is custom
+    if (detectedType === "custom") {
+      setCustomWaterNote(room.waterSupplyTimings?.notes || "");
     }
-  }, [waterSupplyType, form]);
+
+    form.reset({
+      title: room.title || "",
+      description: room.description || "",
+      category: room.category || RoomCategory.APARTMENT,
+      price: room.price || 5000,
+      address: room.address || "",
+      amenities: room.amenities || [],
+      bathroomCapacity: room.bathroomCapacity || 1,
+      floorNumber: room.floorNumber ?? 0,
+      ownerLivesInHouse: room.ownerLivesInHouse || false,
+      totalHouseCapacity: room.totalHouseCapacity || 4,
+      rentedRoomsCount: room.rentedRoomsCount || 0,
+      currentOccupants: room.currentOccupants || 0,
+      allowsWomen: room.allowsWomen ?? true,
+      roomCapacity: room.roomCapacity || 2,
+      roomArea: room.roomArea || 30,
+      contactPhone: room.contactPhone || "",
+      tiktokUrl: room.tiktokUrl || "",
+      waterSupplyTimings: {
+        morning: room.waterSupplyTimings?.morning || "06:00-08:00",
+        evening: room.waterSupplyTimings?.evening || "17:00-19:00",
+        notes: room.waterSupplyTimings?.notes || "",
+      },
+      location: {
+        name: room.location?.name || "",
+        formattedAddress: room.location?.formattedAddress || "",
+        latitude: room.location?.latitude
+          ? Number(room.location.latitude)
+          : DEFAULT_LAT,
+        longitude: room.location?.longitude
+          ? Number(room.location.longitude)
+          : DEFAULT_LNG,
+        city: room.location?.city || "",
+        state: room.location?.state || "",
+        country: room.location?.country || "",
+        postalCode: room.location?.postalCode || "",
+      },
+    });
+
+    if (room.amenities) setSelectedAmenities(room.amenities);
+  }, [room, form]);
+
+  const currentLat = form.watch("location.latitude");
+  const currentLng = form.watch("location.longitude");
+  const isValidLocation =
+    currentLat !== DEFAULT_LAT || currentLng !== DEFAULT_LNG;
+  const watchedMorning = form.watch("waterSupplyTimings.morning");
+  const watchedEvening = form.watch("waterSupplyTimings.evening");
 
   const toggleAmenity = (amenityId: string) => {
     setSelectedAmenities((prev) => {
-      const newAmenities = prev.includes(amenityId)
+      const next = prev.includes(amenityId)
         ? prev.filter((a) => a !== amenityId)
         : [...prev, amenityId];
-      form.setValue("amenities", newAmenities, { shouldValidate: true });
-      return newAmenities;
+      form.setValue("amenities", next, { shouldValidate: true });
+      return next;
     });
   };
 
@@ -291,189 +357,111 @@ export default function CreateRoomPage() {
     form.setValue("location.state", location.state || "");
     form.setValue("location.country", location.country || "");
     form.setValue("location.postalCode", location.postalCode || "");
-    if (location.formattedAddress) {
+    if (location.formattedAddress)
       form.setValue("address", location.formattedAddress);
-    }
     form.trigger("location");
-    toast.success("📍 Location selected!", {
-      description: "You can now fill in the other details.",
-      duration: 3000,
-    });
+    toast.success("📍 Location updated!");
   };
-
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    const invalidFiles = files.filter(
-      (file) => !file.type.startsWith("image/"),
-    );
-    if (invalidFiles.length > 0) {
-      toast.error("Invalid file type", {
-        description: "Please upload JPEG, PNG, GIF or WEBP images only.",
-      });
-      return;
-    }
-    const validFiles = files.filter((file) => file.size <= 10 * 1024 * 1024);
-    const oversizedFiles = files.filter((file) => file.size > 10 * 1024 * 1024);
-    if (oversizedFiles.length > 0) {
-      toast.error(`${oversizedFiles.length} photo(s) exceed 10MB`, {
-        description: "Please choose smaller images.",
-      });
-    }
-    if (images.length + validFiles.length > 10) {
-      toast.error("Maximum 10 photos allowed", {
-        description: "You can only upload up to 10 photos per room.",
-      });
-      return;
-    }
-    setUploadProgress(0);
-    const interval = setInterval(() => {
-      setUploadProgress((prev) => {
-        if (prev >= 100) {
-          clearInterval(interval);
-          return 100;
-        }
-        return prev + 10;
-      });
-    }, 100);
-    setImages((prev) => [...prev, ...validFiles]);
-    validFiles.forEach((file) => {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreviews((prev) => [...prev, reader.result as string]);
-      };
-      reader.readAsDataURL(file);
-    });
-    setTimeout(() => {
-      clearInterval(interval);
-      setUploadProgress(0);
-      toast.success(`${validFiles.length} photo(s) uploaded successfully!`);
-    }, 1000);
-  };
-
-  const removeImage = (index: number) => {
-    setImages((prev) => prev.filter((_, i) => i !== index));
-    setImagePreviews((prev) => prev.filter((_, i) => i !== index));
-    toast.info("Photo removed.");
-  };
-
-  const currentLat = form.watch("location.latitude");
-  const currentLng = form.watch("location.longitude");
-  const isValidLocation =
-    currentLat !== DEFAULT_LAT || currentLng !== DEFAULT_LNG;
 
   const onSubmit = async (values: CreateRoomFormValues) => {
-    if (images.length === 0) {
-      toast.error("📸 Photos required", {
-        description: "Please upload at least one photo of the room.",
-        duration: 5000,
-      });
-      setActiveTab("images");
-      return;
-    }
-    if (!isValidLocation) {
-      toast.error("📍 Location required", {
-        description: "Please click on the map to set the location.",
-        duration: 5000,
-      });
-      setActiveTab("location");
-      return;
-    }
-    if (selectedAmenities.length === 0) {
-      toast.error("✨ Amenities required", {
-        description: "Please select at least one amenity for your room.",
-        duration: 5000,
-      });
-      setActiveTab("amenities");
-      return;
-    }
-
+    setIsSubmitting(true);
     values.amenities = selectedAmenities;
 
-    const formData = new FormData();
+    // Build correct water timings based on type
+    const waterTimings = buildWaterTimings(
+      waterSupplyType,
+      values.waterSupplyTimings.morning || "06:00-08:00",
+      values.waterSupplyTimings.evening || "17:00-19:00",
+      waterSupplyType === "custom" ? customWaterNote : "",
+    );
 
-    const appendToFormData = (key: string, value: unknown) => {
-      if (value === undefined || value === null) return;
-      if (typeof value === "object") {
-        formData.append(key, JSON.stringify(value));
-      } else {
-        formData.append(key, String(value));
-      }
+    const payload = {
+      title: values.title,
+      description: values.description,
+      category: values.category,
+      price: values.price,
+      address: values.address,
+      amenities: selectedAmenities,
+      bathroomCapacity: values.bathroomCapacity,
+      floorNumber: values.floorNumber,
+      ownerLivesInHouse: values.ownerLivesInHouse,
+      totalHouseCapacity: values.totalHouseCapacity,
+      rentedRoomsCount: values.rentedRoomsCount,
+      currentOccupants: values.currentOccupants,
+      waterSupplyTimings: waterTimings,
+      allowsWomen: values.allowsWomen,
+      roomCapacity: values.roomCapacity,
+      roomArea: values.roomArea,
+      contactPhone: values.contactPhone,
+      location: values.location,
+      ...(isAdmin && values.tiktokUrl ? { tiktokUrl: values.tiktokUrl } : {}),
     };
 
-    appendToFormData("title", values.title);
-    appendToFormData("description", values.description);
-    appendToFormData("category", values.category);
-    appendToFormData("price", values.price);
-    appendToFormData("address", values.address);
-    appendToFormData("bathroomCapacity", values.bathroomCapacity);
-    appendToFormData("floorNumber", values.floorNumber);
-    appendToFormData("ownerLivesInHouse", values.ownerLivesInHouse);
-    appendToFormData("totalHouseCapacity", values.totalHouseCapacity);
-    appendToFormData("rentedRoomsCount", values.rentedRoomsCount);
-    appendToFormData("currentOccupants", values.currentOccupants);
-    appendToFormData("waterSupplyTimings", values.waterSupplyTimings);
-    appendToFormData("allowsWomen", values.allowsWomen);
-    appendToFormData("roomCapacity", values.roomCapacity);
-    appendToFormData("roomArea", values.roomArea);
-    appendToFormData("contactPerson", values.contactPerson);
-    appendToFormData("contactPhone", values.contactPhone);
-    appendToFormData("contactEmail", values.contactEmail);
-    appendToFormData("contactWhatsapp", values.contactWhatsapp);
-    appendToFormData("location", values.location);
-    if (values.tiktokUrl) appendToFormData("tiktokUrl", values.tiktokUrl);
-    formData.append("amenities", JSON.stringify(selectedAmenities));
-    images.forEach((image) => {
-      formData.append("images", image);
-    });
+    const loadingToast = toast.loading("Saving changes...");
 
-    const loadingToast = toast.loading("Creating your room listing...", {
-      description: "Please wait while we process your request.",
-    });
-
-    createRoomMutation.mutate(
-      { data: formData },
-      {
-        onSuccess: () => {
-          toast.dismiss(loadingToast);
-          if (isAdmin) {
-            toast.success("🎉 Room added successfully!", {
-              description: "The room has been added to the system.",
-              duration: 5000,
-            });
-            router.push("/admin/dashboard/rooms");
-          } else {
-            toast.success("🎉 Room created successfully!", {
-              description: "Your room has been submitted for admin approval.",
-              duration: 5000,
-            });
-            router.push("/user/dashboard/rooms");
-          }
-        },
-        onError: (error: unknown) => {
-          toast.dismiss(loadingToast);
-          const err = error as { response?: { data?: { message?: string } } };
-          toast.error("Failed to create room", {
-            description:
-              err?.response?.data?.message || "Please try again later.",
-            duration: 5000,
-          });
-        },
-      },
-    );
+    try {
+      await roomService.updateRoom(id, payload);
+      toast.dismiss(loadingToast);
+      toast.success("🎉 Room updated successfully!");
+      queryClient.invalidateQueries({ queryKey: ["rooms"] });
+      queryClient.invalidateQueries({ queryKey: ["room", id] });
+      router.push("/admin/dashboard/rooms");
+    } catch (error: unknown) {
+      toast.dismiss(loadingToast);
+      const err = error as { response?: { data?: { message?: string } } };
+      toast.error("Update failed", {
+        description: err?.response?.data?.message || "Please try again later.",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
+
+  // ─── Loading / error states ────────────────────────────────────────────────
+
+  if (isLoading) {
+    return (
+      <div className="p-6 space-y-4">
+        <Skeleton className="h-10 w-64" />
+        <Skeleton className="h-12 w-full" />
+        <Skeleton className="h-64 w-full" />
+      </div>
+    );
+  }
+
+  if (!room) {
+    return (
+      <div className="p-6">
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Room not found</AlertTitle>
+          <AlertDescription>Could not load this room.</AlertDescription>
+        </Alert>
+        <Button
+          className="mt-4 cursor-pointer"
+          variant="outline"
+          onClick={() => router.back()}
+        >
+          <ChevronLeft className="h-4 w-4 mr-2" />
+          Back
+        </Button>
+      </div>
+    );
+  }
 
   const tabs = [
     { value: "basic", label: "Basic Info", icon: Home },
     { value: "location", label: "Location", icon: MapPin },
     { value: "details", label: "Details", icon: Bed },
     { value: "amenities", label: "Amenities", icon: Wifi },
-    { value: "images", label: "Photos", icon: ImageIcon },
     { value: "contact", label: "Contact", icon: User },
   ];
 
+  // ─── Render ────────────────────────────────────────────────────────────────
+
   return (
     <div className="space-y-6 pb-20">
-      {/* Header */}
+      {/* Sticky Header */}
       <div className="sticky top-0 z-20 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
         <div className="px-4 py-4 md:px-6 lg:px-8">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -493,39 +481,60 @@ export default function CreateRoomPage() {
                   Rooms
                 </Link>
                 <span>/</span>
-                <span className="text-foreground font-medium">Add Room</span>
+                <Link
+                  href={`/admin/dashboard/rooms/${id}`}
+                  className="hover:text-primary transition-colors cursor-pointer truncate max-w-[120px]"
+                >
+                  {room.title}
+                </Link>
+                <span>/</span>
+                <span className="text-foreground font-medium">Edit</span>
               </div>
               <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-3">
                 <div className="p-2 bg-primary/10 rounded-lg">
                   <Building2 className="h-6 w-6 text-primary" />
                 </div>
                 <span className="bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
-                  List Your Room
+                  Edit Room
                 </span>
               </h1>
             </div>
-            <Button
-              variant="outline"
-              onClick={() => router.back()}
-              className="cursor-pointer"
-            >
-              <ChevronLeft className="h-4 w-4 mr-2" />
-              Back
+            <Button variant="outline" asChild className="cursor-pointer">
+              <Link href={`/admin/dashboard/rooms/${id}`}>
+                <ChevronLeft className="h-4 w-4 mr-2" />
+                View Details
+              </Link>
             </Button>
           </div>
 
-          {/* Progress Bar */}
-          <div className="mt-4 space-y-2">
-            <div className="flex justify-between items-center text-sm">
-              <span className="text-muted-foreground">Form completion</span>
-              <span className="font-medium">{progress}%</span>
+          {/* Existing images strip */}
+          {room.images && room.images.length > 0 && (
+            <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+              {room.images.map((img, i) => (
+                <div
+                  key={i}
+                  className="relative flex-shrink-0 w-12 h-12 rounded-lg overflow-hidden border-2 border-primary/20"
+                >
+                  <img
+                    src={getImageUrl(img)}
+                    alt={`Photo ${i + 1}`}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src =
+                        "/placeholder-image.jpg";
+                    }}
+                  />
+                </div>
+              ))}
+              <p className="text-xs text-muted-foreground self-center flex-shrink-0 ml-2">
+                {room.images.length} photos (photo editing not supported)
+              </p>
             </div>
-            <Progress value={progress} className="h-2" />
-          </div>
+          )}
         </div>
       </div>
 
-      {/* Main Form */}
+      {/* Form */}
       <div className="px-4 md:px-6 lg:px-8">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
@@ -534,47 +543,25 @@ export default function CreateRoomPage() {
               onValueChange={setActiveTab}
               className="space-y-6"
             >
-              <TabsList className="grid grid-cols-3 md:grid-cols-6 w-full h-auto p-1 bg-muted/50">
+              <TabsList className="grid grid-cols-3 md:grid-cols-5 w-full h-auto p-1 bg-muted/50">
                 {tabs.map((tab) => {
                   const Icon = tab.icon;
-                  const hasError =
-                    (tab.value === "basic" &&
-                      (!formValues.title ||
-                        !formValues.description ||
-                        !formValues.price)) ||
-                    (tab.value === "location" && !isValidLocation) ||
-                    (tab.value === "amenities" &&
-                      selectedAmenities.length === 0) ||
-                    (tab.value === "images" && images.length === 0);
-
                   return (
                     <TabsTrigger
                       key={tab.value}
                       value={tab.value}
-                      className={cn(
-                        "data-[state=active]:bg-primary data-[state=active]:text-white cursor-pointer relative",
-                        hasError &&
-                          "border-red-200 text-red-600 data-[state=active]:bg-red-600",
-                      )}
+                      className="data-[state=active]:bg-primary data-[state=active]:text-white cursor-pointer"
                     >
                       <Icon className="h-4 w-4 md:mr-2" />
                       <span className="hidden md:inline text-xs">
                         {tab.label}
                       </span>
-                      {hasError && (
-                        <Badge
-                          variant="destructive"
-                          className="absolute -top-2 -right-2 h-5 w-5 p-0 flex items-center justify-center rounded-full text-[10px]"
-                        >
-                          !
-                        </Badge>
-                      )}
                     </TabsTrigger>
                   );
                 })}
               </TabsList>
 
-              {/* ─── BASIC INFO TAB ─── */}
+              {/* ─── BASIC ─── */}
               <TabsContent value="basic">
                 <Card>
                   <CardHeader>
@@ -583,8 +570,7 @@ export default function CreateRoomPage() {
                       Basic Information
                     </CardTitle>
                     <CardDescription>
-                      कोठाको बारेमा विवरण दिनुहोस्। राम्रो description ले बढी
-                      भाडाटारु आकर्षित गर्छ।
+                      Update the basic details of your room.
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
@@ -593,32 +579,15 @@ export default function CreateRoomPage() {
                       name="title"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="flex items-center gap-1">
+                          <FormLabel>
                             Room Title <span className="text-red-500">*</span>
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger type="button">
-                                  <HelpCircle className="h-4 w-4 text-muted-foreground" />
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p>e.g. "Modern Studio with AC & WiFi"</p>
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
                           </FormLabel>
                           <FormControl>
                             <Input
                               placeholder="e.g. Modern Room with AC & WiFi"
                               {...field}
-                              className={cn(
-                                formErrors.title && "border-red-500",
-                              )}
                             />
                           </FormControl>
-                          <FormDescription>
-                            Minimum 3 characters. राम्रो title ले बढी भाडाटारु
-                            आउँछन्।
-                          </FormDescription>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -629,23 +598,16 @@ export default function CreateRoomPage() {
                       name="description"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="flex items-center gap-1">
+                          <FormLabel>
                             Description <span className="text-red-500">*</span>
                           </FormLabel>
                           <FormControl>
                             <Textarea
                               placeholder="कोठाको बारेमा लेख्नुहोस्। छिमेक, नजिकैका सुविधाहरू, र कोठाको विशेषता उल्लेख गर्नुहोस्..."
-                              className={cn(
-                                "min-h-[120px]",
-                                formErrors.description && "border-red-500",
-                              )}
+                              className="min-h-[120px]"
                               {...field}
                             />
                           </FormControl>
-                          <FormDescription>
-                            Minimum 10 characters. भाडाटारुलाई सबै जानकारी
-                            दिनुहोस्।
-                          </FormDescription>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -662,21 +624,21 @@ export default function CreateRoomPage() {
                             </FormLabel>
                             <Select
                               onValueChange={field.onChange}
-                              defaultValue={field.value}
+                              value={field.value}
                             >
                               <FormControl>
                                 <SelectTrigger className="cursor-pointer">
-                                  <SelectValue placeholder="Select room type" />
+                                  <SelectValue />
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                {Object.values(RoomCategory).map((category) => (
+                                {Object.values(RoomCategory).map((cat) => (
                                   <SelectItem
-                                    key={category}
-                                    value={category}
-                                    className="capitalize cursor-pointer"
+                                    key={cat}
+                                    value={cat}
+                                    className="cursor-pointer capitalize"
                                   >
-                                    {category.replace("_", " ")}
+                                    {cat.replace("_", " ")}
                                   </SelectItem>
                                 ))}
                               </SelectContent>
@@ -703,10 +665,7 @@ export default function CreateRoomPage() {
                                 <Input
                                   type="number"
                                   placeholder="5000"
-                                  className={cn(
-                                    "pl-9",
-                                    formErrors.price && "border-red-500",
-                                  )}
+                                  className="pl-9"
                                   {...field}
                                   onChange={(e) =>
                                     field.onChange(Number(e.target.value))
@@ -726,7 +685,7 @@ export default function CreateRoomPage() {
                 </Card>
               </TabsContent>
 
-              {/* ─── LOCATION TAB ─── */}
+              {/* ─── LOCATION ─── */}
               <TabsContent value="location">
                 <Card>
                   <CardHeader>
@@ -735,20 +694,10 @@ export default function CreateRoomPage() {
                       Location & Map
                     </CardTitle>
                     <CardDescription>
-                      Click on the map to pin your room's exact location.
+                      Click on the map to update the room location.
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-6">
-                    {!isValidLocation && (
-                      <Alert variant="destructive">
-                        <AlertCircle className="h-4 w-4" />
-                        <AlertTitle>Location required</AlertTitle>
-                        <AlertDescription>
-                          Please click on the map to set the location.
-                        </AlertDescription>
-                      </Alert>
-                    )}
-
                     <MapPicker
                       onLocationSelect={handleLocationSelect}
                       initialLocation={
@@ -758,137 +707,96 @@ export default function CreateRoomPage() {
                       }
                     />
 
-                    <div className="space-y-4 pt-4">
-                      <h3 className="font-medium text-sm text-muted-foreground uppercase tracking-wide flex items-center gap-2">
-                        <MapPin className="h-4 w-4" />
-                        Address Details
-                      </h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <FormField
-                          control={form.control}
-                          name="location.name"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Location Name</FormLabel>
-                              <FormControl>
-                                <Input
-                                  placeholder="e.g. Lazimpat Apartment"
-                                  {...field}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="location.city"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>City</FormLabel>
-                              <FormControl>
-                                <Input
-                                  placeholder="e.g. Kathmandu"
-                                  {...field}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="location.state"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>State / Province</FormLabel>
-                              <FormControl>
-                                <Input placeholder="e.g. Bagmati" {...field} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="location.country"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Country</FormLabel>
-                              <FormControl>
-                                <Input placeholder="Nepal" {...field} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="location.postalCode"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Postal Code</FormLabel>
-                              <FormControl>
-                                <Input placeholder="e.g. 44600" {...field} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <FormField
                         control={form.control}
-                        name="location.formattedAddress"
+                        name="location.name"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Full Address</FormLabel>
+                            <FormLabel>Location Name</FormLabel>
                             <FormControl>
-                              <Textarea
-                                placeholder="Auto-filled after selecting on map"
-                                className="min-h-[70px] resize-none bg-muted"
+                              <Input
+                                placeholder="e.g. Lazimpat Apartment"
                                 {...field}
-                                readOnly
                               />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
                         )}
                       />
-
-                      {isValidLocation && (
-                        <div className="flex gap-4 p-3 bg-primary/5 rounded-lg border border-primary/20">
-                          <div className="flex-1">
-                            <p className="text-xs text-muted-foreground">
-                              Latitude
-                            </p>
-                            <p className="font-mono text-sm">
-                              {currentLat.toFixed(6)}
-                            </p>
-                          </div>
-                          <div className="flex-1">
-                            <p className="text-xs text-muted-foreground">
-                              Longitude
-                            </p>
-                            <p className="font-mono text-sm">
-                              {currentLng.toFixed(6)}
-                            </p>
-                          </div>
-                          <Badge
-                            variant="outline"
-                            className="bg-green-50 text-green-700 self-center"
-                          >
-                            <CheckCircle2 className="h-3 w-3 mr-1" />
-                            Location Set
-                          </Badge>
-                        </div>
-                      )}
+                      <FormField
+                        control={form.control}
+                        name="location.city"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>City</FormLabel>
+                            <FormControl>
+                              <Input placeholder="e.g. Kathmandu" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="location.state"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>State / Province</FormLabel>
+                            <FormControl>
+                              <Input placeholder="e.g. Bagmati" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="location.country"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Country</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Nepal" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
                     </div>
+
+                    {isValidLocation && (
+                      <div className="flex gap-4 p-3 bg-primary/5 rounded-lg border border-primary/20">
+                        <div className="flex-1">
+                          <p className="text-xs text-muted-foreground">
+                            Latitude
+                          </p>
+                          <p className="font-mono text-sm">
+                            {currentLat.toFixed(6)}
+                          </p>
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-xs text-muted-foreground">
+                            Longitude
+                          </p>
+                          <p className="font-mono text-sm">
+                            {currentLng.toFixed(6)}
+                          </p>
+                        </div>
+                        <Badge
+                          variant="outline"
+                          className="bg-green-50 text-green-700 self-center"
+                        >
+                          <CheckCircle2 className="h-3 w-3 mr-1" />
+                          Location Set
+                        </Badge>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               </TabsContent>
 
-              {/* ─── DETAILS TAB ─── */}
+              {/* ─── DETAILS ─── */}
               <TabsContent value="details">
                 <Card>
                   <CardHeader>
@@ -937,10 +845,8 @@ export default function CreateRoomPage() {
                           <FormItem>
                             <FormLabel>Bathroom Capacity</FormLabel>
                             <Select
-                              onValueChange={(value) =>
-                                field.onChange(parseInt(value))
-                              }
-                              defaultValue={field.value.toString()}
+                              onValueChange={(v) => field.onChange(parseInt(v))}
+                              value={field.value.toString()}
                             >
                               <FormControl>
                                 <SelectTrigger className="cursor-pointer">
@@ -948,13 +854,13 @@ export default function CreateRoomPage() {
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                {[1, 2, 3, 4, 5].map((num) => (
+                                {[1, 2, 3, 4, 5].map((n) => (
                                   <SelectItem
-                                    key={num}
-                                    value={num.toString()}
+                                    key={n}
+                                    value={n.toString()}
                                     className="cursor-pointer"
                                   >
-                                    {num} {num === 1 ? "person" : "people"}
+                                    {n} {n === 1 ? "person" : "people"}
                                   </SelectItem>
                                 ))}
                               </SelectContent>
@@ -1061,14 +967,13 @@ export default function CreateRoomPage() {
 
                     <Separator />
 
-                    {/* ─── Water Supply Section ─── */}
+                    {/* ─── Water Supply ─── */}
                     <div className="space-y-4">
                       <h3 className="font-medium flex items-center gap-2">
                         <Droplets className="h-4 w-4 text-primary" />
                         पानी आपूर्ति (Water Supply)
                       </h3>
 
-                      {/* Water supply type selector */}
                       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
                         {WATER_SUPPLY_OPTIONS.map((option) => (
                           <button
@@ -1087,16 +992,31 @@ export default function CreateRoomPage() {
                         ))}
                       </div>
 
-                      {/* Show time pickers only if relevant */}
                       {waterSupplyType === "24-hour" && (
                         <Alert className="border-green-200 bg-green-50">
                           <CheckCircle2 className="h-4 w-4 text-green-600" />
                           <AlertTitle className="text-green-800">
-                            २४ घण्टा पानी उपलब्ध
+                            24-hour water available
                           </AlertTitle>
                           <AlertDescription className="text-green-700">
                             यस कोठामा दिनभर पानी आउँछ।
                           </AlertDescription>
+                        </Alert>
+                      )}
+
+                      {waterSupplyType === "alternate-days" && (
+                        <Alert className="border-yellow-200 bg-yellow-50">
+                          <AlertTitle className="text-yellow-800">
+                            एक दिन छाडी पानी आउँछ
+                          </AlertTitle>
+                        </Alert>
+                      )}
+
+                      {waterSupplyType === "tanker" && (
+                        <Alert className="border-blue-200 bg-blue-50">
+                          <AlertTitle className="text-blue-800">
+                            ट्याङ्कर पानी उपलब्ध
+                          </AlertTitle>
                         </Alert>
                       )}
 
@@ -1113,7 +1033,7 @@ export default function CreateRoomPage() {
                               </FormLabel>
                               <Select
                                 onValueChange={field.onChange}
-                                defaultValue={field.value}
+                                value={field.value}
                               >
                                 <FormControl>
                                   <SelectTrigger className="cursor-pointer">
@@ -1151,7 +1071,7 @@ export default function CreateRoomPage() {
                               </FormLabel>
                               <Select
                                 onValueChange={field.onChange}
-                                defaultValue={field.value}
+                                value={field.value}
                               >
                                 <FormControl>
                                   <SelectTrigger className="cursor-pointer">
@@ -1176,26 +1096,44 @@ export default function CreateRoomPage() {
                         />
                       )}
 
-                      <FormField
-                        control={form.control}
-                        name="waterSupplyTimings.notes"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="flex items-center gap-1">
-                              <Clock className="h-3 w-3" />
-                              Additional Notes (optional)
-                            </FormLabel>
-                            <FormControl>
-                              <Input
-                                placeholder="e.g. No water on Saturdays, tanker available..."
-                                {...field}
-                                disabled={waterSupplyType === "24-hour"}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
+                      {waterSupplyType === "custom" && (
+                        <div className="space-y-1">
+                          <label className="text-sm font-medium flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            Additional Notes (optional)
+                          </label>
+                          <Input
+                            value={customWaterNote}
+                            onChange={(e) => setCustomWaterNote(e.target.value)}
+                            placeholder="e.g. No water on Saturdays, tanker available..."
+                          />
+                        </div>
+                      )}
+
+                      {waterSupplyType !== "24-hour" &&
+                        waterSupplyType !== "alternate-days" &&
+                        waterSupplyType !== "tanker" &&
+                        waterSupplyType !== "custom" && (
+                          <FormField
+                            control={form.control}
+                            name="waterSupplyTimings.notes"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="flex items-center gap-1">
+                                  <Clock className="h-3 w-3" />
+                                  Additional Notes (optional)
+                                </FormLabel>
+                                <FormControl>
+                                  <Input
+                                    placeholder="e.g. No water on Saturdays..."
+                                    {...field}
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
                         )}
-                      />
                     </div>
 
                     <Separator />
@@ -1254,7 +1192,7 @@ export default function CreateRoomPage() {
                 </Card>
               </TabsContent>
 
-              {/* ─── AMENITIES TAB ─── */}
+              {/* ─── AMENITIES ─── */}
               <TabsContent value="amenities">
                 <Card>
                   <CardHeader>
@@ -1263,23 +1201,10 @@ export default function CreateRoomPage() {
                       Amenities
                     </CardTitle>
                     <CardDescription>
-                      Select all amenities available in your room.{" "}
-                      <span className="text-red-500">*</span>
+                      Select all amenities available in your room.
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    {selectedAmenities.length === 0 && (
-                      <Alert variant="destructive" className="mb-4">
-                        <AlertCircle className="h-4 w-4" />
-                        <AlertTitle>
-                          Please select at least one amenity
-                        </AlertTitle>
-                        <AlertDescription>
-                          Choose the amenities that come with this room.
-                        </AlertDescription>
-                      </Alert>
-                    )}
-
                     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
                       {amenitiesList.map((amenity) => {
                         const Icon = amenity.icon;
@@ -1317,7 +1242,6 @@ export default function CreateRoomPage() {
                         );
                       })}
                     </div>
-
                     <div className="mt-4 flex items-center justify-between">
                       <p className="text-sm text-muted-foreground">
                         Selected: {selectedAmenities.length} amenities
@@ -1336,155 +1260,7 @@ export default function CreateRoomPage() {
                 </Card>
               </TabsContent>
 
-              {/* ─── IMAGES TAB ─── */}
-              <TabsContent value="images">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <ImageIcon className="h-5 w-5 text-primary" />
-                      Room Photos
-                    </CardTitle>
-                    <CardDescription>
-                      Upload clear photos of your room. Good photos attract more
-                      tenants. <span className="text-red-500">*</span>
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {images.length === 0 && (
-                        <Alert variant="destructive">
-                          <AlertCircle className="h-4 w-4" />
-                          <AlertTitle>Photos required</AlertTitle>
-                          <AlertDescription>
-                            Please upload at least one photo.
-                          </AlertDescription>
-                        </Alert>
-                      )}
-
-                      {/* Upload guidelines */}
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                        <div className="flex items-start gap-2">
-                          <CheckCircle2 className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
-                          <div>
-                            <p className="text-xs font-semibold text-blue-800">
-                              Tips for good photos
-                            </p>
-                            <p className="text-xs text-blue-700">
-                              Shoot in natural daylight
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex items-start gap-2">
-                          <CheckCircle2 className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
-                          <div>
-                            <p className="text-xs font-semibold text-blue-800">
-                              File size
-                            </p>
-                            <p className="text-xs text-blue-700">
-                              Max 10MB per photo
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex items-start gap-2">
-                          <CheckCircle2 className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
-                          <div>
-                            <p className="text-xs font-semibold text-blue-800">
-                              File type
-                            </p>
-                            <p className="text-xs text-blue-700">
-                              JPEG, PNG, GIF, WEBP मात्र
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-
-                      <input
-                        type="file"
-                        ref={fileInputRef}
-                        onChange={handleImageUpload}
-                        accept="image/jpeg,image/png,image/gif,image/webp"
-                        multiple
-                        className="hidden"
-                      />
-
-                      {/* Upload area */}
-                      <div
-                        className="border-2 border-dashed border-primary/30 rounded-xl p-8 text-center cursor-pointer hover:border-primary/60 hover:bg-primary/5 transition-all"
-                        onClick={() => fileInputRef.current?.click()}
-                      >
-                        <ImageIcon className="h-10 w-10 text-primary/40 mx-auto mb-3" />
-                        <p className="text-sm font-medium text-foreground">
-                          Click here to select photos
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          or drag and drop files here
-                        </p>
-                        <div className="flex items-center justify-center gap-3 mt-3">
-                          <Badge variant="secondary">
-                            {images.length}/10 photos
-                          </Badge>
-                          <span className="text-xs text-muted-foreground">
-                            Max 10MB each
-                          </span>
-                        </div>
-                      </div>
-
-                      {uploadProgress > 0 && (
-                        <div className="space-y-2">
-                          <div className="flex justify-between text-sm">
-                            <span>Uploading...</span>
-                            <span>{uploadProgress}%</span>
-                          </div>
-                          <Progress value={uploadProgress} className="h-2" />
-                        </div>
-                      )}
-
-                      {images.length > 0 && (
-                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 mt-4">
-                          {imagePreviews.map((preview, index) => (
-                            <motion.div
-                              key={index}
-                              initial={{ opacity: 0, scale: 0.9 }}
-                              animate={{ opacity: 1, scale: 1 }}
-                              className="relative group"
-                            >
-                              <div className="aspect-square rounded-lg overflow-hidden border-2 border-transparent group-hover:border-primary transition-all">
-                                <img
-                                  src={preview}
-                                  alt={`Room ${index + 1}`}
-                                  className="w-full h-full object-cover"
-                                />
-                              </div>
-                              <Button
-                                type="button"
-                                variant="destructive"
-                                size="icon"
-                                onClick={() => removeImage(index)}
-                                className="absolute -top-2 -right-2 h-6 w-6 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-                              >
-                                <XCircle className="h-4 w-4" />
-                              </Button>
-                              <Badge
-                                variant="secondary"
-                                className="absolute bottom-1 left-1 text-[10px]"
-                              >
-                                {index + 1}
-                              </Badge>
-                              {index === 0 && (
-                                <Badge className="absolute bottom-1 right-1 text-[10px] bg-primary">
-                                  Main
-                                </Badge>
-                              )}
-                            </motion.div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-
-              {/* ─── CONTACT TAB ─── */}
+              {/* ─── CONTACT ─── */}
               <TabsContent value="contact">
                 <Card>
                   <CardHeader>
@@ -1497,7 +1273,6 @@ export default function CreateRoomPage() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-5">
-                    {/* Nepali helper note for users */}
                     <Alert className="border-primary/30 bg-primary/5">
                       <User className="h-4 w-4 text-primary" />
                       <AlertTitle className="text-primary">
@@ -1509,36 +1284,33 @@ export default function CreateRoomPage() {
                       </AlertDescription>
                     </Alert>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="contactPhone"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="flex items-center gap-1">
-                              <Phone className="h-3 w-3" />
-                              Phone Number
-                            </FormLabel>
-                            <FormControl>
-                              <div className="relative">
-                                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                <Input
-                                  placeholder="+977 98XXXXXXXX"
-                                  className="pl-9"
-                                  {...field}
-                                />
-                              </div>
-                            </FormControl>
-                            <FormDescription>
-                              Primary contact number
-                            </FormDescription>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
+                    <FormField
+                      control={form.control}
+                      name="contactPhone"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="flex items-center gap-1">
+                            <Phone className="h-3 w-3" />
+                            Phone Number
+                          </FormLabel>
+                          <FormControl>
+                            <div className="relative">
+                              <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                              <Input
+                                placeholder="+977 98XXXXXXXX"
+                                className="pl-9"
+                                {...field}
+                              />
+                            </div>
+                          </FormControl>
+                          <FormDescription>
+                            Primary contact number
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
-                    {/* TikTok — Admin only */}
                     {isAdmin && (
                       <>
                         <Separator />
@@ -1572,76 +1344,46 @@ export default function CreateRoomPage() {
               </TabsContent>
             </Tabs>
 
-            {/* ─── Sticky Footer Actions ─── */}
+            {/* Sticky Footer */}
             <div className="sticky bottom-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-t p-4 -mx-4 md:-mx-6 lg:-mx-8">
-              <div className="max-w-7xl mx-auto">
-                <div className="flex flex-col sm:flex-row gap-4 justify-between items-center">
-                  <div className="flex items-center gap-4">
-                    <Badge variant="outline" className="text-sm">
-                      <span className="text-red-500 mr-1">*</span> Required
-                      fields
-                    </Badge>
-                    {Object.keys(validationErrors).length > 0 && (
-                      <Badge variant="destructive" className="text-sm">
-                        <AlertCircle className="h-3 w-3 mr-1" />
-                        {Object.keys(validationErrors).length} issue(s) to fix
-                      </Badge>
-                    )}
-                  </div>
-                  <div className="flex gap-3 w-full sm:w-auto">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => router.back()}
-                      disabled={createRoomMutation.isPending}
-                      className="cursor-pointer flex-1 sm:flex-none"
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      type="submit"
-                      className="bg-primary hover:bg-primary/90 cursor-pointer flex-1 sm:flex-none"
-                      disabled={
-                        createRoomMutation.isPending ||
-                        images.length === 0 ||
-                        !isValidLocation
-                      }
-                    >
-                      {createRoomMutation.isPending ? (
-                        <>
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          Creating...
-                        </>
-                      ) : (
-                        <>
-                          <Save className="h-4 w-4 mr-2" />
-                          List Room
-                        </>
-                      )}
-                    </Button>
-                  </div>
+              <div className="max-w-7xl mx-auto flex flex-col sm:flex-row gap-4 justify-between items-center">
+                <div className="flex gap-2 flex-wrap">
+                  <Badge variant="outline" className="text-sm">
+                    <span className="text-primary font-bold mr-1">✏️</span>
+                    Editing: {room.title}
+                  </Badge>
+                  <Badge variant="secondary" className="text-sm">
+                    {room.approvalStatus}
+                  </Badge>
                 </div>
-
-                {Object.keys(validationErrors).length > 0 && (
-                  <div className="mt-4 p-3 bg-destructive/10 rounded-lg border border-destructive/20">
-                    <p className="text-sm font-medium text-destructive flex items-center gap-2">
-                      <AlertCircle className="h-4 w-4" />
-                      Please fix the following:
-                    </p>
-                    <ul className="mt-2 text-sm text-destructive/80 grid grid-cols-1 md:grid-cols-2 gap-2">
-                      {Object.entries(validationErrors).map(
-                        ([field, error]) => (
-                          <li key={field} className="flex items-center gap-2">
-                            <span className="w-1.5 h-1.5 rounded-full bg-destructive flex-shrink-0" />
-                            <span className="capitalize">
-                              {field}: {error}
-                            </span>
-                          </li>
-                        ),
-                      )}
-                    </ul>
-                  </div>
-                )}
+                <div className="flex gap-3 w-full sm:w-auto">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => router.back()}
+                    disabled={isSubmitting}
+                    className="cursor-pointer flex-1 sm:flex-none"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    className="bg-primary hover:bg-primary/90 cursor-pointer flex-1 sm:flex-none"
+                    disabled={isSubmitting}
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Saving...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="h-4 w-4 mr-2" />
+                        Save Changes
+                      </>
+                    )}
+                  </Button>
+                </div>
               </div>
             </div>
           </form>

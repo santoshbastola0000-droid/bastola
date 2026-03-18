@@ -10,6 +10,7 @@ import {
   Shield,
   Star,
   Users,
+  Search,
 } from "lucide-react";
 import Image from "next/image";
 import { Button } from "../ui/button";
@@ -19,7 +20,6 @@ export function Hero() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
   const [isMounted, setIsMounted] = useState(false);
-
   const router = useRouter();
 
   const { scrollYProgress } = useScroll({
@@ -31,34 +31,21 @@ export function Hero() {
   const opacity = useTransform(scrollYProgress, [0, 0.5], [1, 0]);
 
   const stats = [
-    { value: "10K+", label: "Happy Tenants", icon: Users },
-    { value: "2.5K+", label: "Properties", icon: Home },
-    { value: "50+", label: "Cities", icon: MapPin },
-    { value: "4.9", label: "Rating", icon: Star },
+    { value: "१०,०००+", label: "खुसी भाडाटारु", icon: Users },
+    { value: "२,५००+", label: "घर / कोठाहरू", icon: Home },
+    { value: "५०+", label: "शहरहरू", icon: MapPin },
+    { value: "४.९ ⭐", label: "रेटिङ", icon: Star },
   ];
 
   useEffect(() => {
     setIsMounted(true);
-
-    // Set dimensions only on client side
-    setDimensions({
-      width: window.innerWidth,
-      height: window.innerHeight,
-    });
-
-    // Handle resize
-    const handleResize = () => {
-      setDimensions({
-        width: window.innerWidth,
-        height: window.innerHeight,
-      });
-    };
-
+    setDimensions({ width: window.innerWidth, height: window.innerHeight });
+    const handleResize = () =>
+      setDimensions({ width: window.innerWidth, height: window.innerHeight });
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // Generate particles only on client side
   const particles = isMounted
     ? [...Array(20)].map((_, i) => ({
         id: i,
@@ -83,22 +70,18 @@ export function Hero() {
           className="object-cover"
           sizes="100vw"
         />
-        <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/50 to-black/30" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-transparent via-black/20 to-black/40" />
+        <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/60 to-black/40" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-transparent via-black/20 to-black/50" />
       </motion.div>
 
-      {/* Animated Particles - Only render on client side */}
+      {/* Animated Particles */}
       {isMounted && (
         <div className="absolute inset-0 overflow-hidden">
           {particles.map((particle) => (
             <motion.div
               key={particle.id}
               className="absolute w-1 h-1 bg-white/20 rounded-full"
-              initial={{
-                x: particle.x,
-                y: particle.y,
-                opacity: 0,
-              }}
+              initial={{ x: particle.x, y: particle.y, opacity: 0 }}
               animate={{
                 y: [particle.y, particle.y - 100],
                 opacity: [0, 1, 0],
@@ -119,81 +102,121 @@ export function Hero() {
         style={{ opacity }}
         className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center"
       >
-        {/* Badge */}
+        {/* Trust Badge */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-md text-white border border-white/20 mb-8"
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-md text-white border border-white/20 mb-6"
         >
           <Shield className="w-4 h-4 text-red-400" />
           <span className="text-sm font-medium">
-            Trusted by 10,000+ tenants worldwide
+            १०,०००+ भाडाटारुले विश्वास गर्ने प्लेटफर्म
           </span>
         </motion.div>
 
-        {/* Heading */}
-        <motion.h1
+        {/* ── Nepali main heading ── */}
+        <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.2 }}
-          className="text-5xl md:text-7xl lg:text-8xl font-bold text-white tracking-tight"
         >
-          Find Your
-          <br />
-          <span className="relative inline-block mt-2">
-            <span className="relative z-10 bg-gradient-to-r from-red-400 to-red-600 bg-clip-text text-transparent">
-              Perfect Space
-            </span>
-            <svg
-              className="absolute -bottom-4 left-0 w-full"
-              viewBox="0 0 100 12"
-              preserveAspectRatio="none"
-            >
-              <motion.path
-                initial={{ pathLength: 0, opacity: 0 }}
-                animate={{ pathLength: 1, opacity: 1 }}
-                transition={{ duration: 1.5, delay: 1 }}
-                d="M0,6 Q25,0 50,6 T100,6"
-                stroke="url(#gradient)"
-                strokeWidth="2"
-                fill="none"
-              />
-              <defs>
-                <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                  <stop offset="0%" stopColor="#f87171" />
-                  <stop offset="100%" stopColor="#dc2626" />
-                </linearGradient>
-              </defs>
-            </svg>
-          </span>
-        </motion.h1>
+          {/* Nepali tagline above */}
+          <p className="text-red-300 text-lg md:text-xl font-semibold tracking-wide mb-3 drop-shadow">
+            🏠 सपनाको घर खोज्नुस् — सजिलो, सुरक्षित, भरपर्दो
+          </p>
 
-        {/* Description */}
+          <h1 className="text-4xl sm:text-6xl md:text-7xl lg:text-8xl font-extrabold text-white tracking-tight leading-[1.05]">
+            आफ्नो{" "}
+            <span className="relative inline-block">
+              <span className="relative z-10 bg-gradient-to-r from-red-400 via-red-500 to-rose-500 bg-clip-text text-transparent">
+                सही घर
+              </span>
+              {/* Underline SVG */}
+              <svg
+                className="absolute -bottom-3 left-0 w-full"
+                viewBox="0 0 100 10"
+                preserveAspectRatio="none"
+              >
+                <motion.path
+                  initial={{ pathLength: 0, opacity: 0 }}
+                  animate={{ pathLength: 1, opacity: 1 }}
+                  transition={{ duration: 1.5, delay: 1 }}
+                  d="M0,5 Q25,0 50,5 T100,5"
+                  stroke="url(#heroGrad)"
+                  strokeWidth="2.5"
+                  fill="none"
+                />
+                <defs>
+                  <linearGradient
+                    id="heroGrad"
+                    x1="0%"
+                    y1="0%"
+                    x2="100%"
+                    y2="0%"
+                  >
+                    <stop offset="0%" stopColor="#f87171" />
+                    <stop offset="100%" stopColor="#e11d48" />
+                  </linearGradient>
+                </defs>
+              </svg>
+            </span>
+            <br />
+            <span className="text-white/90">यहीं भेट्टाउनुस्</span>
+          </h1>
+        </motion.div>
+
+        {/* English sub-headline */}
         <motion.p
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.4 }}
-          className="max-w-2xl mx-auto mt-8 text-lg md:text-xl text-white/80 leading-relaxed"
+          className="max-w-2xl mx-auto mt-7 text-base md:text-lg text-white/75 leading-relaxed"
         >
-          Discover curated spaces that inspire. From modern apartments to cozy
-          studios, find the perfect place to call home.
+          नेपालका उत्कृष्ट घर, कोठा र अपार्टमेन्टहरू एकै ठाउँमा।{" "}
+          <span className="text-white/95 font-medium">
+            Discover verified rooms & houses across Nepal — modern apartments to
+            cozy studios.
+          </span>
         </motion.p>
+
+        {/* Nepali micro-copy */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.55 }}
+          className="flex flex-wrap justify-center gap-3 mt-5"
+        >
+          {[
+            "✅ Verified Listings",
+            "💬 Direct Owner Contact",
+            "🔒 Safe & Trusted",
+            "📍 Pokhara & More",
+          ].map((tag) => (
+            <span
+              key={tag}
+              className="text-xs px-3 py-1 rounded-full bg-white/10 backdrop-blur-sm text-white/80 border border-white/15"
+            >
+              {tag}
+            </span>
+          ))}
+        </motion.div>
 
         {/* CTA Buttons */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.6 }}
+          transition={{ duration: 0.8, delay: 0.65 }}
           className="flex flex-col sm:flex-row gap-4 justify-center mt-10"
         >
           <Button
             size="lg"
-            className="group relative overflow-hidden rounded-full px-8 py-6 text-base bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer"
+            className="group relative overflow-hidden rounded-full px-8 py-6 text-base bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 text-white shadow-xl hover:shadow-2xl transition-all duration-300 cursor-pointer font-semibold"
             onClick={() => router.push("/rooms")}
           >
             <span className="relative z-10 flex items-center gap-2">
-              Start Exploring
+              <Search className="w-4 h-4" />
+              कोठा खोज्नुस् (Browse Rooms)
               <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
             </span>
             <motion.div
@@ -209,16 +232,20 @@ export function Hero() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.8 }}
-          className="grid grid-cols-2 md:grid-cols-4 gap-8 mt-16"
+          transition={{ duration: 0.8, delay: 0.85 }}
+          className="grid grid-cols-2 md:grid-cols-4 gap-6 mt-16 max-w-3xl mx-auto"
         >
-          {stats.map((stat, index) => (
-            <div key={stat.label} className="text-center">
-              <stat.icon className="w-6 h-6 text-red-400 mx-auto mb-2" />
-              <p className="text-2xl md:text-3xl font-bold text-white">
+          {stats.map((stat) => (
+            <div key={stat.label} className="text-center group">
+              <div className="w-10 h-10 rounded-full bg-red-500/20 flex items-center justify-center mx-auto mb-2 group-hover:bg-red-500/40 transition-colors">
+                <stat.icon className="w-5 h-5 text-red-300" />
+              </div>
+              <p className="text-2xl md:text-3xl font-extrabold text-white tracking-tight">
                 {stat.value}
               </p>
-              <p className="text-sm text-white/60 mt-1">{stat.label}</p>
+              <p className="text-xs text-white/55 mt-1 font-medium">
+                {stat.label}
+              </p>
             </div>
           ))}
         </motion.div>
@@ -228,16 +255,18 @@ export function Hero() {
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ delay: 1.2 }}
+        transition={{ delay: 1.4 }}
         className="absolute bottom-8 left-1/2 -translate-x-1/2"
       >
         <motion.div
           animate={{ y: [0, 10, 0] }}
           transition={{ repeat: Infinity, duration: 1.5 }}
-          className="flex flex-col items-center gap-2"
+          className="flex flex-col items-center gap-1.5"
         >
-          <span className="text-white/60 text-xs tracking-wider">SCROLL</span>
-          <ArrowDown className="w-4 h-4 text-white/60" />
+          <span className="text-white/50 text-[10px] tracking-widest font-medium">
+            तल हेर्नुस्
+          </span>
+          <ArrowDown className="w-4 h-4 text-white/50" />
         </motion.div>
       </motion.div>
     </section>
