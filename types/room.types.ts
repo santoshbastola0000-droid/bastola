@@ -1,3 +1,5 @@
+import { UserRole } from "./user.types";
+
 export enum RoomStatus {
   PENDING = "Pending",
   APPROVED = "Approved",
@@ -74,6 +76,7 @@ export interface Room {
     email: string;
     phoneNumber: string;
     isVerified: boolean;
+    role: UserRole;
   };
   location?: Location;
   tiktokUrl?: string;

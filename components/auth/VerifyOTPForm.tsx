@@ -70,7 +70,7 @@ const VerifyOTPForm = () => {
 
   if (!email) return null;
 
-  const isError = hasAttempted && !isVerifying && otp.length === 5;
+  const isError = hasAttempted && !isVerifying && otp.length !== 5;
 
   return (
     <div className="space-y-8">

@@ -19,6 +19,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { Property } from "@/types/property.types";
+import { api } from "@/http/api/api";
+import { formatPriceNPR } from "@/lib/utils";
 
 interface PropertyCardProps {
   property: Property;
@@ -61,13 +63,9 @@ export function PropertyCard({
     amenities = [],
   } = property;
 
-  // Format price
-  const formattedPrice = new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(price);
+  const formattedPrice = formatPriceNPR(price);
+
+  console.log("images", images);
 
   // Get top 3 amenities
   const topAmenities = amenities.slice(0, 3);
@@ -146,7 +144,7 @@ export function PropertyCard({
                 src={
                   imageError
                     ? getDefaultImage()
-                    : images?.[0] || getDefaultImage()
+                    : `${api}/images?.[0]` || getDefaultImage()
                 }
                 alt={title}
                 fill
@@ -167,20 +165,6 @@ export function PropertyCard({
                   </Badge>
                 </div>
               )}
-
-              {/* Like Button */}
-              <button
-                onClick={handleLike}
-                className="absolute top-3 right-3 z-10 w-10 h-10 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center shadow-lg hover:shadow-xl transition-all hover:scale-110"
-              >
-                <Heart
-                  className={`w-5 h-5 transition-all duration-300 ${
-                    isLiked
-                      ? "fill-red-500 text-red-500 scale-110"
-                      : "text-slate-600"
-                  }`}
-                />
-              </button>
 
               {/* Price Tag */}
               <div className="absolute bottom-3 left-3 z-10">
