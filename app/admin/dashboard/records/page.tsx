@@ -41,10 +41,12 @@ import Link from "next/link";
 import { DeleteConfirmationDialog } from "@/components/DeleteConfirmationDialog";
 import { recordYearService } from "@/http/services/record-year.service";
 import { usePagination } from "@/hooks/usePagination";
-import { FAILURETOAST, SUCCESSTOAST } from "@/lib/constants/app.constants";
+import {
+  FAILURETOAST,
+  PAGE_SIZE_OPTIONS,
+  SUCCESSTOAST,
+} from "@/lib/constants/app.constants";
 import RecordList from "@/components/admin/records/RecordList";
-
-const PAGE_SIZE_OPTIONS = [10, 25, 50, 100] as const;
 
 const RecordYearList = () => {
   const queryClient = useQueryClient();
@@ -58,7 +60,7 @@ const RecordYearList = () => {
     handlePageSizeChange,
   } = usePagination();
 
-  const [nepaliYearFilter, setNepaliYearFilter] = useState<string>("all-year");
+  const [nepaliYearFilter, setNepaliYearFilter] = useState<string>("all-years");
   const [nepaliMonthFilter, setNepaliMonthFilter] =
     useState<string>("all-months");
   const [selectedYearId, setSelectedYearId] = useState<string | null>(null);
@@ -126,7 +128,7 @@ const RecordYearList = () => {
   };
 
   const handleClearFilters = () => {
-    setNepaliYearFilter("all-year");
+    setNepaliYearFilter("all-years");
     setNepaliMonthFilter("all-months");
     setSearchTerm("");
     handleSearch();

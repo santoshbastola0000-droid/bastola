@@ -24,12 +24,12 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import {
   ArrowLeft,
   Calendar,
   CreditCard,
-  DollarSign,
   FileText,
   Phone,
   User,
@@ -41,12 +41,32 @@ import {
   Eye,
   Loader2,
   Save,
-  Pencil,
   X,
   Receipt,
   Home,
+  Pencil,
 } from "lucide-react";
 import { privateApi } from "@/http/api/privateApi";
+
+// Custom Nepali Rupees icon component
+const NepaliRupeesIcon = ({ className }: { className?: string }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+  >
+    <path d="M6 3h12" />
+    <path d="M6 8h12" />
+    <path d="M6 13l6-5 6 5" />
+    <path d="M12 3v16" />
+    <path d="M9 19h6" />
+  </svg>
+);
 
 export default function EditRecordPage() {
   const router = useRouter();
@@ -56,7 +76,7 @@ export default function EditRecordPage() {
 
   const [formData, setFormData] = useState<UpdateRecordDTO | null>(null);
   const [inputValues, setInputValues] = useState({
-    formCharge: "0",
+    formCharge: "",
     customerNumber: "",
     roomPlaceNumber: "",
   });
@@ -98,7 +118,7 @@ export default function EditRecordPage() {
       setOriginalData(record);
 
       setInputValues({
-        formCharge: (record.formCharge || 0).toString(),
+        formCharge: record.formCharge ? record.formCharge.toString() : "",
         customerNumber: record.customerNumber || "",
         roomPlaceNumber: record.roomPlaceNumber || "",
       });
@@ -158,35 +178,51 @@ export default function EditRecordPage() {
     if (!formData) return;
 
     const { name, value } = e.target;
+
+    // Allow empty string
+    if (value === "") {
+      setInputValues((prev) => ({ ...prev, [name]: "" }));
+      setFormData((prev) => ({ ...prev!, [name]: 0 }));
+      return;
+    }
+
+    // Allow only numbers and one decimal point
     const numericValue = value.replace(/[^0-9.]/g, "");
+
+    // Prevent multiple decimal points
+    const decimalCount = (numericValue.match(/\./g) || []).length;
+    if (decimalCount > 1) return;
 
     setInputValues((prev) => ({ ...prev, [name]: numericValue }));
 
-    const numValue =
-      numericValue === "" || numericValue === "."
-        ? 0
-        : parseFloat(numericValue) || 0;
-    setFormData((prev) => ({ ...prev!, [name]: numValue }));
+    const numValue = parseFloat(numericValue);
+    if (!isNaN(numValue)) {
+      setFormData((prev) => ({ ...prev!, [name]: numValue }));
+    }
   };
 
   const handleNumberBlur = (e: React.FocusEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
+
     if (value === "" || value === ".") {
-      setInputValues((prev) => ({ ...prev, [name]: "0" }));
+      setInputValues((prev) => ({ ...prev, [name]: "" }));
       setFormData((prev) => ({ ...prev!, [name]: 0 }));
+    } else if (value) {
+      // Format to 2 decimal places on blur
+      const numValue = parseFloat(value);
+      if (!isNaN(numValue)) {
+        const formattedValue = numValue.toFixed(2);
+        setInputValues((prev) => ({ ...prev, [name]: formattedValue }));
+        setFormData((prev) => ({ ...prev!, [name]: numValue }));
+      }
     }
   };
 
-  const handleSelectChange =
-    (name: keyof UpdateRecordDTO) => (value: string) => {
-      if (!formData) return;
+  const handleSelectChange = (name: keyof UpdateRecordDTO, value: string) => {
+    if (!formData) return;
 
-      if (name === "paymentStatus") {
-        setFormData((prev) => ({ ...prev!, [name]: value as PaymentStatus }));
-      } else if (name === "payMode") {
-        setFormData((prev) => ({ ...prev!, [name]: value as PayMode }));
-      }
-    };
+    setFormData((prev) => ({ ...prev!, [name]: value }));
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -267,7 +303,7 @@ export default function EditRecordPage() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+          <Loader2 className="h-8 w-8 animate-spin mx-auto text-[var(--primary)]" />
           <p className="mt-2 text-gray-600">Loading record details...</p>
         </div>
       </div>
@@ -290,7 +326,9 @@ export default function EditRecordPage() {
       });
 
       setInputValues({
-        formCharge: (originalData.formCharge || 0).toString(),
+        formCharge: originalData.formCharge
+          ? originalData.formCharge.toString()
+          : "",
         customerNumber: originalData.customerNumber || "",
         roomPlaceNumber: originalData.roomPlaceNumber || "",
       });
@@ -404,7 +442,7 @@ export default function EditRecordPage() {
               variant="outline"
               size="sm"
               onClick={() => setShowPreview(!showPreview)}
-              className="cursor-pointer border-primary/20 hover:bg-primary/5"
+              className="cursor-pointer border-[var(--primary)]/20 hover:bg-[var(--primary)]"
             >
               {showPreview ? (
                 <>
@@ -421,21 +459,25 @@ export default function EditRecordPage() {
           </div>
 
           {/* Record Info Card */}
-          <Card className="bg-primary/5 border-primary/20">
+          <Card className="bg-[var(--primary)]/5 border-[var(--primary)]/20">
             <CardContent className="p-4">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-1">
-                  <p className="text-sm text-primary/70">Created On</p>
+                  <p className="text-sm text-[var(--primary)]/70">Created On</p>
                   <p className="font-medium">{formatDate(record.createdAt)}</p>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-sm text-primary/70">Last Updated</p>
+                  <p className="text-sm text-[var(--primary)]/70">
+                    Last Updated
+                  </p>
                   <p className="font-medium">{formatDate(record.updatedAt)}</p>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-sm text-primary/70">Record Year</p>
+                  <p className="text-sm text-[var(--primary)]/70">
+                    Record Year
+                  </p>
                   <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-primary" />
+                    <Calendar className="h-4 w-4 text-[var(--primary)]" />
                     <span className="font-medium">
                       {record.recordYear?.nepaliYear || "N/A"}/
                       {record.recordYear?.nepaliMonth
@@ -457,8 +499,8 @@ export default function EditRecordPage() {
               <Card className="border border-gray-200 shadow-sm">
                 <CardContent className="p-4 md:p-6">
                   <div className="flex items-center gap-3 mb-4 md:mb-6">
-                    <div className="p-2 bg-primary/10 rounded-lg">
-                      <User className="h-5 w-5 text-primary" />
+                    <div className="p-2 bg-[var(--primary)]/10 rounded-lg">
+                      <User className="h-5 w-5 text-[var(--primary)]" />
                     </div>
                     <div>
                       <h2 className="text-lg md:text-xl font-semibold text-gray-900">
@@ -484,7 +526,7 @@ export default function EditRecordPage() {
                           value={formData.name || ""}
                           onChange={handleTextChange}
                           placeholder="John Doe"
-                          className="pl-10 h-11"
+                          className="pl-10 h-11 focus:border-[var(--primary)] focus:ring-[var(--ring)]"
                           required
                           disabled={isPending || showPreview}
                         />
@@ -506,7 +548,7 @@ export default function EditRecordPage() {
                           value={inputValues.customerNumber}
                           onChange={handleTextChange}
                           placeholder="+977 9800000000"
-                          className="pl-10 h-11"
+                          className="pl-10 h-11 focus:border-[var(--primary)] focus:ring-[var(--ring)]"
                           required
                           disabled={isPending || showPreview}
                         />
@@ -520,8 +562,8 @@ export default function EditRecordPage() {
               <Card className="border border-gray-200 shadow-sm">
                 <CardContent className="p-4 md:p-6">
                   <div className="flex items-center gap-3 mb-4 md:mb-6">
-                    <div className="p-2 bg-primary/10 rounded-lg">
-                      <Home className="h-5 w-5 text-primary" />
+                    <div className="p-2 bg-[var(--primary)]/10 rounded-lg">
+                      <Home className="h-5 w-5 text-[var(--primary)]" />
                     </div>
                     <div>
                       <h2 className="text-lg md:text-xl font-semibold text-gray-900">
@@ -549,7 +591,7 @@ export default function EditRecordPage() {
                           value={inputValues.roomPlaceNumber}
                           onChange={handleTextChange}
                           placeholder="Room 101, Block A"
-                          className="pl-10 h-11"
+                          className="pl-10 h-11 focus:border-[var(--primary)] focus:ring-[var(--ring)]"
                           disabled={isPending || showPreview}
                         />
                       </div>
@@ -570,7 +612,7 @@ export default function EditRecordPage() {
                           value={formData.roomPlaceAddress || ""}
                           onChange={handleTextChange}
                           placeholder="Enter complete room address..."
-                          className="pl-10 min-h-[80px] resize-none"
+                          className="pl-10 min-h-[80px] resize-none focus:border-[var(--primary)] focus:ring-[var(--ring)]"
                           rows={3}
                           disabled={isPending || showPreview}
                         />
@@ -584,8 +626,8 @@ export default function EditRecordPage() {
               <Card className="border border-gray-200 shadow-sm">
                 <CardContent className="p-4 md:p-6">
                   <div className="flex items-center gap-3 mb-4 md:mb-6">
-                    <div className="p-2 bg-primary/10 rounded-lg">
-                      <DollarSign className="h-5 w-5 text-primary" />
+                    <div className="p-2 bg-[var(--primary)]/10 rounded-lg">
+                      <NepaliRupeesIcon className="h-5 w-5 text-[var(--primary)]" />
                     </div>
                     <div>
                       <h2 className="text-lg md:text-xl font-semibold text-gray-900">
@@ -607,20 +649,28 @@ export default function EditRecordPage() {
                       </Label>
                       <Select
                         value={formData.payMode || PayMode.CASH}
-                        onValueChange={handleSelectChange("payMode")}
+                        onValueChange={(value) =>
+                          handleSelectChange("payMode", value)
+                        }
                         disabled={isPending || showPreview}
                       >
-                        <SelectTrigger className="h-11">
-                          <div className="flex items-center">
-                            {getPayModeIcon(formData.payMode || PayMode.CASH)}
-                            <span className="ml-2">
-                              {formData.payMode || PayMode.CASH}
-                            </span>
-                          </div>
+                        <SelectTrigger className="h-11 focus:border-[var(--primary)] focus:ring-[var(--ring)] cursor-pointer">
+                          <SelectValue>
+                            <div className="flex items-center">
+                              {getPayModeIcon(formData.payMode || PayMode.CASH)}
+                              <span className="ml-2">
+                                {formData.payMode || PayMode.CASH}
+                              </span>
+                            </div>
+                          </SelectValue>
                         </SelectTrigger>
                         <SelectContent>
                           {Object.values(PayMode).map((mode) => (
-                            <SelectItem key={mode} value={mode}>
+                            <SelectItem
+                              key={mode}
+                              value={mode}
+                              className="cursor-pointer hover:bg-[var(--primary)]/10"
+                            >
                               <div className="flex items-center">
                                 {getPayModeIcon(mode)}
                                 <span className="ml-2">{mode}</span>
@@ -640,29 +690,37 @@ export default function EditRecordPage() {
                       </Label>
                       <Select
                         value={formData.paymentStatus || PaymentStatus.DUE}
-                        onValueChange={handleSelectChange("paymentStatus")}
+                        onValueChange={(value) =>
+                          handleSelectChange("paymentStatus", value)
+                        }
                         disabled={isPending || showPreview}
                       >
                         <SelectTrigger
                           className={cn(
-                            "h-11",
+                            "h-11 focus:border-[var(--primary)] focus:ring-[var(--ring)] cursor-pointer",
                             getPaymentStatusColor(
                               formData.paymentStatus || PaymentStatus.DUE,
                             ),
                           )}
                         >
-                          <div className="flex items-center">
-                            {getPaymentStatusIcon(
-                              formData.paymentStatus || PaymentStatus.DUE,
-                            )}
-                            <span className="ml-2">
-                              {formData.paymentStatus || PaymentStatus.DUE}
-                            </span>
-                          </div>
+                          <SelectValue>
+                            <div className="flex items-center">
+                              {getPaymentStatusIcon(
+                                formData.paymentStatus || PaymentStatus.DUE,
+                              )}
+                              <span className="ml-2">
+                                {formData.paymentStatus || PaymentStatus.DUE}
+                              </span>
+                            </div>
+                          </SelectValue>
                         </SelectTrigger>
                         <SelectContent>
                           {Object.values(PaymentStatus).map((status) => (
-                            <SelectItem key={status} value={status}>
+                            <SelectItem
+                              key={status}
+                              value={status}
+                              className="cursor-pointer hover:bg-[var(--primary)]/10"
+                            >
                               <div className="flex items-center">
                                 {getPaymentStatusIcon(status)}
                                 <span className="ml-2">{status}</span>
@@ -678,10 +736,11 @@ export default function EditRecordPage() {
                         htmlFor="formCharge"
                         className="text-gray-700 font-medium"
                       >
-                        Form Charge (NPR)
+                        Form Charge (NPR){" "}
+                        <span className="text-red-500">*</span>
                       </Label>
                       <div className="relative">
-                        <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                        <NepaliRupeesIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
                         <Input
                           id="formCharge"
                           name="formCharge"
@@ -689,12 +748,16 @@ export default function EditRecordPage() {
                           onChange={handleNumberInputChange}
                           onBlur={handleNumberBlur}
                           placeholder="0.00"
-                          className="pl-10 h-11 text-right"
+                          className="pl-10 h-11 text-right focus:border-[var(--primary)] focus:ring-[var(--ring)]"
                           type="text"
                           inputMode="decimal"
                           disabled={isPending || showPreview}
+                          required
                         />
                       </div>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Enter 0 if no charge
+                      </p>
                       {formData.paymentStatus === PaymentStatus.PAID &&
                         (!formData.formCharge || formData.formCharge <= 0) && (
                           <p className="text-sm text-red-500">
@@ -710,8 +773,8 @@ export default function EditRecordPage() {
               <Card className="border border-gray-200 shadow-sm">
                 <CardContent className="p-4 md:p-6">
                   <div className="flex items-center gap-3 mb-4 md:mb-6">
-                    <div className="p-2 bg-primary/10 rounded-lg">
-                      <FileText className="h-5 w-5 text-primary" />
+                    <div className="p-2 bg-[var(--primary)]/10 rounded-lg">
+                      <FileText className="h-5 w-5 text-[var(--primary)]" />
                     </div>
                     <div>
                       <h2 className="text-lg md:text-xl font-semibold text-gray-900">
@@ -733,7 +796,7 @@ export default function EditRecordPage() {
                       value={formData.remarks || ""}
                       onChange={handleTextChange}
                       placeholder="Enter any additional notes or remarks..."
-                      className="min-h-[100px] resize-none"
+                      className="min-h-[100px] resize-none focus:border-[var(--primary)] focus:ring-[var(--ring)]"
                       rows={4}
                       disabled={isPending || showPreview}
                     />
@@ -749,7 +812,7 @@ export default function EditRecordPage() {
                     variant="outline"
                     onClick={handleCancel}
                     disabled={isPending}
-                    className="cursor-pointer"
+                    className="cursor-pointer border-gray-300 hover:bg-gray-100 hover:text-gray-900"
                   >
                     Cancel
                   </Button>
@@ -760,7 +823,7 @@ export default function EditRecordPage() {
                       variant="outline"
                       onClick={resetToOriginal}
                       disabled={isPending || !isFormModified()}
-                      className="cursor-pointer"
+                      className="cursor-pointer border-gray-300 hover:bg-gray-100 hover:text-gray-900"
                     >
                       <X className="h-4 w-4 mr-2" /> Reset
                     </Button>
@@ -769,7 +832,7 @@ export default function EditRecordPage() {
                   <Button
                     type="submit"
                     disabled={isPending || !isFormModified()}
-                    className="cursor-pointer bg-primary hover:bg-primary-dark text-white"
+                    className="cursor-pointer bg-[var(--primary)] hover:bg-[var(--primary-dark)] text-white"
                   >
                     {isPending ? (
                       <>
@@ -793,8 +856,8 @@ export default function EditRecordPage() {
             <Card className="border border-gray-200 shadow-sm lg:sticky lg:top-6">
               <CardContent className="p-4 md:p-6">
                 <div className="flex items-center gap-3 mb-4 md:mb-6">
-                  <div className="p-2 bg-primary/10 rounded-lg">
-                    <Eye className="h-5 w-5 text-primary" />
+                  <div className="p-2 bg-[var(--primary)]/10 rounded-lg">
+                    <Eye className="h-5 w-5 text-[var(--primary)]" />
                   </div>
                   <div>
                     <h2 className="text-lg md:text-xl font-semibold text-gray-900">
@@ -853,7 +916,7 @@ export default function EditRecordPage() {
                         <span className="text-sm text-gray-500">Mode:</span>
                         <Badge
                           variant="outline"
-                          className="text-xs flex items-center gap-1"
+                          className="text-xs flex items-center gap-1 border-[var(--primary)]/20 bg-[var(--primary)]/10 text-[var(--primary-dark)]"
                         >
                           {getPayModeIcon(formData.payMode || PayMode.CASH)}
                           {formData.payMode || PayMode.CASH}
@@ -895,32 +958,12 @@ export default function EditRecordPage() {
                         <span className="text-sm font-medium text-gray-900">
                           Total:
                         </span>
-                        <span className="text-sm font-bold text-primary">
+                        <span className="text-sm font-bold text-[var(--primary)]">
                           Rs. {calculateTotalAmount().toFixed(2)}
                         </span>
                       </div>
                     </div>
                   </div>
-
-                  {/* SMS Notification */}
-                  {formData.paymentStatus === PaymentStatus.PAID &&
-                    formData.formCharge &&
-                    formData.formCharge > 0 &&
-                    originalData?.paymentStatus !== PaymentStatus.PAID && (
-                      <div className="pt-4 border-t border-gray-200">
-                        <div className="p-3 bg-green-50 rounded-lg">
-                          <div className="flex items-center gap-2 mb-1">
-                            <Receipt className="h-4 w-4 text-green-600" />
-                            <p className="text-sm font-medium text-green-700">
-                              Payment Confirmation SMS
-                            </p>
-                          </div>
-                          <p className="text-xs text-green-600">
-                            Will be sent to customer upon update
-                          </p>
-                        </div>
-                      </div>
-                    )}
 
                   {/* Form Status */}
                   <div className="pt-4 border-t border-gray-200">
@@ -930,7 +973,7 @@ export default function EditRecordPage() {
                         variant={isFormModified() ? "default" : "outline"}
                         className={
                           isFormModified()
-                            ? "bg-primary/10 text-primary border-primary/20"
+                            ? "bg-[var(--primary)]/10 text-[var(--primary)] border-[var(--primary)]/20"
                             : ""
                         }
                       >

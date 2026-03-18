@@ -13,7 +13,6 @@ import {
   calculateEnglishDates,
 } from "@/lib/nepali-date.utils";
 import { cn } from "@/lib/utils";
-import { api } from "@/http/api/api";
 import { useRouter } from "next/navigation";
 import { privateApi } from "@/http/api/privateApi";
 
@@ -213,7 +212,7 @@ const CreateRecordYearForm = () => {
               <div className="space-y-2">
                 <p className="text-sm font-medium">Title</p>
                 <div className="p-3 bg-background rounded border">
-                  <p className="font-medium">{formData.title}</p>
+                  <p className="font-medium">{formData.nepaliYear}</p>
                 </div>
               </div>
 

@@ -182,7 +182,6 @@ export function RoomList({ initialFilters = {} }: RoomListProps) {
     return filters;
   };
 
-  // Queries
   const {
     data: roomsResponse,
     isLoading,
@@ -311,7 +310,6 @@ export function RoomList({ initialFilters = {} }: RoomListProps) {
   const showingTo = Math.min((page + 1) * take, totalItems);
   const totalPages = Math.max(1, Math.ceil(totalItems / take));
 
-  // Stats calculation
   const stats = {
     total: totalItems,
     approved: rooms.filter((r) => r.approvalStatus === RoomStatus.APPROVED)

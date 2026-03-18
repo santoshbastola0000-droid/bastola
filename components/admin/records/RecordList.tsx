@@ -375,7 +375,7 @@ export default function RecordList({
                 variant="ghost"
                 size="sm"
                 onClick={onBack}
-                className="h-8 w-8 p-0"
+                className="h-8 w-8 p-0 cursor-pointer"
               >
                 <ChevronLeft className="h-4 w-4" />
               </Button>
@@ -391,10 +391,10 @@ export default function RecordList({
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <Button asChild className="bg-primary hover:bg-blue-900">
+            <Button asChild className="bg-primary hover:bg-red-700">
               <Link
                 href={`/admin/dashboard/records/year/${recordYearId}/create`}
-                className="flex items-center gap-2"
+                className="flex items-center gap-2 cursor-pointer"
               >
                 <Plus className="h-4 w-4" />
                 Add Record
@@ -408,7 +408,7 @@ export default function RecordList({
           <CardContent className="p-4 md:p-6">
             <div className="space-y-4">
               <div className="space-y-2">
-                <label className="text-sm font-medium flex items-center gap-2">
+                <label className="text-sm font-medium flex items-center gap-2 ">
                   <Search className="h-4 w-4 text-gray-500" />
                   Search Records
                 </label>
@@ -435,7 +435,7 @@ export default function RecordList({
                   <div className="flex gap-2">
                     <Button
                       onClick={handleSearch}
-                      className="h-10 px-6 bg-primary hover:bg-blue-900"
+                      className="h-10 px-6 bg-primary hover:bg-red-700 cursor-pointer"
                     >
                       <Search className="h-4 w-4 mr-2" />
                       Search
@@ -444,7 +444,7 @@ export default function RecordList({
                       <Button
                         onClick={handleClearSearch}
                         variant="outline"
-                        className="h-10"
+                        className="h-10 cursor-pointer"
                       >
                         Clear
                       </Button>
@@ -553,12 +553,16 @@ export default function RecordList({
                 value={pageSize.toString()}
                 onValueChange={(value) => handlePageSizeChange(Number(value))}
               >
-                <SelectTrigger className="h-8 w-[70px]">
+                <SelectTrigger className="h-8 w-[70px] cursor-pointer">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   {PAGE_SIZE_OPTIONS.map((size) => (
-                    <SelectItem key={size} value={size.toString()}>
+                    <SelectItem
+                      key={size}
+                      value={size.toString()}
+                      className="cursor-pointer"
+                    >
                       {size}
                     </SelectItem>
                   ))}
@@ -687,7 +691,7 @@ export default function RecordList({
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8 hover:bg-blue-50 hover:text-blue-600"
+                            className="h-8 w-8 hover:bg-blue-50 hover:text-primary cursor-pointer"
                             onClick={() => handleViewRecord(record.id)}
                             title="View Details"
                           >
@@ -696,7 +700,7 @@ export default function RecordList({
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8 hover:bg-green-50 hover:text-green-600"
+                            className="h-8 w-8 hover:bg-green-50 hover:text-green-600 cursor-pointer"
                             asChild
                             title="Edit"
                           >
@@ -714,7 +718,7 @@ export default function RecordList({
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-8 w-8 hover:bg-red-50 hover:text-red-600"
+                              className="h-8 w-8 hover:bg-red-50 hover:text-red-600 cursor-pointer"
                               title="Delete"
                             >
                               <Trash2 className="h-4 w-4" />
@@ -772,6 +776,7 @@ export default function RecordList({
                 size="sm"
                 onClick={() => handlePageChange(page - 1)}
                 disabled={page === 0}
+                className="cursor-pointer"
               >
                 Previous
               </Button>
@@ -787,6 +792,7 @@ export default function RecordList({
                 disabled={
                   page >= Math.ceil(paginationData.total / pageSize) - 1
                 }
+                className="cursor-pointer"
               >
                 Next
               </Button>
