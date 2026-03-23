@@ -112,7 +112,6 @@ export default function UserLayout({
         <div
           className={cn(
             "fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out md:hidden",
-            isMobileMenuOpen ? "translate-x-0" : "-translate-x-full",
           )}
         >
           <UserSidebar

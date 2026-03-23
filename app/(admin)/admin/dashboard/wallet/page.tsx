@@ -98,7 +98,6 @@ export default function AdminWalletPage() {
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  // Fetch wallet stats
   const {
     data: statsData,
     isLoading: statsLoading,
@@ -108,7 +107,6 @@ export default function AdminWalletPage() {
     queryFn: () => walletService.getWalletStats(),
   });
 
-  // Fetch all withdrawals
   const {
     data: withdrawalsResponse,
     isLoading: withdrawalsLoading,
@@ -137,7 +135,6 @@ export default function AdminWalletPage() {
       }),
   });
 
-  // Process withdrawal mutation
   const processMutation = useMutation({
     mutationFn: ({
       id,

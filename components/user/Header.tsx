@@ -119,7 +119,7 @@ export function UserHeader({ onMenuClick }: UserHeaderProps) {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="hover:bg-primary/10 cursor-pointer"
+                    className="hover:bg-primary/60 cursor-pointer"
                     onClick={() =>
                       setTheme(theme === "dark" ? "light" : "dark")
                     }
@@ -142,7 +142,7 @@ export function UserHeader({ onMenuClick }: UserHeaderProps) {
               <DropdownMenuTrigger asChild>
                 <Button
                   variant="ghost"
-                  className="flex items-center gap-2 px-2 hover:bg-primary/10 cursor-pointer h-auto py-1"
+                  className="flex items-center gap-2 px-2 hover:bg-primary/50 cursor-pointer h-auto py-1"
                 >
                   <Avatar className="h-8 w-8 ring-2 ring-primary/20">
                     <AvatarFallback className="bg-gradient-to-br from-primary to-primary-dark text-white">

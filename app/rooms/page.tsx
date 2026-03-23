@@ -5,14 +5,16 @@ import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Search,
-  Grid,
-  List,
   X,
   ChevronLeft,
   ChevronRight,
   ArrowUpDown,
-  IndianRupee,
-  Compass,
+  SlidersHorizontal,
+  MapPin,
+  Loader2,
+  Home,
+  Navigation,
+  Check,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,526 +27,662 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Card } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import { Slider } from "@/components/ui/slider";
 import { PropertyCard } from "@/components/rooms/PropertyCard";
-import { FilterSidebar } from "@/components/rooms/FilterSidebar";
 import { NavBar } from "@/components/common/navbar";
 import Footer from "@/components/common/footer";
-import { useRooms } from "@/hooks/use-rooms";
-import { RoomFilters, RoomCategory } from "@/types/room.types";
+import { roomService } from "@/http/services/room.service";
+import { RoomCategory, RoomStatus, type Room } from "@/types/room.types";
 import { cn } from "@/lib/utils";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// ─── Category config ──────────────────────────────────────────────────────────
 
-type SortOption = "price-low-to-high" | "price-high-to-low" | "default";
-type ViewMode = "grid" | "list";
+interface CatConfig {
+  label: string;
+  labelNp: string;
+  emoji: string;
+  value: RoomCategory;
+}
+
+const CATEGORIES: CatConfig[] = [
+  {
+    value: RoomCategory.APARTMENT,
+    label: "Apartment",
+    labelNp: "अपार्टमेन्ट",
+    emoji: "🏢",
+  },
+  { value: RoomCategory.FLAT, label: "Flat", labelNp: "फ्ल्याट", emoji: "🏠" },
+  {
+    value: RoomCategory.SINGLE,
+    label: "Single",
+    labelNp: "एकल कोठा",
+    emoji: "🛏",
+  },
+  {
+    value: RoomCategory.DOUBLE,
+    label: "Double",
+    labelNp: "डबल",
+    emoji: "🛏🛏",
+  },
+  { value: RoomCategory.SHARED, label: "Shared", labelNp: "साझा", emoji: "👥" },
+  { value: RoomCategory.HOUSE, label: "House", labelNp: "घर", emoji: "🏡" },
+  {
+    value: RoomCategory.HOSTEL,
+    label: "Hostel",
+    labelNp: "होस्टेल",
+    emoji: "🏨",
+  },
+  {
+    value: RoomCategory.ATTACHED_BATHROOM,
+    label: "Attached Bath",
+    labelNp: "अट्याच्ड बाथ",
+    emoji: "🚿",
+  },
+  { value: RoomCategory.HOTEL, label: "Hotel", labelNp: "होटेल", emoji: "🏩" },
+  {
+    value: RoomCategory.OFFICE_SPACE,
+    label: "Office",
+    labelNp: "अफिस",
+    emoji: "🏢",
+  },
+  {
+    value: RoomCategory.SHUTTER,
+    label: "Shutter",
+    labelNp: "शटर",
+    emoji: "🏪",
+  },
+];
+
+type SortOption = "default" | "price-asc" | "price-desc";
 
 interface FilterState {
-  selectedCategories: string[];
+  categories: RoomCategory[];
   sort: SortOption;
   page: number;
-  itemsPerPage: number;
+  take: number;
   search: string;
   minPrice: number;
   maxPrice: number;
+  allowsWomen: boolean | null;
+  lat: number | null;
+  lng: number | null;
+  radius: number;
 }
 
-// ─── Constants ────────────────────────────────────────────────────────────────
-
 const DEFAULT_FILTERS: FilterState = {
-  selectedCategories: [],
+  categories: [],
   sort: "default",
   page: 0,
-  itemsPerPage: 12,
+  take: 12,
   search: "",
   minPrice: 0,
-  maxPrice: 100000,
+  maxPrice: 50000,
+  allowsWomen: null,
+  lat: null,
+  lng: null,
+  radius: 10,
 };
 
-const CATEGORY_LABELS: Record<string, string> = {
-  [RoomCategory.FLAT]: "Flat",
-  [RoomCategory.SINGLE]: "Single Room",
-  [RoomCategory.APARTMENT]: "Apartment",
-  [RoomCategory.SHARED]: "Shared Room",
-  [RoomCategory.DOUBLE]: "Double Room",
-  [RoomCategory.HOUSE]: "House",
-  [RoomCategory.ATTACHED_BATHROOM]: "Attached Bathroom",
-  [RoomCategory.SHUTTER]: "Shutter",
-  [RoomCategory.HOTEL]: "Hotel",
-  [RoomCategory.OFFICE_SPACE]: "Office Space",
-  [RoomCategory.HOSTEL]: "Hostel",
-};
+// ─── Skeleton ─────────────────────────────────────────────────────────────────
 
-// ─── Page skeleton shown while Suspense resolves ─────────────────────────────
-
-function RoomsPageSkeleton() {
+function CardSkeleton() {
   return (
-    <>
-      <NavBar />
-      <div className="min-h-screen bg-gray-50 pt-20">
-        {/* Hero skeleton */}
-        <div className="bg-gradient-to-br from-primary/10 via-primary/5 to-transparent">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-14">
-            <div className="text-center max-w-3xl mx-auto space-y-4">
-              <Skeleton className="h-12 w-96 mx-auto" />
-              <Skeleton className="h-5 w-64 mx-auto" />
-              <Skeleton className="h-14 w-full max-w-2xl mx-auto rounded-full" />
-            </div>
-          </div>
+    <div className="bg-white rounded-2xl overflow-hidden border border-slate-100 shadow-sm animate-pulse">
+      <div className="aspect-[4/3] bg-slate-200" />
+      <div className="p-4 space-y-3">
+        <div className="h-4 bg-slate-200 rounded w-3/4" />
+        <div className="h-3 bg-slate-200 rounded w-1/2" />
+        <div className="flex gap-2 py-2">
+          <div className="flex-1 h-10 bg-slate-100 rounded" />
+          <div className="flex-1 h-10 bg-slate-100 rounded" />
+          <div className="flex-1 h-10 bg-slate-100 rounded" />
         </div>
-        {/* Content skeleton */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="lg:grid lg:grid-cols-4 lg:gap-8">
-            {/* Sidebar skeleton */}
-            <div className="hidden lg:block">
-              <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm space-y-4">
-                <Skeleton className="h-5 w-24" />
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-4 w-3/4" />
-              </div>
-            </div>
-            {/* Cards skeleton */}
-            <div className="lg:col-span-3 space-y-6">
-              <Skeleton className="h-20 w-full rounded-xl" />
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
-                {Array.from({ length: 6 }).map((_, i) => (
-                  <Card
-                    key={i}
-                    className="overflow-hidden border-0 shadow-sm rounded-2xl"
-                  >
-                    <Skeleton className="h-52 w-full rounded-none" />
-                    <div className="p-4 space-y-3">
-                      <Skeleton className="h-4 w-3/4" />
-                      <Skeleton className="h-3.5 w-1/2" />
-                      <div className="grid grid-cols-3 gap-2">
-                        <Skeleton className="h-3.5" />
-                        <Skeleton className="h-3.5" />
-                        <Skeleton className="h-3.5" />
-                      </div>
-                    </div>
-                  </Card>
-                ))}
-              </div>
-            </div>
-          </div>
+        <div className="flex gap-2">
+          <div className="h-5 w-14 bg-slate-100 rounded-full" />
+          <div className="h-5 w-14 bg-slate-100 rounded-full" />
         </div>
       </div>
-      <Footer />
-    </>
+    </div>
   );
 }
 
-// ─── Inner content (uses useSearchParams — must be inside Suspense) ───────────
+// ─── Filter Sheet (mobile + desktop) ─────────────────────────────────────────
+
+interface FilterPanelProps {
+  filters: FilterState;
+  onChange: (f: Partial<FilterState>) => void;
+  onReset: () => void;
+  total: number;
+}
+
+function FilterPanel({ filters, onChange, onReset, total }: FilterPanelProps) {
+  return (
+    <div className="space-y-6">
+      {/* Price range */}
+      <div>
+        <p className="text-sm font-semibold text-slate-700 mb-3">
+          Price Range
+          <span className="font-normal text-slate-500 ml-2">
+            रू {filters.minPrice.toLocaleString()} – रू{" "}
+            {filters.maxPrice.toLocaleString()}
+          </span>
+        </p>
+        <Slider
+          min={0}
+          max={50000}
+          step={500}
+          value={[filters.minPrice, filters.maxPrice]}
+          onValueChange={([min, max]) =>
+            onChange({ minPrice: min, maxPrice: max, page: 0 })
+          }
+          className="w-full"
+        />
+        <div className="flex justify-between text-xs text-slate-400 mt-1">
+          <span>रू ०</span>
+          <span>रू ५०,०००+</span>
+        </div>
+      </div>
+
+      {/* Women allowed */}
+      <div>
+        <p className="text-sm font-semibold text-slate-700 mb-2">Tenant Type</p>
+        <div className="flex gap-2">
+          {[
+            { label: "All", value: null },
+            { label: "♀ Women OK", value: true },
+          ].map(({ label, value }) => (
+            <button
+              key={label}
+              type="button"
+              onClick={() => onChange({ allowsWomen: value, page: 0 })}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                filters.allowsWomen === value
+                  ? "bg-red-500 text-white border-red-500"
+                  : "bg-white text-slate-600 border-slate-200 hover:border-red-300"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Radius (when location active) */}
+      {filters.lat && (
+        <div>
+          <p className="text-sm font-semibold text-slate-700 mb-2">
+            Search Radius: {filters.radius} km
+          </p>
+          <Slider
+            min={1}
+            max={50}
+            step={1}
+            value={[filters.radius]}
+            onValueChange={([r]) => onChange({ radius: r, page: 0 })}
+          />
+        </div>
+      )}
+
+      <div className="flex gap-2 pt-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onReset}
+          className="flex-1 cursor-pointer"
+        >
+          Reset
+        </Button>
+        <div className="flex-1 flex items-center justify-center text-xs text-slate-500">
+          {total} rooms
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Inner content ────────────────────────────────────────────────────────────
 
 function RoomsContent() {
   const router = useRouter();
   const pathname = usePathname();
-  const searchParams = useSearchParams(); // <-- requires Suspense boundary
+  const searchParams = useSearchParams();
 
-  const categoryParam = searchParams?.get("category") ?? "";
-  const searchQueryParam = searchParams?.get("search") ?? "";
-  const minPriceParam = searchParams?.get("minPrice");
-  const maxPriceParam = searchParams?.get("maxPrice");
+  const [filters, setFilters] = useState<FilterState>(() => {
+    const cats = (searchParams?.getAll("cat") as RoomCategory[]) ?? [];
+    return {
+      ...DEFAULT_FILTERS,
+      categories: cats,
+      search: searchParams?.get("q") ?? "",
+      minPrice: Number(searchParams?.get("min") ?? 0),
+      maxPrice: Number(searchParams?.get("max") ?? 50000),
+    };
+  });
 
-  const [viewMode, setViewMode] = useState<ViewMode>("grid");
-  const [searchInput, setSearchInput] = useState(searchQueryParam);
-  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [rooms, setRooms] = useState<Room[]>([]);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [locLoading, setLocLoading] = useState(false);
+  const [searchInput, setSearchInput] = useState(filters.search);
+  const [filterOpen, setFilterOpen] = useState(false);
+  const searchRef = useRef<NodeJS.Timeout | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
-  const [filters, setFilters] = useState<FilterState>(() => ({
-    ...DEFAULT_FILTERS,
-    selectedCategories: categoryParam ? [categoryParam] : [],
-    minPrice: minPriceParam ? parseInt(minPriceParam, 10) : 0,
-    maxPrice: maxPriceParam ? parseInt(maxPriceParam, 10) : 100000,
-    search: searchQueryParam,
-  }));
+  const totalPages = Math.ceil(total / filters.take);
 
-  // ── Build API filters ──
-  const apiFilters: RoomFilters = {
-    page: filters.page,
-    take: filters.itemsPerPage,
-    ...(filters.selectedCategories.length > 0 && {
-      category: filters.selectedCategories[0] as RoomCategory,
-    }),
-    ...(filters.search.trim() && { search: filters.search.trim() }),
-    ...(filters.minPrice > 0 && { minPrice: filters.minPrice }),
-    ...(filters.maxPrice < 100000 && { maxPrice: filters.maxPrice }),
-  };
+  // ── Fetch rooms — supports multi-category via parallel requests ──
+  const fetchRooms = useCallback(async (f: FilterState) => {
+    abortRef.current?.abort();
+    abortRef.current = new AbortController();
+    setLoading(true);
 
-  // rawRooms is Room[] — passed directly to PropertyCard (fixes TS2740)
-  const { rawRooms, loading, error, pagination, refetch } =
-    useRooms(apiFilters);
+    try {
+      const baseParams = {
+        page: f.page,
+        take: f.take,
+        ...(f.search.trim() && { search: f.search.trim() }),
+        ...(f.minPrice > 0 && { minPrice: f.minPrice }),
+        ...(f.maxPrice < 50000 && { maxPrice: f.maxPrice }),
+        ...(f.allowsWomen !== null && { allowsWomen: f.allowsWomen }),
+        ...(f.lat &&
+          f.lng && { latitude: f.lat, longitude: f.lng, radius: f.radius }),
+        approvalStatus: RoomStatus.APPROVED,
+      };
 
-  // ── Sync URL ──
+      let allRooms: Room[] = [];
+      let totalCount = 0;
+
+      if (f.categories.length <= 1) {
+        // Single or no category — one request
+        const resp = await roomService.getPublicRooms({
+          ...baseParams,
+          ...(f.categories.length === 1 && { category: f.categories[0] }),
+        });
+        allRooms = resp.data;
+        totalCount = resp.pagination?.total ?? resp.data.length;
+      } else {
+        // Multiple categories — parallel requests, merge & deduplicate
+        const results = await Promise.all(
+          f.categories.map((cat) =>
+            roomService.getPublicRooms({ ...baseParams, category: cat }),
+          ),
+        );
+        const seen = new Set<string>();
+        results.forEach((r) => {
+          r.data.forEach((room) => {
+            if (!seen.has(room.id)) {
+              seen.add(room.id);
+              allRooms.push(room);
+            }
+          });
+          totalCount += r.pagination?.total ?? r.data.length;
+        });
+        totalCount = allRooms.length; // accurate count after dedup
+      }
+
+      // Client-side sort
+      if (f.sort === "price-asc")
+        allRooms.sort((a, b) => Number(a.price) - Number(b.price));
+      if (f.sort === "price-desc")
+        allRooms.sort((a, b) => Number(b.price) - Number(a.price));
+
+      setRooms(allRooms);
+      setTotal(totalCount);
+    } catch (err: any) {
+      if (err?.name !== "AbortError") console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Re-fetch on filter change
   useEffect(() => {
+    fetchRooms(filters);
+    // Sync URL
     const params = new URLSearchParams();
-    if (filters.selectedCategories.length === 1)
-      params.set("category", filters.selectedCategories[0]);
-    if (filters.search.trim()) params.set("search", filters.search.trim());
-    if (filters.minPrice > 0) params.set("minPrice", String(filters.minPrice));
-    if (filters.maxPrice < 100000)
-      params.set("maxPrice", String(filters.maxPrice));
+    filters.categories.forEach((c) => params.append("cat", c));
+    if (filters.search) params.set("q", filters.search);
+    if (filters.minPrice > 0) params.set("min", String(filters.minPrice));
+    if (filters.maxPrice < 50000) params.set("max", String(filters.maxPrice));
+    router.replace(params.toString() ? `${pathname}?${params}` : pathname, {
+      scroll: false,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [JSON.stringify(filters)]);
 
-    const qs = params.toString();
-    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
-  }, [
-    filters.selectedCategories,
-    filters.search,
-    filters.minPrice,
-    filters.maxPrice,
-    pathname,
-    router,
-  ]);
-
-  // ── Cleanup debounce ──
-  useEffect(
-    () => () => {
-      if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
-    },
-    [],
-  );
-
-  // ── Handlers ──
-
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setSearchInput(value);
-    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
-    searchTimeoutRef.current = setTimeout(
-      () => setFilters((prev) => ({ ...prev, search: value, page: 0 })),
-      450,
-    );
-  };
-
-  const clearSearch = () => {
-    setSearchInput("");
-    setFilters((prev) => ({ ...prev, search: "", page: 0 }));
-  };
-
-  const handleFilterChange = useCallback(
-    (filterValues: Record<string, any>) => {
-      setFilters((prev) => ({
-        ...prev,
-        minPrice:
-          filterValues.minPrice !== undefined
-            ? filterValues.minPrice
-            : prev.minPrice,
-        maxPrice:
-          filterValues.maxPrice !== undefined
-            ? filterValues.maxPrice
-            : prev.maxPrice,
-        selectedCategories: filterValues.category
-          ? [filterValues.category]
-          : [],
-        page: 0,
-      }));
-    },
-    [],
-  );
+  const updateFilters = useCallback((patch: Partial<FilterState>) => {
+    setFilters((prev) => ({ ...prev, ...patch }));
+  }, []);
 
   const resetFilters = useCallback(() => {
     setFilters(DEFAULT_FILTERS);
     setSearchInput("");
-    router.replace(pathname, { scroll: false });
-  }, [pathname, router]);
-
-  const handleSortChange = useCallback((sortValue: SortOption) => {
-    setFilters((prev) => ({ ...prev, sort: sortValue, page: 0 }));
   }, []);
 
-  const handlePageChange = useCallback((newPage: number) => {
-    setFilters((prev) => ({ ...prev, page: newPage }));
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }, []);
+  // ── Category toggle (multi-select) ──
+  const toggleCategory = (cat: RoomCategory) => {
+    setFilters((prev) => {
+      const has = prev.categories.includes(cat);
+      return {
+        ...prev,
+        categories: has
+          ? prev.categories.filter((c) => c !== cat)
+          : [...prev.categories, cat],
+        page: 0,
+      };
+    });
+  };
 
-  const handleItemsPerPageChange = useCallback((value: string) => {
-    setFilters((prev) => ({ ...prev, itemsPerPage: Number(value), page: 0 }));
-  }, []);
+  // ── Search debounce ──
+  const handleSearch = (val: string) => {
+    setSearchInput(val);
+    if (searchRef.current) clearTimeout(searchRef.current);
+    searchRef.current = setTimeout(() => {
+      updateFilters({ search: val, page: 0 });
+    }, 420);
+  };
 
-  const removeFilter = useCallback(
-    (type: "category" | "search" | "price", value?: string) => {
-      setFilters((prev) => {
-        if (type === "category" && value)
-          return {
-            ...prev,
-            selectedCategories: prev.selectedCategories.filter(
-              (c) => c !== value,
-            ),
-            page: 0,
-          };
-        if (type === "search") {
-          setSearchInput("");
-          return { ...prev, search: "", page: 0 };
-        }
-        if (type === "price")
-          return { ...prev, minPrice: 0, maxPrice: 100000, page: 0 };
-        return prev;
-      });
-    },
-    [],
-  );
+  // ── Geolocation ──
+  const handleLocate = () => {
+    if (!navigator.geolocation) return;
+    setLocLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        updateFilters({
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+          page: 0,
+        });
+        setLocLoading(false);
+      },
+      () => setLocLoading(false),
+      { enableHighAccuracy: true, timeout: 8000 },
+    );
+  };
 
-  // ── Derived ──
-
-  const totalPages = Math.ceil((pagination?.total ?? 0) / filters.itemsPerPage);
-
-  const sortedRooms = [...rawRooms].sort((a, b) => {
-    if (filters.sort === "price-low-to-high") return a.price - b.price;
-    if (filters.sort === "price-high-to-low") return b.price - a.price;
-    return 0;
-  });
+  const clearLocation = () => updateFilters({ lat: null, lng: null, page: 0 });
 
   const hasActiveFilters =
-    filters.selectedCategories.length > 0 ||
+    filters.categories.length > 0 ||
     filters.minPrice > 0 ||
-    filters.maxPrice < 100000 ||
-    !!filters.search;
-
-  // ── Error state ──
-  if (error) {
-    return (
-      <>
-        <NavBar />
-        <main className="min-h-screen bg-gray-50 pt-32 pb-20">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 text-center">
-            <Compass
-              className="h-16 w-16 text-gray-300 mx-auto mb-4"
-              aria-hidden="true"
-            />
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">
-              Something went wrong
-            </h2>
-            <p className="text-gray-600 mb-6">{error}</p>
-            <Button onClick={() => refetch()} variant="outline">
-              Try Again
-            </Button>
-          </div>
-        </main>
-        <Footer />
-      </>
-    );
-  }
+    filters.maxPrice < 50000 ||
+    !!filters.search ||
+    filters.allowsWomen !== null ||
+    !!filters.lat;
 
   return (
     <>
       <NavBar />
-      <div className="min-h-screen bg-gray-50 pt-20">
-        {/* ── Hero / Search ── */}
-        <header className="bg-gradient-to-br from-primary/10 via-primary/5 to-transparent">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-14">
+      <div className="min-h-screen bg-slate-50">
+        {/* ── Hero search bar ── */}
+        <header className="bg-white border-b border-slate-100 pt-24 pb-6 shadow-sm">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4 }}
-              className="text-center max-w-3xl mx-auto"
+              className="max-w-2xl mx-auto text-center mb-6"
             >
-              <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-3 tracking-tight">
-                Find Your Perfect{" "}
-                <span className="text-primary">Living Space</span>
+              <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">
+                Find Your <span className="text-red-600">Perfect Room</span>
               </h1>
-              <p className="text-base md:text-lg text-gray-500 mb-8">
-                Discover thousands of verified rooms across Nepal
+              <p className="text-slate-500 text-sm mt-1">
+                {total > 0
+                  ? `${total} verified properties available`
+                  : "Browse verified listings across Nepal"}
               </p>
+            </motion.div>
 
-              <div className="relative max-w-2xl mx-auto">
-                <label htmlFor="room-search" className="sr-only">
-                  Search by location or property name
-                </label>
-                <Search
-                  className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 pointer-events-none"
-                  aria-hidden="true"
-                />
+            {/* Search input */}
+            <div className="max-w-2xl mx-auto flex gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                 <Input
-                  id="room-search"
                   type="search"
                   placeholder="Search by location or property name…"
                   value={searchInput}
-                  onChange={handleSearchChange}
-                  className="pl-12 pr-10 py-6 text-base bg-white/90 backdrop-blur-sm border-gray-200 rounded-full shadow-lg focus:ring-2 focus:ring-primary/20"
+                  onChange={(e) => handleSearch(e.target.value)}
+                  className="pl-10 pr-9 h-11 rounded-xl border-slate-200 focus:border-red-400 focus:ring-red-100 bg-white"
                 />
                 {searchInput && (
                   <button
                     type="button"
-                    onClick={clearSearch}
-                    aria-label="Clear search"
-                    className="absolute right-4 top-1/2 -translate-y-1/2 p-1 hover:bg-gray-100 rounded-full transition-colors"
+                    onClick={() => {
+                      setSearchInput("");
+                      updateFilters({ search: "", page: 0 });
+                    }}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
                   >
-                    <X className="h-4 w-4 text-gray-400" aria-hidden="true" />
+                    <X className="w-3.5 h-3.5" />
                   </button>
                 )}
               </div>
-            </motion.div>
+
+              {/* Locate me */}
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                onClick={filters.lat ? clearLocation : handleLocate}
+                disabled={locLoading}
+                title={filters.lat ? "Clear location" : "Use my location"}
+                className={`h-11 w-11 rounded-xl border-slate-200 shrink-0 ${filters.lat ? "bg-red-50 border-red-300 text-red-600" : ""}`}
+              >
+                {locLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : filters.lat ? (
+                  <X className="w-4 h-4" />
+                ) : (
+                  <Navigation className="w-4 h-4" />
+                )}
+              </Button>
+            </div>
+
+            {/* Location indicator */}
+            {filters.lat && (
+              <p className="text-center text-xs text-red-600 mt-2 flex items-center justify-center gap-1">
+                <MapPin className="w-3 h-3" />
+                Showing rooms within {filters.radius} km of your location
+              </p>
+            )}
           </div>
         </header>
 
-        {/* ── Main Layout ── */}
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="lg:grid lg:grid-cols-4 lg:gap-8">
-            {/* Sidebar */}
-            <FilterSidebar
-              onFilterChange={handleFilterChange}
-              initialFilters={{
-                minPrice: filters.minPrice,
-                maxPrice: filters.maxPrice,
-                category: filters.selectedCategories,
-              }}
-              totalResults={pagination?.total ?? 0}
-            />
+        {/* ── Category chips (horizontal scroll) ── */}
+        <div className="bg-white border-b border-slate-100 sticky top-0 z-20 shadow-sm">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center gap-2 py-3 overflow-x-auto scrollbar-hide">
+              {/* All button */}
+              <button
+                type="button"
+                onClick={() => updateFilters({ categories: [], page: 0 })}
+                className={`flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-semibold whitespace-nowrap border transition-all shrink-0 ${
+                  filters.categories.length === 0
+                    ? "bg-red-600 text-white border-red-600 shadow-md shadow-red-100"
+                    : "bg-white text-slate-600 border-slate-200 hover:border-red-400 hover:text-red-600"
+                }`}
+              >
+                <Home className="w-3.5 h-3.5" />
+                All
+              </button>
 
-            {/* Content */}
-            <div className="lg:col-span-3 space-y-6">
+              {CATEGORIES.map((cat) => {
+                const active = filters.categories.includes(cat.value);
+                return (
+                  <button
+                    key={cat.value}
+                    type="button"
+                    onClick={() => toggleCategory(cat.value)}
+                    className={`flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-semibold whitespace-nowrap border transition-all shrink-0 cursor-pointer ${
+                      active
+                        ? "bg-red-600 text-white border-red-600 shadow-md shadow-red-100"
+                        : "bg-white text-slate-600 border-slate-200 hover:border-red-400 hover:text-red-600"
+                    }`}
+                  >
+                    <span>{cat.emoji}</span>
+                    <span>{cat.label}</span>
+                    {active && <Check className="w-3 h-3" />}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* ── Main ── */}
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="flex flex-col lg:flex-row gap-6">
+            {/* ── Sidebar (desktop) ── */}
+            <aside className="hidden lg:block w-64 shrink-0">
+              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 sticky top-28">
+                <h2 className="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
+                  <SlidersHorizontal className="w-4 h-4 text-red-500" />
+                  Filters
+                </h2>
+                <FilterPanel
+                  filters={filters}
+                  onChange={updateFilters}
+                  onReset={resetFilters}
+                  total={total}
+                />
+              </div>
+            </aside>
+
+            {/* ── Content ── */}
+            <div className="flex-1 min-w-0">
               {/* Controls bar */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-5">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                  <div>
-                    <h2 className="text-xl font-bold text-gray-900 leading-tight">
-                      {filters.selectedCategories.length === 1
-                        ? (CATEGORY_LABELS[filters.selectedCategories[0]] ??
-                          "Rooms")
-                        : "All Rooms"}
-                    </h2>
-                    <p
-                      className="text-sm text-gray-500 mt-0.5"
-                      aria-live="polite"
-                      aria-atomic="true"
-                    >
-                      {loading
-                        ? "Searching…"
-                        : `${pagination?.total ?? 0} rooms found`}
-                    </p>
-                  </div>
-
-                  <div className="flex items-center gap-2 flex-wrap">
-                    {/* View toggle */}
-                    <div
-                      className="hidden sm:flex border border-gray-200 rounded-lg p-1 gap-0.5"
-                      role="group"
-                      aria-label="View mode"
-                    >
-                      <Button
-                        variant={viewMode === "grid" ? "default" : "ghost"}
-                        size="sm"
-                        onClick={() => setViewMode("grid")}
-                        className="h-8 w-8 p-0"
-                        aria-label="Grid view"
-                        aria-pressed={viewMode === "grid"}
+              <div className="flex items-center justify-between gap-3 mb-4">
+                <div>
+                  <p className="text-sm text-slate-500" aria-live="polite">
+                    {loading
+                      ? "Searching…"
+                      : `${total} room${total !== 1 ? "s" : ""} found`}
+                  </p>
+                  {/* Active filter chips */}
+                  {hasActiveFilters && (
+                    <div className="flex flex-wrap gap-1.5 mt-2">
+                      {filters.categories.map((cat) => (
+                        <Badge
+                          key={cat}
+                          variant="secondary"
+                          className="gap-1 text-xs pr-1 bg-red-50 text-red-700 border-red-200"
+                        >
+                          {CATEGORIES.find((c) => c.value === cat)?.label ??
+                            cat}
+                          <button
+                            onClick={() => toggleCategory(cat)}
+                            className="ml-0.5 hover:text-red-900"
+                          >
+                            <X className="w-2.5 h-2.5" />
+                          </button>
+                        </Badge>
+                      ))}
+                      {(filters.minPrice > 0 || filters.maxPrice < 50000) && (
+                        <Badge
+                          variant="secondary"
+                          className="gap-1 text-xs pr-1 bg-red-50 text-red-700 border-red-200"
+                        >
+                          रू {filters.minPrice.toLocaleString()}–
+                          {filters.maxPrice.toLocaleString()}
+                          <button
+                            onClick={() =>
+                              updateFilters({ minPrice: 0, maxPrice: 50000 })
+                            }
+                          >
+                            <X className="w-2.5 h-2.5" />
+                          </button>
+                        </Badge>
+                      )}
+                      {filters.allowsWomen && (
+                        <Badge
+                          variant="secondary"
+                          className="gap-1 text-xs pr-1 bg-pink-50 text-pink-700 border-pink-200"
+                        >
+                          ♀ Women OK
+                          <button
+                            onClick={() => updateFilters({ allowsWomen: null })}
+                          >
+                            <X className="w-2.5 h-2.5" />
+                          </button>
+                        </Badge>
+                      )}
+                      <button
+                        onClick={resetFilters}
+                        className="text-xs text-slate-400 hover:text-slate-700 underline underline-offset-2 cursor-pointer"
                       >
-                        <Grid className="h-4 w-4" aria-hidden="true" />
-                      </Button>
-                      <Button
-                        variant={viewMode === "list" ? "default" : "ghost"}
-                        size="sm"
-                        onClick={() => setViewMode("list")}
-                        className="h-8 w-8 p-0"
-                        aria-label="List view"
-                        aria-pressed={viewMode === "list"}
-                      >
-                        <List className="h-4 w-4" aria-hidden="true" />
-                      </Button>
+                        Clear all
+                      </button>
                     </div>
-
-                    {/* Sort */}
-                    <Select
-                      value={filters.sort}
-                      onValueChange={handleSortChange}
-                    >
-                      <SelectTrigger
-                        className="w-44 h-9 text-sm"
-                        aria-label="Sort rooms"
-                      >
-                        <ArrowUpDown
-                          className="mr-2 h-3.5 w-3.5 text-gray-400"
-                          aria-hidden="true"
-                        />
-                        <SelectValue placeholder="Sort by" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="default">Default</SelectItem>
-                        <SelectItem value="price-low-to-high">
-                          Price: Low → High
-                        </SelectItem>
-                        <SelectItem value="price-high-to-low">
-                          Price: High → Low
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                  )}
                 </div>
 
-                {/* Active filter chips */}
-                {hasActiveFilters && (
-                  <div
-                    className="flex flex-wrap items-center gap-2 mt-4 pt-4 border-t border-gray-100"
-                    aria-label="Active filters"
+                <div className="flex items-center gap-2 shrink-0">
+                  {/* Sort */}
+                  <Select
+                    value={filters.sort}
+                    onValueChange={(v) =>
+                      updateFilters({ sort: v as SortOption, page: 0 })
+                    }
                   >
-                    {filters.selectedCategories.map((cat) => (
-                      <Badge
-                        key={cat}
-                        variant="secondary"
-                        className="gap-1 pl-2 pr-1.5 py-1 text-xs font-normal"
-                      >
-                        {CATEGORY_LABELS[cat] ?? cat}
-                        <button
-                          type="button"
-                          onClick={() => removeFilter("category", cat)}
-                          aria-label={`Remove ${CATEGORY_LABELS[cat] ?? cat} filter`}
-                          className="ml-0.5 rounded-full hover:text-gray-700"
-                        >
-                          <X className="h-3 w-3" aria-hidden="true" />
-                        </button>
-                      </Badge>
-                    ))}
+                    <SelectTrigger className="h-9 w-40 text-xs rounded-lg border-slate-200">
+                      <ArrowUpDown className="w-3 h-3 mr-1.5 text-slate-400" />
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="default">Default</SelectItem>
+                      <SelectItem value="price-asc">
+                        Price: Low → High
+                      </SelectItem>
+                      <SelectItem value="price-desc">
+                        Price: High → Low
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
 
-                    {(filters.minPrice > 0 || filters.maxPrice < 100000) && (
-                      <Badge
-                        variant="secondary"
-                        className="gap-1 pl-2 pr-1.5 py-1 text-xs font-normal"
+                  {/* Mobile filter button */}
+                  <Sheet open={filterOpen} onOpenChange={setFilterOpen}>
+                    <SheetTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className={`lg:hidden h-9 gap-1.5 rounded-lg border-slate-200 text-xs ${hasActiveFilters ? "border-red-400 text-red-600 bg-red-50" : ""}`}
                       >
-                        <IndianRupee className="h-3 w-3" aria-hidden="true" />
-                        {filters.minPrice.toLocaleString()} –{" "}
-                        {filters.maxPrice.toLocaleString()}
-                        <button
-                          type="button"
-                          onClick={() => removeFilter("price")}
-                          aria-label="Remove price filter"
-                          className="ml-0.5 hover:text-gray-700"
-                        >
-                          <X className="h-3 w-3" aria-hidden="true" />
-                        </button>
-                      </Badge>
-                    )}
-
-                    {filters.search && (
-                      <Badge
-                        variant="secondary"
-                        className="gap-1 pl-2 pr-1.5 py-1 text-xs font-normal"
-                      >
-                        "{filters.search}"
-                        <button
-                          type="button"
-                          onClick={() => removeFilter("search")}
-                          aria-label="Remove search filter"
-                          className="ml-0.5 hover:text-gray-700"
-                        >
-                          <X className="h-3 w-3" aria-hidden="true" />
-                        </button>
-                      </Badge>
-                    )}
-
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={resetFilters}
-                      className="text-xs text-gray-400 hover:text-gray-700 h-auto py-1 px-2"
-                    >
-                      Clear all
-                    </Button>
-                  </div>
-                )}
+                        <SlidersHorizontal className="w-3.5 h-3.5" />
+                        Filter
+                        {hasActiveFilters && (
+                          <span className="w-4 h-4 rounded-full bg-red-500 text-white text-[10px] flex items-center justify-center">
+                            {filters.categories.length +
+                              (filters.minPrice > 0 || filters.maxPrice < 50000
+                                ? 1
+                                : 0) +
+                              (filters.allowsWomen ? 1 : 0)}
+                          </span>
+                        )}
+                      </Button>
+                    </SheetTrigger>
+                    <SheetContent side="right" className="w-[300px]">
+                      <SheetHeader>
+                        <SheetTitle>Filters</SheetTitle>
+                      </SheetHeader>
+                      <div className="mt-6">
+                        <FilterPanel
+                          filters={filters}
+                          onChange={updateFilters}
+                          onReset={resetFilters}
+                          total={total}
+                        />
+                      </div>
+                    </SheetContent>
+                  </Sheet>
+                </div>
               </div>
 
-              {/* ── Room Grid / Skeletons / Empty ── */}
+              {/* ── Grid ── */}
               <AnimatePresence mode="wait">
                 {loading ? (
                   <motion.div
@@ -552,184 +690,131 @@ function RoomsContent() {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    className={cn(
-                      "grid gap-5",
-                      viewMode === "grid"
-                        ? "grid-cols-1 sm:grid-cols-2 xl:grid-cols-3"
-                        : "grid-cols-1",
-                    )}
-                    aria-busy="true"
-                    aria-label="Loading rooms"
+                    className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5"
                   >
-                    {Array.from({
-                      length: Math.min(filters.itemsPerPage, 12),
-                    }).map((_, i) => (
-                      <Card
-                        key={i}
-                        className="overflow-hidden border-0 shadow-sm rounded-2xl"
-                      >
-                        <Skeleton className="h-52 w-full rounded-none" />
-                        <div className="p-4 space-y-3">
-                          <Skeleton className="h-4 w-3/4" />
-                          <Skeleton className="h-3.5 w-1/2" />
-                          <div className="grid grid-cols-3 gap-2 pt-1">
-                            <Skeleton className="h-3.5" />
-                            <Skeleton className="h-3.5" />
-                            <Skeleton className="h-3.5" />
-                          </div>
-                          <Skeleton className="h-8 w-full mt-2" />
-                        </div>
-                      </Card>
+                    {Array.from({ length: 6 }).map((_, i) => (
+                      <CardSkeleton key={i} />
                     ))}
                   </motion.div>
-                ) : sortedRooms.length === 0 ? (
+                ) : rooms.length === 0 ? (
                   <motion.div
                     key="empty"
                     initial={{ opacity: 0, y: 16 }}
                     animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0 }}
-                    className="bg-white rounded-xl shadow-sm border border-gray-100 py-16 px-8 text-center"
-                    role="status"
-                    aria-live="polite"
+                    className="bg-white rounded-2xl border border-slate-100 shadow-sm py-20 px-8 text-center"
                   >
-                    <Search
-                      className="h-14 w-14 text-gray-200 mx-auto mb-4"
-                      aria-hidden="true"
-                    />
-                    <h3 className="text-lg font-semibold text-gray-900 mb-1">
+                    <div className="w-16 h-16 rounded-2xl bg-red-50 flex items-center justify-center mx-auto mb-4">
+                      <Home className="w-8 h-8 text-red-300" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-slate-900 mb-1">
                       No rooms found
                     </h3>
-                    <p className="text-sm text-gray-500 mb-6">
-                      Try adjusting your filters or search terms
+                    <p className="text-sm text-slate-500 mb-5">
+                      {filters.lat
+                        ? "No rooms within your location range. Try increasing the radius."
+                        : "Try adjusting your filters or search terms."}
                     </p>
-                    <Button onClick={resetFilters} variant="outline" size="sm">
+                    <Button variant="outline" size="sm" onClick={resetFilters}>
                       Clear All Filters
                     </Button>
                   </motion.div>
                 ) : (
-                  <motion.ul
+                  <motion.div
                     key="results"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className={cn(
-                      "grid gap-5 list-none p-0 m-0",
-                      viewMode === "grid"
-                        ? "grid-cols-1 sm:grid-cols-2 xl:grid-cols-3"
-                        : "grid-cols-1",
-                    )}
-                    aria-label="Room listings"
+                    className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5"
                   >
-                    {sortedRooms.map((room, i) => (
-                      <li key={room.id}>
-                        <PropertyCard room={room} index={i} />
-                      </li>
+                    {rooms.map((room, i) => (
+                      <PropertyCard key={room.id} room={room} index={i} />
                     ))}
-                  </motion.ul>
+                  </motion.div>
                 )}
               </AnimatePresence>
 
               {/* ── Pagination ── */}
-              {!loading && sortedRooms.length > 0 && totalPages > 1 && (
+              {!loading && rooms.length > 0 && totalPages > 1 && (
                 <motion.nav
-                  aria-label="Room listings pagination"
-                  className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-5"
-                  initial={{ opacity: 0, y: 16 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.15 }}
+                  aria-label="Pagination"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="mt-8 bg-white rounded-xl border border-slate-100 shadow-sm p-4 flex flex-col sm:flex-row items-center justify-between gap-4"
                 >
-                  <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-                    <div className="flex items-center gap-1.5">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        disabled={filters.page <= 0}
-                        onClick={() => handlePageChange(filters.page - 1)}
-                        aria-label="Previous page"
-                        className="gap-1"
-                      >
-                        <ChevronLeft className="h-4 w-4" aria-hidden="true" />
-                        <span className="hidden sm:inline">Prev</span>
-                      </Button>
+                  <div className="flex items-center gap-1.5">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={filters.page <= 0}
+                      onClick={() => updateFilters({ page: filters.page - 1 })}
+                      className="gap-1 h-8"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                      <span className="hidden sm:inline">Prev</span>
+                    </Button>
 
-                      {/* Sliding page number pills */}
-                      <div className="flex items-center gap-1" role="list">
-                        {Array.from(
-                          { length: Math.min(totalPages, 5) },
-                          (_, i) => {
-                            let page: number;
-                            if (totalPages <= 5) {
-                              page = i;
-                            } else if (filters.page < 3) {
-                              page = i;
-                            } else if (filters.page > totalPages - 4) {
-                              page = totalPages - 5 + i;
-                            } else {
-                              page = filters.page - 2 + i;
-                            }
-                            return (
-                              <button
-                                key={page}
-                                type="button"
-                                onClick={() => handlePageChange(page)}
-                                aria-label={`Page ${page + 1}`}
-                                aria-current={
-                                  filters.page === page ? "page" : undefined
-                                }
-                                className={cn(
-                                  "w-8 h-8 rounded-lg text-sm font-medium transition-colors",
-                                  filters.page === page
-                                    ? "bg-primary text-white"
-                                    : "text-gray-600 hover:bg-gray-100",
-                                )}
-                              >
-                                {page + 1}
-                              </button>
-                            );
-                          },
-                        )}
-                      </div>
-
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        disabled={filters.page >= totalPages - 1}
-                        onClick={() => handlePageChange(filters.page + 1)}
-                        aria-label="Next page"
-                        className="gap-1"
-                      >
-                        <span className="hidden sm:inline">Next</span>
-                        <ChevronRight className="h-4 w-4" aria-hidden="true" />
-                      </Button>
-                    </div>
-
-                    <div className="flex items-center gap-2 text-sm text-gray-500">
-                      <Label
-                        htmlFor="per-page"
-                        className="whitespace-nowrap cursor-pointer"
-                      >
-                        Show
-                      </Label>
-                      <Select
-                        value={String(filters.itemsPerPage)}
-                        onValueChange={handleItemsPerPageChange}
-                      >
-                        <SelectTrigger
-                          id="per-page"
-                          className="w-16 h-8 text-sm"
+                    {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                      const p =
+                        totalPages <= 5
+                          ? i
+                          : filters.page < 3
+                            ? i
+                            : filters.page > totalPages - 4
+                              ? totalPages - 5 + i
+                              : filters.page - 2 + i;
+                      return (
+                        <button
+                          key={p}
+                          type="button"
+                          onClick={() => updateFilters({ page: p })}
+                          className={cn(
+                            "w-8 h-8 rounded-lg text-sm font-medium transition-colors",
+                            filters.page === p
+                              ? "bg-red-500 text-white shadow"
+                              : "text-slate-600 hover:bg-slate-100",
+                          )}
                         >
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {[12, 24, 36, 48].map((n) => (
-                            <SelectItem key={n} value={String(n)}>
-                              {n}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <span className="whitespace-nowrap">per page</span>
-                    </div>
+                          {p + 1}
+                        </button>
+                      );
+                    })}
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={filters.page >= totalPages - 1}
+                      onClick={() => updateFilters({ page: filters.page + 1 })}
+                      className="gap-1 h-8"
+                    >
+                      <span className="hidden sm:inline">Next</span>
+                      <ChevronRight className="w-4 h-4" />
+                    </Button>
+                  </div>
+
+                  <div className="flex items-center gap-2 text-xs text-slate-500">
+                    <Label
+                      htmlFor="per-page"
+                      className="cursor-pointer whitespace-nowrap"
+                    >
+                      Show
+                    </Label>
+                    <Select
+                      value={String(filters.take)}
+                      onValueChange={(v) =>
+                        updateFilters({ take: Number(v), page: 0 })
+                      }
+                    >
+                      <SelectTrigger id="per-page" className="w-16 h-8 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {[12, 24, 36].map((n) => (
+                          <SelectItem key={n} value={String(n)}>
+                            {n}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <span className="whitespace-nowrap">per page</span>
                   </div>
                 </motion.nav>
               )}
@@ -742,15 +827,31 @@ function RoomsContent() {
   );
 }
 
-// ─── Default export — wraps RoomsContent in the required Suspense boundary ───
-//
-// Next.js requires any component that calls useSearchParams() to be wrapped
-// in <Suspense> during static/SSR prerendering. Without this the build fails
-// with "useSearchParams() should be wrapped in a suspense boundary".
+// ─── Skeleton fallback ────────────────────────────────────────────────────────
+
+function PageSkeleton() {
+  return (
+    <>
+      <NavBar />
+      <div className="min-h-screen bg-slate-50 pt-24">
+        <div className="max-w-7xl mx-auto px-4 py-8 space-y-6">
+          <div className="h-10 bg-slate-200 rounded-xl animate-pulse max-w-lg mx-auto" />
+          <div className="h-10 bg-slate-200 rounded-full animate-pulse max-w-2xl mx-auto" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <CardSkeleton key={i} />
+            ))}
+          </div>
+        </div>
+      </div>
+      <Footer />
+    </>
+  );
+}
 
 export default function RoomsPage() {
   return (
-    <Suspense fallback={<RoomsPageSkeleton />}>
+    <Suspense fallback={<PageSkeleton />}>
       <RoomsContent />
     </Suspense>
   );

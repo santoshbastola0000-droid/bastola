@@ -14,47 +14,22 @@ import {
   Menu,
   Clock,
   CheckCircle,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useUserStore } from "@/stores/user-store";
 import { useLogout } from "@/hooks/useLogout";
 import { LogoutConfirmDialog } from "@/components/LogoutConfirmDialog";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
-interface UserSidebarProps {
-  isCollapsed: boolean;
-  setIsCollapsed: (collapsed: boolean) => void;
-  isMobile?: boolean;
-  onClose?: () => void;
-}
-
-interface NavItem {
-  title: string;
-  href: string;
-  icon: React.ElementType;
-  badge?: number | string;
-}
-
-const mainNavItems: NavItem[] = [
-  {
-    title: "Dashboard",
-    href: "/user/dashboard",
-    icon: Home,
-  },
-  {
-    title: "My Rooms",
-    href: "/user/dashboard/rooms",
-    icon: Building2,
-  },
+const navItems = [
+  { title: "Dashboard", href: "/user/dashboard", icon: Home },
+  { title: "My Rooms", href: "/user/dashboard/rooms", icon: Building2 },
   {
     title: "Add New Room",
     href: "/user/dashboard/rooms/create",
@@ -70,326 +45,267 @@ const mainNavItems: NavItem[] = [
     href: "/user/dashboard/rooms/approved",
     icon: CheckCircle,
   },
-  {
-    title: "Wallet",
-    href: "/user/dashboard/wallet",
-    icon: Wallet,
-  },
+  { title: "Wallet", href: "/user/dashboard/wallet", icon: Wallet },
 ];
 
-export function UserSidebar({
-  isCollapsed,
-  setIsCollapsed,
-  isMobile = false,
-  onClose,
-}: UserSidebarProps) {
+interface UserSidebarProps {
+  isCollapsed: boolean;
+  setIsCollapsed: (v: boolean) => void;
+  isMobile?: boolean;
+  onClose?: () => void;
+}
+
+function NavLink({
+  item,
+  collapsed,
+  onClick,
+}: {
+  item: { title: string; href: string; icon: React.ElementType };
+  collapsed: boolean;
+  onClick?: () => void;
+}) {
   const pathname = usePathname();
+  const isActive = pathname === item.href;
+  const Icon = item.icon;
+
+  return (
+    <Link
+      href={item.href}
+      onClick={onClick}
+      className={cn(
+        "flex items-center gap-3 px-3 py-2 rounded-lg transition-all text-sm",
+        collapsed ? "justify-center" : "",
+        isActive
+          ? "bg-red-600 text-white shadow-md shadow-red-200"
+          : "text-gray-300 hover:bg-gray-800 hover:text-white",
+      )}
+    >
+      <Icon className="h-4 w-4 flex-shrink-0" />
+      {!collapsed && <span className="flex-1">{item.title}</span>}
+    </Link>
+  );
+}
+
+function SidebarBody({
+  collapsed,
+  onNavClick,
+  onCollapse,
+  showCollapseBtn,
+}: {
+  collapsed: boolean;
+  onNavClick?: () => void;
+  onCollapse?: () => void;
+  showCollapseBtn?: boolean;
+}) {
   const router = useRouter();
   const { user } = useUserStore();
   const { logout } = useLogout();
-  const [showLogoutDialog, setShowLogoutDialog] = useState(false);
-  const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const [showLogout, setShowLogout] = useState(false);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  // Close mobile sidebar on route change
-  useEffect(() => {
-    if (isMobile && onClose) {
-      onClose();
-    }
-  }, [pathname, isMobile, onClose]);
-
   const handleLogout = async () => {
     await logout();
     router.push("/auth/login");
   };
 
-  const getInitials = () => {
-    if (user?.name) {
-      return user.name
-        .split(" ")
-        .map((n) => n[0])
-        .join("")
-        .toUpperCase()
-        .slice(0, 2);
-    }
-    return "GU";
-  };
-
-  // Mobile Sidebar using Sheet
-  const MobileSidebar = () => (
-    <Sheet open={isMobileOpen} onOpenChange={setIsMobileOpen}>
-      <SheetTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="md:hidden fixed top-4 left-4 z-40 cursor-pointer"
-        >
-          <Menu className="h-5 w-5" />
-        </Button>
-      </SheetTrigger>
-      <SheetContent side="left" className="w-[280px] p-0">
-        <div className="flex flex-col h-full bg-gradient-to-b from-gray-900 to-gray-800 text-white">
-          {/* Logo */}
-          <div className="p-6 border-b border-gray-700">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary to-primary-dark flex items-center justify-center">
-                <Home className="h-5 w-5 text-white" />
-              </div>
-              <div>
-                <h2 className="font-bold text-lg">RoomServise</h2>
-                <p className="text-xs text-gray-400">User Dashboard</p>
-              </div>
-            </div>
-          </div>
-
-          {/* User Info */}
-          <div className="p-4 border-b border-gray-700">
-            <div className="flex items-center gap-3">
-              <Avatar className="h-10 w-10 ring-2 ring-primary/50">
-                <AvatarFallback className="bg-primary/20 text-primary">
-                  {getInitials()}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">
-                  {user?.name || "User"}
-                </p>
-                <p className="text-xs text-gray-400 truncate">
-                  {user?.email || "user@example.com"}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Navigation */}
-          <nav className="flex-1 overflow-y-auto p-4 space-y-1">
-            {mainNavItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = pathname === item.href;
-
-              return (
-                <div key={item.href}>
-                  <Link
-                    href={item.href}
-                    onClick={() => setIsMobileOpen(false)}
-                    className={cn(
-                      "flex items-center gap-3 px-3 py-2 rounded-lg transition-all cursor-pointer",
-                      isActive
-                        ? "bg-primary text-white"
-                        : "text-gray-300 hover:bg-gray-800 hover:text-white",
-                    )}
-                  >
-                    <Icon className="h-5 w-5 flex-shrink-0" />
-                    <span className="flex-1 text-sm">{item.title}</span>
-                    {item.badge && (
-                      <Badge className="bg-primary/20 text-primary border-0 text-xs">
-                        {item.badge}
-                      </Badge>
-                    )}
-                  </Link>
-                </div>
-              );
-            })}
-          </nav>
-
-          {/* Footer */}
-          <div className="p-4 border-t border-gray-700 space-y-2">
-            <Button
-              variant="ghost"
-              className="w-full justify-start text-gray-300 hover:text-white hover:bg-gray-800 cursor-pointer"
-              onClick={() => router.push("/")}
-            >
-              <Home className="h-4 w-4 mr-3" />
-              <span>View Site</span>
-            </Button>
-            <Button
-              variant="ghost"
-              className="w-full justify-start text-red-400 hover:text-red-300 hover:bg-red-500/10 cursor-pointer"
-              onClick={() => setShowLogoutDialog(true)}
-            >
-              <LogOut className="h-4 w-4 mr-3" />
-              <span>Logout</span>
-            </Button>
-          </div>
-        </div>
-      </SheetContent>
-    </Sheet>
-  );
-
-  // Desktop Sidebar
-  const DesktopSidebar = () => (
-    <aside
-      className={cn(
-        "hidden md:flex flex-col h-screen sticky top-0 bg-gradient-to-b from-gray-900 to-gray-800 text-white transition-all duration-300",
-        isCollapsed ? "w-20" : "w-64",
-      )}
-    >
+  return (
+    <>
       {/* Logo */}
-      <div className="flex items-center justify-between p-6 border-b border-gray-700">
+      <div className="flex items-center justify-between px-4 h-16 border-b border-gray-700 shrink-0">
         <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary to-primary-dark flex items-center justify-center flex-shrink-0">
-            <Home className="h-5 w-5 text-white" />
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-red-500 to-rose-600 flex items-center justify-center shrink-0">
+            <Home className="w-4 h-4 text-white" />
           </div>
-          {!isCollapsed && (
+          {!collapsed && (
             <div>
-              <h2 className="font-bold text-lg">RentalServise</h2>
-              <p className="text-xs text-gray-400">User Dashboard</p>
+              <p className="font-bold text-sm text-white leading-none">
+                RentalService
+              </p>
+              <p className="text-[10px] text-gray-400 mt-0.5">User Dashboard</p>
             </div>
           )}
         </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => setIsCollapsed(!isCollapsed)}
-          className="text-gray-400 hover:text-white hover:bg-gray-800 cursor-pointer"
-        >
-          {isCollapsed ? (
-            <ChevronRight className="h-4 w-4" />
-          ) : (
-            <ChevronLeft className="h-4 w-4" />
-          )}
-        </Button>
-      </div>
-
-      {/* User Info */}
-      <div
-        className={cn(
-          "p-4 border-b border-gray-700",
-          isCollapsed && "text-center",
+        {showCollapseBtn && (
+          <button
+            type="button"
+            onClick={onCollapse}
+            className="text-gray-400 hover:text-white p-1 rounded-md hover:bg-gray-700 transition-colors"
+          >
+            {collapsed ? (
+              <ChevronRight className="w-4 h-4" />
+            ) : (
+              <ChevronLeft className="w-4 h-4" />
+            )}
+          </button>
         )}
-      >
-        <div
-          className={cn(
-            "flex items-center gap-3",
-            isCollapsed && "justify-center",
-          )}
-        >
-          <Avatar className="h-10 w-10 ring-2 ring-primary/50 flex-shrink-0">
-            <AvatarFallback className="bg-primary/20 text-primary">
-              {getInitials()}
-            </AvatarFallback>
-          </Avatar>
-          {!isCollapsed && (
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">
-                {user?.name || "User"}
-              </p>
-              <p className="text-xs text-gray-400 truncate">
-                {user?.email || "user@example.com"}
-              </p>
-            </div>
-          )}
-        </div>
       </div>
 
-      {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto p-4 space-y-1">
+      {/* Nav */}
+      <nav className="flex-1 overflow-y-auto p-3 space-y-0.5">
         <TooltipProvider delayDuration={0}>
-          {mainNavItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = pathname === item.href;
-
-            return (
+          {navItems.map((item) =>
+            collapsed && mounted ? (
               <Tooltip key={item.href}>
                 <TooltipTrigger asChild>
-                  <Link
-                    href={item.href}
-                    className={cn(
-                      "flex items-center gap-3 px-3 py-2 rounded-lg transition-all cursor-pointer group",
-                      isCollapsed ? "justify-center" : "",
-                      isActive
-                        ? "bg-primary text-white"
-                        : "text-gray-300 hover:bg-gray-800 hover:text-white",
-                    )}
-                  >
-                    <Icon className="h-5 w-5 flex-shrink-0" />
-                    {!isCollapsed && (
-                      <>
-                        <span className="flex-1 text-sm">{item.title}</span>
-                        {item.badge && (
-                          <Badge className="bg-primary/20 text-primary border-0 text-xs">
-                            {typeof item.badge === "number"
-                              ? item.badge
-                              : item.badge}
-                          </Badge>
-                        )}
-                      </>
-                    )}
-                  </Link>
+                  <div>
+                    <NavLink
+                      item={item}
+                      collapsed={collapsed}
+                      onClick={onNavClick}
+                    />
+                  </div>
                 </TooltipTrigger>
-                {isCollapsed && mounted && (
-                  <TooltipContent side="right">
-                    <p>{item.title}</p>
-                    {item.badge && (
-                      <Badge className="ml-2 bg-primary/20 text-primary border-0">
-                        {item.badge}
-                      </Badge>
-                    )}
-                  </TooltipContent>
-                )}
+                <TooltipContent side="right">{item.title}</TooltipContent>
               </Tooltip>
-            );
-          })}
+            ) : (
+              <NavLink
+                key={item.href}
+                item={item}
+                collapsed={collapsed}
+                onClick={onNavClick}
+              />
+            ),
+          )}
         </TooltipProvider>
       </nav>
 
       {/* Footer */}
-      <div className="p-4 border-t border-gray-700 space-y-2">
+      <div className="p-3 border-t border-gray-700 shrink-0 space-y-1">
         <TooltipProvider delayDuration={0}>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                className={cn(
-                  "w-full text-gray-300 hover:text-white hover:bg-gray-800 cursor-pointer",
-                  isCollapsed ? "px-2" : "justify-start",
-                )}
-                onClick={() => router.push("/")}
+          {collapsed && mounted ? (
+            <>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={() => router.push("/")}
+                    className="w-full flex justify-center p-2 rounded-lg text-gray-300 hover:text-white hover:bg-gray-800 transition-colors"
+                  >
+                    <Home className="w-4 h-4" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="right">View Site</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={() => setShowLogout(true)}
+                    className="w-full flex justify-center p-2 rounded-lg text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-colors"
+                  >
+                    <LogOut className="w-4 h-4" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="right">Logout</TooltipContent>
+              </Tooltip>
+            </>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={() => {
+                  router.push("/");
+                  onNavClick?.();
+                }}
+                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-gray-300 hover:text-white hover:bg-gray-800 transition-colors text-sm"
               >
-                <Home className={cn("h-4 w-4", isCollapsed ? "" : "mr-3")} />
-                {!isCollapsed && <span>View Site</span>}
-              </Button>
-            </TooltipTrigger>
-            {isCollapsed && mounted && (
-              <TooltipContent side="right">View Site</TooltipContent>
-            )}
-          </Tooltip>
-
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                className={cn(
-                  "w-full text-red-400 hover:text-red-300 hover:bg-red-500/10 cursor-pointer",
-                  isCollapsed ? "px-2" : "justify-start",
-                )}
-                onClick={() => setShowLogoutDialog(true)}
+                <Home className="w-4 h-4 shrink-0" />
+                <span>View Site</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowLogout(true)}
+                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-colors text-sm"
               >
-                <LogOut className={cn("h-4 w-4", isCollapsed ? "" : "mr-3")} />
-                {!isCollapsed && <span>Logout</span>}
-              </Button>
-            </TooltipTrigger>
-            {isCollapsed && mounted && (
-              <TooltipContent side="right">Logout</TooltipContent>
-            )}
-          </Tooltip>
+                <LogOut className="w-4 h-4 shrink-0" />
+                <span>Logout</span>
+              </button>
+            </>
+          )}
         </TooltipProvider>
       </div>
-    </aside>
-  );
 
-  return (
-    <>
-      {isMobile ? <MobileSidebar /> : <DesktopSidebar />}
       <LogoutConfirmDialog
-        open={showLogoutDialog}
-        onOpenChange={setShowLogoutDialog}
+        open={showLogout}
+        onOpenChange={setShowLogout}
         onConfirm={handleLogout}
       />
     </>
+  );
+}
+
+export function UserSidebar({
+  isCollapsed,
+  setIsCollapsed,
+  isMobile = false,
+}: UserSidebarProps) {
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const pathname = usePathname();
+
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [pathname]);
+
+  if (isMobile) {
+    return (
+      <>
+        {/* Hamburger */}
+        <button
+          type="button"
+          onClick={() => setMobileOpen(true)}
+          aria-label="Open menu"
+          className="md:hidden fixed top-4 left-4 z-50 w-10 h-10 rounded-xl bg-gray-900 text-white flex items-center justify-center shadow-lg"
+        >
+          <Menu className="w-5 h-5" />
+        </button>
+
+        {/* Backdrop */}
+        {mobileOpen && (
+          <div
+            className="fixed inset-0 bg-black/60 z-40 md:hidden"
+            onClick={() => setMobileOpen(false)}
+          />
+        )}
+
+        {/* Drawer */}
+        <aside
+          className={cn(
+            "fixed top-0 left-0 h-full w-72 bg-gradient-to-b from-gray-900 to-gray-800 z-50 flex flex-col transition-transform duration-300 md:hidden",
+            mobileOpen ? "translate-x-0" : "-translate-x-full",
+          )}
+        >
+          <button
+            type="button"
+            onClick={() => setMobileOpen(false)}
+            className="absolute top-4 right-4 text-gray-400 hover:text-white"
+          >
+            <X className="w-5 h-5" />
+          </button>
+          <SidebarBody
+            collapsed={false}
+            onNavClick={() => setMobileOpen(false)}
+          />
+        </aside>
+      </>
+    );
+  }
+
+  return (
+    <aside
+      className={cn(
+        "hidden md:flex flex-col h-screen sticky top-0 bg-gradient-to-b from-gray-900 to-gray-800 transition-all duration-300 shrink-0",
+        isCollapsed ? "w-[72px]" : "w-64",
+      )}
+    >
+      <SidebarBody
+        collapsed={isCollapsed}
+        onCollapse={() => setIsCollapsed(!isCollapsed)}
+        showCollapseBtn
+      />
+    </aside>
   );
 }
