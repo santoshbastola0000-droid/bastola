@@ -113,7 +113,7 @@ const VerifyOTPForm = () => {
           onClick={handleResend}
           disabled={isResending || isVerifying}
           isLoading={isResending}
-          className="border-primary text-primary hover:bg-primary hover:text-white transition-all duration-200"
+          className="border-primary text-primary hover:bg-primary hover:text-white transition-all duration-200 cursor-pointer"
         >
           Resend Code
         </Button>

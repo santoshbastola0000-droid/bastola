@@ -88,15 +88,15 @@ export default function Footer() {
   const contactInfo = [
     {
       icon: MapPin,
-      text: "123 Innovation Drive, Suite 400, San Francisco, CA 94105",
+      text: "4th Floor, Pokhara Trade Mall Pokhara 33800, Gandaki Province Nepal",
     },
-    { icon: Phone, text: "+1 (888) 123-4567", href: "tel:+18881234567" },
+    { icon: Phone, text: "+977 9765408817", href: "tel:+9779800000000" },
     {
       icon: Mail,
       text: "support@roomservise.com",
       href: "mailto:support@roomservise.com",
     },
-    { icon: Clock, text: "Mon-Fri: 9am - 6pm PST" },
+    { icon: Clock, text: "Sunday-Friday: 9am - 5pm NST" },
   ];
 
   return (

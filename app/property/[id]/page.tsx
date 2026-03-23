@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -31,7 +31,6 @@ import {
   Droplets,
   Building2,
   AlertCircle,
-  Navigation,
   ExternalLink,
   Landmark,
   Lock,
@@ -51,9 +50,19 @@ import { formatPriceNPR, formatDate } from "@/lib/utils";
 import { Room, RoomStatus } from "@/types/room.types";
 import { UserRole } from "@/types/user.types";
 import { api } from "@/http/api/api";
-import { MapComponent } from "@/components/common/MapComponent";
+import { RoomUnlockDialog } from "@/components/rooms/RoomUnlockDialog";
+import { TopUpRequestDialog } from "@/components/wallet/TopUpRequestDialog";
+import { LockedRoomDetails } from "@/components/rooms/LockedRoomDetails";
+import { unlockService } from "@/http/services/unlock.service";
+import { useUserStore } from "@/stores/user-store";
+import type {
+  CommissionSettings,
+  UnlockResult,
+  UnlockStatus,
+} from "@/types/unlock.types";
 
-// ─── Amenity icons ────────────────────────────────────────────────────
+// ─── Amenity icons ────────────────────────────────────────────────────────────
+
 const amenityIcons: Record<string, any> = {
   wifi: Wifi,
   parking: Car,
@@ -65,27 +74,7 @@ const amenityIcons: Record<string, any> = {
   "dining area": Utensils,
 };
 
-// ─── Water supply parser ──────────────────────────────────────────────
-/**
- * API shape: { morning: string, evening: string, notes: "TYPE:xxx optionalUserNote" }
- *
- * TYPE values (stored in notes field):
- *   24-hour | morning-only | evening-only | morning-evening |
- *   alternate-days | tanker | custom
- *
- * Rules:
- *  TYPE:24-hour  OR  morning === "00:00-24:00"
- *    → show 24-hour badge only, ignore all slot fields
- *  TYPE:morning-only
- *    → show morning slot ONLY — ignore evening even if non-empty
- *  TYPE:evening-only
- *    → show evening slot ONLY — ignore morning
- *  TYPE:morning-evening  (or no TYPE tag)
- *    → show whichever slots are non-empty strings
- *  TYPE:tanker | TYPE:alternate-days
- *    → show a note-only card, no slot cards
- *  The "TYPE:xxx" substring is always stripped before showing user-facing note text.
- */
+// ─── Water supply parser ──────────────────────────────────────────────────────
 
 const NEPALI_TIME_LABELS: Record<string, string> = {
   "05:00-07:00": "५:०० – ७:०० बिहान",
@@ -101,9 +90,9 @@ const NEPALI_TIME_LABELS: Record<string, string> = {
 
 interface WaterInfo {
   is24Hour: boolean;
-  morning: string | null; // formatted label or null
-  evening: string | null; // formatted label or null
-  note: string | null; // clean user note (TYPE tag stripped), or null
+  morning: string | null;
+  evening: string | null;
+  note: string | null;
 }
 
 function parseWaterTimings(
@@ -121,45 +110,26 @@ function parseWaterTimings(
   if (!timings) return empty;
 
   const rawNotes = timings.notes ?? "";
-
-  // Extract and remove the TYPE tag
   const typeMatch = rawNotes.match(/TYPE:([a-z0-9-]+)/i);
   const type = typeMatch?.[1]?.toLowerCase() ?? "";
   const cleanNote = rawNotes.replace(/TYPE:[a-z0-9-]+/i, "").trim() || null;
 
-  // Format a raw slot string to a Nepali label (falls back to raw value)
   const fmt = (slot: string | undefined): string | null => {
     if (!slot) return null;
     return NEPALI_TIME_LABELS[slot] ?? slot;
   };
 
-  // ── 24-hour ──
-  if (type === "24-hour" || timings.morning === "00:00-24:00") {
+  if (type === "24-hour" || timings.morning === "00:00-24:00")
     return { is24Hour: true, morning: null, evening: null, note: null };
-  }
-
-  // ── tanker ──
-  if (type === "tanker") {
+  if (type === "tanker")
     return { ...empty, note: cleanNote || "ट्याङ्कर पानी उपलब्ध" };
-  }
-
-  // ── alternate-days ──
-  if (type === "alternate-days") {
+  if (type === "alternate-days")
     return { ...empty, note: cleanNote || "एक दिन छाडी पानी आउँछ" };
-  }
-
-  // ── morning-only: show morning, ignore evening entirely ──
-  if (type === "morning-only") {
+  if (type === "morning-only")
     return { ...empty, morning: fmt(timings.morning), note: cleanNote };
-  }
-
-  // ── evening-only: show evening, ignore morning entirely ──
-  if (type === "evening-only") {
+  if (type === "evening-only")
     return { ...empty, evening: fmt(timings.evening), note: cleanNote };
-  }
 
-  // ── morning-evening / custom / no TYPE tag ──
-  // Only show a slot if its raw value is a non-empty string
   return {
     ...empty,
     morning: fmt(timings.morning),
@@ -168,7 +138,8 @@ function parseWaterTimings(
   };
 }
 
-// ─── Status badge ─────────────────────────────────────────────────────
+// ─── Status badge ─────────────────────────────────────────────────────────────
+
 const getStatusBadge = (status: RoomStatus) => {
   switch (status) {
     case "Approved":
@@ -194,7 +165,8 @@ const getStatusBadge = (status: RoomStatus) => {
   }
 };
 
-// ─── Image Carousel ───────────────────────────────────────────────────
+// ─── Image Carousel ───────────────────────────────────────────────────────────
+
 interface ImageCarouselProps {
   images: string[];
   title: string;
@@ -334,7 +306,8 @@ const ImageCarousel = ({ images, title }: ImageCarouselProps) => {
   );
 };
 
-// ─── TikTok Card ──────────────────────────────────────────────────────
+// ─── TikTok Card ──────────────────────────────────────────────────────────────
+
 const TikTokCard = ({ url }: { url: string }) => (
   <motion.div
     initial={{ opacity: 0, y: 20 }}
@@ -374,7 +347,8 @@ const TikTokCard = ({ url }: { url: string }) => (
   </motion.div>
 );
 
-// ─── Water Supply Section ─────────────────────────────────────────────
+// ─── Water Supply Section ─────────────────────────────────────────────────────
+
 const WaterSupplySection = ({
   timings,
 }: {
@@ -399,7 +373,6 @@ const WaterSupplySection = ({
         पानी आपूर्ति (Water Supply)
       </h3>
 
-      {/* 24-hour */}
       {info.is24Hour && (
         <div className="flex items-center gap-3 p-4 bg-emerald-50 rounded-xl border border-emerald-200">
           <CheckCircle className="w-6 h-6 text-emerald-600 flex-shrink-0" />
@@ -414,7 +387,6 @@ const WaterSupplySection = ({
         </div>
       )}
 
-      {/* Note-only (tanker, alternate-days) — no slots */}
       {!info.is24Hour && info.note && !info.morning && !info.evening && (
         <div className="flex items-center gap-3 p-4 bg-blue-50 rounded-xl border border-blue-100">
           <Droplets className="w-6 h-6 text-blue-500 flex-shrink-0" />
@@ -422,7 +394,6 @@ const WaterSupplySection = ({
         </div>
       )}
 
-      {/* Morning / Evening time slots */}
       {(info.morning || info.evening) && (
         <div
           className={`grid gap-3 ${
@@ -460,7 +431,6 @@ const WaterSupplySection = ({
         </div>
       )}
 
-      {/* Extra note when time slots are also shown */}
       {info.note && (info.morning || info.evening) && (
         <p className="text-xs text-slate-500 mt-3 pt-3 border-t border-slate-100">
           📝 {info.note}
@@ -470,18 +440,37 @@ const WaterSupplySection = ({
   );
 };
 
-// ─── Main Page ────────────────────────────────────────────────────────
+// ─── Main Page ────────────────────────────────────────────────────────────────
+
 export default function PropertyDetailsPage() {
   const { id } = useParams();
-  const router = useRouter();
+
+  // ── Auth: read from Zustand store (persisted in localStorage by zustand/persist) ──
+  const user = useUserStore((state) => state.user);
+  const isLoaded = useUserStore((state) => state.isLoaded);
+
+  // Derived: only consider authenticated after the store has hydrated
+  const isAuthenticated = isLoaded && !!user;
+
+  // Room state
   const [room, setRoom] = useState<Room | null>(null);
   const [loading, setLoading] = useState(true);
   const [liked, setLiked] = useState(false);
   const [showAllAmenities, setShowAllAmenities] = useState(false);
-  const [selectedDate, setSelectedDate] = useState<string>("");
-  const [guests, setGuests] = useState(1);
 
+  // Unlock state
+  const [unlockStatus, setUnlockStatus] = useState<UnlockStatus | null>(null);
+  const [unlockedData, setUnlockedData] = useState<UnlockResult | null>(null);
+  const [commissionSettings, setCommissionSettings] =
+    useState<CommissionSettings | null>(null);
+
+  // Dialog state
+  const [showUnlockDialog, setShowUnlockDialog] = useState(false);
+  const [showTopUpDialog, setShowTopUpDialog] = useState(false);
+
+  // ── Fetch room ──
   useEffect(() => {
+    if (!id) return;
     const fetchRoom = async () => {
       try {
         const res = await fetch(`${api.defaults.baseURL}/rooms/${id}`);
@@ -497,7 +486,41 @@ export default function PropertyDetailsPage() {
     fetchRoom();
   }, [id]);
 
-  console.log(room);
+  // ── Fetch unlock status (only when auth is confirmed and store is hydrated) ──
+  useEffect(() => {
+    // Wait for store to hydrate and confirm user is logged in
+    if (!isLoaded || !isAuthenticated || !id) return;
+
+    const fetchUnlockData = async () => {
+      try {
+        const [status, settings] = await Promise.all([
+          unlockService.getRoomUnlockStatus(String(id)),
+          unlockService.getSettings(),
+        ]);
+        setUnlockStatus(status);
+        setCommissionSettings(settings);
+
+        // If already unlocked, fetch sensitive details immediately
+        if (status.isUnlocked) {
+          const result = await unlockService.unlockRoom(String(id));
+          setUnlockedData(result);
+        }
+      } catch (err) {
+        console.error("Failed to fetch unlock status:", err);
+      }
+    };
+
+    fetchUnlockData();
+  }, [id, isLoaded, isAuthenticated]);
+
+  // ── Fetch settings for non-authed users (to show QR in TopUp dialog) ──
+  useEffect(() => {
+    if (!isLoaded || isAuthenticated) return;
+    unlockService
+      .getSettings()
+      .then(setCommissionSettings)
+      .catch(() => {});
+  }, [isLoaded, isAuthenticated]);
 
   const handleShare = async () => {
     if (!room) return;
@@ -522,32 +545,17 @@ export default function PropertyDetailsPage() {
     toast.success("Link copied to clipboard!", { icon: "🔗", duration: 3000 });
   };
 
-  const handleWhatsApp = () => {
-    if (!room) return;
-    const phoneNumber = "977976-9493954";
-    const message =
-      `Hello! I'm interested in: ${room.title}\n\n` +
-      `📍 ${room.location?.formattedAddress || room.address}\n` +
-      `💰 रू ${formatPriceNPR(room.price)}/month\n` +
-      `📅 Check-in: ${selectedDate || "Flexible"}\n\nCan you provide more details?`;
-    window.open(
-      `https://wa.me/${phoneNumber.replace(/\D/g, "")}?text=${encodeURIComponent(message)}`,
-      "_blank",
+  const handleUnlocked = (result: UnlockResult) => {
+    setUnlockedData(result);
+    setUnlockStatus((prev) =>
+      prev
+        ? {
+            ...prev,
+            isUnlocked: true,
+            walletBalance: prev.walletBalance - prev.serviceCharge,
+          }
+        : prev,
     );
-    toast.success("Opening WhatsApp...", { duration: 3000 });
-  };
-
-  const handleContact = () => {
-    if (room?.contactPhone) window.location.href = `tel:${room.contactPhone}`;
-    else toast.info("Contact feature coming soon!");
-  };
-
-  const openDirections = () => {
-    if (room?.location?.latitude && room?.location?.longitude)
-      window.open(
-        `https://www.google.com/maps/dir/?api=1&destination=${room.location.latitude},${room.location.longitude}`,
-        "_blank",
-      );
   };
 
   // ── Loading skeleton ──
@@ -606,12 +614,6 @@ export default function PropertyDetailsPage() {
 
   const mainAmenities = room.amenities?.slice(0, 6) || [];
   const additionalAmenities = room.amenities?.slice(6) || [];
-
-  const location = room.location;
-  const hasValidCoordinates = !!(location?.latitude && location?.longitude);
-  const latitude = hasValidCoordinates ? Number(location.latitude) : null;
-  const longitude = hasValidCoordinates ? Number(location.longitude) : null;
-
   const formattedPrice = formatPriceNPR(room.price);
   const isAdminHost =
     room.user?.role === UserRole.ADMIN || (room.user as any)?.role === "Admin";
@@ -729,17 +731,17 @@ export default function PropertyDetailsPage() {
                     </span>
                   </div>
                 </div>
-                {/* Inline call — phone number shown directly, no separate Call button */}
-                {room.contactPhone && (
+                {/* Phone only shown after unlock */}
+                {unlockedData?.room?.contactPhone && (
                   <a
-                    href={`tel:${room.contactPhone}`}
+                    href={`tel:${unlockedData.room.contactPhone}`}
                     className="flex-shrink-0 flex flex-col items-center gap-1 group"
                   >
                     <div className="w-11 h-11 rounded-full bg-red-50 group-hover:bg-red-100 border border-red-200 flex items-center justify-center transition-colors">
                       <Phone className="w-4 h-4 text-red-500" />
                     </div>
                     <span className="text-xs text-red-500 font-medium">
-                      {room.contactPhone}
+                      {unlockedData.room.contactPhone}
                     </span>
                   </a>
                 )}
@@ -759,11 +761,7 @@ export default function PropertyDetailsPage() {
                     value: room.bathroomCapacity,
                     label: "Bathrooms",
                   },
-                  {
-                    icon: Square,
-                    value: `${room.roomArea} m²`,
-                    label: "Area",
-                  },
+                  { icon: Square, value: `${room.roomArea} m²`, label: "Area" },
                 ].map(({ icon: Icon, value, label }) => (
                   <div key={label} className="text-center">
                     <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-2">
@@ -841,105 +839,38 @@ export default function PropertyDetailsPage() {
                 </motion.div>
               )}
 
-              {/* ── Water Supply ── */}
+              {/* Water Supply */}
               <WaterSupplySection timings={room.waterSupplyTimings} />
 
-              {/* ── Location Map — BLURRED ── */}
+              {/* ── Location & Contact — Lock / Unlock ── */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.4 }}
                 className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6"
               >
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-xl font-semibold text-slate-900 flex items-center gap-2">
-                    <MapPin className="w-5 h-5 text-red-500" />
-                    Location
-                  </h3>
-                  {hasValidCoordinates && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={openDirections}
-                      className="rounded-full gap-2 border-red-200 hover:bg-red-50 hover:text-red-600 transition-all group"
-                    >
-                      <Navigation className="w-4 h-4 group-hover:scale-110 transition-transform" />
-                      Directions
-                    </Button>
-                  )}
-                </div>
+                <h3 className="text-xl font-semibold text-slate-900 mb-5 flex items-center gap-2">
+                  <MapPin className="w-5 h-5 text-red-500" />
+                  Location & Contact
+                </h3>
 
-                {hasValidCoordinates ? (
-                  <div className="space-y-4">
-                    {/* Blurred map container */}
-                    <div className="h-[320px] w-full rounded-xl overflow-hidden border-2 border-slate-100 shadow-md relative">
-                      {/* Map rendered but visually blurred */}
-                      <div
-                        className="absolute inset-0 pointer-events-none select-none"
-                        style={{
-                          filter: "blur(8px)",
-                          transform: "scale(1.05)",
-                        }}
-                      >
-                        <MapComponent
-                          latitude={latitude!}
-                          longitude={longitude!}
-                          popupText={room.title}
-                        />
-                      </div>
-                      {/* Subtle overlay */}
-                      <div className="absolute inset-0 bg-white/10 backdrop-blur-[2px]" />
-                      {/* Lock CTA */}
-                      <div className="absolute inset-0 flex items-center justify-center z-10">
-                        <div className="bg-white/95 backdrop-blur-sm rounded-2xl px-8 py-6 shadow-2xl border border-slate-200 text-center max-w-xs mx-4">
-                          <div className="w-14 h-14 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-3">
-                            <Lock className="w-6 h-6 text-red-500" />
-                          </div>
-                          <p className="font-bold text-slate-900 text-base mb-1">
-                            Exact Location Hidden
-                          </p>
-                          <p className="text-slate-500 text-xs leading-relaxed mb-4">
-                            सटीक ठेगाना जान्न घरधनीसँग सम्पर्क गर्नुहोस्।
-                            <br />
-                            Contact the host to get the exact address.
-                          </p>
-                          <Button
-                            size="sm"
-                            className="rounded-full bg-green-600 hover:bg-green-700 text-white gap-2 w-full"
-                            onClick={handleWhatsApp}
-                          >
-                            <svg
-                              className="w-3.5 h-3.5"
-                              viewBox="0 0 24 24"
-                              fill="currentColor"
-                            >
-                              <path d="M19.077 4.928C17.191 3.041 14.683 2 12.006 2 6.798 2 2.528 6.17 2.527 11.26c0 1.695.444 3.355 1.291 4.815L2 22l5.995-1.788c1.44.79 3.064 1.206 4.722 1.207h.005c5.195 0 9.476-4.17 9.477-9.26 0-2.476-.966-4.804-2.842-6.69z" />
-                            </svg>
-                            WhatsApp मा सोध्नुहोस्
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2 text-sm text-slate-500 bg-slate-50 p-3 rounded-lg">
-                      <MapPin className="w-4 h-4 text-red-400 shrink-0" />
-                      <span>{location?.formattedAddress || room.address}</span>
-                    </div>
+                {/*
+                  Guard: if the store hasn't hydrated yet, show a small spinner
+                  so we never flash "Sign In Required" to a logged-in user.
+                */}
+                {!isLoaded ? (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="w-6 h-6 rounded-full border-2 border-slate-200 border-t-red-500 animate-spin" />
                   </div>
                 ) : (
-                  <div className="relative h-56 rounded-xl bg-gradient-to-br from-slate-100 to-slate-200 overflow-hidden flex items-center justify-center">
-                    <div className="text-center">
-                      <div className="w-16 h-16 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-3">
-                        <MapPin className="w-8 h-8 text-red-400" />
-                      </div>
-                      <p className="text-sm font-medium text-slate-700 mb-1">
-                        {location?.formattedAddress || room.address}
-                      </p>
-                      <p className="text-xs text-slate-400">
-                        Exact location provided after booking
-                      </p>
-                    </div>
-                  </div>
+                  <LockedRoomDetails
+                    isAuthenticated={isAuthenticated}
+                    unlockStatus={unlockStatus}
+                    unlockedData={unlockedData}
+                    address={room.address}
+                    onUnlockClick={() => setShowUnlockDialog(true)}
+                    onTopUpClick={() => setShowTopUpDialog(true)}
+                  />
                 )}
               </motion.div>
             </div>
@@ -989,21 +920,39 @@ export default function PropertyDetailsPage() {
                       </div>
                     </div>
 
-                    <Button
-                      className="w-full rounded-xl py-6 bg-green-600 hover:bg-green-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all group"
-                      onClick={handleWhatsApp}
-                    >
-                      <svg
-                        className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform"
-                        viewBox="0 0 24 24"
-                        fill="currentColor"
+                    {/* CTA: WhatsApp if unlocked, else Unlock button */}
+                    {unlockedData?.room?.contactPhone ? (
+                      <a
+                        href={`https://wa.me/${unlockedData.room.contactPhone.replace(/\D/g, "")}?text=${encodeURIComponent(
+                          `Hello! I'm interested in: ${room.title}`,
+                        )}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-center gap-2 w-full py-4 rounded-xl bg-green-600 hover:bg-green-700 text-white font-semibold text-sm transition-colors shadow-lg"
                       >
-                        <path d="M19.077 4.928C17.191 3.041 14.683 2 12.006 2 6.798 2 2.528 6.17 2.527 11.26c0 1.695.444 3.355 1.291 4.815L2 22l5.995-1.788c1.44.79 3.064 1.206 4.722 1.207h.005c5.195 0 9.476-4.17 9.477-9.26 0-2.476-.966-4.804-2.842-6.69l.005-.002-.003.001zm-7.066 14.252h-.003c-1.44 0-2.853-.384-4.07-1.106l-.293-.172-3.465 1.035.936-3.333-.19-.295c-.762-1.186-1.164-2.56-1.163-3.976.002-4.063 3.346-7.368 7.47-7.368 2.0 0 3.876.776 5.288 2.185 1.412 1.409 2.188 3.279 2.187 5.28-.002 4.065-3.337 7.367-7.447 7.367zm4.088-5.523c-.225-.113-1.327-.648-1.532-.723-.206-.074-.355-.113-.504.113-.149.226-.578.723-.708.87-.13.148-.26.165-.484.055-.224-.11-.948-.347-1.806-1.106-.668-.59-1.12-1.32-1.25-1.543-.13-.223-.014-.343.097-.453.1-.1.223-.26.335-.39.111-.13.148-.223.223-.37.074-.148.037-.28-.019-.392-.055-.113-.504-1.205-.69-1.65-.18-.435-.36-.38-.493-.38-.13 0-.282-.018-.434-.018-.15 0-.394.056-.6.28-.205.222-.783.76-.783 1.855 0 1.094.8 2.152.912 2.302.112.15 1.538 2.395 3.794 3.26 2.256.866 2.256.578 2.664.542.407-.037 1.316-.534 1.502-1.05.186-.517.186-.96.13-1.05-.055-.093-.204-.15-.428-.264z" />
-                      </svg>
-                      Contact on WhatsApp
-                    </Button>
+                        <svg
+                          className="w-5 h-5"
+                          viewBox="0 0 24 24"
+                          fill="currentColor"
+                        >
+                          <path d="M19.077 4.928C17.191 3.041 14.683 2 12.006 2 6.798 2 2.528 6.17 2.527 11.26c0 1.695.444 3.355 1.291 4.815L2 22l5.995-1.788c1.44.79 3.064 1.206 4.722 1.207h.005c5.195 0 9.476-4.17 9.477-9.26 0-2.476-.966-4.804-2.842-6.69z" />
+                        </svg>
+                        Contact on WhatsApp
+                      </a>
+                    ) : (
+                      <Button
+                        className="w-full rounded-xl py-6 bg-slate-900 hover:bg-slate-800 text-white font-semibold shadow-lg transition-all group"
+                        onClick={() => setShowUnlockDialog(true)}
+                      >
+                        <Lock className="w-4 h-4 mr-2 group-hover:scale-110 transition-transform" />
+                        Unlock to Contact Host
+                      </Button>
+                    )}
+
                     <p className="text-xs text-slate-400 text-center mt-2">
-                      Chat directly with the host on WhatsApp
+                      {unlockedData
+                        ? "Chat directly with the host on WhatsApp"
+                        : "Unlock to see host contact details"}
                     </p>
                   </CardContent>
                 </Card>
@@ -1055,26 +1004,6 @@ export default function PropertyDetailsPage() {
                       ))}
                     </div>
 
-                    {room.contactPhone && (
-                      <>
-                        <Separator className="my-4" />
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center">
-                            <Phone className="w-4 h-4 text-red-500" />
-                          </div>
-                          <div className="flex-1">
-                            <p className="text-xs text-slate-500">Call host</p>
-                            <a
-                              href={`tel:${room.contactPhone}`}
-                              className="text-sm font-semibold text-slate-900 hover:text-red-600 transition-colors"
-                            >
-                              {room.contactPhone}
-                            </a>
-                          </div>
-                        </div>
-                      </>
-                    )}
-
                     {room.tiktokUrl && (
                       <>
                         <Separator className="my-4" />
@@ -1112,7 +1041,7 @@ export default function PropertyDetailsPage() {
         </div>
       </div>
 
-      {/* All Amenities Modal */}
+      {/* ── All Amenities Modal ── */}
       <AnimatePresence>
         {showAllAmenities && (
           <motion.div
@@ -1159,6 +1088,31 @@ export default function PropertyDetailsPage() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* ── Unlock Dialog ── */}
+      <RoomUnlockDialog
+        open={showUnlockDialog}
+        onOpenChange={setShowUnlockDialog}
+        roomId={String(id)}
+        roomTitle={room.title}
+        unlockStatus={unlockStatus}
+        isAuthenticated={isAuthenticated}
+        onUnlocked={handleUnlocked}
+        onRequestTopUp={() => {
+          setShowUnlockDialog(false);
+          setShowTopUpDialog(true);
+        }}
+      />
+
+      {/* ── Top-Up Dialog ── */}
+      <TopUpRequestDialog
+        open={showTopUpDialog}
+        onOpenChange={setShowTopUpDialog}
+        settings={commissionSettings}
+        onSuccess={() => {
+          // Balance not changed yet (pending admin approval), just close
+        }}
+      />
 
       <Footer />
     </>

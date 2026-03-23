@@ -82,8 +82,8 @@ export default function ContactPage() {
       icon: MapPin,
       title: "Visit Our Office",
       details: [
-        "Connect Job Center Pokhara",
-        "Lakeside Road, Pokhara 33700",
+        "Rental Servise Pokhara",
+        "4th Floor, Pokhara Trade Mall Pokhara 33800, Gandaki Province Nepal",
         "Nepal",
       ],
       action: {
@@ -95,10 +95,10 @@ export default function ContactPage() {
     {
       icon: Phone,
       title: "Call Us",
-      details: ["+977 61-123456", "+977 9812345678"],
+      details: ["+977 9765408817"],
       action: {
         label: "Call Now",
-        href: "tel:+97761123456",
+        href: "tel:+9779800000000",
         external: true,
       },
     },
@@ -115,11 +115,7 @@ export default function ContactPage() {
     {
       icon: Clock,
       title: "Working Hours",
-      details: [
-        "Monday - Friday: 9:00 AM - 6:00 PM",
-        "Saturday: 9:00 AM - 5:00 PM",
-        "Sunday: Closed",
-      ],
+      details: ["Sunday - Friday: 9:00 AM - 5:00 PM", "Saturday: Closed"],
       badge: "Open Now",
     },
   ];

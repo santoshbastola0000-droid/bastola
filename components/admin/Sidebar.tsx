@@ -77,6 +77,11 @@ const navItems: NavItem[] = [
     icon: Wallet,
   },
   {
+    title: "Wallet Top-Up",
+    href: "/admin/dashboard/wallet/topup",
+    icon: Wallet,
+  },
+  {
     title: "Commission",
     href: "/admin/dashboard/commission",
     icon: Percent,

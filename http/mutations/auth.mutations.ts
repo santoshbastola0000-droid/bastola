@@ -225,7 +225,7 @@ export const useResendVerificationMutation = () => {
   return useMutation({
     mutationKey: [AUTH_QUERY_KEYS.RESEND],
     mutationFn: async (email: string) => {
-      await api.post("/user/resend-verification", { email });
+      await api.post("/user/login/resend-otp", { email });
     },
     onSuccess: () => {
       toast.success(ToastText.Verify.resent.title, {
