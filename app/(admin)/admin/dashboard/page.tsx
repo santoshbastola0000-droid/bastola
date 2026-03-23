@@ -17,14 +17,9 @@ import {
   RefreshCw,
   Loader2,
   AlertCircle,
-  Building2,
   IndianRupee,
-  Calendar,
-  ArrowUpRight,
   ChevronRight,
-  Eye,
   UserPlus,
-  Archive,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -36,9 +31,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   BarChart,
   Bar,
@@ -50,9 +43,6 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
-  LineChart,
-  Line,
 } from "recharts";
 import { adminDashboardService } from "@/http/services/admin-dashboard.service";
 import { formatNepaliCurrency, formatDate } from "@/lib/utils";

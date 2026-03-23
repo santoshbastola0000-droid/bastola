@@ -77,30 +77,6 @@ export default function Home() {
 
       <Hero />
 
-      {/* Search Section */}
-      <section className="py-16 bg-gradient-to-b from-white to-slate-50">
-        <div className="container mx-auto px-4">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-center max-w-3xl mx-auto mb-10"
-          >
-            <span className="text-sm font-semibold uppercase tracking-wider text-red-500">
-              Find Your Perfect Space
-            </span>
-            <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mt-2">
-              Search Available Rooms
-            </h2>
-            <p className="text-slate-600 mt-4">
-              Discover thousands of verified properties across the country
-            </p>
-          </motion.div>
-
-          <SearchBar onLocationFound={setLocation} />
-        </div>
-      </section>
-
       {/* Stats Section */}
       <section
         ref={statsRef}
@@ -170,25 +146,6 @@ export default function Home() {
             </div>
           )}
 
-          {/* Error State */}
-          {error && (
-            <div className="text-center py-20">
-              <div className="w-20 h-20 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-4">
-                <span className="text-3xl">😕</span>
-              </div>
-              <h3 className="text-xl font-semibold text-slate-900 mb-2">
-                Oops! Something went wrong
-              </h3>
-              <p className="text-slate-500 mb-6">{error}</p>
-              <button
-                onClick={() => window.location.reload()}
-                className="px-6 py-3 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
-              >
-                Try Again
-              </button>
-            </div>
-          )}
-
           {/* Rooms Grid */}
           {rooms && rooms.length > 0 && (
             <motion.div
@@ -198,23 +155,6 @@ export default function Home() {
             >
               <RoomGrid rooms={rooms} />
             </motion.div>
-          )}
-
-          {/* No Results */}
-          {rooms && rooms.length === 0 && !loading && (
-            <div className="text-center py-20">
-              <div className="w-20 h-20 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-4">
-                <HomeIcon className="w-8 h-8 text-slate-400" />
-              </div>
-              <h3 className="text-xl font-semibold text-slate-900 mb-2">
-                No rooms found
-              </h3>
-              <p className="text-slate-500">
-                {location
-                  ? `We couldn't find any rooms in ${location.city}. Try searching in a different area.`
-                  : "Try enabling location or adjusting your search filters"}
-              </p>
-            </div>
           )}
         </div>
       </section>

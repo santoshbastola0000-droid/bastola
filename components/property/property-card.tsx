@@ -139,6 +139,12 @@ export function PropertyCard({
       );
     }
 
+    console.log(
+      "Using real image for property ID:",
+      id,
+      "Image URL:",
+      images[0],
+    );
     return images[0]; // ✅ Use real image from array
   };
 
@@ -190,7 +196,7 @@ export function PropertyCard({
           {/* Image */}
           <div className="relative md:w-80 h-64 md:h-auto shrink-0 overflow-hidden bg-stone-100">
             <Image
-              src={getImageSrc()}
+              src="http://localhost:3001/uploads/8ed8062e-5daa-463b-98c9-e2357dbf4b8d.jpg"
               alt={title}
               fill
               className="object-cover transition-transform duration-700 group-hover:scale-105"

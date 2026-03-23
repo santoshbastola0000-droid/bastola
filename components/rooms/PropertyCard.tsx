@@ -1,355 +1,311 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import {
-  Heart,
   MapPin,
-  Bed,
+  Users,
   Bath,
   Square,
-  Home,
-  ChevronLeft,
-  ChevronRight,
+  Heart,
   Wifi,
   Car,
-  Coffee,
-  Shield,
-  Users,
-  IndianRupee,
-  Building,
+  Utensils,
+  Wind,
+  Tv,
+  ArrowUpRight,
+  CheckCircle,
+  Home,
 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
-import { Room } from "@/types/room.types";
-import { formatNepaliCurrency } from "@/lib/utils";
+import type { Room } from "@/types/room.types";
+import { formatPriceNPR } from "@/lib/utils";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+const BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL?.replace("/api", "") ||
+  "http://localhost:3001";
+
+/** Converts a relative `/uploads/...` path to a full URL */
+function resolveImageUrl(path: string): string {
+  if (!path) return "";
+  if (path.startsWith("http://") || path.startsWith("https://")) return path;
+  return `${BASE_URL}${path.startsWith("/") ? "" : "/"}${path}`;
+}
+
+const amenityIcons: Record<string, React.ElementType> = {
+  wifi: Wifi,
+  parking: Car,
+  kitchen: Utensils,
+  "air conditioning": Wind,
+  ac: Wind,
+  tv: Tv,
+};
+
+const categoryConfig: Record<
+  string,
+  { label: string; labelNp: string; color: string; bg: string }
+> = {
+  Flat: { label: "Flat", labelNp: "फ्ल्याट", color: "#1e40af", bg: "#eff6ff" },
+  Single: { label: "Single", labelNp: "एकल", color: "#065f46", bg: "#ecfdf5" },
+  Apartment: {
+    label: "Apartment",
+    labelNp: "अपार्टमेन्ट",
+    color: "#6b21a8",
+    bg: "#faf5ff",
+  },
+  Shared: {
+    label: "Shared",
+    labelNp: "साझा",
+    color: "#92400e",
+    bg: "#fffbeb",
+  },
+  Double: {
+    label: "Double",
+    labelNp: "डबल",
+    color: "#9f1239",
+    bg: "#fff1f2",
+  },
+  House: { label: "House", labelNp: "घर", color: "#065f46", bg: "#f0fdf4" },
+  "Attached Bathroom": {
+    label: "Attached Bath",
+    labelNp: "अट्याच्ड बाथ",
+    color: "#0369a1",
+    bg: "#f0f9ff",
+  },
+  Hostel: {
+    label: "Hostel",
+    labelNp: "होस्टेल",
+    color: "#7c3aed",
+    bg: "#f5f3ff",
+  },
+  Hotel: {
+    label: "Hotel",
+    labelNp: "होटेल",
+    color: "#b45309",
+    bg: "#fffbeb",
+  },
+  "Office Space": {
+    label: "Office",
+    labelNp: "अफिस",
+    color: "#0f766e",
+    bg: "#f0fdfa",
+  },
+  Shutter: {
+    label: "Shutter",
+    labelNp: "शटर",
+    color: "#475569",
+    bg: "#f8fafc",
+  },
+};
 
 interface PropertyCardProps {
-  room: Room; // use Room directly — no adapter needed, fixes TS2740
+  room: Room;
   index?: number;
-  className?: string;
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-const CATEGORY_LABEL: Record<string, string> = {
-  FLAT: "Flat",
-  SINGLE: "Single Room",
-  APARTMENT: "Apartment",
-  SHARED: "Shared",
-  DOUBLE: "Double Room",
-  HOUSE: "House",
-  ATTACHED_BATHROOM: "With Bathroom",
-  SHUTTER: "Shutter",
-  HOTEL: "Hotel",
-  OFFICE_SPACE: "Office",
-  HOSTEL: "Hostel",
-};
-
-const AMENITY_ICONS: Record<string, React.ReactNode> = {
-  WiFi: <Wifi className="h-3 w-3" aria-hidden="true" />,
-  Parking: <Car className="h-3 w-3" aria-hidden="true" />,
-  "Hot Water": <Coffee className="h-3 w-3" aria-hidden="true" />,
-  Security: <Shield className="h-3 w-3" aria-hidden="true" />,
-};
-
-function getImageUrl(imagePath: string): string {
-  if (!imagePath) return "";
-  if (imagePath.startsWith("http")) return imagePath;
-  const base = (process.env.NEXT_PUBLIC_BACKEND_URL ?? "").replace(/\/$/, "");
-  return `${base}/${imagePath.replace(/^\//, "")}`;
-}
-
-function CategoryIcon({ category }: { category: string }) {
-  switch (category) {
-    case "APARTMENT":
-    case "FLAT":
-      return <Building className="h-3 w-3" aria-hidden="true" />;
-    default:
-      return <Home className="h-3 w-3" aria-hidden="true" />;
-  }
-}
-
-// ─── Component ────────────────────────────────────────────────────────────────
-
-export function PropertyCard({
-  room,
-  index = 0,
-  className,
-}: PropertyCardProps) {
-  const [imgIdx, setImgIdx] = useState(0);
-  const [isHovered, setIsHovered] = useState(false);
+export function PropertyCard({ room, index = 0 }: PropertyCardProps) {
   const [isLiked, setIsLiked] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
   const [imgError, setImgError] = useState(false);
+  const [imgLoaded, setImgLoaded] = useState(false);
 
-  const images = (room.images ?? []).filter(Boolean);
-  const hasMany = images.length > 1;
+  const catCfg = categoryConfig[room.category] ?? {
+    label: room.category,
+    labelNp: room.category,
+    color: "#dc2626",
+    bg: "#fff1f2",
+  };
 
-  const handlePrev = useCallback(
-    (e: React.MouseEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      setImgIdx((i) => (i === 0 ? images.length - 1 : i - 1));
-    },
-    [images.length],
-  );
+  // ── Image resolution ──
+  const imageUrl =
+    !imgError && room.images?.length ? resolveImageUrl(room.images[0]) : null;
 
-  const handleNext = useCallback(
-    (e: React.MouseEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      setImgIdx((i) => (i === images.length - 1 ? 0 : i + 1));
-    },
-    [images.length],
-  );
-
-  const handleLike = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsLiked((v) => !v);
-  }, []);
-
-  const displayedAmenities = (room.amenities ?? []).slice(0, 3);
-  const extraAmenities = (room.amenities?.length ?? 0) - 3;
-  const categoryLabel = CATEGORY_LABEL[room.category] ?? room.category;
+  const topAmenities = (room.amenities ?? []).slice(0, 3);
+  const city = room.location?.city ?? "";
+  const formattedAddress =
+    room.location?.formattedAddress ?? room.address ?? "";
+  const shortAddress = city || formattedAddress.split(",")[0];
 
   return (
     <motion.article
       initial={{ opacity: 0, y: 24 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.35, delay: Math.min(index * 0.07, 0.5) }}
-      whileHover={{ y: -6, transition: { duration: 0.2 } }}
-      className={cn("group", className)}
+      transition={{
+        duration: 0.45,
+        delay: index * 0.07,
+        ease: [0.22, 1, 0.36, 1],
+      }}
+      onHoverStart={() => setIsHovered(true)}
+      onHoverEnd={() => setIsHovered(false)}
+      className="group relative bg-white rounded-2xl overflow-hidden border border-slate-100 shadow-sm hover:shadow-xl transition-all duration-300"
     >
       <Link
         href={`/property/${room.id}`}
-        className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded-2xl"
-        aria-label={`View ${room.title}, ${categoryLabel}, ₹${formatNepaliCurrency(room.price)} per month`}
+        className="block"
+        aria-label={room.title}
       >
-        <div
-          className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-shadow duration-300 border border-gray-100"
-          onMouseEnter={() => setIsHovered(true)}
-          onMouseLeave={() => setIsHovered(false)}
-        >
-          {/* ── Image Section ── */}
-          <div className="relative h-52 sm:h-56 overflow-hidden bg-gray-100">
-            {/* Image */}
-            {images.length > 0 && !imgError ? (
-              <img
-                src={getImageUrl(images[imgIdx])}
-                alt={`${room.title} — photo ${imgIdx + 1} of ${images.length}`}
-                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                onError={() => setImgError(true)}
-                loading="lazy"
-              />
-            ) : (
-              <div
-                className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-primary/5 to-primary/10 gap-2"
-                aria-label="No image available"
-              >
-                <Home
-                  className="h-12 w-12 text-primary/25"
-                  aria-hidden="true"
-                />
-                <span className="text-xs text-gray-400">No image</span>
-              </div>
-            )}
+        {/* ── Image ── */}
+        <div className="relative aspect-[4/3] overflow-hidden bg-slate-100">
+          {/* Skeleton shimmer */}
+          {!imgLoaded && (
+            <div className="absolute inset-0 bg-gradient-to-r from-slate-100 via-slate-200 to-slate-100 animate-pulse" />
+          )}
 
-            {/* Gradient overlay for readability */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none" />
-
-            {/* ── Image Navigation ── */}
-            {hasMany && isHovered && (
-              <>
-                <button
-                  type="button"
-                  onClick={handlePrev}
-                  aria-label="Previous photo"
-                  className="absolute left-2 top-1/2 -translate-y-1/2 w-7 h-7 bg-white/90 backdrop-blur-sm rounded-full shadow-md flex items-center justify-center hover:bg-white hover:scale-110 transition-all"
-                >
-                  <ChevronLeft
-                    className="h-3.5 w-3.5 text-gray-700"
-                    aria-hidden="true"
-                  />
-                </button>
-                <button
-                  type="button"
-                  onClick={handleNext}
-                  aria-label="Next photo"
-                  className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 bg-white/90 backdrop-blur-sm rounded-full shadow-md flex items-center justify-center hover:bg-white hover:scale-110 transition-all"
-                >
-                  <ChevronRight
-                    className="h-3.5 w-3.5 text-gray-700"
-                    aria-hidden="true"
-                  />
-                </button>
-              </>
-            )}
-
-            {/* Image dots */}
-            {hasMany && (
-              <div
-                className="absolute bottom-10 left-1/2 -translate-x-1/2 flex gap-1"
-                aria-hidden="true"
-              >
-                {images.slice(0, 5).map((_, i) => (
-                  <span
-                    key={i}
-                    className={cn(
-                      "rounded-full transition-all duration-200",
-                      i === imgIdx
-                        ? "w-4 h-1.5 bg-white"
-                        : "w-1.5 h-1.5 bg-white/50",
-                    )}
-                  />
-                ))}
-              </div>
-            )}
-
-            {/* ── Top Badges ── */}
-            <div className="absolute top-3 left-3 right-3 flex items-start justify-between gap-2">
-              {/* Category */}
-              <Badge className="bg-white/92 backdrop-blur-sm text-gray-700 border-0 shadow text-xs px-2 py-1 flex items-center gap-1.5 font-medium">
-                <CategoryIcon category={room.category} />
-                {categoryLabel}
-              </Badge>
-
-              {/* Like */}
-              <button
-                type="button"
-                onClick={handleLike}
-                aria-label={
-                  isLiked ? "Remove from wishlist" : "Add to wishlist"
-                }
-                aria-pressed={isLiked}
-                className="w-8 h-8 bg-white/90 backdrop-blur-sm rounded-full shadow flex items-center justify-center hover:bg-white hover:scale-110 transition-all flex-shrink-0"
-              >
-                <Heart
-                  className={cn(
-                    "h-4 w-4 transition-colors",
-                    isLiked ? "fill-red-500 text-red-500" : "text-gray-500",
-                  )}
-                  aria-hidden="true"
-                />
-              </button>
+          {imageUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={imageUrl}
+              alt={room.title}
+              className={`w-full h-full object-cover transition-all duration-500 group-hover:scale-105 ${imgLoaded ? "opacity-100" : "opacity-0"}`}
+              onLoad={() => setImgLoaded(true)}
+              onError={() => {
+                setImgError(true);
+                setImgLoaded(true);
+              }}
+            />
+          ) : (
+            /* Fallback gradient placeholder */
+            <div className="absolute inset-0 bg-gradient-to-br from-red-50 via-rose-100 to-red-200 flex items-center justify-center">
+              <Home className="w-16 h-16 text-red-300" />
             </div>
+          )}
 
-            {/* ── Price Tag ── */}
-            <div className="absolute bottom-3 left-3">
-              <div className="bg-primary/95 backdrop-blur-sm rounded-full px-3 py-1.5 flex items-center gap-0.5">
-                <IndianRupee
-                  className="h-3 w-3 text-white/80"
-                  aria-hidden="true"
-                />
-                <span className="text-sm font-bold text-white leading-none">
-                  {formatNepaliCurrency(room.price)}
-                </span>
-                <span className="text-xs text-white/70 ml-0.5">/mo</span>
-              </div>
-            </div>
+          {/* Gradient overlay */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/10 to-transparent" />
+
+          {/* Category badge — top left */}
+          <div className="absolute top-3 left-3 z-10">
+            <span
+              className="text-[11px] font-bold px-2.5 py-1 rounded-full shadow-sm backdrop-blur-sm"
+              style={{
+                color: catCfg.color,
+                background: "rgba(255,255,255,0.92)",
+              }}
+            >
+              {catCfg.label}
+            </span>
           </div>
 
-          {/* ── Content Section ── */}
-          <div className="p-4 space-y-3">
-            {/* Title + Location */}
-            <div className="space-y-1">
-              <h3 className="font-semibold text-gray-900 text-sm leading-snug line-clamp-1 group-hover:text-primary transition-colors duration-200">
-                {room.title}
-              </h3>
-              <div className="flex items-center gap-1 text-xs text-gray-500">
-                <MapPin
-                  className="h-3 w-3 flex-shrink-0 text-gray-400"
-                  aria-hidden="true"
-                />
-                <span className="line-clamp-1">{room.address}</span>
-              </div>
+          {/* Women allowed badge */}
+          {room.allowsWomen && (
+            <div className="absolute top-3 right-12 z-10">
+              <span className="text-[10px] font-semibold bg-pink-100 text-pink-700 px-2 py-0.5 rounded-full">
+                ♀ OK
+              </span>
             </div>
+          )}
 
-            {/* Specs */}
-            <dl className="grid grid-cols-3 gap-x-2 gap-y-1">
-              <div className="flex items-center gap-1.5 text-xs text-gray-600">
-                <Bed
-                  className="h-3.5 w-3.5 text-gray-400 flex-shrink-0"
-                  aria-hidden="true"
-                />
-                <dt className="sr-only">Bedrooms</dt>
-                <dd>
-                  {room.roomCapacity} bed{room.roomCapacity !== 1 ? "s" : ""}
-                </dd>
+          {/* Like button */}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setIsLiked(!isLiked);
+            }}
+            aria-label={
+              isLiked ? "Remove from favourites" : "Add to favourites"
+            }
+            className="absolute top-3 right-3 z-10 w-8 h-8 rounded-full bg-white/85 backdrop-blur-sm flex items-center justify-center shadow transition-transform hover:scale-110"
+          >
+            <Heart
+              className={`w-4 h-4 transition-colors ${isLiked ? "fill-red-500 text-red-500" : "text-slate-400"}`}
+            />
+          </button>
+
+          {/* Price at bottom */}
+          <div className="absolute bottom-0 left-0 right-0 z-10 p-4">
+            <div className="flex items-end justify-between">
+              <div>
+                <p className="text-white/60 text-[10px] uppercase tracking-widest mb-0.5">
+                  Monthly Rent
+                </p>
+                <p className="text-white font-bold text-xl leading-none">
+                  रू {formatPriceNPR(Number(room.price))}
+                </p>
               </div>
-              <div className="flex items-center gap-1.5 text-xs text-gray-600">
-                <Bath
-                  className="h-3.5 w-3.5 text-gray-400 flex-shrink-0"
-                  aria-hidden="true"
-                />
-                <dt className="sr-only">Bathrooms</dt>
-                <dd>{room.bathroomCapacity} bath</dd>
+              <motion.div
+                animate={{ opacity: isHovered ? 1 : 0, x: isHovered ? 0 : 8 }}
+                className="w-8 h-8 rounded-full bg-red-500 flex items-center justify-center shadow-lg"
+              >
+                <ArrowUpRight className="w-4 h-4 text-white" />
+              </motion.div>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Body ── */}
+        <div className="p-4">
+          {/* Title */}
+          <h3 className="font-semibold text-slate-900 text-base leading-snug line-clamp-1 group-hover:text-red-600 transition-colors mb-1">
+            {room.title}
+          </h3>
+
+          {/* Location */}
+          <div className="flex items-center gap-1 text-slate-500 mb-3">
+            <MapPin className="w-3.5 h-3.5 text-red-400 shrink-0" />
+            <span className="text-xs truncate">{shortAddress}</span>
+          </div>
+
+          {/* Stats */}
+          <div className="flex items-center gap-0 py-2.5 border-y border-slate-100 mb-3">
+            {[
+              { icon: Users, value: room.roomCapacity, unit: "Person" },
+              { icon: Bath, value: room.bathroomCapacity, unit: "Bath" },
+              {
+                icon: Square,
+                value: `${Number(room.roomArea).toFixed(0)}`,
+                unit: "m²",
+              },
+            ].map(({ icon: Icon, value, unit }, i) => (
+              <div
+                key={unit}
+                className={`flex-1 flex flex-col items-center gap-0.5 text-slate-600 ${i > 0 ? "border-l border-slate-100" : ""}`}
+              >
+                <Icon className="w-3.5 h-3.5 text-red-400" />
+                <span className="text-xs font-bold text-slate-800">
+                  {value}
+                </span>
+                <span className="text-[10px] text-slate-400">{unit}</span>
               </div>
-              {room.roomArea != null && (
-                <div className="flex items-center gap-1.5 text-xs text-gray-600">
-                  <Square
-                    className="h-3.5 w-3.5 text-gray-400 flex-shrink-0"
-                    aria-hidden="true"
-                  />
-                  <dt className="sr-only">Area</dt>
-                  <dd>{room.roomArea} m²</dd>
-                </div>
-              )}
-            </dl>
+            ))}
+          </div>
 
-            {/* Amenities */}
-            {displayedAmenities.length > 0 && (
-              <ul className="flex flex-wrap gap-1.5" aria-label="Amenities">
-                {displayedAmenities.map((amenity) => (
-                  <li
-                    key={amenity}
-                    className="flex items-center gap-1 px-2 py-0.5 bg-gray-50 rounded-full text-xs text-gray-600 border border-gray-100"
+          {/* Amenities + verified */}
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {topAmenities.map((a) => {
+                const Icon = amenityIcons[a.toLowerCase()] ?? CheckCircle;
+                return (
+                  <span
+                    key={a}
+                    className="inline-flex items-center gap-1 text-[10px] text-slate-500 bg-slate-50 border border-slate-100 px-1.5 py-0.5 rounded-full capitalize"
                   >
-                    {AMENITY_ICONS[amenity] ?? null}
-                    {amenity}
-                  </li>
-                ))}
-                {extraAmenities > 0 && (
-                  <li className="px-2 py-0.5 bg-gray-50 rounded-full text-xs text-gray-400 border border-gray-100">
-                    +{extraAmenities}
-                  </li>
-                )}
-              </ul>
-            )}
-
-            {/* Owner + Occupancy */}
-            {room.user && (
-              <footer className="flex items-center justify-between pt-2.5 border-t border-gray-100">
-                <div className="flex items-center gap-2 min-w-0">
-                  <div
-                    className="w-6 h-6 rounded-full bg-gradient-to-br from-primary/20 to-primary/40 flex items-center justify-center flex-shrink-0"
-                    aria-hidden="true"
-                  >
-                    <span className="text-xs font-semibold text-primary">
-                      {room.user.name?.charAt(0).toUpperCase() ?? "?"}
-                    </span>
-                  </div>
-                  <span className="text-xs text-gray-500 truncate">
-                    {room.user.name?.split(" ")[0]}
+                    <Icon className="w-2.5 h-2.5 text-red-400" />
+                    {a}
                   </span>
-                </div>
-                <div className="flex items-center gap-1 text-xs text-gray-400 flex-shrink-0">
-                  <Users className="h-3 w-3" aria-hidden="true" />
-                  <span>
-                    <span className="font-medium text-gray-600">
-                      {room.currentOccupants}
-                    </span>
-                    /{room.roomCapacity} occupied
-                  </span>
-                </div>
-              </footer>
+                );
+              })}
+            </div>
+            {room.user?.isVerified && (
+              <span className="flex items-center gap-0.5 text-[10px] text-emerald-600 font-medium shrink-0">
+                <CheckCircle className="w-3 h-3" />
+                Verified
+              </span>
             )}
           </div>
         </div>
       </Link>
+
+      {/* Bottom red accent bar on hover */}
+      <motion.div
+        className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-red-600 via-red-500 to-rose-500"
+        animate={{ scaleX: isHovered ? 1 : 0 }}
+        style={{ transformOrigin: "left" }}
+        transition={{ duration: 0.3 }}
+      />
     </motion.article>
   );
 }
