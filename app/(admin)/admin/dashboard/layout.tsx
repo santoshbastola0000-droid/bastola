@@ -28,8 +28,8 @@ export default function AdminLayout({
         router.push("/auth/login");
       } else if (!isAdmin) {
         // Logged in but not admin
-        if (user.role?.toLowerCase() === "host") {
-          router.push("/host/dashboard");
+        if (user.role?.toLowerCase() === "User") {
+          router.push("/user/dashboard");
         } else {
           router.push("/");
         }
