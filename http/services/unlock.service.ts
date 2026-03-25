@@ -1,4 +1,3 @@
-import { api } from "@/http/api/api";
 import type {
   CommissionSettings,
   TopUpRequest,
@@ -21,21 +20,23 @@ export interface ProcessTopUpDTO {
 }
 
 const unlockService = {
-  // ─── Settings ─────────────────────────────────────────────────────────────
+  // ─── Settings ───────────────────────────────────────────────────────────────
 
   async getSettings(): Promise<CommissionSettings> {
-    const { data } = await api.get("/unlock/settings");
+    const { data } = await privateApi.get("/unlock/settings");
     return data.data;
   },
 
-  async updateSettings(
-    payload: Partial<CommissionSettings>,
-  ): Promise<CommissionSettings> {
-    const { data } = await api.patch("/unlock/admin/settings", payload);
+  async updateSettings(payload: {
+    serviceCharge?: number;
+    adminQrCodeUrl?: string;
+    adminPaymentLabel?: string;
+  }): Promise<CommissionSettings> {
+    const { data } = await privateApi.patch("/unlock/admin/settings", payload);
     return data.data;
   },
 
-  // ─── Room Unlock ──────────────────────────────────────────────────────────
+  // ─── Room Unlock ─────────────────────────────────────────────────────────────
 
   async getRoomUnlockStatus(roomId: string): Promise<UnlockStatus> {
     const { data } = await privateApi.get(`/unlock/room/${roomId}/status`);
@@ -47,28 +48,67 @@ const unlockService = {
     return data.data;
   },
 
-  // ─── Top-Up (User) - Direct upload to unlock/topup endpoint ──────────────
+  // ─── File Upload ──────────────────────────────────────────────────────────────
 
+  /**
+   * Upload any image file to the server and return the stored path/URL.
+   * Used for both QR code uploads (admin) and payment screenshots (user).
+   */
+  async uploadFile(file: File): Promise<string> {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const { data } = await privateApi.post("/upload", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+
+    // Handle different response shapes your backend may return
+    const path: string =
+      data?.data?.url ??
+      data?.data?.path ??
+      data?.data?.filename ??
+      data?.url ??
+      data?.path ??
+      data?.filename;
+
+    if (!path) {
+      throw new Error("Upload succeeded but no file path was returned");
+    }
+
+    return path;
+  },
+
+  /** Convenience alias used in the admin QR settings panel */
+  async uploadScreenshot(file: File): Promise<string> {
+    return this.uploadFile(file);
+  },
+
+  // ─── Top-Up Requests (User) ───────────────────────────────────────────────────
+
+  /**
+   * Upload screenshot first, then create the top-up request in one step.
+   * This is the method called from TopUpRequestDialog.
+   */
   async createTopUpWithScreenshot(
     amount: number,
-    file: File,
+    screenshotFile: File,
   ): Promise<TopUpRequest> {
-    const formData = new FormData();
-    formData.append("amount", amount.toString());
-    formData.append("screenshot", file);
+    // 1. Upload the screenshot image
+    const screenshotUrl = await this.uploadFile(screenshotFile);
 
-    const { data } = await privateApi.post("/unlock/topup", formData, {
-      headers: { "Content-Type": "multipart/form-data" },
+    // 2. Create the top-up request with the returned URL
+    const { data } = await privateApi.post("/unlock/topup", {
+      amount,
+      screenshotUrl,
     });
     return data.data;
   },
 
-  // Keep for backward compatibility
   async createTopUpRequest(payload: {
     amount: number;
     screenshotUrl: string;
   }): Promise<TopUpRequest> {
-    const { data } = await api.post("/unlock/topup", payload);
+    const { data } = await privateApi.post("/unlock/topup", payload);
     return data.data;
   },
 
@@ -82,13 +122,15 @@ const unlockService = {
     return data;
   },
 
-  // ─── Top-Up (Admin) ───────────────────────────────────────────────────────
+  // ─── Top-Up Requests (Admin) ─────────────────────────────────────────────────
 
   async getAllTopUpRequests(query: ListTopUpQuery = {}): Promise<{
     data: TopUpRequest[];
     pagination: any;
   }> {
-    const { data } = await api.get("/unlock/admin/topup", { params: query });
+    const { data } = await privateApi.get("/unlock/admin/topup", {
+      params: query,
+    });
     return data;
   },
 
@@ -96,7 +138,7 @@ const unlockService = {
     id: string,
     payload: ProcessTopUpDTO,
   ): Promise<TopUpRequest> {
-    const { data } = await api.patch(
+    const { data } = await privateApi.patch(
       `/unlock/admin/topup/${id}/process`,
       payload,
     );
