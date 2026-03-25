@@ -22,6 +22,7 @@ import {
   Settings,
   ImageIcon,
   User,
+  Save,
 } from "lucide-react";
 import { unlockService } from "@/http/services/unlock.service";
 import { TopUpStatus } from "@/types/unlock.types";
@@ -72,6 +73,18 @@ import {
 } from "@/lib/constants/app.constants";
 import { api } from "@/http/api/api";
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+const BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL?.replace("/api", "") ||
+  "http://localhost:3001";
+
+function resolveUrl(path: string | null | undefined): string | null {
+  if (!path) return null;
+  if (path.startsWith("http://") || path.startsWith("https://")) return path;
+  return `${BASE_URL}${path.startsWith("/") ? "" : "/"}${path}`;
+}
+
 // ─── Status Badge ─────────────────────────────────────────────────────────────
 
 const getStatusBadge = (status: TopUpStatus) => {
@@ -102,19 +115,304 @@ const getStatusBadge = (status: TopUpStatus) => {
   }
 };
 
-// ─── Admin Top-Up Page ────────────────────────────────────────────────────────
+// ─── Settings Tab ─────────────────────────────────────────────────────────────
+
+function SettingsTab() {
+  const queryClient = useQueryClient();
+
+  // Local state
+  const [serviceCharge, setServiceCharge] = useState("");
+  const [adminLabel, setAdminLabel] = useState("");
+  const [qrFile, setQrFile] = useState<File | null>(null);
+  const [qrPreview, setQrPreview] = useState<string | null>(null); // local blob or saved URL
+  const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+
+  // ── Fetch current settings ──
+  const { data: settings, isLoading: settingsLoading } = useQuery({
+    queryKey: ["unlock-settings"],
+    queryFn: () => unlockService.getSettings(),
+  });
+
+  // Populate form when settings arrive
+  useEffect(() => {
+    if (!settings) return;
+    setServiceCharge(String(settings.serviceCharge ?? 2000));
+    setAdminLabel(settings.adminPaymentLabel ?? "");
+    // Resolve the saved QR URL to a full URL for display
+    setQrPreview(resolveUrl(settings.adminQrCodeUrl));
+  }, [settings]);
+
+  const handleQrFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please upload an image file (JPG, PNG, etc.)");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("File size must be under 5 MB");
+      return;
+    }
+    setQrFile(file);
+    // Show local preview immediately
+    const reader = new FileReader();
+    reader.onloadend = () => setQrPreview(reader.result as string);
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveQr = () => {
+    setQrFile(null);
+    setQrPreview(null);
+  };
+
+  const handleSave = async () => {
+    const charge = Number(serviceCharge);
+    if (isNaN(charge) || charge < 0) {
+      toast.error("Please enter a valid service charge amount");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      let uploadedQrUrl: string | undefined =
+        settings?.adminQrCodeUrl ?? undefined;
+
+      // ── Step 1: Upload QR image if a new one was selected ──
+      if (qrFile) {
+        setUploading(true);
+        try {
+          uploadedQrUrl = await unlockService.uploadScreenshot(qrFile);
+        } finally {
+          setUploading(false);
+        }
+      } else if (qrPreview === null) {
+        // Admin explicitly removed the QR — clear it
+        uploadedQrUrl = undefined;
+      }
+
+      // ── Step 2: Save settings with the new (or existing) QR URL ──
+      await unlockService.updateSettings({
+        serviceCharge: charge,
+        adminPaymentLabel: adminLabel.trim() || undefined,
+        adminQrCodeUrl: uploadedQrUrl,
+      });
+
+      // Refresh settings query so the rest of the UI stays in sync
+      queryClient.invalidateQueries({ queryKey: ["unlock-settings"] });
+
+      setQrFile(null); // clear pending file after save
+      toast.success("Settings saved successfully", {
+        style: { background: SUCCESSTOAST, color: "#fff" },
+      });
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Failed to save settings", {
+        style: { background: FAILURETOAST, color: "#fff" },
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (settingsLoading) {
+    return (
+      <Card>
+        <CardContent className="p-8 flex justify-center">
+          <Loader2 className="h-6 w-6 animate-spin text-primary" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Settings className="h-5 w-5" />
+          Payment & Unlock Settings
+        </CardTitle>
+        <CardDescription>
+          Set the service charge users pay to unlock room details, and upload
+          the admin QR code they scan to top up their wallet.
+        </CardDescription>
+      </CardHeader>
+
+      <CardContent className="space-y-8">
+        {/* ── Service charge ── */}
+        <div className="space-y-2 max-w-sm">
+          <Label htmlFor="serviceCharge" className="font-semibold">
+            Room Unlock Service Charge (रू)
+          </Label>
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-medium text-sm">
+              रू
+            </span>
+            <Input
+              id="serviceCharge"
+              type="number"
+              min={0}
+              value={serviceCharge}
+              onChange={(e) => setServiceCharge(e.target.value)}
+              className="pl-8"
+              placeholder="2000"
+            />
+          </div>
+          <p className="text-xs text-muted-foreground">
+            This amount is deducted from the user's wallet when they unlock a
+            room's contact & location details.
+          </p>
+        </div>
+
+        <Separator />
+
+        {/* ── Payment account label ── */}
+        <div className="space-y-2 max-w-md">
+          <Label htmlFor="adminLabel" className="font-semibold">
+            Payment Account Label
+          </Label>
+          <Input
+            id="adminLabel"
+            value={adminLabel}
+            onChange={(e) => setAdminLabel(e.target.value)}
+            placeholder="e.g. eSewa: 9876543210 | Khalti: RentalService"
+          />
+          <p className="text-xs text-muted-foreground">
+            Displayed to users alongside the QR code so they know which account
+            to pay.
+          </p>
+        </div>
+
+        <Separator />
+
+        {/* ── QR code upload ── */}
+        <div className="space-y-3">
+          <div>
+            <Label className="font-semibold">Admin Payment QR Code</Label>
+            <p className="text-xs text-muted-foreground mt-1">
+              Upload your eSewa / Khalti / bank QR code image. Users will scan
+              this to pay, then upload a screenshot for approval.
+            </p>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-6 items-start">
+            {/* Preview box */}
+            <div className="shrink-0">
+              {qrPreview ? (
+                <div className="relative group">
+                  <div className="w-44 h-44 rounded-2xl border-2 border-primary/20 bg-white shadow-md overflow-hidden flex items-center justify-center p-2">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={qrPreview}
+                      alt="Admin QR Code"
+                      className="w-full h-full object-contain"
+                    />
+                  </div>
+                  {/* Remove overlay */}
+                  <button
+                    type="button"
+                    onClick={handleRemoveQr}
+                    className="absolute -top-2 -right-2 w-7 h-7 rounded-full bg-red-500 hover:bg-red-600 text-white flex items-center justify-center shadow-md transition-colors"
+                    title="Remove QR code"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                  {qrFile && (
+                    <div className="absolute bottom-0 left-0 right-0 bg-amber-500/90 text-white text-[10px] font-semibold text-center py-1 rounded-b-xl">
+                      Unsaved — click Save
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="w-44 h-44 rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 flex flex-col items-center justify-center gap-2 text-slate-400">
+                  <QrCode className="w-12 h-12 opacity-40" />
+                  <span className="text-xs font-medium">No QR Code</span>
+                </div>
+              )}
+            </div>
+
+            {/* Upload controls */}
+            <div className="space-y-3 flex-1">
+              <label
+                htmlFor="qr-upload"
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border-2 border-dashed border-slate-300 hover:border-primary hover:bg-primary/5 cursor-pointer transition-all text-sm font-medium text-slate-600 hover:text-primary"
+              >
+                <Upload className="w-4 h-4" />
+                {qrFile ? "Change QR Image" : "Upload QR Image"}
+                <input
+                  id="qr-upload"
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleQrFileChange}
+                />
+              </label>
+
+              {qrFile && (
+                <p className="text-xs text-amber-600 flex items-center gap-1.5 font-medium">
+                  <CheckCircle className="w-3.5 h-3.5 text-emerald-500" />
+                  <span className="text-slate-600">{qrFile.name}</span>— will
+                  upload on Save
+                </p>
+              )}
+
+              <p className="text-xs text-muted-foreground">
+                Accepted: JPG, PNG, WebP · Max 5 MB
+              </p>
+
+              {/* What this QR is used for */}
+              <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 text-xs text-slate-500 space-y-1">
+                <p className="font-semibold text-slate-700">
+                  📍 Where this appears:
+                </p>
+                <ul className="list-disc list-inside space-y-0.5 ml-1">
+                  <li>Wallet Top-Up dialog shown to all users</li>
+                  <li>Users scan it to pay, then upload screenshot</li>
+                  <li>One QR applies to all rooms globally</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Save button ── */}
+        <div className="pt-2 border-t border-slate-100">
+          <Button
+            onClick={handleSave}
+            disabled={saving}
+            className="gap-2 cursor-pointer min-w-[140px]"
+          >
+            {saving ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                {uploading ? "Uploading QR…" : "Saving…"}
+              </>
+            ) : (
+              <>
+                <Save className="w-4 h-4" />
+                Save Settings
+              </>
+            )}
+          </Button>
+          <p className="text-xs text-muted-foreground mt-2">
+            Changes take effect immediately for all users.
+          </p>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function AdminTopUpPage() {
   const queryClient = useQueryClient();
 
-  // Filters
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [page, setPage] = useState(0);
   const [take, setTake] = useState(10);
 
-  // Dialogs
   const [selectedRequest, setSelectedRequest] = useState<TopUpRequest | null>(
     null,
   );
@@ -125,15 +423,7 @@ export default function AdminTopUpPage() {
   );
   const [adminRemarks, setAdminRemarks] = useState("");
 
-  // Settings tab
-  const [qrFile, setQrFile] = useState<File | null>(null);
-  const [qrPreview, setQrPreview] = useState<string | null>(null);
-  const [adminLabel, setAdminLabel] = useState("");
-  const [serviceCharge, setServiceCharge] = useState("");
-  const [settingsLoading, setSettingsLoading] = useState(false);
-  const [uploadingQr, setUploadingQr] = useState(false);
-
-  // Debounce
+  // Debounce search
   useEffect(() => {
     const t = setTimeout(() => {
       setDebouncedSearch(searchTerm);
@@ -142,21 +432,7 @@ export default function AdminTopUpPage() {
     return () => clearTimeout(t);
   }, [searchTerm]);
 
-  // ── Fetch settings ──
-  const { data: settings, refetch: refetchSettings } = useQuery({
-    queryKey: ["unlock-settings"],
-    queryFn: () => unlockService.getSettings(),
-  });
-
-  useEffect(() => {
-    if (settings) {
-      setAdminLabel(settings.adminPaymentLabel ?? "");
-      setServiceCharge(String(settings.serviceCharge ?? 2000));
-      if (settings.adminQrCodeUrl) setQrPreview(settings.adminQrCodeUrl);
-    }
-  }, [settings]);
-
-  // ── Fetch top-up requests ──
+  // ── Fetch requests ──
   const {
     data: requestsResponse,
     isLoading,
@@ -199,6 +475,7 @@ export default function AdminTopUpPage() {
       setShowProcessDialog(false);
       setSelectedRequest(null);
       setAdminRemarks("");
+      setShowDetailsDialog(false);
     },
     onError: (err: any) => {
       toast.error(err?.response?.data?.message || "Failed to process request", {
@@ -207,50 +484,6 @@ export default function AdminTopUpPage() {
     },
   });
 
-  // ── Settings update ──
-  const handleSaveSettings = async () => {
-    setSettingsLoading(true);
-    try {
-      let qrCodeUrl = settings?.adminQrCodeUrl ?? null;
-
-      await unlockService.updateSettings({
-        serviceCharge: Number(serviceCharge),
-        adminQrCodeUrl: qrCodeUrl ?? undefined,
-        adminPaymentLabel: adminLabel || undefined,
-      });
-
-      await refetchSettings();
-      toast.success("Settings updated successfully", {
-        style: { background: SUCCESSTOAST, color: "#fff" },
-      });
-      setQrFile(null);
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Failed to update settings", {
-        style: { background: FAILURETOAST, color: "#fff" },
-      });
-    } finally {
-      setSettingsLoading(false);
-      setUploadingQr(false);
-    }
-  };
-
-  const handleQrFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (!file.type.startsWith("image/")) {
-      toast.error("Please upload an image");
-      return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("File must be under 5MB");
-      return;
-    }
-    setQrFile(file);
-    const reader = new FileReader();
-    reader.onloadend = () => setQrPreview(reader.result as string);
-    reader.readAsDataURL(file);
-  };
-
   const handleProcessClick = (
     request: TopUpRequest,
     action: "approve" | "reject",
@@ -258,6 +491,7 @@ export default function AdminTopUpPage() {
     setSelectedRequest(request);
     setProcessAction(action);
     setAdminRemarks("");
+    setShowDetailsDialog(false);
     setShowProcessDialog(true);
   };
 
@@ -279,49 +513,49 @@ export default function AdminTopUpPage() {
   const totalPages = Math.max(1, Math.ceil(totalItems / take));
   const showingFrom = totalItems > 0 ? page * take + 1 : 0;
   const showingTo = Math.min((page + 1) * take, totalItems);
-
   const pendingCount = requests.filter(
     (r) => r.status === TopUpStatus.PENDING,
   ).length;
 
   return (
     <div className="p-4 md:p-6 space-y-6 pb-20">
-      {/* Header */}
+      {/* ── Header ── */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-foreground flex items-center gap-3">
             <Wallet className="h-6 w-6 md:h-8 md:w-8 text-primary" />
-            <span>Wallet Top-Up Requests</span>
+            Wallet Top-Up Requests
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Review user payment screenshots and credit wallets
+            Review payment screenshots and credit user wallets
           </p>
         </div>
         <Button
           variant="outline"
           onClick={() => refetch()}
           disabled={isFetching}
-          className="cursor-pointer"
+          className="cursor-pointer gap-2"
         >
-          <RefreshCw
-            className={cn("h-4 w-4 mr-2", isFetching && "animate-spin")}
-          />
+          <RefreshCw className={cn("h-4 w-4", isFetching && "animate-spin")} />
           Refresh
         </Button>
       </div>
 
       <Tabs defaultValue="requests" className="space-y-4">
         <TabsList className="grid w-full grid-cols-2 lg:w-[300px]">
-          <TabsTrigger value="requests" className="cursor-pointer relative">
+          <TabsTrigger
+            value="requests"
+            className="cursor-pointer relative gap-1.5"
+          >
             Requests
             {pendingCount > 0 && (
-              <span className="ml-1.5 w-5 h-5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
+              <span className="w-5 h-5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
                 {pendingCount}
               </span>
             )}
           </TabsTrigger>
-          <TabsTrigger value="settings" className="cursor-pointer">
-            <Settings className="h-3.5 w-3.5 mr-1.5" />
+          <TabsTrigger value="settings" className="cursor-pointer gap-1.5">
+            <Settings className="h-3.5 w-3.5" />
             Settings
           </TabsTrigger>
         </TabsList>
@@ -335,7 +569,7 @@ export default function AdminTopUpPage() {
                 <div className="flex-1 relative">
                   <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
-                    placeholder="Search by user name, email, or phone..."
+                    placeholder="Search by user name, email, or phone…"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="pl-9 text-sm"
@@ -353,7 +587,7 @@ export default function AdminTopUpPage() {
                     </button>
                   )}
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-2 shrink-0">
                   <Select value={statusFilter} onValueChange={setStatusFilter}>
                     <SelectTrigger className="w-[140px] cursor-pointer">
                       <Filter className="h-4 w-4 mr-2" />
@@ -379,7 +613,7 @@ export default function AdminTopUpPage() {
                       setPage(0);
                     }}
                   >
-                    <SelectTrigger className="w-[100px] cursor-pointer">
+                    <SelectTrigger className="w-[90px] cursor-pointer">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -419,13 +653,13 @@ export default function AdminTopUpPage() {
                 <Card key={req.id} className="overflow-hidden">
                   <CardContent className="p-3">
                     <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="text-sm font-medium truncate">
                           {req.user?.name || "Unknown"}
                         </span>
                         {getStatusBadge(req.status)}
                       </div>
-                      <span className="text-xs text-muted-foreground">
+                      <span className="text-xs text-muted-foreground shrink-0">
                         {formatDate(req.createdAt)}
                       </span>
                     </div>
@@ -669,148 +903,8 @@ export default function AdminTopUpPage() {
         </TabsContent>
 
         {/* ── SETTINGS TAB ── */}
-        <TabsContent value="settings" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Settings className="h-5 w-5" />
-                Payment & Unlock Settings
-              </CardTitle>
-              <CardDescription>
-                Configure the QR code users scan to pay, and set the service
-                charge for unlocking room details.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Service charge */}
-              <div className="space-y-2">
-                <Label htmlFor="serviceCharge" className="font-semibold">
-                  Room Unlock Service Charge (रू)
-                </Label>
-                <div className="relative max-w-xs">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">
-                    रू
-                  </span>
-                  <Input
-                    id="serviceCharge"
-                    type="number"
-                    value={serviceCharge}
-                    onChange={(e) => setServiceCharge(e.target.value)}
-                    className="pl-8"
-                    placeholder="2000"
-                  />
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  This amount is deducted from the user's wallet when they
-                  unlock a room's details.
-                </p>
-              </div>
-
-              <Separator />
-
-              {/* Admin payment label */}
-              <div className="space-y-2">
-                <Label htmlFor="adminLabel" className="font-semibold">
-                  Payment Account Label
-                </Label>
-                <Input
-                  id="adminLabel"
-                  value={adminLabel}
-                  onChange={(e) => setAdminLabel(e.target.value)}
-                  placeholder="e.g. eSewa: 9876543210 | Khalti: RentalService"
-                  className="max-w-md"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Shown to users alongside the QR code so they know where to
-                  pay.
-                </p>
-              </div>
-
-              <Separator />
-
-              {/* QR Code upload */}
-              <div className="space-y-3">
-                <Label className="font-semibold">Admin Payment QR Code</Label>
-                <p className="text-xs text-muted-foreground">
-                  Upload your eSewa / Khalti / bank QR code. Users will scan
-                  this to pay and then upload a screenshot.
-                </p>
-                <div className="flex flex-col sm:flex-row gap-4 items-start">
-                  {/* Preview */}
-                  <div className="flex-shrink-0">
-                    {qrPreview ? (
-                      <div className="relative">
-                        <div className="w-40 h-40 rounded-xl border-2 border-primary/20 overflow-hidden bg-white p-2 shadow-md">
-                          <img
-                            src={qrPreview}
-                            alt="QR Code"
-                            className="w-full h-full object-contain"
-                          />
-                        </div>
-                        <button
-                          onClick={() => {
-                            setQrFile(null);
-                            setQrPreview(settings?.adminQrCodeUrl ?? null);
-                          }}
-                          className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-red-500 text-white flex items-center justify-center text-xs hover:bg-red-600"
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="w-40 h-40 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 flex flex-col items-center justify-center">
-                        <QrCode className="w-10 h-10 text-slate-300 mb-1" />
-                        <p className="text-xs text-slate-400">No QR Code</p>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="space-y-3">
-                    <label
-                      htmlFor="qr-upload"
-                      className="flex items-center gap-2 px-4 py-2.5 rounded-xl border-2 border-dashed border-slate-300 hover:border-primary hover:bg-primary/5 cursor-pointer transition-all text-sm font-medium text-slate-600 hover:text-primary"
-                    >
-                      <Upload className="w-4 h-4" />
-                      {qrFile ? "Change QR Image" : "Upload QR Image"}
-                      <input
-                        id="qr-upload"
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={handleQrFileChange}
-                      />
-                    </label>
-                    {qrFile && (
-                      <p className="text-xs text-emerald-600 flex items-center gap-1">
-                        <CheckCircle className="w-3 h-3" />
-                        {qrFile.name} — ready to save
-                      </p>
-                    )}
-                    <p className="text-xs text-muted-foreground">
-                      JPG, PNG up to 5MB
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="pt-2">
-                <Button
-                  onClick={handleSaveSettings}
-                  disabled={settingsLoading}
-                  className="cursor-pointer"
-                >
-                  {settingsLoading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      {uploadingQr ? "Uploading QR..." : "Saving..."}
-                    </>
-                  ) : (
-                    "Save Settings"
-                  )}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+        <TabsContent value="settings">
+          <SettingsTab />
         </TabsContent>
       </Tabs>
 
@@ -833,8 +927,8 @@ export default function AdminTopUpPage() {
             </DialogTitle>
             <DialogDescription>
               {processAction === "approve"
-                ? "This will credit the amount to the user's wallet."
-                : "This will reject the top-up request. No amount will be credited."}
+                ? "This will credit the amount to the user's wallet immediately."
+                : "This will reject the request. No amount will be credited."}
             </DialogDescription>
           </DialogHeader>
 
@@ -866,7 +960,7 @@ export default function AdminTopUpPage() {
                   id="adminRemarks"
                   placeholder={
                     processAction === "approve"
-                      ? "Any notes..."
+                      ? "Any notes…"
                       : "Reason for rejection"
                   }
                   value={adminRemarks}
@@ -902,7 +996,7 @@ export default function AdminTopUpPage() {
               {processMutation.isPending ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Processing...
+                  Processing…
                 </>
               ) : processAction === "approve" ? (
                 "Approve & Credit Wallet"
@@ -914,7 +1008,7 @@ export default function AdminTopUpPage() {
         </DialogContent>
       </Dialog>
 
-      {/* ── Details / Screenshot Dialog ── */}
+      {/* ── Screenshot / Details Dialog ── */}
       <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
         <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -923,15 +1017,15 @@ export default function AdminTopUpPage() {
               Review the payment screenshot submitted by the user
             </DialogDescription>
           </DialogHeader>
+
           {selectedRequest && (
             <div className="space-y-4 py-2">
-              {/* Status */}
               <div className="flex justify-between items-center">
                 <span className="text-sm font-medium">Status</span>
                 {getStatusBadge(selectedRequest.status)}
               </div>
 
-              {/* User Info */}
+              {/* User info */}
               <div className="bg-muted p-3 rounded-lg space-y-2">
                 <h4 className="text-sm font-medium flex items-center gap-1.5">
                   <User className="h-3.5 w-3.5" />
@@ -953,7 +1047,7 @@ export default function AdminTopUpPage() {
                 </div>
               </div>
 
-              {/* Request Info */}
+              {/* Request info */}
               <div className="bg-muted p-3 rounded-lg space-y-2">
                 <h4 className="text-sm font-medium">Request Information</h4>
                 <div className="grid grid-cols-2 gap-2 text-sm">
@@ -985,12 +1079,9 @@ export default function AdminTopUpPage() {
                 </h4>
                 {selectedRequest.screenshotUrl ? (
                   <div className="rounded-xl overflow-hidden border border-slate-200">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                      src={
-                        selectedRequest.screenshotUrl.startsWith("http")
-                          ? selectedRequest.screenshotUrl
-                          : `${api.defaults.baseURL}/${selectedRequest.screenshotUrl.replace(/^\//, "")}`
-                      }
+                      src={resolveUrl(selectedRequest.screenshotUrl) ?? ""}
                       alt="Payment Screenshot"
                       className="w-full object-contain max-h-80"
                     />
@@ -1002,7 +1093,6 @@ export default function AdminTopUpPage() {
                 )}
               </div>
 
-              {/* Admin remarks */}
               {selectedRequest.adminRemarks && (
                 <div className="bg-muted p-3 rounded-lg">
                   <h4 className="text-sm font-medium mb-1">Admin Remarks</h4>
@@ -1011,7 +1101,8 @@ export default function AdminTopUpPage() {
               )}
             </div>
           )}
-          <DialogFooter className="gap-2">
+
+          <DialogFooter className="gap-2 flex-wrap">
             {selectedRequest?.status === TopUpStatus.PENDING && (
               <>
                 <Button
