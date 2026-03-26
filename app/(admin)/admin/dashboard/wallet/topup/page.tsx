@@ -1077,7 +1077,7 @@ export default function AdminTopUpPage() {
                   <ImageIcon className="h-3.5 w-3.5" />
                   Payment Screenshot
                 </h4>
-                {selectedRequest.screenshotUrl ? (
+                {selectedRequest.screenshot ? (
                   <div className="rounded-xl overflow-hidden border border-slate-200">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img

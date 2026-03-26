@@ -19,8 +19,6 @@ import {
   Droplets,
   User,
   Phone,
-  Mail,
-  MessageCircle,
   CheckCircle2,
   XCircle,
   HelpCircle,
@@ -83,6 +81,7 @@ import { createRoomSchema, CreateRoomFormValues } from "@/schema/room";
 import { UserRole } from "@/types/user.types";
 import { useUserRole } from "@/stores/user-store";
 import MapPicker from "@/components/admin/rooms/MapPicker";
+import { FAILURETOAST, SUCCESSTOAST } from "@/lib/constants/app.constants";
 
 const amenitiesList = [
   { id: "wifi", label: "WiFi", icon: Wifi, description: "High-speed internet" },
@@ -121,7 +120,6 @@ const amenitiesList = [
   },
 ];
 
-// Water supply options
 const WATER_SUPPLY_OPTIONS = [
   { value: "24-hour", label: "२४ घण्टा पानी आउँछ" },
   { value: "morning-only", label: "बिहान मात्र" },
@@ -146,7 +144,6 @@ const eveningSlots = [
   "७:०० - ९:०० (राति)",
 ];
 
-// Internal slot values (English, stored in DB)
 const morningSlotValues = [
   "05:00-07:00",
   "06:00-08:00",
@@ -162,6 +159,26 @@ const eveningSlotValues = [
 
 const DEFAULT_LAT = 27.7172;
 const DEFAULT_LNG = 85.324;
+
+// Helper function to extract the first meaningful location name from full address
+const extractLocationName = (formattedAddress: string): string => {
+  if (!formattedAddress) return "";
+
+  // Common Nepali location patterns
+  const patterns = [
+    /^([^,]+(?:चोक|चोक्|टोल|गाउँ|बजार|मार्ग|रोड|Road|Chowk))/i,
+    /^([^,]+)/,
+  ];
+
+  for (const pattern of patterns) {
+    const match = formattedAddress.match(pattern);
+    if (match && match[1]) {
+      return match[1].trim();
+    }
+  }
+
+  return formattedAddress.split(",")[0]?.trim() || "";
+};
 
 const calculateFormProgress = (
   formValues: CreateRoomFormValues,
@@ -215,6 +232,7 @@ export default function CreateRoomPage() {
       roomCapacity: 2,
       roomArea: 30,
       contactPhone: "",
+      contactPerson: "",
       tiktokUrl: "",
       waterSupplyTimings: {
         morning: "06:00-08:00",
@@ -237,7 +255,7 @@ export default function CreateRoomPage() {
 
   const formValues = form.watch();
   const formErrors = form.formState.errors;
-  const totalFields = 25;
+  const totalFields = 26;
   const progress = calculateFormProgress(formValues, totalFields);
 
   useEffect(() => {
@@ -250,7 +268,6 @@ export default function CreateRoomPage() {
     setValidationErrors(errors);
   }, [formErrors]);
 
-  // Sync water supply type to form notes
   useEffect(() => {
     if (waterSupplyType === "24-hour") {
       form.setValue("waterSupplyTimings.notes", "२४ घण्टा पानी उपलब्ध");
@@ -283,9 +300,14 @@ export default function CreateRoomPage() {
     country?: string;
     postalCode?: string;
   }) => {
+    // Extract the first meaningful location name from formatted address
+    const extractedName = location.formattedAddress
+      ? extractLocationName(location.formattedAddress)
+      : location.name || "Selected Location";
+
     form.setValue("location.latitude", location.lat);
     form.setValue("location.longitude", location.lng);
-    form.setValue("location.name", location.name || "Selected Location");
+    form.setValue("location.name", extractedName);
     form.setValue("location.formattedAddress", location.formattedAddress || "");
     form.setValue("location.city", location.city || "");
     form.setValue("location.state", location.state || "");
@@ -295,8 +317,8 @@ export default function CreateRoomPage() {
       form.setValue("address", location.formattedAddress);
     }
     form.trigger("location");
-    toast.success("📍 Location selected!", {
-      description: "You can now fill in the other details.",
+    toast.success("📍 स्थान चयन गरियो | Location selected!", {
+      description: `${extractedName} मा स्थान सेट गरियो।`,
       duration: 3000,
     });
   };
@@ -439,12 +461,14 @@ export default function CreateRoomPage() {
             toast.success("🎉 Room added successfully!", {
               description: "The room has been added to the system.",
               duration: 5000,
+              style: { background: SUCCESSTOAST, color: "#fff" },
             });
             router.push("/admin/dashboard/rooms");
           } else {
             toast.success("🎉 Room created successfully!", {
               description: "Your room has been submitted for admin approval.",
               duration: 5000,
+              style: { background: SUCCESSTOAST, color: "#fff" },
             });
             router.push("/user/dashboard/rooms");
           }
@@ -456,6 +480,7 @@ export default function CreateRoomPage() {
             description:
               err?.response?.data?.message || "Please try again later.",
             duration: 5000,
+            style: { background: FAILURETOAST, color: "#fff" },
           });
         },
       },
@@ -463,12 +488,32 @@ export default function CreateRoomPage() {
   };
 
   const tabs = [
-    { value: "basic", label: "Basic Info", icon: Home },
-    { value: "location", label: "Location", icon: MapPin },
-    { value: "details", label: "Details", icon: Bed },
-    { value: "amenities", label: "Amenities", icon: Wifi },
-    { value: "images", label: "Photos", icon: ImageIcon },
-    { value: "contact", label: "Contact", icon: User },
+    {
+      value: "basic",
+      label: "Basic Info",
+      icon: Home,
+      tooltip: "कोठाको आधारभूत जानकारी",
+    },
+    {
+      value: "location",
+      label: "Location",
+      icon: MapPin,
+      tooltip: "स्थान र नक्सा",
+    },
+    { value: "details", label: "Details", icon: Bed, tooltip: "कोठाको विवरण" },
+    {
+      value: "amenities",
+      label: "Amenities",
+      icon: Wifi,
+      tooltip: "सुविधाहरू",
+    },
+    { value: "images", label: "Photos", icon: ImageIcon, tooltip: "तस्बिरहरू" },
+    {
+      value: "contact",
+      label: "Contact",
+      icon: User,
+      tooltip: "सम्पर्क जानकारी",
+    },
   ];
 
   return (
@@ -478,16 +523,18 @@ export default function CreateRoomPage() {
         <div className="px-4 py-4 md:px-6 lg:px-8">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div className="space-y-1">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground flex-wrap">
                 <Link
-                  href="/admin/dashboard"
+                  href={isAdmin ? "/admin/dashboard" : "/user/dashboard"}
                   className="hover:text-primary transition-colors cursor-pointer"
                 >
                   Dashboard
                 </Link>
                 <span>/</span>
                 <Link
-                  href="/admin/dashboard/rooms"
+                  href={
+                    isAdmin ? "/admin/dashboard/rooms" : "/user/dashboard/rooms"
+                  }
                   className="hover:text-primary transition-colors cursor-pointer"
                 >
                   Rooms
@@ -534,47 +581,55 @@ export default function CreateRoomPage() {
               onValueChange={setActiveTab}
               className="space-y-6"
             >
-              <TabsList className="grid grid-cols-3 md:grid-cols-6 w-full h-auto p-1 bg-muted/50">
-                {tabs.map((tab) => {
-                  const Icon = tab.icon;
-                  const hasError =
-                    (tab.value === "basic" &&
-                      (!formValues.title ||
-                        !formValues.description ||
-                        !formValues.price)) ||
-                    (tab.value === "location" && !isValidLocation) ||
-                    (tab.value === "amenities" &&
-                      selectedAmenities.length === 0) ||
-                    (tab.value === "images" && images.length === 0);
+              <TooltipProvider>
+                <TabsList className="grid grid-cols-3 md:grid-cols-6 w-full h-auto p-1 bg-muted/50 gap-1">
+                  {tabs.map((tab) => {
+                    const Icon = tab.icon;
+                    const hasError =
+                      (tab.value === "basic" &&
+                        (!formValues.title ||
+                          !formValues.description ||
+                          !formValues.price)) ||
+                      (tab.value === "location" && !isValidLocation) ||
+                      (tab.value === "amenities" &&
+                        selectedAmenities.length === 0) ||
+                      (tab.value === "images" && images.length === 0);
 
-                  return (
-                    <TabsTrigger
-                      key={tab.value}
-                      value={tab.value}
-                      className={cn(
-                        "data-[state=active]:bg-primary data-[state=active]:text-white cursor-pointer relative",
-                        hasError &&
-                          "border-red-200 text-red-600 data-[state=active]:bg-red-600",
-                      )}
-                    >
-                      <Icon className="h-4 w-4 md:mr-2" />
-                      <span className="hidden md:inline text-xs">
-                        {tab.label}
-                      </span>
-                      {hasError && (
-                        <Badge
-                          variant="destructive"
-                          className="absolute -top-2 -right-2 h-5 w-5 p-0 flex items-center justify-center rounded-full text-[10px]"
-                        >
-                          !
-                        </Badge>
-                      )}
-                    </TabsTrigger>
-                  );
-                })}
-              </TabsList>
+                    return (
+                      <Tooltip key={tab.value}>
+                        <TooltipTrigger asChild>
+                          <TabsTrigger
+                            value={tab.value}
+                            className={cn(
+                              "data-[state=active]:bg-primary data-[state=active]:text-white cursor-pointer relative py-2 px-1 md:px-3",
+                              hasError &&
+                                "border-red-200 text-red-600 data-[state=active]:bg-red-600",
+                            )}
+                          >
+                            <Icon className="h-4 w-4 md:mr-2" />
+                            <span className="hidden md:inline text-xs">
+                              {tab.label}
+                            </span>
+                            {hasError && (
+                              <Badge
+                                variant="destructive"
+                                className="absolute -top-2 -right-2 h-5 w-5 p-0 flex items-center justify-center rounded-full text-[10px]"
+                              >
+                                !
+                              </Badge>
+                            )}
+                          </TabsTrigger>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom">
+                          <p>{tab.tooltip}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    );
+                  })}
+                </TabsList>
+              </TooltipProvider>
 
-              {/* ─── BASIC INFO TAB ─── */}
+              {/* BASIC INFO TAB */}
               <TabsContent value="basic">
                 <Card>
                   <CardHeader>
@@ -726,7 +781,7 @@ export default function CreateRoomPage() {
                 </Card>
               </TabsContent>
 
-              {/* ─── LOCATION TAB ─── */}
+              {/* LOCATION TAB */}
               <TabsContent value="location">
                 <Card>
                   <CardHeader>
@@ -735,7 +790,8 @@ export default function CreateRoomPage() {
                       Location & Map
                     </CardTitle>
                     <CardDescription>
-                      Click on the map to pin your room's exact location.
+                      नक्सामा क्लिक गरेर कोठाको सही स्थान सेट गर्नुहोस्। Click
+                      on the map to pin your room's exact location.
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-6">
@@ -744,7 +800,8 @@ export default function CreateRoomPage() {
                         <AlertCircle className="h-4 w-4" />
                         <AlertTitle>Location required</AlertTitle>
                         <AlertDescription>
-                          Please click on the map to set the location.
+                          कृपया नक्सामा क्लिक गरेर स्थान सेट गर्नुहोस्। Please
+                          click on the map to set the location.
                         </AlertDescription>
                       </Alert>
                     )}
@@ -772,7 +829,7 @@ export default function CreateRoomPage() {
                               <FormLabel>Location Name</FormLabel>
                               <FormControl>
                                 <Input
-                                  placeholder="e.g. Lazimpat Apartment"
+                                  placeholder="e.g. Lazimpat, Srijana Chowk"
                                   {...field}
                                 />
                               </FormControl>
@@ -785,10 +842,10 @@ export default function CreateRoomPage() {
                           name="location.city"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>City</FormLabel>
+                              <FormLabel>City / शहर</FormLabel>
                               <FormControl>
                                 <Input
-                                  placeholder="e.g. Kathmandu"
+                                  placeholder="e.g. Kathmandu, Pokhara"
                                   {...field}
                                 />
                               </FormControl>
@@ -845,7 +902,7 @@ export default function CreateRoomPage() {
                             <FormLabel>Full Address</FormLabel>
                             <FormControl>
                               <Textarea
-                                placeholder="Auto-filled after selecting on map"
+                                placeholder="नक्सामा स्थान चयन गरेपछि स्वत: भरिनेछ | Auto-filled after selecting on map"
                                 className="min-h-[70px] resize-none bg-muted"
                                 {...field}
                                 readOnly
@@ -857,8 +914,8 @@ export default function CreateRoomPage() {
                       />
 
                       {isValidLocation && (
-                        <div className="flex gap-4 p-3 bg-primary/5 rounded-lg border border-primary/20">
-                          <div className="flex-1">
+                        <div className="flex flex-wrap gap-4 p-3 bg-primary/5 rounded-lg border border-primary/20">
+                          <div className="flex-1 min-w-[100px]">
                             <p className="text-xs text-muted-foreground">
                               Latitude
                             </p>
@@ -866,7 +923,7 @@ export default function CreateRoomPage() {
                               {currentLat.toFixed(6)}
                             </p>
                           </div>
-                          <div className="flex-1">
+                          <div className="flex-1 min-w-[100px]">
                             <p className="text-xs text-muted-foreground">
                               Longitude
                             </p>
@@ -888,7 +945,7 @@ export default function CreateRoomPage() {
                 </Card>
               </TabsContent>
 
-              {/* ─── DETAILS TAB ─── */}
+              {/* DETAILS TAB */}
               <TabsContent value="details">
                 <Card>
                   <CardHeader>
@@ -897,7 +954,8 @@ export default function CreateRoomPage() {
                       Room Details & Specifications
                     </CardTitle>
                     <CardDescription>
-                      Fill in the details about your room.
+                      कोठाको विवरणहरू भर्नुहोस्। Fill in the details about your
+                      room.
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-6">
@@ -907,7 +965,7 @@ export default function CreateRoomPage() {
                         name="roomCapacity"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Room Capacity</FormLabel>
+                            <FormLabel>Room Capacity / कोठा क्षमता</FormLabel>
                             <FormControl>
                               <div className="relative">
                                 <Users className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -923,7 +981,7 @@ export default function CreateRoomPage() {
                               </div>
                             </FormControl>
                             <FormDescription>
-                              How many people can stay
+                              How many people can stay / कति जना बस्न सक्छन्?
                             </FormDescription>
                             <FormMessage />
                           </FormItem>
@@ -935,7 +993,7 @@ export default function CreateRoomPage() {
                         name="bathroomCapacity"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Bathroom Capacity</FormLabel>
+                            <FormLabel>Bathroom Capacity / बाथरुम</FormLabel>
                             <Select
                               onValueChange={(value) =>
                                 field.onChange(parseInt(value))
@@ -954,7 +1012,8 @@ export default function CreateRoomPage() {
                                     value={num.toString()}
                                     className="cursor-pointer"
                                   >
-                                    {num} {num === 1 ? "person" : "people"}
+                                    {num} {num === 1 ? "person" : "people"} /
+                                    जना
                                   </SelectItem>
                                 ))}
                               </SelectContent>
@@ -969,7 +1028,7 @@ export default function CreateRoomPage() {
                         name="floorNumber"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Floor Number</FormLabel>
+                            <FormLabel>Floor Number / तला नं.</FormLabel>
                             <FormControl>
                               <div className="relative">
                                 <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -984,7 +1043,9 @@ export default function CreateRoomPage() {
                                 />
                               </div>
                             </FormControl>
-                            <FormDescription>Ground floor = 0</FormDescription>
+                            <FormDescription>
+                              Ground floor = 0 / भुइँ तला = ०
+                            </FormDescription>
                             <FormMessage />
                           </FormItem>
                         )}
@@ -995,7 +1056,7 @@ export default function CreateRoomPage() {
                         name="roomArea"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Room Area (m²)</FormLabel>
+                            <FormLabel>Room Area (m²) / क्षेत्रफल</FormLabel>
                             <FormControl>
                               <div className="relative">
                                 <Ruler className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -1021,7 +1082,9 @@ export default function CreateRoomPage() {
                         name="totalHouseCapacity"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Total House Capacity</FormLabel>
+                            <FormLabel>
+                              Total House Capacity / घरको क्षमता
+                            </FormLabel>
                             <FormControl>
                               <Input
                                 type="number"
@@ -1042,7 +1105,9 @@ export default function CreateRoomPage() {
                         name="currentOccupants"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Current Occupants</FormLabel>
+                            <FormLabel>
+                              Current Occupants / हाल बस्ने संख्या
+                            </FormLabel>
                             <FormControl>
                               <Input
                                 type="number"
@@ -1061,14 +1126,13 @@ export default function CreateRoomPage() {
 
                     <Separator />
 
-                    {/* ─── Water Supply Section ─── */}
+                    {/* Water Supply Section */}
                     <div className="space-y-4">
                       <h3 className="font-medium flex items-center gap-2">
                         <Droplets className="h-4 w-4 text-primary" />
                         पानी आपूर्ति (Water Supply)
                       </h3>
 
-                      {/* Water supply type selector */}
                       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
                         {WATER_SUPPLY_OPTIONS.map((option) => (
                           <button
@@ -1087,7 +1151,6 @@ export default function CreateRoomPage() {
                         ))}
                       </div>
 
-                      {/* Show time pickers only if relevant */}
                       {waterSupplyType === "24-hour" && (
                         <Alert className="border-green-200 bg-green-50">
                           <CheckCircle2 className="h-4 w-4 text-green-600" />
@@ -1202,7 +1265,9 @@ export default function CreateRoomPage() {
 
                     {/* Rules */}
                     <div className="space-y-4">
-                      <h3 className="font-medium">Rules & Restrictions</h3>
+                      <h3 className="font-medium">
+                        Rules & Restrictions / नियमहरू
+                      </h3>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <FormField
                           control={form.control}
@@ -1254,17 +1319,19 @@ export default function CreateRoomPage() {
                 </Card>
               </TabsContent>
 
-              {/* ─── AMENITIES TAB ─── */}
+              {/* AMENITIES TAB */}
               <TabsContent value="amenities">
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <Wifi className="h-5 w-5 text-primary" />
-                      Amenities
+                      Amenities / सुविधाहरू
                     </CardTitle>
                     <CardDescription>
                       Select all amenities available in your room.{" "}
                       <span className="text-red-500">*</span>
+                      <br />
+                      कोठामा उपलब्ध सबै सुविधाहरू चयन गर्नुहोस्।
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
@@ -1272,10 +1339,10 @@ export default function CreateRoomPage() {
                       <Alert variant="destructive" className="mb-4">
                         <AlertCircle className="h-4 w-4" />
                         <AlertTitle>
-                          Please select at least one amenity
+                          कृपया कम्तीमा एउटा सुविधा चयन गर्नुहोस्
                         </AlertTitle>
                         <AlertDescription>
-                          Choose the amenities that come with this room.
+                          Please select at least one amenity for this room.
                         </AlertDescription>
                       </Alert>
                     )}
@@ -1336,17 +1403,20 @@ export default function CreateRoomPage() {
                 </Card>
               </TabsContent>
 
-              {/* ─── IMAGES TAB ─── */}
+              {/* IMAGES TAB */}
               <TabsContent value="images">
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <ImageIcon className="h-5 w-5 text-primary" />
-                      Room Photos
+                      Room Photos / कोठाका तस्बिरहरू
                     </CardTitle>
                     <CardDescription>
                       Upload clear photos of your room. Good photos attract more
                       tenants. <span className="text-red-500">*</span>
+                      <br />
+                      कोठाका स्पष्ट तस्बिरहरू अपलोड गर्नुहोस्। राम्रो तस्बिरले
+                      बढी भाडाटारु आकर्षित गर्छ।
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
@@ -1354,14 +1424,16 @@ export default function CreateRoomPage() {
                       {images.length === 0 && (
                         <Alert variant="destructive">
                           <AlertCircle className="h-4 w-4" />
-                          <AlertTitle>Photos required</AlertTitle>
+                          <AlertTitle>
+                            Photos required / तस्बिर आवश्यक
+                          </AlertTitle>
                           <AlertDescription>
-                            Please upload at least one photo.
+                            Please upload at least one photo. / कृपया कम्तीमा
+                            एउटा तस्बिर अपलोड गर्नुहोस्।
                           </AlertDescription>
                         </Alert>
                       )}
 
-                      {/* Upload guidelines */}
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-4 bg-blue-50 rounded-lg border border-blue-200">
                         <div className="flex items-start gap-2">
                           <CheckCircle2 className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
@@ -1407,7 +1479,6 @@ export default function CreateRoomPage() {
                         className="hidden"
                       />
 
-                      {/* Upload area */}
                       <div
                         className="border-2 border-dashed border-primary/30 rounded-xl p-8 text-center cursor-pointer hover:border-primary/60 hover:bg-primary/5 transition-all"
                         onClick={() => fileInputRef.current?.click()}
@@ -1419,7 +1490,7 @@ export default function CreateRoomPage() {
                         <p className="text-xs text-muted-foreground mt-1">
                           or drag and drop files here
                         </p>
-                        <div className="flex items-center justify-center gap-3 mt-3">
+                        <div className="flex items-center justify-center gap-3 mt-3 flex-wrap">
                           <Badge variant="secondary">
                             {images.length}/10 photos
                           </Badge>
@@ -1484,32 +1555,62 @@ export default function CreateRoomPage() {
                 </Card>
               </TabsContent>
 
-              {/* ─── CONTACT TAB ─── */}
+              {/* CONTACT TAB - Updated with proper owner contact information */}
               <TabsContent value="contact">
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <User className="h-5 w-5 text-primary" />
-                      Contact Information
+                      Contact Information / सम्पर्क जानकारी
                     </CardTitle>
                     <CardDescription>
                       How can interested tenants reach you?
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-5">
-                    {/* Nepali helper note for users */}
                     <Alert className="border-primary/30 bg-primary/5">
                       <User className="h-4 w-4 text-primary" />
                       <AlertTitle className="text-primary">
-                        सम्पर्क जानकारी भर्नुहोस्
+                        घरधनीको सम्पर्क जानकारी भर्नुहोस्
                       </AlertTitle>
-                      <AlertDescription className="text-foreground/80">
-                        कृपया आफ्नो नाम, फोन नम्बर, भर्नुहोस्। भाडामा बस्न
-                        चाहनेहरूले यसै मार्फत सम्पर्क गर्नेछन्।
+                      <AlertDescription className="text-foreground/80 space-y-2">
+                        <p>
+                          कृपया घरधनीको नाम र फोन नम्बर भर्नुहोस्। भाडामा बस्न
+                          चाहनेहरूले यसै मार्फत सम्पर्क गर्नेछन्।
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          Please provide the owner's name and phone number.
+                          Interested tenants will contact you using this
+                          information.
+                        </p>
                       </AlertDescription>
                     </Alert>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="contactPerson"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="flex items-center gap-1">
+                              <User className="h-3 w-3" />
+                              Owner Name / घरधनीको नाम
+                            </FormLabel>
+                            <FormControl>
+                              <Input
+                                placeholder="e.g. Ram Prasad Sharma"
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormDescription>
+                              घरधनी वा सम्पर्क व्यक्तिको पुरा नाम | Full name of
+                              the owner or contact person
+                            </FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
                       <FormField
                         control={form.control}
                         name="contactPhone"
@@ -1517,7 +1618,7 @@ export default function CreateRoomPage() {
                           <FormItem>
                             <FormLabel className="flex items-center gap-1">
                               <Phone className="h-3 w-3" />
-                              Phone Number
+                              Owner Phone Number / घरधनीको फोन नम्बर
                             </FormLabel>
                             <FormControl>
                               <div className="relative">
@@ -1530,7 +1631,8 @@ export default function CreateRoomPage() {
                               </div>
                             </FormControl>
                             <FormDescription>
-                              Primary contact number
+                              सम्पर्कको लागि घरधनीको फोन नम्बर | Owner's contact
+                              number for inquiries
                             </FormDescription>
                             <FormMessage />
                           </FormItem>
@@ -1538,7 +1640,7 @@ export default function CreateRoomPage() {
                       />
                     </div>
 
-                    {/* TikTok — Admin only */}
+                    {/* TikTok - Admin only */}
                     {isAdmin && (
                       <>
                         <Separator />
@@ -1572,11 +1674,11 @@ export default function CreateRoomPage() {
               </TabsContent>
             </Tabs>
 
-            {/* ─── Sticky Footer Actions ─── */}
+            {/* Sticky Footer Actions */}
             <div className="sticky bottom-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-t p-4 -mx-4 md:-mx-6 lg:-mx-8">
               <div className="max-w-7xl mx-auto">
                 <div className="flex flex-col sm:flex-row gap-4 justify-between items-center">
-                  <div className="flex items-center gap-4">
+                  <div className="flex flex-wrap items-center gap-4">
                     <Badge variant="outline" className="text-sm">
                       <span className="text-red-500 mr-1">*</span> Required
                       fields

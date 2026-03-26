@@ -43,8 +43,6 @@ import { roomService } from "@/http/services/room.service";
 import { RoomCategory, RoomStatus, type Room } from "@/types/room.types";
 import { cn } from "@/lib/utils";
 
-// ─── Category config ──────────────────────────────────────────────────────────
-
 interface CatConfig {
   label: string;
   labelNp: string;

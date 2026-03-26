@@ -621,9 +621,14 @@ export default function RoomDetailPage() {
                 </div>
                 <p className="text-sm text-gray-500">
                   Listed by:{" "}
-                  <span className="font-medium text-gray-700">
-                    {room.user?.name || "Unknown"}
-                  </span>
+                  <div className="flex gap-2 flex-col">
+                    <span className="font-medium text-gray-700">
+                      {room.user?.name || "Unknown"}
+                    </span>
+                    <span className="font-medium text-gray-700">
+                      PhoneNumber:{room.user?.phoneNumber || "Unknown"}
+                    </span>
+                  </div>
                 </p>
                 <p className="text-xs text-gray-400">
                   {room.category.replace("_", " ")} • {room.address}
@@ -830,9 +835,7 @@ export default function RoomDetailPage() {
                 <div className="space-y-4">
                   {room.contactPerson && (
                     <div>
-                      <p className="text-xs text-gray-500 mb-1">
-                        Contact Person
-                      </p>
+                      <p className="text-xs text-gray-500 mb-1">Owner Name</p>
                       <p className="font-medium">{room.contactPerson}</p>
                     </div>
                   )}
@@ -845,32 +848,6 @@ export default function RoomDetailPage() {
                       >
                         <Phone className="h-4 w-4" />
                         {room.contactPhone}
-                      </a>
-                    </div>
-                  )}
-                  {room.contactWhatsapp && (
-                    <div>
-                      <p className="text-xs text-gray-500 mb-1">WhatsApp</p>
-                      <a
-                        href={`https://wa.me/${room.contactWhatsapp.replace(/\D/g, "")}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="font-medium text-green-600 hover:underline flex items-center gap-2 cursor-pointer"
-                      >
-                        <MessageCircle className="h-4 w-4" />
-                        {room.contactWhatsapp}
-                      </a>
-                    </div>
-                  )}
-                  {room.contactEmail && (
-                    <div>
-                      <p className="text-xs text-gray-500 mb-1">Email</p>
-                      <a
-                        href={`mailto:${room.contactEmail}`}
-                        className="font-medium text-blue-600 hover:underline flex items-center gap-2 cursor-pointer"
-                      >
-                        <Mail className="h-4 w-4" />
-                        {room.contactEmail}
                       </a>
                     </div>
                   )}

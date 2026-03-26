@@ -587,29 +587,24 @@ export function RoomDrawer({ room, open, onOpenChange }: RoomDrawerProps) {
                           </a>
                         </div>
                       )}
-                      {room.contactWhatsapp && (
+                      {room.contactPhone && (
                         <div>
                           <p className="text-sm text-gray-500">WhatsApp</p>
-                          <a
-                            href={`https://wa.me/${room.contactWhatsapp.replace(/\D/g, "")}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="font-medium text-green-600 hover:underline flex items-center gap-2"
-                          >
+                          <span className="font-medium text-green-600 hover:underline flex items-center gap-2">
                             <Phone className="h-4 w-4" />
-                            {room.contactWhatsapp}
-                          </a>
+                            {room.contactPerson}
+                          </span>
                         </div>
                       )}
-                      {room.contactEmail && (
+                      {room.contactPerson && (
                         <div>
                           <p className="text-sm text-gray-500">Email Address</p>
                           <a
-                            href={`mailto:${room.contactEmail}`}
+                            href={`mailto:${room.contactPerson}`}
                             className="font-medium text-blue-600 hover:underline flex items-center gap-2"
                           >
                             <Mail className="h-4 w-4" />
-                            {room.contactEmail}
+                            {room.contactPerson}
                           </a>
                         </div>
                       )}

@@ -7,6 +7,8 @@ import { ROOM_QUERY_KEYS } from "@/hooks/rooms/use-room-queries";
 import { STATUS_CODES } from "@/lib/constants/app.constants";
 import { SUCCESSTOAST, FAILURETOAST } from "@/lib/constants/app.constants";
 import { RoomStatus } from "@/types/room.types";
+import { useUserRole } from "@/stores/user-store";
+import { UserRole } from "@/types/user.types";
 
 // Toast messages
 export const CreateRoom = {
@@ -83,6 +85,7 @@ interface RoomData {
  */
 export const useCreateRoomMutation = () => {
   const queryClient = useQueryClient();
+  const { user } = useUserRole();
 
   const mutation = useMutation({
     mutationKey: [ROOM_QUERY_KEYS.CREATE_ROOM],
@@ -92,28 +95,17 @@ export const useCreateRoomMutation = () => {
     },
     onSuccess: (_, variables) => {
       variables.onSuccess?.();
-      toast.success(CreateRoom.success.title, {
-        description: CreateRoom.success.description,
-        style: { background: SUCCESSTOAST, color: "#fff" },
-      });
+      if (user?.role !== UserRole.ADMIN) {
+        toast.success(CreateRoom.success.title, {
+          description: CreateRoom.success.description,
+          style: { background: SUCCESSTOAST, color: "#fff" },
+        });
+      }
       queryClient.invalidateQueries({
         queryKey: [ROOM_QUERY_KEYS.GET_ROOMS],
       });
       queryClient.invalidateQueries({
         queryKey: [ROOM_QUERY_KEYS.GET_ROOM_STATS],
-      });
-    },
-    onError: (error: AxiosError) => {
-      if (error.status === STATUS_CODES.CONFLICT) {
-        toast.error(CreateRoom.alreadyExists.title, {
-          description: CreateRoom.alreadyExists.description,
-          style: { background: FAILURETOAST, color: "#fff" },
-        });
-        return;
-      }
-      toast.error(CreateRoom.error.title, {
-        description: CreateRoom.error.description,
-        style: { background: FAILURETOAST, color: "#fff" },
       });
     },
   });

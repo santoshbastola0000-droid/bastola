@@ -29,6 +29,7 @@ import {
   Moon,
   Instagram,
   Clock,
+  Pencil,
 } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -66,6 +67,12 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { RoomCategory } from "@/types/room.types";
 import { cn } from "@/lib/utils";
 import { roomService } from "@/http/services/room.service";
@@ -74,7 +81,7 @@ import { UserRole } from "@/types/user.types";
 import { useUserRole } from "@/stores/user-store";
 import MapPicker from "@/components/admin/rooms/MapPicker";
 
-// ─── Constants (identical to create page) ───────────────────────────────────
+// ─── Constants ───────────────────────────────────────────────────────────────
 
 const amenitiesList = [
   { id: "wifi", label: "WiFi", icon: Wifi, description: "High-speed internet" },
@@ -158,10 +165,26 @@ const getImageUrl = (imagePath: string) => {
   return `${API_BASE_URL.replace(/\/$/, "")}/${imagePath.replace(/^\//, "")}`;
 };
 
-// ─── Water supply helpers ────────────────────────────────────────────────────
-// We store the type inside notes as "TYPE:<value>" prefix so we can restore it.
-// morning/evening are set to "" for non-timed options.
+// Helper function to extract the first meaningful location name from full address
+const extractLocationName = (formattedAddress: string): string => {
+  if (!formattedAddress) return "";
 
+  const patterns = [
+    /^([^,]+(?:चोक|चोक्|टोल|गाउँ|बजार|मार्ग|रोड|Road|Chowk))/i,
+    /^([^,]+)/,
+  ];
+
+  for (const pattern of patterns) {
+    const match = formattedAddress.match(pattern);
+    if (match && match[1]) {
+      return match[1].trim();
+    }
+  }
+
+  return formattedAddress.split(",")[0]?.trim() || "";
+};
+
+// Water supply helpers
 const buildWaterTimings = (
   type: string,
   morning: string,
@@ -196,7 +219,6 @@ const detectWaterType = (timings?: {
   if (!timings) return "morning-evening";
   const note = timings.notes || "";
   if (note.startsWith("TYPE:")) return note.replace("TYPE:", "");
-  // Legacy fallback for old records
   if (timings.morning === "00:00-24:00") return "24-hour";
   if (note.includes("ट्याङ्कर")) return "tanker";
   if (note.includes("एक दिन छाडी")) return "alternate-days";
@@ -220,8 +242,9 @@ export default function EditRoomPage() {
   const [waterSupplyType, setWaterSupplyType] = useState("morning-evening");
   const [customWaterNote, setCustomWaterNote] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isFormReady, setIsFormReady] = useState(false);
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, refetch } = useQuery({
     queryKey: ["room", id],
     queryFn: () => roomService.getRoomById(id),
     enabled: !!id,
@@ -234,7 +257,7 @@ export default function EditRoomPage() {
     defaultValues: {
       title: "",
       description: "",
-      category: RoomCategory.APARTMENT,
+      category: RoomCategory.APARTMENT, // Default to APARTMENT
       price: 5000,
       address: "",
       amenities: [],
@@ -248,6 +271,7 @@ export default function EditRoomPage() {
       roomCapacity: 2,
       roomArea: 30,
       contactPhone: "",
+      contactPerson: "",
       tiktokUrl: "",
       waterSupplyTimings: {
         morning: "06:00-08:00",
@@ -272,18 +296,37 @@ export default function EditRoomPage() {
   useEffect(() => {
     if (!room) return;
 
+    console.log("Room data loaded:", room);
+    console.log("Room category from API:", room.category);
+    console.log("Available categories:", Object.values(RoomCategory));
+
     const detectedType = detectWaterType(room.waterSupplyTimings);
     setWaterSupplyType(detectedType);
 
-    // Restore custom note if type is custom
     if (detectedType === "custom") {
       setCustomWaterNote(room.waterSupplyTimings?.notes || "");
     }
 
+    // Validate and set category - ensure it's a valid enum value
+    let validCategory = room.category;
+    const isValidCategory = Object.values(RoomCategory).includes(
+      room.category as RoomCategory,
+    );
+
+    if (!isValidCategory || !room.category) {
+      console.warn(
+        "Invalid or empty category:",
+        room.category,
+        "defaulting to APARTMENT",
+      );
+      validCategory = RoomCategory.APARTMENT;
+    }
+
+    // Reset form with all values
     form.reset({
       title: room.title || "",
       description: room.description || "",
-      category: room.category || RoomCategory.APARTMENT,
+      category: validCategory,
       price: room.price || 5000,
       address: room.address || "",
       amenities: room.amenities || [],
@@ -297,6 +340,7 @@ export default function EditRoomPage() {
       roomCapacity: room.roomCapacity || 2,
       roomArea: room.roomArea || 30,
       contactPhone: room.contactPhone || "",
+      contactPerson: room.contactPerson || "",
       tiktokUrl: room.tiktokUrl || "",
       waterSupplyTimings: {
         morning: room.waterSupplyTimings?.morning || "06:00-08:00",
@@ -320,14 +364,19 @@ export default function EditRoomPage() {
     });
 
     if (room.amenities) setSelectedAmenities(room.amenities);
+
+    // Set form as ready after a short delay to ensure all values are set
+    setTimeout(() => {
+      setIsFormReady(true);
+    }, 100);
   }, [room, form]);
 
   const currentLat = form.watch("location.latitude");
   const currentLng = form.watch("location.longitude");
   const isValidLocation =
     currentLat !== DEFAULT_LAT || currentLng !== DEFAULT_LNG;
-  const watchedMorning = form.watch("waterSupplyTimings.morning");
-  const watchedEvening = form.watch("waterSupplyTimings.evening");
+  const formattedAddress = form.watch("location.formattedAddress");
+  const currentCategory = form.watch("category");
 
   const toggleAmenity = (amenityId: string) => {
     setSelectedAmenities((prev) => {
@@ -349,9 +398,13 @@ export default function EditRoomPage() {
     country?: string;
     postalCode?: string;
   }) => {
+    const extractedName = location.formattedAddress
+      ? extractLocationName(location.formattedAddress)
+      : location.name || "Selected Location";
+
     form.setValue("location.latitude", location.lat);
     form.setValue("location.longitude", location.lng);
-    form.setValue("location.name", location.name || "Selected Location");
+    form.setValue("location.name", extractedName);
     form.setValue("location.formattedAddress", location.formattedAddress || "");
     form.setValue("location.city", location.city || "");
     form.setValue("location.state", location.state || "");
@@ -367,7 +420,6 @@ export default function EditRoomPage() {
     setIsSubmitting(true);
     values.amenities = selectedAmenities;
 
-    // Build correct water timings based on type
     const waterTimings = buildWaterTimings(
       waterSupplyType,
       values.waterSupplyTimings.morning || "06:00-08:00",
@@ -392,6 +444,7 @@ export default function EditRoomPage() {
       allowsWomen: values.allowsWomen,
       roomCapacity: values.roomCapacity,
       roomArea: values.roomArea,
+      contactPerson: values.contactPerson,
       contactPhone: values.contactPhone,
       location: values.location,
       ...(isAdmin && values.tiktokUrl ? { tiktokUrl: values.tiktokUrl } : {}),
@@ -417,9 +470,7 @@ export default function EditRoomPage() {
     }
   };
 
-  // ─── Loading / error states ────────────────────────────────────────────────
-
-  if (isLoading) {
+  if (isLoading || !isFormReady) {
     return (
       <div className="p-6 space-y-4">
         <Skeleton className="h-10 w-64" />
@@ -450,14 +501,32 @@ export default function EditRoomPage() {
   }
 
   const tabs = [
-    { value: "basic", label: "Basic Info", icon: Home },
-    { value: "location", label: "Location", icon: MapPin },
-    { value: "details", label: "Details", icon: Bed },
-    { value: "amenities", label: "Amenities", icon: Wifi },
-    { value: "contact", label: "Contact", icon: User },
+    {
+      value: "basic",
+      label: "Basic Info",
+      icon: Home,
+      tooltip: "आधारभूत जानकारी",
+    },
+    {
+      value: "location",
+      label: "Location",
+      icon: MapPin,
+      tooltip: "स्थान र नक्सा",
+    },
+    { value: "details", label: "Details", icon: Bed, tooltip: "कोठाको विवरण" },
+    {
+      value: "amenities",
+      label: "Amenities",
+      icon: Wifi,
+      tooltip: "सुविधाहरू",
+    },
+    {
+      value: "contact",
+      label: "Contact",
+      icon: User,
+      tooltip: "सम्पर्क जानकारी",
+    },
   ];
-
-  // ─── Render ────────────────────────────────────────────────────────────────
 
   return (
     <div className="space-y-6 pb-20">
@@ -466,7 +535,7 @@ export default function EditRoomPage() {
         <div className="px-4 py-4 md:px-6 lg:px-8">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div className="space-y-1">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground flex-wrap">
                 <Link
                   href="/admin/dashboard"
                   className="hover:text-primary transition-colors cursor-pointer"
@@ -483,7 +552,7 @@ export default function EditRoomPage() {
                 <span>/</span>
                 <Link
                   href={`/admin/dashboard/rooms/${id}`}
-                  className="hover:text-primary transition-colors cursor-pointer truncate max-w-[120px]"
+                  className="hover:text-primary transition-colors cursor-pointer truncate max-w-[150px]"
                 >
                   {room.title}
                 </Link>
@@ -543,25 +612,33 @@ export default function EditRoomPage() {
               onValueChange={setActiveTab}
               className="space-y-6"
             >
-              <TabsList className="grid grid-cols-3 md:grid-cols-5 w-full h-auto p-1 bg-muted/50">
-                {tabs.map((tab) => {
-                  const Icon = tab.icon;
-                  return (
-                    <TabsTrigger
-                      key={tab.value}
-                      value={tab.value}
-                      className="data-[state=active]:bg-primary data-[state=active]:text-white cursor-pointer"
-                    >
-                      <Icon className="h-4 w-4 md:mr-2" />
-                      <span className="hidden md:inline text-xs">
-                        {tab.label}
-                      </span>
-                    </TabsTrigger>
-                  );
-                })}
-              </TabsList>
+              <TooltipProvider>
+                <TabsList className="grid grid-cols-3 md:grid-cols-5 w-full h-auto p-1 bg-muted/50 gap-1">
+                  {tabs.map((tab) => {
+                    const Icon = tab.icon;
+                    return (
+                      <Tooltip key={tab.value}>
+                        <TooltipTrigger asChild>
+                          <TabsTrigger
+                            value={tab.value}
+                            className="data-[state=active]:bg-primary data-[state=active]:text-white cursor-pointer py-2 px-1 md:px-3"
+                          >
+                            <Icon className="h-4 w-4 md:mr-2" />
+                            <span className="hidden md:inline text-xs">
+                              {tab.label}
+                            </span>
+                          </TabsTrigger>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom">
+                          <p>{tab.tooltip}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    );
+                  })}
+                </TabsList>
+              </TooltipProvider>
 
-              {/* ─── BASIC ─── */}
+              {/* BASIC TAB */}
               <TabsContent value="basic">
                 <Card>
                   <CardHeader>
@@ -623,12 +700,21 @@ export default function EditRoomPage() {
                               Room Type <span className="text-red-500">*</span>
                             </FormLabel>
                             <Select
-                              onValueChange={field.onChange}
+                              onValueChange={(value) => {
+                                console.log("Category changed to:", value);
+                                field.onChange(value);
+                              }}
                               value={field.value}
                             >
                               <FormControl>
                                 <SelectTrigger className="cursor-pointer">
-                                  <SelectValue />
+                                  <SelectValue placeholder="Select room type">
+                                    {field.value && (
+                                      <span className="capitalize">
+                                        {field.value.replace(/_/g, " ")}
+                                      </span>
+                                    )}
+                                  </SelectValue>
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
@@ -638,7 +724,7 @@ export default function EditRoomPage() {
                                     value={cat}
                                     className="cursor-pointer capitalize"
                                   >
-                                    {cat.replace("_", " ")}
+                                    {cat.replace(/_/g, " ")}
                                   </SelectItem>
                                 ))}
                               </SelectContent>
@@ -685,7 +771,7 @@ export default function EditRoomPage() {
                 </Card>
               </TabsContent>
 
-              {/* ─── LOCATION ─── */}
+              {/* LOCATION TAB - With Editable Full Address */}
               <TabsContent value="location">
                 <Card>
                   <CardHeader>
@@ -694,7 +780,8 @@ export default function EditRoomPage() {
                       Location & Map
                     </CardTitle>
                     <CardDescription>
-                      Click on the map to update the room location.
+                      Click on the map to update the room location or edit the
+                      address manually.
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-6">
@@ -707,19 +794,48 @@ export default function EditRoomPage() {
                       }
                     />
 
+                    {/* Editable Full Address Field */}
+                    <FormField
+                      control={form.control}
+                      name="location.formattedAddress"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="flex items-center gap-2">
+                            <Pencil className="h-3 w-3" />
+                            Full Address / पूरा ठेगाना
+                          </FormLabel>
+                          <FormControl>
+                            <Textarea
+                              placeholder="नक्सामा स्थान चयन गरेपछि स्वत: भरिनेछ वा म्यानुअल रूपमा लेख्नुहोस् | Auto-filled from map or edit manually"
+                              className="min-h-[80px] resize-y"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormDescription>
+                            तपाईं यो ठेगाना सम्पादन गर्न सक्नुहुन्छ। You can
+                            edit this address manually.
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <FormField
                         control={form.control}
                         name="location.name"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Location Name</FormLabel>
+                            <FormLabel>Location Name / स्थानको नाम</FormLabel>
                             <FormControl>
                               <Input
-                                placeholder="e.g. Lazimpat Apartment"
+                                placeholder="e.g. Lazimpat Apartment, Srijana Chowk"
                                 {...field}
                               />
                             </FormControl>
+                            <FormDescription>
+                              प्रमुख स्थानको नाम (जस्तै: श्रीजना चोक, लाजिम्पाट)
+                            </FormDescription>
                             <FormMessage />
                           </FormItem>
                         )}
@@ -729,9 +845,12 @@ export default function EditRoomPage() {
                         name="location.city"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>City</FormLabel>
+                            <FormLabel>City / शहर</FormLabel>
                             <FormControl>
-                              <Input placeholder="e.g. Kathmandu" {...field} />
+                              <Input
+                                placeholder="e.g. Kathmandu, Pokhara"
+                                {...field}
+                              />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -763,11 +882,24 @@ export default function EditRoomPage() {
                           </FormItem>
                         )}
                       />
+                      <FormField
+                        control={form.control}
+                        name="location.postalCode"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Postal Code</FormLabel>
+                            <FormControl>
+                              <Input placeholder="e.g. 44600" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
                     </div>
 
                     {isValidLocation && (
-                      <div className="flex gap-4 p-3 bg-primary/5 rounded-lg border border-primary/20">
-                        <div className="flex-1">
+                      <div className="flex flex-wrap gap-4 p-3 bg-primary/5 rounded-lg border border-primary/20">
+                        <div className="flex-1 min-w-[100px]">
                           <p className="text-xs text-muted-foreground">
                             Latitude
                           </p>
@@ -775,7 +907,7 @@ export default function EditRoomPage() {
                             {currentLat.toFixed(6)}
                           </p>
                         </div>
-                        <div className="flex-1">
+                        <div className="flex-1 min-w-[100px]">
                           <p className="text-xs text-muted-foreground">
                             Longitude
                           </p>
@@ -796,7 +928,7 @@ export default function EditRoomPage() {
                 </Card>
               </TabsContent>
 
-              {/* ─── DETAILS ─── */}
+              {/* DETAILS TAB */}
               <TabsContent value="details">
                 <Card>
                   <CardHeader>
@@ -815,7 +947,7 @@ export default function EditRoomPage() {
                         name="roomCapacity"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Room Capacity</FormLabel>
+                            <FormLabel>Room Capacity / कोठा क्षमता</FormLabel>
                             <FormControl>
                               <div className="relative">
                                 <Users className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -843,7 +975,7 @@ export default function EditRoomPage() {
                         name="bathroomCapacity"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Bathroom Capacity</FormLabel>
+                            <FormLabel>Bathroom Capacity / बाथरुम</FormLabel>
                             <Select
                               onValueChange={(v) => field.onChange(parseInt(v))}
                               value={field.value.toString()}
@@ -860,7 +992,7 @@ export default function EditRoomPage() {
                                     value={n.toString()}
                                     className="cursor-pointer"
                                   >
-                                    {n} {n === 1 ? "person" : "people"}
+                                    {n} {n === 1 ? "person" : "people"} / जना
                                   </SelectItem>
                                 ))}
                               </SelectContent>
@@ -875,7 +1007,7 @@ export default function EditRoomPage() {
                         name="floorNumber"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Floor Number</FormLabel>
+                            <FormLabel>Floor Number / तला नं.</FormLabel>
                             <FormControl>
                               <div className="relative">
                                 <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -890,7 +1022,9 @@ export default function EditRoomPage() {
                                 />
                               </div>
                             </FormControl>
-                            <FormDescription>Ground floor = 0</FormDescription>
+                            <FormDescription>
+                              Ground floor = 0 / भुइँ तला = ०
+                            </FormDescription>
                             <FormMessage />
                           </FormItem>
                         )}
@@ -901,7 +1035,7 @@ export default function EditRoomPage() {
                         name="roomArea"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Room Area (m²)</FormLabel>
+                            <FormLabel>Room Area (m²) / क्षेत्रफल</FormLabel>
                             <FormControl>
                               <div className="relative">
                                 <Ruler className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -927,7 +1061,9 @@ export default function EditRoomPage() {
                         name="totalHouseCapacity"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Total House Capacity</FormLabel>
+                            <FormLabel>
+                              Total House Capacity / घरको क्षमता
+                            </FormLabel>
                             <FormControl>
                               <Input
                                 type="number"
@@ -948,7 +1084,9 @@ export default function EditRoomPage() {
                         name="currentOccupants"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Current Occupants</FormLabel>
+                            <FormLabel>
+                              Current Occupants / हाल बस्ने संख्या
+                            </FormLabel>
                             <FormControl>
                               <Input
                                 type="number"
@@ -967,7 +1105,7 @@ export default function EditRoomPage() {
 
                     <Separator />
 
-                    {/* ─── Water Supply ─── */}
+                    {/* Water Supply */}
                     <div className="space-y-4">
                       <h3 className="font-medium flex items-center gap-2">
                         <Droplets className="h-4 w-4 text-primary" />
@@ -1001,22 +1139,6 @@ export default function EditRoomPage() {
                           <AlertDescription className="text-green-700">
                             यस कोठामा दिनभर पानी आउँछ।
                           </AlertDescription>
-                        </Alert>
-                      )}
-
-                      {waterSupplyType === "alternate-days" && (
-                        <Alert className="border-yellow-200 bg-yellow-50">
-                          <AlertTitle className="text-yellow-800">
-                            एक दिन छाडी पानी आउँछ
-                          </AlertTitle>
-                        </Alert>
-                      )}
-
-                      {waterSupplyType === "tanker" && (
-                        <Alert className="border-blue-200 bg-blue-50">
-                          <AlertTitle className="text-blue-800">
-                            ट्याङ्कर पानी उपलब्ध
-                          </AlertTitle>
                         </Alert>
                       )}
 
@@ -1109,38 +1231,15 @@ export default function EditRoomPage() {
                           />
                         </div>
                       )}
-
-                      {waterSupplyType !== "24-hour" &&
-                        waterSupplyType !== "alternate-days" &&
-                        waterSupplyType !== "tanker" &&
-                        waterSupplyType !== "custom" && (
-                          <FormField
-                            control={form.control}
-                            name="waterSupplyTimings.notes"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel className="flex items-center gap-1">
-                                  <Clock className="h-3 w-3" />
-                                  Additional Notes (optional)
-                                </FormLabel>
-                                <FormControl>
-                                  <Input
-                                    placeholder="e.g. No water on Saturdays..."
-                                    {...field}
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                        )}
                     </div>
 
                     <Separator />
 
                     {/* Rules */}
                     <div className="space-y-4">
-                      <h3 className="font-medium">Rules & Restrictions</h3>
+                      <h3 className="font-medium">
+                        Rules & Restrictions / नियमहरू
+                      </h3>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <FormField
                           control={form.control}
@@ -1192,13 +1291,13 @@ export default function EditRoomPage() {
                 </Card>
               </TabsContent>
 
-              {/* ─── AMENITIES ─── */}
+              {/* AMENITIES TAB */}
               <TabsContent value="amenities">
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <Wifi className="h-5 w-5 text-primary" />
-                      Amenities
+                      Amenities / सुविधाहरू
                     </CardTitle>
                     <CardDescription>
                       Select all amenities available in your room.
@@ -1260,13 +1359,13 @@ export default function EditRoomPage() {
                 </Card>
               </TabsContent>
 
-              {/* ─── CONTACT ─── */}
+              {/* CONTACT TAB */}
               <TabsContent value="contact">
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <User className="h-5 w-5 text-primary" />
-                      Contact Information
+                      Contact Information / सम्पर्क जानकारी
                     </CardTitle>
                     <CardDescription>
                       How can interested tenants reach you?
@@ -1276,40 +1375,74 @@ export default function EditRoomPage() {
                     <Alert className="border-primary/30 bg-primary/5">
                       <User className="h-4 w-4 text-primary" />
                       <AlertTitle className="text-primary">
-                        सम्पर्क जानकारी भर्नुहोस्
+                        घरधनीको सम्पर्क जानकारी भर्नुहोस्
                       </AlertTitle>
-                      <AlertDescription className="text-foreground/80">
-                        कृपया आफ्नो नाम, फोन नम्बर, भर्नुहोस्। भाडामा बस्न
-                        चाहनेहरूले यसै मार्फत सम्पर्क गर्नेछन्।
+                      <AlertDescription className="text-foreground/80 space-y-2">
+                        <p>
+                          कृपया घरधनीको नाम र फोन नम्बर भर्नुहोस्। भाडामा बस्न
+                          चाहनेहरूले यसै मार्फत सम्पर्क गर्नेछन्।
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          Please provide the owner's name and phone number.
+                          Interested tenants will contact you using this
+                          information.
+                        </p>
                       </AlertDescription>
                     </Alert>
 
-                    <FormField
-                      control={form.control}
-                      name="contactPhone"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="flex items-center gap-1">
-                            <Phone className="h-3 w-3" />
-                            Phone Number
-                          </FormLabel>
-                          <FormControl>
-                            <div className="relative">
-                              <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="contactPerson"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="flex items-center gap-1">
+                              <User className="h-3 w-3" />
+                              Owner Name / घरधनीको नाम
+                            </FormLabel>
+                            <FormControl>
                               <Input
-                                placeholder="+977 98XXXXXXXX"
-                                className="pl-9"
+                                placeholder="e.g. Ram Prasad Sharma"
                                 {...field}
                               />
-                            </div>
-                          </FormControl>
-                          <FormDescription>
-                            Primary contact number
-                          </FormDescription>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                            </FormControl>
+                            <FormDescription>
+                              घरधनी वा सम्पर्क व्यक्तिको पुरा नाम | Full name of
+                              the owner or contact person
+                            </FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="contactPhone"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="flex items-center gap-1">
+                              <Phone className="h-3 w-3" />
+                              Owner Phone Number / घरधनीको फोन नम्बर
+                            </FormLabel>
+                            <FormControl>
+                              <div className="relative">
+                                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                <Input
+                                  placeholder="+977 98XXXXXXXX"
+                                  className="pl-9"
+                                  {...field}
+                                />
+                              </div>
+                            </FormControl>
+                            <FormDescription>
+                              सम्पर्कको लागि घरधनीको फोन नम्बर | Owner's contact
+                              number for inquiries
+                            </FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
 
                     {isAdmin && (
                       <>
@@ -1347,7 +1480,7 @@ export default function EditRoomPage() {
             {/* Sticky Footer */}
             <div className="sticky bottom-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-t p-4 -mx-4 md:-mx-6 lg:-mx-8">
               <div className="max-w-7xl mx-auto flex flex-col sm:flex-row gap-4 justify-between items-center">
-                <div className="flex gap-2 flex-wrap">
+                <div className="flex flex-wrap gap-2">
                   <Badge variant="outline" className="text-sm">
                     <span className="text-primary font-bold mr-1">✏️</span>
                     Editing: {room.title}

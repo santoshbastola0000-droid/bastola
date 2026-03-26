@@ -63,8 +63,6 @@ export interface Room {
   roomArea: number;
   contactPerson?: string;
   contactPhone?: string;
-  contactEmail?: string;
-  contactWhatsapp?: string;
   images: string[];
   createdAt: string;
   updatedAt: string;

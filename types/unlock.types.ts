@@ -35,7 +35,7 @@ export interface TopUpRequest {
   userId: string;
   amount: number;
   status: TopUpStatus;
-  screenshotUrl: string;
+  screenshot: string;
   adminRemarks: string | null;
   processedAt: string | null;
   processedById: string | null;

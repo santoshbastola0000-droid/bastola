@@ -325,28 +325,12 @@ export function RoomDetailsContent({ room }: RoomDetailsContentProps) {
                     </a>
                   </div>
                 )}
-                {room.contactWhatsapp && (
+                {room.contactPhone && (
                   <div className="flex items-center gap-2">
                     <MessageCircle className="h-4 w-4 text-muted-foreground" />
-                    <a
-                      href={`https://wa.me/${room.contactWhatsapp.replace(/\D/g, "")}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-sm text-green-600 hover:underline"
-                    >
-                      {room.contactWhatsapp}
-                    </a>
-                  </div>
-                )}
-                {room.contactEmail && (
-                  <div className="flex items-center gap-2">
-                    <Mail className="h-4 w-4 text-muted-foreground" />
-                    <a
-                      href={`mailto:${room.contactEmail}`}
-                      className="text-sm text-primary hover:underline"
-                    >
-                      {room.contactEmail}
-                    </a>
+                    <span className="text-sm text-green-600 hover:underline">
+                      {room.contactPhone}
+                    </span>
                   </div>
                 )}
               </div>

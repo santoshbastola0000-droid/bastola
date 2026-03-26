@@ -156,8 +156,6 @@ export function adaptRoomToProperty(room: Room): Property {
     // Contact info
     contact_person: room.contactPerson,
     contact_phone: room.contactPhone,
-    contact_whatsapp: room.contactWhatsapp,
-    contact_email: room.contactEmail,
   };
 }
 
