@@ -1,3 +1,4 @@
+import { UnlockResult, UnlockStatus } from "./unlock.types";
 import { UserRole } from "./user.types";
 
 export enum RoomStatus {
@@ -178,4 +179,15 @@ export interface RoomsResponse {
     previousPage: number | null;
     nextPage: number | null;
   };
+}
+
+export interface RoomUnlockDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  roomId: string;
+  roomTitle: string;
+  unlockStatus: UnlockStatus | null;
+  isAuthenticated: boolean;
+  onUnlocked: (result: UnlockResult) => void;
+  onRequestTopUp: () => void;
 }

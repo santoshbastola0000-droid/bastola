@@ -86,7 +86,7 @@ const unlockService = {
    */
   async createTopUpWithScreenshot(
     amount: number,
-    screenshotFile: File,
+    screenshot: File,
   ): Promise<TopUpRequest> {
     // 1. Upload the screenshot image
 
@@ -95,7 +95,7 @@ const unlockService = {
       "/unlock/topup",
       {
         amount,
-        screenshotFile,
+        screenshot,
       },
       {
         headers: {

@@ -24,27 +24,9 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { unlockService } from "@/http/services/unlock.service";
-import { formatPriceNPR } from "@/lib/utils";
-import type { CommissionSettings } from "@/types/unlock.types";
-
-interface TopUpRequestDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  settings: CommissionSettings | null;
-  onSuccess?: () => void;
-}
-
-type Step = "info" | "amount" | "payment" | "success";
-
-const MIN_TOPUP = 100;
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "";
-
-function resolveQrUrl(path: string | null | undefined): string | null {
-  if (!path) return null;
-  if (path.startsWith("http://") || path.startsWith("https://")) return path;
-  return `${API_BASE_URL}${path.startsWith("/") ? path : `/${path}`}`;
-}
+import { formatPriceNPR, resolveImageUrl } from "@/lib/utils";
+import { MIN_TOPUP, Step, SUCCESSTOAST } from "@/lib/constants/app.constants";
+import { TopUpRequestDialogProps } from "@/types/top-up";
 
 export const TopUpRequestDialog: React.FC<TopUpRequestDialogProps> = ({
   open,
@@ -63,7 +45,7 @@ export const TopUpRequestDialog: React.FC<TopUpRequestDialogProps> = ({
   const [showFullscreenQr, setShowFullscreenQr] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const adminQrUrl = resolveQrUrl(settings?.adminQrCodeUrl);
+  const adminQrUrl = resolveImageUrl(settings?.adminQrCodeUrl);
   const adminLabel = settings?.adminPaymentLabel ?? null;
   const serviceCharge = settings?.serviceCharge ?? 0;
 
@@ -130,6 +112,7 @@ export const TopUpRequestDialog: React.FC<TopUpRequestDialogProps> = ({
       onSuccess?.();
       toast.success("Top-up request submitted!", {
         description: "Admin will review and credit your wallet shortly.",
+        style: { backgroundColor: SUCCESSTOAST, color: "#ffff" },
       });
     } catch (err: any) {
       toast.error(
@@ -244,7 +227,7 @@ export const TopUpRequestDialog: React.FC<TopUpRequestDialogProps> = ({
                       <AlertCircle className="w-4 h-4 text-amber-500 flex-shrink-0" />
                       <p className="text-xs text-amber-700">
                         <span className="font-semibold">Tip:</span> Add at least
-                        रू {formatPriceNPR(serviceCharge)} to unlock this room.
+                        {formatPriceNPR(serviceCharge)} to unlock this room.
                       </p>
                     </div>
                   )}
@@ -304,7 +287,7 @@ export const TopUpRequestDialog: React.FC<TopUpRequestDialogProps> = ({
                             : "bg-slate-50 text-slate-700 border-slate-200 hover:border-emerald-300 hover:bg-emerald-50"
                         }`}
                       >
-                        रू {formatPriceNPR(preset)}
+                        {formatPriceNPR(preset)}
                       </button>
                     ))}
                   </div>

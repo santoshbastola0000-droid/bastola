@@ -101,7 +101,7 @@ export const formatNepaliCurrency = (amount: number | string): string => {
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 /** Converts a relative `/uploads/...` path to a full URL */
-export function resolveImageUrl(path: string): string {
+export function resolveImageUrl(path: string | null | undefined): string {
   if (!path) return "";
   if (path.startsWith("http://") || path.startsWith("https://")) return path;
   return `${BASE_URL}${path.startsWith("/") ? "" : "/"}${path}`;

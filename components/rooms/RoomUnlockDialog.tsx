@@ -23,51 +23,9 @@ import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { unlockService } from "@/http/services/unlock.service";
 import { formatPriceNPR } from "@/lib/utils";
-import type { UnlockResult, UnlockStatus } from "@/types/unlock.types";
-
-interface RoomUnlockDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  roomId: string;
-  roomTitle: string;
-  unlockStatus: UnlockStatus | null;
-  isAuthenticated: boolean;
-  onUnlocked: (result: UnlockResult) => void;
-  onRequestTopUp: () => void;
-}
+import { RoomUnlockDialogProps } from "@/types/room.types";
 
 type Step = "info" | "topup_needed" | "confirm" | "success";
-
-const StepDot = ({
-  active,
-  done,
-  label,
-}: {
-  active: boolean;
-  done: boolean;
-  label: string;
-}) => (
-  <div className="flex flex-col items-center gap-1">
-    <div
-      className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 ${
-        done
-          ? "bg-emerald-500 text-white"
-          : active
-            ? "bg-red-500 text-white ring-4 ring-red-100"
-            : "bg-slate-100 text-slate-400"
-      }`}
-    >
-      {done ? <CheckCircle className="w-4 h-4" /> : label[0]}
-    </div>
-    <span
-      className={`text-[10px] font-medium ${
-        active ? "text-red-500" : done ? "text-emerald-600" : "text-slate-400"
-      }`}
-    >
-      {label}
-    </span>
-  </div>
-);
 
 export const RoomUnlockDialog: React.FC<RoomUnlockDialogProps> = ({
   open,
@@ -126,7 +84,7 @@ export const RoomUnlockDialog: React.FC<RoomUnlockDialogProps> = ({
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -16 }}
-              className="p-8 text-center"
+              className="p-8 text-center "
             >
               <div className="w-16 h-16 rounded-full bg-amber-50 border-2 border-amber-200 flex items-center justify-center mx-auto mb-4">
                 <Lock className="w-7 h-7 text-amber-500" />
@@ -141,7 +99,7 @@ export const RoomUnlockDialog: React.FC<RoomUnlockDialogProps> = ({
               </p>
               <div className="flex flex-col gap-2">
                 <Button
-                  className="w-full rounded-xl bg-red-500 hover:bg-red-600 text-white"
+                  className="w-full rounded-xl bg-red-500 hover:bg-red-600 text-white cursor-pointer"
                   onClick={() => {
                     handleClose();
                     window.location.href = "/auth/login";
@@ -153,7 +111,7 @@ export const RoomUnlockDialog: React.FC<RoomUnlockDialogProps> = ({
                 <Button
                   variant="ghost"
                   onClick={handleClose}
-                  className="w-full"
+                  className="w-full cursor-pointer"
                 >
                   Cancel
                 </Button>
@@ -174,7 +132,7 @@ export const RoomUnlockDialog: React.FC<RoomUnlockDialogProps> = ({
                 <div className="absolute -bottom-6 -left-6 w-24 h-24 bg-blue-500/10 rounded-full blur-2xl" />
                 <button
                   onClick={handleClose}
-                  className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
+                  className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors cursor-pointer"
                 >
                   <X className="w-4 h-4 text-white" />
                 </button>
@@ -247,7 +205,7 @@ export const RoomUnlockDialog: React.FC<RoomUnlockDialogProps> = ({
                     <div>
                       <p className="text-xs text-slate-500">Wallet Balance</p>
                       <p className="text-base font-bold text-slate-900">
-                        रू {formatPriceNPR(walletBalance)}
+                        {formatPriceNPR(walletBalance)}
                       </p>
                     </div>
                   </div>
@@ -260,7 +218,7 @@ export const RoomUnlockDialog: React.FC<RoomUnlockDialogProps> = ({
                           : "text-red-500"
                       }`}
                     >
-                      रू {formatPriceNPR(serviceCharge)}
+                      {formatPriceNPR(serviceCharge)}
                     </p>
                   </div>
                 </div>
@@ -278,9 +236,8 @@ export const RoomUnlockDialog: React.FC<RoomUnlockDialogProps> = ({
                         Insufficient Balance
                       </p>
                       <p className="text-xs text-amber-700 mt-0.5">
-                        You need रू{" "}
-                        {formatPriceNPR(serviceCharge - walletBalance)} more to
-                        unlock this room.
+                        You need {formatPriceNPR(serviceCharge - walletBalance)}{" "}
+                        more to unlock this room.
                       </p>
                     </div>
                   </motion.div>
@@ -298,7 +255,7 @@ export const RoomUnlockDialog: React.FC<RoomUnlockDialogProps> = ({
                     </Button>
                   ) : (
                     <Button
-                      className="w-full rounded-xl py-6 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white font-semibold shadow-lg transition-all group"
+                      className="w-full rounded-xl py-6 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white font-semibold shadow-lg transition-all group cursor-pointer"
                       onClick={() => {
                         handleClose();
                         onRequestTopUp();
@@ -312,7 +269,7 @@ export const RoomUnlockDialog: React.FC<RoomUnlockDialogProps> = ({
                   <Button
                     variant="ghost"
                     onClick={handleClose}
-                    className="w-full text-slate-500 hover:text-slate-700"
+                    className="w-full text-slate-500 hover:text-slate-700 cursor-pointer"
                   >
                     Cancel
                   </Button>
@@ -336,7 +293,7 @@ export const RoomUnlockDialog: React.FC<RoomUnlockDialogProps> = ({
             >
               <button
                 onClick={handleClose}
-                className="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-colors z-10"
+                className="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-colors z-10 cursor-pointer"
               >
                 <X className="w-4 h-4 text-slate-500" />
               </button>
@@ -364,27 +321,27 @@ export const RoomUnlockDialog: React.FC<RoomUnlockDialogProps> = ({
                 <div className="flex justify-between text-sm">
                   <span className="text-slate-500">Current Balance</span>
                   <span className="font-medium text-slate-800">
-                    रू {formatPriceNPR(walletBalance)}
+                    {formatPriceNPR(walletBalance)}
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-slate-500">Service Charge</span>
                   <span className="font-semibold text-red-500">
-                    − रू {formatPriceNPR(serviceCharge)}
+                    − {formatPriceNPR(serviceCharge)}
                   </span>
                 </div>
                 <Separator />
                 <div className="flex justify-between text-sm font-bold">
                   <span className="text-slate-700">Balance After</span>
                   <span className="text-emerald-600">
-                    रू {formatPriceNPR(walletBalance - serviceCharge)}
+                    {formatPriceNPR(walletBalance - serviceCharge)}
                   </span>
                 </div>
               </div>
 
               <div className="flex flex-col gap-2">
                 <Button
-                  className="w-full rounded-xl py-6 bg-red-500 hover:bg-red-600 text-white font-semibold transition-all"
+                  className="w-full rounded-xl py-6 bg-red-500 hover:bg-red-600 text-white font-semibold transition-all cursor-pointer"
                   onClick={handleUnlock}
                   disabled={unlocking}
                 >
