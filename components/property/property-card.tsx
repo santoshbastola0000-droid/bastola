@@ -20,6 +20,8 @@ import {
 import type { Property } from "@/types/property.types";
 import { formatPriceNPR } from "@/lib/utils";
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "";
+
 interface PropertyCardProps {
   property: Property;
   index?: number;
@@ -90,6 +92,23 @@ const typeConfig: Record<string, { label: string; color: string; bg: string }> =
     condo: { label: "कन्डो", color: "#1e3a5f", bg: "#eef2ff" },
   };
 
+// Helper function to get the full image URL
+const getFullImageUrl = (imagePath: string | undefined): string => {
+  if (!imagePath) return "";
+
+  // If it's already a full URL (starts with http or https)
+  if (imagePath.startsWith("http://") || imagePath.startsWith("https://")) {
+    return imagePath;
+  }
+
+  // Remove leading slash if present to avoid double slashes
+  const cleanPath = imagePath.startsWith("/") ? imagePath.slice(1) : imagePath;
+
+  // Combine base URL with the image path
+  const baseUrl = API_BASE_URL.replace(/\/$/, "");
+  return `${baseUrl}/${cleanPath}`;
+};
+
 export function PropertyCard({
   property,
   index = 0,
@@ -98,6 +117,7 @@ export function PropertyCard({
   const [isLiked, setIsLiked] = useState(false);
   const [imageError, setImageError] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
+  const [imgSrc, setImgSrc] = useState<string>("");
 
   const {
     id,
@@ -120,7 +140,7 @@ export function PropertyCard({
   const formattedPrice = formatPriceNPR(price);
   const topAmenities = amenities.slice(0, 3);
 
-  // ✅ FIXED: Use actual image first, fall back to default only on error or missing
+  // Fallback images based on property type
   const fallbackImages: Record<string, string> = {
     apartment:
       "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=800&q=80",
@@ -131,7 +151,8 @@ export function PropertyCard({
     room: "https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?w=800&q=80",
   };
 
-  const getImageSrc = () => {
+  const getImageSrc = (): string => {
+    // If there's an error or no images, use fallback
     if (imageError || !images || images.length === 0) {
       return (
         fallbackImages[property_type] ||
@@ -139,13 +160,27 @@ export function PropertyCard({
       );
     }
 
-    console.log(
-      "Using real image for property ID:",
-      id,
-      "Image URL:",
-      images[0],
+    // Get the first image
+    const firstImage = images[0];
+
+    // Get the full URL
+    const fullUrl = getFullImageUrl(firstImage);
+
+    return fullUrl;
+  };
+
+  // Initialize image source
+  useState(() => {
+    setImgSrc(getImageSrc());
+  });
+
+  const handleImageError = () => {
+    console.log("Image failed to load:", imgSrc);
+    setImageError(true);
+    setImgSrc(
+      fallbackImages[property_type] ||
+        "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800&q=80",
     );
-    return images[0]; // ✅ Use real image from array
   };
 
   const handleLike = (e: React.MouseEvent) => {
@@ -158,19 +193,6 @@ export function PropertyCard({
     label: property_type,
     color: "#374151",
     bg: "#f9fafb",
-  };
-
-  const cardVariants = {
-    hidden: { opacity: 0, y: 24 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      transition: {
-        duration: 0.5,
-        delay: index * 0.08,
-        ease: [0.22, 1, 0.36, 1],
-      },
-    },
   };
 
   if (variant === "list") {
@@ -195,12 +217,11 @@ export function PropertyCard({
         <Link href={`/property/${id}`} className="flex flex-col md:flex-row">
           {/* Image */}
           <div className="relative md:w-80 h-64 md:h-auto shrink-0 overflow-hidden bg-stone-100">
-            <Image
-              src="http://localhost:3001/uploads/8ed8062e-5daa-463b-98c9-e2357dbf4b8d.jpg"
+            <img
+              src={imgSrc || getImageSrc()}
               alt={title}
-              fill
-              className="object-cover transition-transform duration-700 group-hover:scale-105"
-              onError={() => setImageError(true)}
+              className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+              onError={handleImageError}
               sizes="(max-width: 768px) 100vw, 320px"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
@@ -338,7 +359,7 @@ export function PropertyCard({
     );
   }
 
-  // Grid / Compact variant
+  // Grid / Compact variant with Next.js Image
   return (
     <motion.div
       initial="hidden"
@@ -351,18 +372,23 @@ export function PropertyCard({
         {/* Image */}
         <div className="relative aspect-[4/3] overflow-hidden bg-stone-100">
           {/* Placeholder pattern shown while loading */}
-          <div className="absolute inset-0 flex items-center justify-center bg-stone-50">
+          <div className="absolute inset-0 flex items-center justify-center bg-stone-50 z-0">
             <NepaliPattern />
           </div>
 
-          <Image
-            src={getImageSrc()}
-            alt={title}
-            fill
-            className="object-cover transition-transform duration-700 group-hover:scale-105 relative z-10"
-            onError={() => setImageError(true)}
-            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-          />
+          {/* Next.js Image with proper error handling */}
+          <div className="relative w-full h-full z-10">
+            <Image
+              src={imgSrc || getImageSrc()}
+              alt={title}
+              fill
+              className="object-cover transition-transform duration-700 group-hover:scale-105"
+              onError={handleImageError}
+              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+              priority={index < 4} // Load first 4 images with priority
+              unoptimized={imgSrc?.startsWith("http")} // Optional: for external URLs
+            />
+          </div>
 
           {/* Gradient */}
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/5 to-transparent z-20 opacity-60 group-hover:opacity-80 transition-opacity duration-300" />
@@ -376,7 +402,7 @@ export function PropertyCard({
             </div>
           )}
 
-          {/* Type badge — top right, hidden when hovered (like button takes over) */}
+          {/* Type badge — top right, hidden when hovered */}
           <AnimatePresence>
             {!isHovered && (
               <motion.span
@@ -392,27 +418,6 @@ export function PropertyCard({
               >
                 {typeInfo.label}
               </motion.span>
-            )}
-          </AnimatePresence>
-
-          {/* Like button */}
-          <AnimatePresence>
-            {isHovered && (
-              <motion.button
-                key="like-btn"
-                initial={{ scale: 0, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0, opacity: 0 }}
-                transition={{ type: "spring", stiffness: 400, damping: 20 }}
-                onClick={handleLike}
-                className="absolute top-3 right-3 z-30 w-9 h-9 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center shadow-lg"
-              >
-                <Heart
-                  className={`w-4.5 h-4.5 transition-all duration-200 ${
-                    isLiked ? "fill-red-500 text-red-500" : "text-stone-500"
-                  }`}
-                />
-              </motion.button>
             )}
           </AnimatePresence>
 

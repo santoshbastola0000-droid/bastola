@@ -107,7 +107,7 @@ export function AdminHeader({ isSidebarCollapsed = false }: AdminHeaderProps) {
                       variant="ghost"
                       size="icon"
                       onClick={toggleTheme}
-                      className="hidden sm:flex"
+                      className="hidden sm:flex cursor-pointer"
                       aria-label={
                         isDark
                           ? "Switch to light theme"
@@ -147,7 +147,7 @@ export function AdminHeader({ isSidebarCollapsed = false }: AdminHeaderProps) {
               <DropdownMenuTrigger asChild>
                 <Button
                   variant="ghost"
-                  className="flex items-center gap-2 px-2 hover:bg-accent"
+                  className="flex items-center gap-2 px-2 hover:bg-accent/45 cursor-pointer"
                   aria-label="Open user menu"
                 >
                   <Avatar className="h-7 w-7 md:h-8 md:w-8">
@@ -200,7 +200,7 @@ export function AdminHeader({ isSidebarCollapsed = false }: AdminHeaderProps) {
                 {mounted && <DropdownMenuSeparator className="sm:hidden" />}
 
                 <DropdownMenuItem
-                  className="text-destructive focus:text-destructive cursor-pointer"
+                  className="text-destructive focus:text-secondary cursor-pointer"
                   onClick={() => setShowLogoutDialog(true)}
                 >
                   <LogOut className="mr-2 h-4 w-4" aria-hidden="true" />

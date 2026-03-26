@@ -15,12 +15,10 @@ import {
   TrendingUp,
   AlertCircle,
   Plus,
-  X,
   Edit,
   Trash2,
   ChevronLeft,
   ChevronRight,
-  Search,
   Power,
   PowerOff,
 } from "lucide-react";
@@ -1608,59 +1606,6 @@ export default function CommissionPage() {
                 </>
               ) : (
                 "Delete"
-              )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Recalculate Confirmation */}
-      <AlertDialog
-        open={showRecalculateDialog}
-        onOpenChange={setShowRecalculateDialog}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Process All Pending Commissions</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will apply commission to {pendingRooms} pending room(s).
-              {pendingRooms > 0 && stats && (
-                <div className="mt-2 p-3 bg-yellow-50 rounded-lg">
-                  <p className="font-medium text-xs text-yellow-800">
-                    Total payout to users:{" "}
-                    <span className="font-bold flex items-center gap-1">
-                      <IndianRupee className="h-3 w-3" />
-                      {formatNepaliCurrency(stats.pendingCommission)}
-                    </span>
-                  </p>
-                  <p className="text-[10px] text-yellow-600 mt-1">
-                    Each user will receive{" "}
-                    {formatNepaliCurrency(
-                      ((activeSettings?.serviceCharge || 2000) *
-                        (activeSettings?.commissionPercentage || 20)) /
-                        100,
-                    )}
-                  </p>
-                </div>
-              )}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="cursor-pointer">
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleRecalculate}
-              className="bg-yellow-600 hover:bg-yellow-700 text-white cursor-pointer"
-              disabled={recalculateMutation.isPending || pendingRooms === 0}
-            >
-              {recalculateMutation.isPending ? (
-                <>
-                  <RefreshCw className="mr-2 h-3 w-3 animate-spin" />
-                  Processing...
-                </>
-              ) : (
-                "Process Commissions"
               )}
             </AlertDialogAction>
           </AlertDialogFooter>

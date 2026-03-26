@@ -983,13 +983,13 @@ export default function AdminTopUpPage() {
                   <ImageIcon className="h-3.5 w-3.5" />
                   Payment Screenshot
                 </h4>
-                {selectedRequest.screenshotUrl ? (
+                {selectedRequest.screenshot ? (
                   <div className="rounded-xl overflow-hidden border border-slate-200">
                     <img
                       src={
-                        selectedRequest.screenshotUrl.startsWith("http")
-                          ? selectedRequest.screenshotUrl
-                          : `${api.defaults.baseURL}/${selectedRequest.screenshotUrl.replace(/^\//, "")}`
+                        selectedRequest.screenshot.startsWith("http")
+                          ? selectedRequest.screenshot
+                          : `${api.defaults.baseURL}/${selectedRequest.screenshot.replace(/^\//, "")}`
                       }
                       alt="Payment Screenshot"
                       className="w-full object-contain max-h-80"

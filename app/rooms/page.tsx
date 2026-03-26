@@ -42,8 +42,6 @@ import { roomService } from "@/http/services/room.service";
 import { RoomCategory, RoomStatus, type Room } from "@/types/room.types";
 import { cn } from "@/lib/utils";
 
-// ─── Category config ──────────────────────────────────────────────────────────
-
 interface CatConfig {
   label: string;
   labelNp: string;
@@ -471,7 +469,7 @@ function RoomsContent() {
                 onClick={filters.lat ? clearLocation : handleLocate}
                 disabled={locLoading}
                 title={filters.lat ? "Clear location" : "Use my location"}
-                className={`h-11 w-11 rounded-xl border-slate-200 shrink-0 ${filters.lat ? "bg-red-50 border-red-300 text-red-600" : ""}`}
+                className={`h-11 w-11 rounded-xl border-slate-200 shrink-0 cursor-pointer ${filters.lat ? "bg-red-50 border-red-300 text-red-600" : ""}`}
               >
                 {locLoading ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
