@@ -1,11 +1,9 @@
 import {
   RecordYearsResponse,
   ListRecordYearsQuery,
-  CreateRecordYearDTO,
   UpdateRecordYearDTO,
   RecordYear,
 } from "@/types/record-year.types";
-import { api } from "@/http/api/api";
 import { privateApi } from "@/http/api/privateApi";
 
 export const recordYearService = {

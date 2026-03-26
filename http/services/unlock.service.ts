@@ -26,7 +26,6 @@ const unlockService = {
   },
 
   async updateSettings(payload: {
-    serviceCharge?: number;
     adminQrCodeUrl?: string;
     adminPaymentLabel?: string;
   }): Promise<CommissionSettings> {
@@ -146,6 +145,32 @@ const unlockService = {
       payload,
     );
     return data.data;
+  },
+
+  // unlock.service.ts
+  async updateSettingsQR(
+    id: string,
+    data: { adminPaymentLabel?: string },
+    qrFile?: File,
+  ): Promise<CommissionSettings> {
+    const formData = new FormData();
+
+    if (data.adminPaymentLabel) {
+      formData.append("adminPaymentLabel", data.adminPaymentLabel);
+    }
+
+    if (qrFile) {
+      formData.append("adminQrCodeUrl", qrFile);
+    }
+
+    const response = await privateApi.put(
+      `/commission/settings/${id}/qr`,
+      formData,
+      {
+        headers: { "Content-Type": "multipart/form-data" },
+      },
+    );
+    return response.data.data;
   },
 };
 

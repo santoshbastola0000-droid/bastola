@@ -1,4 +1,3 @@
-// src/http/services/commission.service.ts
 import { privateApi } from "@/http/api/privateApi";
 
 export interface CommissionSettings {
@@ -49,13 +48,11 @@ export interface CommissionsResponse {
 }
 
 export const commissionService = {
-  // Get active settings
   getActiveSettings: async (): Promise<CommissionSettings> => {
     const response = await privateApi.get("/commission/settings");
     return response.data.data;
   },
 
-  // Get all settings with pagination
   getAllSettings: async (
     params?: CommissionFilters,
   ): Promise<CommissionsResponse> => {
@@ -65,13 +62,11 @@ export const commissionService = {
     return response.data;
   },
 
-  // Get settings by ID
   getSettingsById: async (id: string): Promise<CommissionSettings> => {
     const response = await privateApi.get(`/commission/settings/${id}`);
     return response.data.data;
   },
 
-  // Create settings
   createSettings: async (data: {
     serviceCharge: number;
     commissionPercentage: number;
@@ -81,7 +76,6 @@ export const commissionService = {
     return response.data.data;
   },
 
-  // Update settings
   updateSettings: async (
     id: string,
     data: {
@@ -93,7 +87,6 @@ export const commissionService = {
     return response.data.data;
   },
 
-  // Update status
   updateStatus: async (
     id: string,
     data: { isActive: boolean },
@@ -105,18 +98,15 @@ export const commissionService = {
     return response.data.data;
   },
 
-  // Delete settings
   deleteSettings: async (id: string): Promise<void> => {
     await privateApi.delete(`/commission/settings/${id}`);
   },
 
-  // Get commission stats
   getCommissionStats: async (): Promise<CommissionStats> => {
     const response = await privateApi.get("/commission/stats");
     return response.data.data;
   },
 
-  // Recalculate pending commissions
   recalculatePendingCommissions: async (): Promise<{
     totalProcessed: number;
     successful: number;
