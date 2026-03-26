@@ -47,7 +47,12 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { NavBar } from "@/components/common/navbar";
 import Footer from "@/components/common/footer";
-import { formatPriceNPR, formatDate } from "@/lib/utils";
+import {
+  formatPriceNPR,
+  resolveImageUrl,
+  getShortAddress,
+  timeAgo,
+} from "@/lib/utils";
 import { Room, RoomStatus } from "@/types/room.types";
 import { UserRole } from "@/types/user.types";
 import { api } from "@/http/api/api";
@@ -61,35 +66,6 @@ import type {
   UnlockResult,
   UnlockStatus,
 } from "@/types/unlock.types";
-import { formatDistanceToNow } from "date-fns";
-
-const BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL?.replace("/api", "") ||
-  "http://localhost:3001";
-
-function resolveImageUrl(path: string): string {
-  if (!path) return "";
-  if (path.startsWith("http://") || path.startsWith("https://")) return path;
-  return `${BASE_URL}${path.startsWith("/") ? "" : "/"}${path}`;
-}
-
-/** Returns just the first meaningful segment of a formatted address */
-function getShortAddress(formattedAddress: string): string {
-  if (!formattedAddress) return "";
-  // First word before the first comma
-  const firstPart = formattedAddress.split(",")[0].trim();
-  return firstPart;
-}
-
-function timeAgo(dateStr: string): string {
-  try {
-    return formatDistanceToNow(new Date(dateStr), { addSuffix: true });
-  } catch {
-    return formatDate(dateStr);
-  }
-}
-
-// ─── Amenity icons ────────────────────────────────────────────────────────────
 
 const amenityIcons: Record<string, any> = {
   wifi: Wifi,
@@ -722,8 +698,6 @@ const LockedLocationPlaceholder = ({
   );
 };
 
-// ─── Main Page ────────────────────────────────────────────────────────────────
-
 export default function PropertyDetailsPage() {
   const { id } = useParams();
   const user = useUserStore((state) => state.user);
@@ -732,7 +706,6 @@ export default function PropertyDetailsPage() {
 
   const [room, setRoom] = useState<Room | null>(null);
   const [loading, setLoading] = useState(true);
-  const [liked, setLiked] = useState(false);
   const [showAllAmenities, setShowAllAmenities] = useState(false);
   const [unlockStatus, setUnlockStatus] = useState<UnlockStatus | null>(null);
   const [unlockedData, setUnlockedData] = useState<UnlockResult | null>(null);
