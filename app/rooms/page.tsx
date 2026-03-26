@@ -1,3 +1,4 @@
+// src/app/(public)/rooms/page.tsx
 "use client";
 
 import { Suspense, useState, useEffect, useCallback, useRef } from "react";
@@ -109,6 +110,7 @@ interface FilterState {
   minPrice: number;
   maxPrice: number;
   allowsWomen: boolean | null;
+  // Location is NEVER set automatically — only on explicit user click
   lat: number | null;
   lng: number | null;
   radius: number;
@@ -123,7 +125,7 @@ const DEFAULT_FILTERS: FilterState = {
   minPrice: 0,
   maxPrice: 50000,
   allowsWomen: null,
-  lat: null,
+  lat: null, // always null on init — never auto-populated
   lng: null,
   radius: 10,
 };
@@ -151,7 +153,7 @@ function CardSkeleton() {
   );
 }
 
-// ─── Filter Sheet (mobile + desktop) ─────────────────────────────────────────
+// ─── Filter Panel ─────────────────────────────────────────────────────────────
 
 interface FilterPanelProps {
   filters: FilterState;
@@ -212,8 +214,8 @@ function FilterPanel({ filters, onChange, onReset, total }: FilterPanelProps) {
         </div>
       </div>
 
-      {/* Radius (when location active) */}
-      {filters.lat && (
+      {/* Radius — only shown when user has already granted location */}
+      {filters.lat !== null && (
         <div>
           <p className="text-sm font-semibold text-slate-700 mb-2">
             Search Radius: {filters.radius} km
@@ -252,6 +254,8 @@ function RoomsContent() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
+  // NOTE: lat/lng are intentionally NOT read from URL params.
+  // Geolocation must always be explicitly requested by the user clicking the button.
   const [filters, setFilters] = useState<FilterState>(() => {
     const cats = (searchParams?.getAll("cat") as RoomCategory[]) ?? [];
     return {
@@ -260,21 +264,33 @@ function RoomsContent() {
       search: searchParams?.get("q") ?? "",
       minPrice: Number(searchParams?.get("min") ?? 0),
       maxPrice: Number(searchParams?.get("max") ?? 50000),
+      // lat/lng always start as null — no auto-geolocation
     };
   });
 
   const [rooms, setRooms] = useState<Room[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  // locLoading is only true while the browser geolocation promise is pending
   const [locLoading, setLocLoading] = useState(false);
   const [searchInput, setSearchInput] = useState(filters.search);
   const [filterOpen, setFilterOpen] = useState(false);
   const searchRef = useRef<NodeJS.Timeout | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  // Track whether the component has mounted (prevents SSR geolocation sniffing)
+  const mountedRef = useRef(false);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   const totalPages = Math.ceil(total / filters.take);
 
-  // ── Fetch rooms — supports multi-category via parallel requests ──
+  // ── Fetch rooms ──────────────────────────────────────────────────────────────
+
   const fetchRooms = useCallback(async (f: FilterState) => {
     abortRef.current?.abort();
     abortRef.current = new AbortController();
@@ -288,8 +304,13 @@ function RoomsContent() {
         ...(f.minPrice > 0 && { minPrice: f.minPrice }),
         ...(f.maxPrice < 50000 && { maxPrice: f.maxPrice }),
         ...(f.allowsWomen !== null && { allowsWomen: f.allowsWomen }),
-        ...(f.lat &&
-          f.lng && { latitude: f.lat, longitude: f.lng, radius: f.radius }),
+        // Only pass coordinates when the user has explicitly granted location
+        ...(f.lat !== null &&
+          f.lng !== null && {
+            latitude: f.lat,
+            longitude: f.lng,
+            radius: f.radius,
+          }),
         approvalStatus: RoomStatus.APPROVED,
       };
 
@@ -297,7 +318,6 @@ function RoomsContent() {
       let totalCount = 0;
 
       if (f.categories.length <= 1) {
-        // Single or no category — one request
         const resp = await roomService.getPublicRooms({
           ...baseParams,
           ...(f.categories.length === 1 && { category: f.categories[0] }),
@@ -305,7 +325,7 @@ function RoomsContent() {
         allRooms = resp.data;
         totalCount = resp.pagination?.total ?? resp.data.length;
       } else {
-        // Multiple categories — parallel requests, merge & deduplicate
+        // Multi-category: parallel requests + client-side dedup (OR logic)
         const results = await Promise.all(
           f.categories.map((cat) =>
             roomService.getPublicRooms({ ...baseParams, category: cat }),
@@ -321,7 +341,7 @@ function RoomsContent() {
           });
           totalCount += r.pagination?.total ?? r.data.length;
         });
-        totalCount = allRooms.length; // accurate count after dedup
+        totalCount = allRooms.length;
       }
 
       // Client-side sort
@@ -339,10 +359,11 @@ function RoomsContent() {
     }
   }, []);
 
-  // Re-fetch on filter change
+  // Re-fetch whenever filters change
   useEffect(() => {
     fetchRooms(filters);
-    // Sync URL
+
+    // Sync URL (exclude lat/lng — don't persist location in URL)
     const params = new URLSearchParams();
     filters.categories.forEach((c) => params.append("cat", c));
     if (filters.search) params.set("q", filters.search);
@@ -363,7 +384,8 @@ function RoomsContent() {
     setSearchInput("");
   }, []);
 
-  // ── Category toggle (multi-select) ──
+  // ── Category toggle ───────────────────────────────────────────────────────────
+
   const toggleCategory = (cat: RoomCategory) => {
     setFilters((prev) => {
       const has = prev.categories.includes(cat);
@@ -377,7 +399,8 @@ function RoomsContent() {
     });
   };
 
-  // ── Search debounce ──
+  // ── Search debounce ───────────────────────────────────────────────────────────
+
   const handleSearch = (val: string) => {
     setSearchInput(val);
     if (searchRef.current) clearTimeout(searchRef.current);
@@ -386,12 +409,18 @@ function RoomsContent() {
     }, 420);
   };
 
-  // ── Geolocation ──
-  const handleLocate = () => {
-    if (!navigator.geolocation) return;
+  // ── Geolocation — ONLY called on explicit button click ───────────────────────
+  // The browser permission prompt will only appear when this function runs.
+  // It is NEVER called automatically on mount, in useEffect, or anywhere else.
+
+  const handleLocateClick = () => {
+    // Safety guard: only run in browser, never on server
+    if (typeof window === "undefined" || !navigator.geolocation) return;
+
     setLocLoading(true);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
+        if (!mountedRef.current) return;
         updateFilters({
           lat: pos.coords.latitude,
           lng: pos.coords.longitude,
@@ -399,12 +428,20 @@ function RoomsContent() {
         });
         setLocLoading(false);
       },
-      () => setLocLoading(false),
-      { enableHighAccuracy: true, timeout: 8000 },
+      (_err) => {
+        if (!mountedRef.current) return;
+        setLocLoading(false);
+        // Silently fail — user denied or position unavailable
+      },
+      { enableHighAccuracy: false, timeout: 8000, maximumAge: 60000 },
     );
   };
 
-  const clearLocation = () => updateFilters({ lat: null, lng: null, page: 0 });
+  const clearLocation = () => {
+    updateFilters({ lat: null, lng: null, page: 0 });
+  };
+
+  // ── Derived state ─────────────────────────────────────────────────────────────
 
   const hasActiveFilters =
     filters.categories.length > 0 ||
@@ -412,13 +449,15 @@ function RoomsContent() {
     filters.maxPrice < 50000 ||
     !!filters.search ||
     filters.allowsWomen !== null ||
-    !!filters.lat;
+    filters.lat !== null;
+
+  const locationActive = filters.lat !== null;
 
   return (
     <>
       <NavBar />
       <div className="min-h-screen bg-slate-50">
-        {/* ── Hero search bar ── */}
+        {/* ── Header / Search ── */}
         <header className="bg-white border-b border-slate-100 pt-24 pb-6 shadow-sm">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <motion.div
@@ -436,8 +475,8 @@ function RoomsContent() {
               </p>
             </motion.div>
 
-            {/* Search input */}
             <div className="max-w-2xl mx-auto flex gap-2">
+              {/* Search */}
               <div className="relative flex-1">
                 <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                 <Input
@@ -455,25 +494,42 @@ function RoomsContent() {
                       updateFilters({ search: "", page: 0 });
                     }}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                    aria-label="Clear search"
                   >
                     <X className="w-3.5 h-3.5" />
                   </button>
                 )}
               </div>
 
-              {/* Locate me */}
+              {/*
+                Location button — this is the ONLY place geolocation is triggered.
+                The onClick handler calls getCurrentPosition; nothing else does.
+              */}
               <Button
                 type="button"
                 variant="outline"
                 size="icon"
-                onClick={filters.lat ? clearLocation : handleLocate}
+                onClick={locationActive ? clearLocation : handleLocateClick}
                 disabled={locLoading}
-                title={filters.lat ? "Clear location" : "Use my location"}
-                className={`h-11 w-11 rounded-xl border-slate-200 shrink-0 cursor-pointer ${filters.lat ? "bg-red-50 border-red-300 text-red-600" : ""}`}
+                title={
+                  locationActive
+                    ? "Clear location filter"
+                    : "Search near my location"
+                }
+                aria-label={
+                  locationActive
+                    ? "Clear location filter"
+                    : "Search near my location"
+                }
+                className={cn(
+                  "h-11 w-11 rounded-xl border-slate-200 shrink-0 transition-colors",
+                  locationActive &&
+                    "bg-red-50 border-red-300 text-red-600 hover:bg-red-100",
+                )}
               >
                 {locLoading ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
-                ) : filters.lat ? (
+                ) : locationActive ? (
                   <X className="w-4 h-4" />
                 ) : (
                   <Navigation className="w-4 h-4" />
@@ -481,8 +537,7 @@ function RoomsContent() {
               </Button>
             </div>
 
-            {/* Location indicator */}
-            {filters.lat && (
+            {locationActive && (
               <p className="text-center text-xs text-red-600 mt-2 flex items-center justify-center gap-1">
                 <MapPin className="w-3 h-3" />
                 Showing rooms within {filters.radius} km of your location
@@ -491,19 +546,19 @@ function RoomsContent() {
           </div>
         </header>
 
-        {/* ── Category chips (horizontal scroll) ── */}
+        {/* ── Category chips ── */}
         <div className="bg-white border-b border-slate-100 sticky top-0 z-20 shadow-sm">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center gap-2 py-3 overflow-x-auto scrollbar-hide">
-              {/* All button */}
               <button
                 type="button"
                 onClick={() => updateFilters({ categories: [], page: 0 })}
-                className={`flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-semibold whitespace-nowrap border transition-all shrink-0 ${
+                className={cn(
+                  "flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-semibold whitespace-nowrap border transition-all shrink-0",
                   filters.categories.length === 0
                     ? "bg-red-600 text-white border-red-600 shadow-md shadow-red-100"
-                    : "bg-white text-slate-600 border-slate-200 hover:border-red-400 hover:text-red-600"
-                }`}
+                    : "bg-white text-slate-600 border-slate-200 hover:border-red-400 hover:text-red-600",
+                )}
               >
                 <Home className="w-3.5 h-3.5" />
                 All
@@ -516,11 +571,12 @@ function RoomsContent() {
                     key={cat.value}
                     type="button"
                     onClick={() => toggleCategory(cat.value)}
-                    className={`flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-semibold whitespace-nowrap border transition-all shrink-0 cursor-pointer ${
+                    className={cn(
+                      "flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-semibold whitespace-nowrap border transition-all shrink-0 cursor-pointer",
                       active
                         ? "bg-red-600 text-white border-red-600 shadow-md shadow-red-100"
-                        : "bg-white text-slate-600 border-slate-200 hover:border-red-400 hover:text-red-600"
-                    }`}
+                        : "bg-white text-slate-600 border-slate-200 hover:border-red-400 hover:text-red-600",
+                    )}
                   >
                     <span>{cat.emoji}</span>
                     <span>{cat.label}</span>
@@ -532,10 +588,10 @@ function RoomsContent() {
           </div>
         </div>
 
-        {/* ── Main ── */}
+        {/* ── Main content ── */}
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex flex-col lg:flex-row gap-6">
-            {/* ── Sidebar (desktop) ── */}
+            {/* Sidebar (desktop) */}
             <aside className="hidden lg:block w-64 shrink-0">
               <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 sticky top-28">
                 <h2 className="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
@@ -551,7 +607,7 @@ function RoomsContent() {
               </div>
             </aside>
 
-            {/* ── Content ── */}
+            {/* Content */}
             <div className="flex-1 min-w-0">
               {/* Controls bar */}
               <div className="flex items-center justify-between gap-3 mb-4">
@@ -561,7 +617,7 @@ function RoomsContent() {
                       ? "Searching…"
                       : `${total} room${total !== 1 ? "s" : ""} found`}
                   </p>
-                  {/* Active filter chips */}
+
                   {hasActiveFilters && (
                     <div className="flex flex-wrap gap-1.5 mt-2">
                       {filters.categories.map((cat) => (
@@ -609,6 +665,18 @@ function RoomsContent() {
                           </button>
                         </Badge>
                       )}
+                      {locationActive && (
+                        <Badge
+                          variant="secondary"
+                          className="gap-1 text-xs pr-1 bg-blue-50 text-blue-700 border-blue-200"
+                        >
+                          <MapPin className="w-2.5 h-2.5" />
+                          Near me ({filters.radius} km)
+                          <button onClick={clearLocation}>
+                            <X className="w-2.5 h-2.5" />
+                          </button>
+                        </Badge>
+                      )}
                       <button
                         onClick={resetFilters}
                         className="text-xs text-slate-400 hover:text-slate-700 underline underline-offset-2 cursor-pointer"
@@ -620,7 +688,6 @@ function RoomsContent() {
                 </div>
 
                 <div className="flex items-center gap-2 shrink-0">
-                  {/* Sort */}
                   <Select
                     value={filters.sort}
                     onValueChange={(v) =>
@@ -642,13 +709,16 @@ function RoomsContent() {
                     </SelectContent>
                   </Select>
 
-                  {/* Mobile filter button */}
                   <Sheet open={filterOpen} onOpenChange={setFilterOpen}>
                     <SheetTrigger asChild>
                       <Button
                         variant="outline"
                         size="sm"
-                        className={`lg:hidden h-9 gap-1.5 rounded-lg border-slate-200 text-xs ${hasActiveFilters ? "border-red-400 text-red-600 bg-red-50" : ""}`}
+                        className={cn(
+                          "lg:hidden h-9 gap-1.5 rounded-lg border-slate-200 text-xs",
+                          hasActiveFilters &&
+                            "border-red-400 text-red-600 bg-red-50",
+                        )}
                       >
                         <SlidersHorizontal className="w-3.5 h-3.5" />
                         Filter
@@ -658,7 +728,8 @@ function RoomsContent() {
                               (filters.minPrice > 0 || filters.maxPrice < 50000
                                 ? 1
                                 : 0) +
-                              (filters.allowsWomen ? 1 : 0)}
+                              (filters.allowsWomen ? 1 : 0) +
+                              (locationActive ? 1 : 0)}
                           </span>
                         )}
                       </Button>
@@ -680,7 +751,7 @@ function RoomsContent() {
                 </div>
               </div>
 
-              {/* ── Grid ── */}
+              {/* Grid */}
               <AnimatePresence mode="wait">
                 {loading ? (
                   <motion.div
@@ -708,8 +779,8 @@ function RoomsContent() {
                       No rooms found
                     </h3>
                     <p className="text-sm text-slate-500 mb-5">
-                      {filters.lat
-                        ? "No rooms within your location range. Try increasing the radius."
+                      {locationActive
+                        ? "No rooms within your location range. Try increasing the radius in Filters."
                         : "Try adjusting your filters or search terms."}
                     </p>
                     <Button variant="outline" size="sm" onClick={resetFilters}>
@@ -730,7 +801,7 @@ function RoomsContent() {
                 )}
               </AnimatePresence>
 
-              {/* ── Pagination ── */}
+              {/* Pagination */}
               {!loading && rooms.length > 0 && totalPages > 1 && (
                 <motion.nav
                   aria-label="Pagination"
@@ -825,7 +896,7 @@ function RoomsContent() {
   );
 }
 
-// ─── Skeleton fallback ────────────────────────────────────────────────────────
+// ─── Page skeleton ────────────────────────────────────────────────────────────
 
 function PageSkeleton() {
   return (

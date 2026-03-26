@@ -25,8 +25,6 @@ import { unlockService } from "@/http/services/unlock.service";
 import { formatPriceNPR } from "@/lib/utils";
 import type { UnlockResult, UnlockStatus } from "@/types/unlock.types";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
 interface RoomUnlockDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -39,8 +37,6 @@ interface RoomUnlockDialogProps {
 }
 
 type Step = "info" | "topup_needed" | "confirm" | "success";
-
-// ─── Step Indicator ───────────────────────────────────────────────────────────
 
 const StepDot = ({
   active,
@@ -72,8 +68,6 @@ const StepDot = ({
     </span>
   </div>
 );
-
-// ─── Main Component ───────────────────────────────────────────────────────────
 
 export const RoomUnlockDialog: React.FC<RoomUnlockDialogProps> = ({
   open,
@@ -126,7 +120,6 @@ export const RoomUnlockDialog: React.FC<RoomUnlockDialogProps> = ({
         <DialogTitle className="sr-only">Unlock Room Details</DialogTitle>
 
         <AnimatePresence mode="wait">
-          {/* ── NOT AUTHENTICATED ── */}
           {!isAuthenticated && (
             <motion.div
               key="auth"
@@ -168,7 +161,6 @@ export const RoomUnlockDialog: React.FC<RoomUnlockDialogProps> = ({
             </motion.div>
           )}
 
-          {/* ── INFO STEP ── */}
           {isAuthenticated && step === "info" && (
             <motion.div
               key="info"
@@ -197,9 +189,7 @@ export const RoomUnlockDialog: React.FC<RoomUnlockDialogProps> = ({
                 </div>
               </div>
 
-              {/* Body */}
               <div className="p-6 space-y-5">
-                {/* What you get */}
                 <div className="space-y-2">
                   <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
                     What you'll unlock
@@ -336,7 +326,6 @@ export const RoomUnlockDialog: React.FC<RoomUnlockDialogProps> = ({
             </motion.div>
           )}
 
-          {/* ── CONFIRM STEP ── */}
           {isAuthenticated && step === "confirm" && (
             <motion.div
               key="confirm"
@@ -423,7 +412,6 @@ export const RoomUnlockDialog: React.FC<RoomUnlockDialogProps> = ({
             </motion.div>
           )}
 
-          {/* ── SUCCESS STEP ── */}
           {isAuthenticated && step === "success" && (
             <motion.div
               key="success"
