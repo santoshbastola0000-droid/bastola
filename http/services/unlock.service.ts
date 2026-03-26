@@ -20,23 +20,18 @@ export interface ProcessTopUpDTO {
 }
 
 const unlockService = {
-  // ─── Settings ───────────────────────────────────────────────────────────────
-
   async getSettings(): Promise<CommissionSettings> {
     const { data } = await privateApi.get("/unlock/settings");
     return data.data;
   },
 
   async updateSettings(payload: {
-    serviceCharge?: number;
     adminQrCodeUrl?: string;
     adminPaymentLabel?: string;
   }): Promise<CommissionSettings> {
     const { data } = await privateApi.patch("/unlock/admin/settings", payload);
     return data.data;
   },
-
-  // ─── Room Unlock ─────────────────────────────────────────────────────────────
 
   async getRoomUnlockStatus(roomId: string): Promise<UnlockStatus> {
     const { data } = await privateApi.get(`/unlock/room/${roomId}/status`);
@@ -94,13 +89,20 @@ const unlockService = {
     screenshotFile: File,
   ): Promise<TopUpRequest> {
     // 1. Upload the screenshot image
-    const screenshotUrl = await this.uploadFile(screenshotFile);
 
     // 2. Create the top-up request with the returned URL
-    const { data } = await privateApi.post("/unlock/topup", {
-      amount,
-      screenshotUrl,
-    });
+    const { data } = await privateApi.post(
+      "/unlock/topup",
+      {
+        amount,
+        screenshotFile,
+      },
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      },
+    );
     return data.data;
   },
 
@@ -143,6 +145,32 @@ const unlockService = {
       payload,
     );
     return data.data;
+  },
+
+  // unlock.service.ts
+  async updateSettingsQR(
+    id: string,
+    data: { adminPaymentLabel?: string },
+    qrFile?: File,
+  ): Promise<CommissionSettings> {
+    const formData = new FormData();
+
+    if (data.adminPaymentLabel) {
+      formData.append("adminPaymentLabel", data.adminPaymentLabel);
+    }
+
+    if (qrFile) {
+      formData.append("adminQrCodeUrl", qrFile);
+    }
+
+    const response = await privateApi.put(
+      `/commission/settings/${id}/qr`,
+      formData,
+      {
+        headers: { "Content-Type": "multipart/form-data" },
+      },
+    );
+    return response.data.data;
   },
 };
 

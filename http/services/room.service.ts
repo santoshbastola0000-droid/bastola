@@ -10,13 +10,11 @@ import {
 import { api } from "../api/api";
 
 export const roomService = {
-  // Get all rooms with pagination and filters
   getRooms: async (params: RoomFilters = {}): Promise<RoomsResponse> => {
     const response = await privateApi.get("/rooms", { params });
     return response.data;
   },
 
-  // Get public rooms (approved and available)
   getPublicRooms: async (params: RoomFilters = {}): Promise<RoomsResponse> => {
     const response = await api.get("/rooms/public", { params });
     return response.data;
@@ -47,7 +45,6 @@ export const roomService = {
     return response.data;
   },
 
-  // Get pending rooms (admin only)
   getPendingRooms: async (params: RoomFilters = {}): Promise<RoomsResponse> => {
     const response = await privateApi.get("/rooms/pending", {
       params: { ...params, approvalStatus: RoomStatus.PENDING },
@@ -55,19 +52,16 @@ export const roomService = {
     return response.data;
   },
 
-  // Get room stats (admin only)
   getRoomStats: async (): Promise<{ data: RoomStats }> => {
     const response = await privateApi.get("/rooms/stats");
     return response.data;
   },
 
-  // Get single room by ID
   getRoomById: async (id: string): Promise<{ data: Room }> => {
     const response = await privateApi.get(`/rooms/${id}`);
     return response.data;
   },
 
-  // Create new room
   createRoom: async (data: FormData): Promise<{ data: Room }> => {
     const response = await privateApi.post("/rooms", data, {
       headers: {
@@ -77,7 +71,6 @@ export const roomService = {
     return response.data;
   },
 
-  // Update room
   updateRoom: async (
     id: string,
     data: UpdateRoomDTO,
@@ -86,12 +79,10 @@ export const roomService = {
     return response.data;
   },
 
-  // Delete room (archive)
   deleteRoom: async (id: string): Promise<void> => {
     await privateApi.delete(`/rooms/${id}`);
   },
 
-  // Update approval status (admin only)
   updateApprovalStatus: async (
     id: string,
     status: RoomStatus.APPROVED | RoomStatus.REJECTED,
@@ -104,7 +95,6 @@ export const roomService = {
     return response.data;
   },
 
-  // Update listing status (admin only)
   updateListingStatus: async (
     id: string,
     status: RoomStatus.AVAILABLE | RoomStatus.RENTED | RoomStatus.ARCHIVED,

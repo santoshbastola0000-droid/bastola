@@ -49,6 +49,7 @@ export interface TopUpRequest {
 }
 
 export interface CommissionSettings {
+  id: string;
   serviceCharge: number;
   adminQrCodeUrl: string | null;
   adminPaymentLabel: string | null;

@@ -1,3 +1,4 @@
+// app/admin/wallet-topup/page.tsx
 "use client";
 
 import { useState, useEffect } from "react";
@@ -17,23 +18,14 @@ import {
   Eye,
   Filter,
   Loader2,
-  Upload,
-  QrCode,
   Settings,
   ImageIcon,
   User,
-  Save,
 } from "lucide-react";
 import { unlockService } from "@/http/services/unlock.service";
 import { TopUpStatus } from "@/types/unlock.types";
 import type { TopUpRequest } from "@/types/unlock.types";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -62,7 +54,6 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatDate, formatDateTime, formatNepaliCurrency } from "@/lib/utils";
 import { cn } from "@/lib/utils";
@@ -71,22 +62,9 @@ import {
   FAILURETOAST,
   PAGE_SIZE_OPTIONS,
 } from "@/lib/constants/app.constants";
-import { api } from "@/http/api/api";
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-const BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL?.replace("/api", "") ||
-  "http://localhost:3001";
-
-function resolveUrl(path: string | null | undefined): string | null {
-  if (!path) return null;
-  if (path.startsWith("http://") || path.startsWith("https://")) return path;
-  return `${BASE_URL}${path.startsWith("/") ? "" : "/"}${path}`;
-}
+import { SettingsTab } from "@/components/admin/wallet-topup/page";
 
 // ─── Status Badge ─────────────────────────────────────────────────────────────
-
 const getStatusBadge = (status: TopUpStatus) => {
   switch (status) {
     case TopUpStatus.PENDING:
@@ -114,295 +92,6 @@ const getStatusBadge = (status: TopUpStatus) => {
       return <Badge>{status}</Badge>;
   }
 };
-
-// ─── Settings Tab ─────────────────────────────────────────────────────────────
-
-function SettingsTab() {
-  const queryClient = useQueryClient();
-
-  // Local state
-  const [serviceCharge, setServiceCharge] = useState("");
-  const [adminLabel, setAdminLabel] = useState("");
-  const [qrFile, setQrFile] = useState<File | null>(null);
-  const [qrPreview, setQrPreview] = useState<string | null>(null); // local blob or saved URL
-  const [saving, setSaving] = useState(false);
-  const [uploading, setUploading] = useState(false);
-
-  // ── Fetch current settings ──
-  const { data: settings, isLoading: settingsLoading } = useQuery({
-    queryKey: ["unlock-settings"],
-    queryFn: () => unlockService.getSettings(),
-  });
-
-  // Populate form when settings arrive
-  useEffect(() => {
-    if (!settings) return;
-    setServiceCharge(String(settings.serviceCharge ?? 2000));
-    setAdminLabel(settings.adminPaymentLabel ?? "");
-    // Resolve the saved QR URL to a full URL for display
-    setQrPreview(resolveUrl(settings.adminQrCodeUrl));
-  }, [settings]);
-
-  const handleQrFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (!file.type.startsWith("image/")) {
-      toast.error("Please upload an image file (JPG, PNG, etc.)");
-      return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("File size must be under 5 MB");
-      return;
-    }
-    setQrFile(file);
-    // Show local preview immediately
-    const reader = new FileReader();
-    reader.onloadend = () => setQrPreview(reader.result as string);
-    reader.readAsDataURL(file);
-  };
-
-  const handleRemoveQr = () => {
-    setQrFile(null);
-    setQrPreview(null);
-  };
-
-  const handleSave = async () => {
-    const charge = Number(serviceCharge);
-    if (isNaN(charge) || charge < 0) {
-      toast.error("Please enter a valid service charge amount");
-      return;
-    }
-
-    setSaving(true);
-    try {
-      let uploadedQrUrl: string | undefined =
-        settings?.adminQrCodeUrl ?? undefined;
-
-      // ── Step 1: Upload QR image if a new one was selected ──
-      if (qrFile) {
-        setUploading(true);
-        try {
-          uploadedQrUrl = await unlockService.uploadScreenshot(qrFile);
-        } finally {
-          setUploading(false);
-        }
-      } else if (qrPreview === null) {
-        // Admin explicitly removed the QR — clear it
-        uploadedQrUrl = undefined;
-      }
-
-      // ── Step 2: Save settings with the new (or existing) QR URL ──
-      await unlockService.updateSettings({
-        serviceCharge: charge,
-        adminPaymentLabel: adminLabel.trim() || undefined,
-        adminQrCodeUrl: uploadedQrUrl,
-      });
-
-      // Refresh settings query so the rest of the UI stays in sync
-      queryClient.invalidateQueries({ queryKey: ["unlock-settings"] });
-
-      setQrFile(null); // clear pending file after save
-      toast.success("Settings saved successfully", {
-        style: { background: SUCCESSTOAST, color: "#fff" },
-      });
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Failed to save settings", {
-        style: { background: FAILURETOAST, color: "#fff" },
-      });
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  if (settingsLoading) {
-    return (
-      <Card>
-        <CardContent className="p-8 flex justify-center">
-          <Loader2 className="h-6 w-6 animate-spin text-primary" />
-        </CardContent>
-      </Card>
-    );
-  }
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Settings className="h-5 w-5" />
-          Payment & Unlock Settings
-        </CardTitle>
-        <CardDescription>
-          Set the service charge users pay to unlock room details, and upload
-          the admin QR code they scan to top up their wallet.
-        </CardDescription>
-      </CardHeader>
-
-      <CardContent className="space-y-8">
-        {/* ── Service charge ── */}
-        <div className="space-y-2 max-w-sm">
-          <Label htmlFor="serviceCharge" className="font-semibold">
-            Room Unlock Service Charge (रू)
-          </Label>
-          <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-medium text-sm">
-              रू
-            </span>
-            <Input
-              id="serviceCharge"
-              type="number"
-              min={0}
-              value={serviceCharge}
-              onChange={(e) => setServiceCharge(e.target.value)}
-              className="pl-8"
-              placeholder="2000"
-            />
-          </div>
-          <p className="text-xs text-muted-foreground">
-            This amount is deducted from the user's wallet when they unlock a
-            room's contact & location details.
-          </p>
-        </div>
-
-        <Separator />
-
-        {/* ── Payment account label ── */}
-        <div className="space-y-2 max-w-md">
-          <Label htmlFor="adminLabel" className="font-semibold">
-            Payment Account Label
-          </Label>
-          <Input
-            id="adminLabel"
-            value={adminLabel}
-            onChange={(e) => setAdminLabel(e.target.value)}
-            placeholder="e.g. eSewa: 9876543210 | Khalti: RentalService"
-          />
-          <p className="text-xs text-muted-foreground">
-            Displayed to users alongside the QR code so they know which account
-            to pay.
-          </p>
-        </div>
-
-        <Separator />
-
-        {/* ── QR code upload ── */}
-        <div className="space-y-3">
-          <div>
-            <Label className="font-semibold">Admin Payment QR Code</Label>
-            <p className="text-xs text-muted-foreground mt-1">
-              Upload your eSewa / Khalti / bank QR code image. Users will scan
-              this to pay, then upload a screenshot for approval.
-            </p>
-          </div>
-
-          <div className="flex flex-col sm:flex-row gap-6 items-start">
-            {/* Preview box */}
-            <div className="shrink-0">
-              {qrPreview ? (
-                <div className="relative group">
-                  <div className="w-44 h-44 rounded-2xl border-2 border-primary/20 bg-white shadow-md overflow-hidden flex items-center justify-center p-2">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={qrPreview}
-                      alt="Admin QR Code"
-                      className="w-full h-full object-contain"
-                    />
-                  </div>
-                  {/* Remove overlay */}
-                  <button
-                    type="button"
-                    onClick={handleRemoveQr}
-                    className="absolute -top-2 -right-2 w-7 h-7 rounded-full bg-red-500 hover:bg-red-600 text-white flex items-center justify-center shadow-md transition-colors"
-                    title="Remove QR code"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                  {qrFile && (
-                    <div className="absolute bottom-0 left-0 right-0 bg-amber-500/90 text-white text-[10px] font-semibold text-center py-1 rounded-b-xl">
-                      Unsaved — click Save
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="w-44 h-44 rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 flex flex-col items-center justify-center gap-2 text-slate-400">
-                  <QrCode className="w-12 h-12 opacity-40" />
-                  <span className="text-xs font-medium">No QR Code</span>
-                </div>
-              )}
-            </div>
-
-            {/* Upload controls */}
-            <div className="space-y-3 flex-1">
-              <label
-                htmlFor="qr-upload"
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border-2 border-dashed border-slate-300 hover:border-primary hover:bg-primary/5 cursor-pointer transition-all text-sm font-medium text-slate-600 hover:text-primary"
-              >
-                <Upload className="w-4 h-4" />
-                {qrFile ? "Change QR Image" : "Upload QR Image"}
-                <input
-                  id="qr-upload"
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={handleQrFileChange}
-                />
-              </label>
-
-              {qrFile && (
-                <p className="text-xs text-amber-600 flex items-center gap-1.5 font-medium">
-                  <CheckCircle className="w-3.5 h-3.5 text-emerald-500" />
-                  <span className="text-slate-600">{qrFile.name}</span>— will
-                  upload on Save
-                </p>
-              )}
-
-              <p className="text-xs text-muted-foreground">
-                Accepted: JPG, PNG, WebP · Max 5 MB
-              </p>
-
-              {/* What this QR is used for */}
-              <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 text-xs text-slate-500 space-y-1">
-                <p className="font-semibold text-slate-700">
-                  📍 Where this appears:
-                </p>
-                <ul className="list-disc list-inside space-y-0.5 ml-1">
-                  <li>Wallet Top-Up dialog shown to all users</li>
-                  <li>Users scan it to pay, then upload screenshot</li>
-                  <li>One QR applies to all rooms globally</li>
-                </ul>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* ── Save button ── */}
-        <div className="pt-2 border-t border-slate-100">
-          <Button
-            onClick={handleSave}
-            disabled={saving}
-            className="gap-2 cursor-pointer min-w-[140px]"
-          >
-            {saving ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                {uploading ? "Uploading QR…" : "Saving…"}
-              </>
-            ) : (
-              <>
-                <Save className="w-4 h-4" />
-                Save Settings
-              </>
-            )}
-          </Button>
-          <p className="text-xs text-muted-foreground mt-2">
-            Changes take effect immediately for all users.
-          </p>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-// ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function AdminTopUpPage() {
   const queryClient = useQueryClient();
@@ -519,7 +208,6 @@ export default function AdminTopUpPage() {
 
   return (
     <div className="p-4 md:p-6 space-y-6 pb-20">
-      {/* ── Header ── */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-foreground flex items-center gap-3">
@@ -1081,7 +769,7 @@ export default function AdminTopUpPage() {
                   <div className="rounded-xl overflow-hidden border border-slate-200">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                      src={resolveUrl(selectedRequest.screenshot) ?? ""}
+                      src={`${process.env.NEXT_PUBLIC_BACKEND_URL}/${selectedRequest.screenshot}`}
                       alt="Payment Screenshot"
                       className="w-full object-contain max-h-80"
                     />
