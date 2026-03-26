@@ -1,6 +1,7 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { BASE_URL } from "./constants/app.constants";
+import { formatDistanceToNow } from "date-fns";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -104,4 +105,20 @@ export function resolveImageUrl(path: string): string {
   if (!path) return "";
   if (path.startsWith("http://") || path.startsWith("https://")) return path;
   return `${BASE_URL}${path.startsWith("/") ? "" : "/"}${path}`;
+}
+
+/** Returns just the first meaningful segment of a formatted address */
+export function getShortAddress(formattedAddress: string): string {
+  if (!formattedAddress) return "";
+  // First word before the first comma
+  const firstPart = formattedAddress.split(",")[0].trim();
+  return firstPart;
+}
+
+export function timeAgo(dateStr: string): string {
+  try {
+    return formatDistanceToNow(new Date(dateStr), { addSuffix: true });
+  } catch {
+    return formatDate(dateStr);
+  }
 }
