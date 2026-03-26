@@ -19,20 +19,8 @@ import {
   Home,
 } from "lucide-react";
 import type { Room } from "@/types/room.types";
-import { formatPriceNPR } from "@/lib/utils";
-
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-
-const BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL?.replace("/api", "") ||
-  "http://localhost:3001";
-
-/** Converts a relative `/uploads/...` path to a full URL */
-function resolveImageUrl(path: string): string {
-  if (!path) return "";
-  if (path.startsWith("http://") || path.startsWith("https://")) return path;
-  return `${BASE_URL}${path.startsWith("/") ? "" : "/"}${path}`;
-}
+import { formatPriceNPR, resolveImageUrl } from "@/lib/utils";
+import { BASE_URL } from "@/lib/constants/app.constants";
 
 const amenityIcons: Record<string, React.ElementType> = {
   wifi: Wifi,
@@ -121,6 +109,8 @@ export function PropertyCard({ room, index = 0 }: PropertyCardProps) {
   // ── Image resolution ──
   const imageUrl =
     !imgError && room.images?.length ? resolveImageUrl(room.images[0]) : null;
+
+  console.log("images", imageUrl);
 
   const topAmenities = (room.amenities ?? []).slice(0, 3);
   const city = room.location?.city ?? "";

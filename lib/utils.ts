@@ -1,5 +1,6 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
+import { BASE_URL } from "./constants/app.constants";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -95,3 +96,12 @@ export const formatNepaliCurrency = (amount: number | string): string => {
 
   return formatter.format(num).replace("NPR", "Rs.");
 };
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+/** Converts a relative `/uploads/...` path to a full URL */
+export function resolveImageUrl(path: string): string {
+  if (!path) return "";
+  if (path.startsWith("http://") || path.startsWith("https://")) return path;
+  return `${BASE_URL}${path.startsWith("/") ? "" : "/"}${path}`;
+}
