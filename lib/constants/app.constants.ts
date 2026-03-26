@@ -31,3 +31,7 @@ export const sizeConstants = {
 export const GOOGLE_MAPS_URL = "https://maps.app.goo.gl/JLAQ5KnQBGMoSNa19";
 
 export const BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL!;
+
+export type Step = "info" | "amount" | "payment" | "success";
+
+export const MIN_TOPUP = 100;
