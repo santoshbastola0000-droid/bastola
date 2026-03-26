@@ -19,8 +19,7 @@ import {
 } from "lucide-react";
 import type { Property } from "@/types/property.types";
 import { formatPriceNPR } from "@/lib/utils";
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "";
+import { BASE_URL } from "@/lib/constants/app.constants";
 
 interface PropertyCardProps {
   property: Property;
@@ -105,7 +104,7 @@ const getFullImageUrl = (imagePath: string | undefined): string => {
   const cleanPath = imagePath.startsWith("/") ? imagePath.slice(1) : imagePath;
 
   // Combine base URL with the image path
-  const baseUrl = API_BASE_URL.replace(/\/$/, "");
+  const baseUrl = BASE_URL.replace(/\/$/, "");
   return `${baseUrl}/${cleanPath}`;
 };
 
@@ -181,12 +180,6 @@ export function PropertyCard({
       fallbackImages[property_type] ||
         "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800&q=80",
     );
-  };
-
-  const handleLike = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsLiked(!isLiked);
   };
 
   const typeInfo = typeConfig[property_type] || {
