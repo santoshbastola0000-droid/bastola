@@ -1081,7 +1081,7 @@ export default function AdminTopUpPage() {
                   <div className="rounded-xl overflow-hidden border border-slate-200">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                      src={resolveUrl(selectedRequest.screenshotUrl) ?? ""}
+                      src={resolveUrl(selectedRequest.screenshot) ?? ""}
                       alt="Payment Screenshot"
                       className="w-full object-contain max-h-80"
                     />
