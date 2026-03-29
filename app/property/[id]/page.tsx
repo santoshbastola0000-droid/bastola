@@ -1,9 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { motion, AnimatePresence } from "framer-motion";
+import {
+  motion,
+  AnimatePresence,
+  useMotionValue,
+  PanInfo,
+} from "framer-motion";
 import {
   MapPin,
   Bath,
@@ -37,6 +42,11 @@ import {
   Copy,
   Navigation,
   User,
+  Star,
+  Share2,
+  Heart,
+  ChevronUp,
+  ChevronDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -66,7 +76,9 @@ import type {
   UnlockResult,
   UnlockStatus,
 } from "@/types/unlock.types";
+import { cn } from "@/lib/utils";
 
+// ── Amenity icons ──
 const amenityIcons: Record<string, any> = {
   wifi: Wifi,
   parking: Car,
@@ -78,8 +90,7 @@ const amenityIcons: Record<string, any> = {
   "dining area": Utensils,
 };
 
-// ─── Water supply parser ──────────────────────────────────────────────────────
-
+// ── Nepali time labels ──
 const NEPALI_TIME_LABELS: Record<string, string> = {
   "05:00-07:00": "५:०० – ७:०० बिहान",
   "06:00-08:00": "६:०० – ८:०० बिहान",
@@ -89,7 +100,7 @@ const NEPALI_TIME_LABELS: Record<string, string> = {
   "16:00-18:00": "४:०० – ६:०० साँझ",
   "17:00-19:00": "५:०० – ७:०० साँझ",
   "18:00-20:00": "६:०० – ८:०० साँझ",
-  "19:00-21:00": "७:०० – ९:०० साँझ",
+  "19:00-21:00": "७:०० – ९:०° साँझ",
 };
 
 interface WaterInfo {
@@ -112,14 +123,12 @@ function parseWaterTimings(
     note: null,
   };
   if (!timings) return empty;
-
   const rawNotes = timings.notes ?? "";
   const typeMatch = rawNotes.match(/TYPE:([a-z0-9-]+)/i);
   const type = typeMatch?.[1]?.toLowerCase() ?? "";
   const cleanNote = rawNotes.replace(/TYPE:[a-z0-9-]+/i, "").trim() || null;
-  const fmt = (slot: string | undefined): string | null =>
+  const fmt = (slot?: string) =>
     slot ? (NEPALI_TIME_LABELS[slot] ?? slot) : null;
-
   if (type === "24-hour" || timings.morning === "00:00-24:00")
     return { is24Hour: true, morning: null, evening: null, note: null };
   if (type === "tanker")
@@ -138,31 +147,9 @@ function parseWaterTimings(
   };
 }
 
-const getStatusBadge = (status: RoomStatus) => {
-  switch (status) {
-    case "Approved":
-      return (
-        <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100 border-emerald-200 gap-1 cursor-default">
-          <Check className="h-3 w-3" /> Available
-        </Badge>
-      );
-    case "Pending":
-      return (
-        <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100 border-amber-200 gap-1 cursor-default">
-          <Clock className="h-3 w-3" /> Pending Approval
-        </Badge>
-      );
-    case "Rejected":
-      return (
-        <Badge className="bg-red-100 text-red-800 hover:bg-red-100 border-red-200 gap-1 cursor-default">
-          <AlertCircle className="h-3 w-3" /> Not Available
-        </Badge>
-      );
-    default:
-      return <Badge variant="outline">{status}</Badge>;
-  }
-};
-
+// ════════════════════════════════════════════════════
+// ── SWIPEABLE IMAGE CAROUSEL (mobile-native) ──
+// ════════════════════════════════════════════════════
 const ImageCarousel = ({
   images,
   title,
@@ -170,120 +157,196 @@ const ImageCarousel = ({
   images: string[];
   title: string;
 }) => {
-  const [currentIndex, setCurrentIndex] = useState(0);
+  const [current, setCurrent] = useState(0);
   const [showFullscreen, setShowFullscreen] = useState(false);
+  const dragX = useMotionValue(0);
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  const goToPrevious = () =>
-    setCurrentIndex((p) => (p === 0 ? images.length - 1 : p - 1));
-  const goToNext = () =>
-    setCurrentIndex((p) => (p === images.length - 1 ? 0 : p + 1));
+  const goTo = useCallback(
+    (idx: number) => setCurrent(Math.max(0, Math.min(images.length - 1, idx))),
+    [images.length],
+  );
+  const prev = () => goTo(current - 1);
+  const next = () => goTo(current + 1);
 
-  if (!images || images.length === 0) {
+  const handleDragEnd = (_: any, info: PanInfo) => {
+    if (info.offset.x < -60) next();
+    else if (info.offset.x > 60) prev();
+    dragX.set(0);
+  };
+
+  if (!images?.length)
     return (
-      <div className="h-[420px] w-full bg-slate-100 rounded-2xl flex items-center justify-center">
+      <div className="h-72 sm:h-96 w-full bg-slate-100 flex items-center justify-center rounded-b-3xl">
         <div className="text-center">
-          <Building2 className="h-16 w-16 text-slate-400 mx-auto mb-2" />
-          <p className="text-slate-500">No images available</p>
+          <Building2 className="w-14 h-14 text-slate-300 mx-auto mb-2" />
+          <p className="text-slate-400 text-sm">No photos yet</p>
         </div>
       </div>
     );
-  }
 
   return (
     <>
-      <div className="relative h-[420px] w-full group rounded-2xl overflow-hidden shadow-xl">
-        <img
-          src={resolveImageUrl(images[currentIndex])}
-          alt={`${title} - Image ${currentIndex + 1}`}
-          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-          onError={(e) => {
-            (e.target as HTMLImageElement).src = "/placeholder-image.jpg";
-          }}
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+      <div
+        ref={containerRef}
+        className="relative h-72 sm:h-[420px] w-full overflow-hidden bg-slate-900"
+      >
+        {/* Images */}
+        <AnimatePresence initial={false} mode="wait">
+          <motion.img
+            key={current}
+            src={resolveImageUrl(images[current])}
+            alt={`${title} ${current + 1}`}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.25 }}
+            className="absolute inset-0 w-full h-full object-cover"
+            onError={(e) => {
+              (e.target as HTMLImageElement).src = "/placeholder-image.jpg";
+            }}
+            drag="x"
+            dragConstraints={{ left: 0, right: 0 }}
+            dragElastic={0.2}
+            onDragEnd={handleDragEnd}
+            style={{ x: dragX, cursor: "grab", userSelect: "none" }}
+          />
+        </AnimatePresence>
 
+        {/* Gradient overlays */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/20 pointer-events-none" />
+
+        {/* Counter pill */}
+        <div className="absolute top-4 left-4 bg-black/60 backdrop-blur-sm text-white text-xs font-semibold px-3 py-1.5 rounded-full flex items-center gap-1.5">
+          <ImageIcon className="w-3 h-3" />
+          {current + 1} / {images.length}
+        </div>
+
+        {/* Fullscreen button */}
+        <button
+          onClick={() => setShowFullscreen(true)}
+          className="absolute top-4 right-4 w-9 h-9 bg-black/60 backdrop-blur-sm text-white rounded-full flex items-center justify-center hover:bg-black/80 transition-colors cursor-pointer"
+        >
+          <Maximize2 className="w-4 h-4" />
+        </button>
+
+        {/* Nav arrows — hidden on mobile, shown md+ */}
         {images.length > 1 && (
           <>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-              onClick={goToPrevious}
+            <button
+              onClick={prev}
+              disabled={current === 0}
+              className="hidden md:flex absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/60 backdrop-blur-sm text-white rounded-full items-center justify-center hover:bg-black/80 disabled:opacity-30 transition-all cursor-pointer"
             >
-              <ChevronLeft className="h-6 w-6" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-              onClick={goToNext}
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+            <button
+              onClick={next}
+              disabled={current === images.length - 1}
+              className="hidden md:flex absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/60 backdrop-blur-sm text-white rounded-full items-center justify-center hover:bg-black/80 disabled:opacity-30 transition-all cursor-pointer"
             >
-              <ChevronRight className="h-6 w-6" />
-            </Button>
+              <ChevronRight className="w-5 h-5" />
+            </button>
           </>
         )}
 
-        <div className="absolute bottom-4 left-4 bg-black/60 backdrop-blur-sm text-white px-3 py-1.5 rounded-full text-sm">
-          {currentIndex + 1} / {images.length}
-        </div>
-
-        <Button
-          variant="ghost"
-          size="icon"
-          className="absolute top-4 right-4 bg-black/50 hover:bg-black/70 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-          onClick={() => setShowFullscreen(true)}
-        >
-          <Maximize2 className="h-4 w-4" />
-        </Button>
-
+        {/* Dot indicators */}
         {images.length > 1 && (
-          <div className="absolute -bottom-16 left-0 right-0 flex justify-center gap-2 p-2 bg-white/90 backdrop-blur-sm rounded-lg shadow-lg">
-            {images.slice(0, 5).map((image, index) => (
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5">
+            {images.slice(0, 8).map((_, i) => (
               <button
-                key={index}
-                onClick={() => setCurrentIndex(index)}
-                className={`relative w-12 h-12 rounded-md overflow-hidden transition-all ${index === currentIndex ? "ring-2 ring-red-500 scale-110" : "opacity-70 hover:opacity-100"}`}
-              >
-                <img
-                  src={resolveImageUrl(image)}
-                  alt={`Thumbnail ${index + 1}`}
-                  className="w-full h-full object-cover"
-                />
-              </button>
+                key={i}
+                onClick={() => goTo(i)}
+                className={cn(
+                  "rounded-full transition-all cursor-pointer",
+                  i === current
+                    ? "w-5 h-2 bg-white"
+                    : "w-2 h-2 bg-white/50 hover:bg-white/80",
+                )}
+              />
             ))}
+            {images.length > 8 && (
+              <span className="text-white/70 text-xs self-center">
+                +{images.length - 8}
+              </span>
+            )}
           </div>
         )}
       </div>
 
+      {/* Thumbnail strip */}
+      {images.length > 1 && (
+        <div className="flex gap-2 px-4 py-3 overflow-x-auto scrollbar-none bg-white border-b border-slate-100">
+          {images.map((img, i) => (
+            <button
+              key={i}
+              onClick={() => goTo(i)}
+              className={cn(
+                "flex-shrink-0 w-14 h-14 sm:w-16 sm:h-16 rounded-xl overflow-hidden border-2 transition-all cursor-pointer",
+                i === current
+                  ? "border-red-500 scale-105 shadow-md shadow-red-100"
+                  : "border-transparent opacity-60 hover:opacity-90",
+              )}
+            >
+              <img
+                src={resolveImageUrl(img)}
+                alt=""
+                className="w-full h-full object-cover"
+              />
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Fullscreen Dialog */}
       <Dialog open={showFullscreen} onOpenChange={setShowFullscreen}>
-        <DialogContent className="max-w-5xl w-[95vw] h-[90vh] p-0">
+        <DialogContent className="max-w-none w-screen h-screen p-0 bg-black border-0 rounded-none">
           <DialogTitle className="sr-only">Room Images</DialogTitle>
-          <div className="relative h-full w-full bg-black">
-            <img
-              src={resolveImageUrl(images[currentIndex])}
-              alt={`${title} - Fullscreen`}
-              className="w-full h-full object-contain"
-            />
+          <div className="relative w-full h-full flex items-center justify-center">
+            <AnimatePresence mode="wait">
+              <motion.img
+                key={`fs-${current}`}
+                src={resolveImageUrl(images[current])}
+                alt={`${title} fullscreen`}
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ duration: 0.2 }}
+                className="max-w-full max-h-full object-contain"
+                drag="x"
+                dragConstraints={{ left: 0, right: 0 }}
+                dragElastic={0.15}
+                onDragEnd={(_: any, info: PanInfo) => {
+                  if (info.offset.x < -60) next();
+                  else if (info.offset.x > 60) prev();
+                }}
+                style={{ cursor: "grab", userSelect: "none" }}
+              />
+            </AnimatePresence>
+            <button
+              onClick={() => setShowFullscreen(false)}
+              className="absolute top-4 right-4 w-10 h-10 bg-white/20 backdrop-blur-sm text-white rounded-full flex items-center justify-center hover:bg-white/30 cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
             {images.length > 1 && (
               <>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white rounded-full"
-                  onClick={goToPrevious}
+                <button
+                  onClick={prev}
+                  disabled={current === 0}
+                  className="absolute left-4 top-1/2 -translate-y-1/2 w-11 h-11 bg-white/20 backdrop-blur-sm text-white rounded-full flex items-center justify-center hover:bg-white/30 disabled:opacity-30 cursor-pointer"
                 >
-                  <ChevronLeft className="h-8 w-8" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white rounded-full"
-                  onClick={goToNext}
+                  <ChevronLeft className="w-6 h-6" />
+                </button>
+                <button
+                  onClick={next}
+                  disabled={current === images.length - 1}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 w-11 h-11 bg-white/20 backdrop-blur-sm text-white rounded-full flex items-center justify-center hover:bg-white/30 disabled:opacity-30 cursor-pointer"
                 >
-                  <ChevronRight className="h-8 w-8" />
-                </Button>
-                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/50 text-white px-4 py-2 rounded-full text-sm">
-                  {currentIndex + 1} / {images.length}
+                  <ChevronRight className="w-6 h-6" />
+                </button>
+                <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-black/60 text-white text-sm px-4 py-2 rounded-full font-medium">
+                  {current + 1} / {images.length}
                 </div>
               </>
             )}
@@ -294,49 +357,81 @@ const ImageCarousel = ({
   );
 };
 
-// ─── TikTok Card ──────────────────────────────────────────────────────────────
-
-const TikTokCard = ({ url }: { url: string }) => (
-  <motion.div
-    initial={{ opacity: 0, y: 20 }}
-    animate={{ opacity: 1, y: 0 }}
-    className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-2xl p-5 border border-slate-700 overflow-hidden relative"
+// ── Missing import fix ──
+const ImageIcon = ({ className }: { className?: string }) => (
+  <svg
+    className={className}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={2}
   >
-    <div className="absolute -top-10 -right-10 w-40 h-40 bg-pink-500/20 rounded-full blur-3xl pointer-events-none" />
-    <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-cyan-500/20 rounded-full blur-3xl pointer-events-none" />
-    <div className="relative flex items-center gap-4">
-      <div className="w-12 h-12 rounded-xl bg-black flex items-center justify-center shadow-lg flex-shrink-0">
-        <svg viewBox="0 0 24 24" className="w-7 h-7" fill="white">
-          <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1V9.01a6.32 6.32 0 0 0-.79-.05 6.34 6.34 0 0 0-6.34 6.34 6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.33-6.34l-.01-8.83a8.18 8.18 0 0 0 4.78 1.52V4.56a4.85 4.85 0 0 1-1-.13z" />
-        </svg>
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-white font-semibold text-sm">TikTok मा हेर्नुहोस्</p>
-        <p className="text-slate-400 text-xs mt-0.5">
-          यस घरको भिडियो TikTok मा उपलब्ध छ
-        </p>
-      </div>
-      <a
-        href={url}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="flex-shrink-0"
-      >
-        <Button
-          size="sm"
-          className="rounded-full bg-gradient-to-r from-pink-500 via-red-500 to-yellow-500 hover:opacity-90 text-white border-0 gap-1.5 font-semibold shadow-lg"
-        >
-          <PlayCircle className="w-3.5 h-3.5" />
-          हेर्नुहोस्
-          <ExternalLink className="w-3 h-3" />
-        </Button>
-      </a>
-    </div>
-  </motion.div>
+    <rect x="3" y="3" width="18" height="18" rx="2" />
+    <circle cx="8.5" cy="8.5" r="1.5" />
+    <polyline points="21 15 16 10 5 21" />
+  </svg>
 );
 
-// ─── Water Supply Section ─────────────────────────────────────────────────────
+// ── Status badge ──
+const StatusBadge = ({ status }: { status: RoomStatus }) => {
+  const map: Record<string, { cls: string; icon: any; label: string }> = {
+    Approved: {
+      cls: "bg-emerald-50 text-emerald-700 border-emerald-200",
+      icon: Check,
+      label: "Available",
+    },
+    Pending: {
+      cls: "bg-amber-50 text-amber-700 border-amber-200",
+      icon: Clock,
+      label: "Pending",
+    },
+    Rejected: {
+      cls: "bg-red-50 text-red-700 border-red-200",
+      icon: AlertCircle,
+      label: "Unavailable",
+    },
+  };
+  const {
+    cls,
+    icon: Icon,
+    label,
+  } = map[status] ?? {
+    cls: "bg-slate-50 text-slate-600 border-slate-200",
+    icon: AlertCircle,
+    label: status,
+  };
+  return (
+    <Badge className={cn("border gap-1 cursor-default font-semibold", cls)}>
+      <Icon className="w-3 h-3" />
+      {label}
+    </Badge>
+  );
+};
 
+// ── TikTok Card ──
+const TikTokCard = ({ url }: { url: string }) => (
+  <a
+    href={url}
+    target="_blank"
+    rel="noopener noreferrer"
+    className="flex items-center gap-4 p-4 bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl border border-slate-700 hover:from-slate-800 hover:to-slate-700 transition-all group cursor-pointer"
+  >
+    <div className="w-12 h-12 rounded-xl bg-black flex items-center justify-center flex-shrink-0">
+      <svg viewBox="0 0 24 24" className="w-7 h-7" fill="white">
+        <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1V9.01a6.32 6.32 0 0 0-.79-.05 6.34 6.34 0 0 0-6.34 6.34 6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.33-6.34l-.01-8.83a8.18 8.18 0 0 0 4.78 1.52V4.56a4.85 4.85 0 0 1-1-.13z" />
+      </svg>
+    </div>
+    <div className="flex-1 min-w-0">
+      <p className="text-white font-bold text-sm">TikTok मा हेर्नुहोस्</p>
+      <p className="text-slate-400 text-xs mt-0.5">यस घरको भिडियो उपलब्ध छ</p>
+    </div>
+    <div className="w-9 h-9 rounded-full bg-gradient-to-br from-pink-500 to-orange-400 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform shadow-lg">
+      <PlayCircle className="w-4 h-4 text-white" />
+    </div>
+  </a>
+);
+
+// ── Water Supply ──
 const WaterSupplySection = ({
   timings,
 }: {
@@ -346,49 +441,46 @@ const WaterSupplySection = ({
     | undefined;
 }) => {
   const info = parseWaterTimings(timings);
-  const hasContent = info.is24Hour || info.morning || info.evening || info.note;
-  if (!hasContent) return null;
-
+  if (!info.is24Hour && !info.morning && !info.evening && !info.note)
+    return null;
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.35 }}
-      className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6"
-    >
-      <h3 className="text-xl font-semibold text-slate-900 mb-4 flex items-center gap-2">
-        <Droplets className="w-5 h-5 text-blue-500" />
-        पानी आपूर्ति (Water Supply)
+    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+      <h3 className="text-base font-bold text-slate-900 mb-4 flex items-center gap-2">
+        <Droplets className="w-4 h-4 text-blue-500" /> पानी आपूर्ति (Water
+        Supply)
       </h3>
       {info.is24Hour && (
         <div className="flex items-center gap-3 p-4 bg-emerald-50 rounded-xl border border-emerald-200">
-          <CheckCircle className="w-6 h-6 text-emerald-600 flex-shrink-0" />
+          <CheckCircle className="w-5 h-5 text-emerald-600 flex-shrink-0" />
           <div>
             <p className="text-sm font-bold text-emerald-800">
               २४ घण्टा पानी उपलब्ध
             </p>
-            <p className="text-xs text-emerald-600 mt-0.5">
-              24/7 Water Supply Available
-            </p>
+            <p className="text-xs text-emerald-600">24/7 Water Supply</p>
           </div>
         </div>
       )}
       {!info.is24Hour && info.note && !info.morning && !info.evening && (
         <div className="flex items-center gap-3 p-4 bg-blue-50 rounded-xl border border-blue-100">
-          <Droplets className="w-6 h-6 text-blue-500 flex-shrink-0" />
+          <Droplets className="w-5 h-5 text-blue-500 flex-shrink-0" />
           <p className="text-sm font-semibold text-blue-800">{info.note}</p>
         </div>
       )}
       {(info.morning || info.evening) && (
         <div
-          className={`grid gap-3 ${info.morning && info.evening ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1 max-w-xs"}`}
+          className={cn(
+            "grid gap-3",
+            info.morning && info.evening
+              ? "grid-cols-2"
+              : "grid-cols-1 max-w-xs",
+          )}
         >
           {info.morning && (
             <div className="flex items-center gap-3 p-4 bg-amber-50 rounded-xl border border-amber-100">
               <span className="text-2xl flex-shrink-0">🌅</span>
               <div>
-                <p className="text-xs text-amber-600 font-semibold uppercase tracking-wide">
-                  बिहान · Morning
+                <p className="text-[10px] text-amber-600 font-bold uppercase tracking-wide">
+                  बिहान
                 </p>
                 <p className="text-sm font-bold text-amber-900 mt-0.5">
                   {info.morning}
@@ -400,8 +492,8 @@ const WaterSupplySection = ({
             <div className="flex items-center gap-3 p-4 bg-indigo-50 rounded-xl border border-indigo-100">
               <span className="text-2xl flex-shrink-0">🌙</span>
               <div>
-                <p className="text-xs text-indigo-600 font-semibold uppercase tracking-wide">
-                  साँझ · Evening
+                <p className="text-[10px] text-indigo-600 font-bold uppercase tracking-wide">
+                  साँझ
                 </p>
                 <p className="text-sm font-bold text-indigo-900 mt-0.5">
                   {info.evening}
@@ -416,12 +508,11 @@ const WaterSupplySection = ({
           📝 {info.note}
         </p>
       )}
-    </motion.div>
+    </div>
   );
 };
 
-// ─── Unlocked Location Section ────────────────────────────────────────────────
-
+// ── Unlocked Location ──
 const UnlockedLocationSection = ({
   unlockedData,
   room,
@@ -442,14 +533,6 @@ const UnlockedLocationSection = ({
   const hostPhone = unlockedData.room.user?.phoneNumber;
   const contactPerson = room.contactPerson;
 
-  const openDirections = () => {
-    if (hasCoords)
-      window.open(
-        `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`,
-        "_blank",
-      );
-  };
-
   const copyAddress = () => {
     navigator.clipboard.writeText(fullAddress);
     toast.success("Address copied!", { icon: "📋", duration: 2000 });
@@ -457,30 +540,28 @@ const UnlockedLocationSection = ({
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 12 }}
+      initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       className="space-y-4"
     >
-      {/* Unlocked success banner */}
       <div className="flex items-center gap-2 p-3 bg-emerald-50 rounded-xl border border-emerald-200">
         <CheckCircle className="w-4 h-4 text-emerald-600 flex-shrink-0" />
         <p className="text-sm font-semibold text-emerald-700">
-          Room unlocked — full details revealed
+          Room unlocked — full details revealed!
         </p>
       </div>
 
-      {/* Contact info cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {contactPhone && (
           <a
             href={`tel:${contactPhone}`}
-            className="flex items-center gap-3 p-4 bg-blue-50 border border-blue-100 rounded-xl hover:bg-blue-100 transition-colors group"
+            className="flex items-center gap-3 p-4 bg-blue-50 border border-blue-100 rounded-xl hover:bg-blue-100 transition-colors cursor-pointer group"
           >
-            <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center flex-shrink-0 shadow">
+            <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center flex-shrink-0 shadow group-hover:scale-110 transition-transform">
               <Phone className="w-4 h-4 text-white" />
             </div>
             <div className="min-w-0">
-              <p className="text-xs font-semibold text-blue-600 uppercase tracking-wide">
+              <p className="text-[10px] font-bold text-blue-600 uppercase tracking-wide">
                 Owner Phone
               </p>
               <p className="text-sm font-bold text-blue-900 truncate">
@@ -495,7 +576,7 @@ const UnlockedLocationSection = ({
               <User className="w-4 h-4 text-slate-600" />
             </div>
             <div className="min-w-0">
-              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">
                 Owner Name
               </p>
               <p className="text-sm font-bold text-slate-800 truncate">
@@ -506,24 +587,23 @@ const UnlockedLocationSection = ({
         )}
       </div>
 
-      {/* Map */}
       {hasCoords && (
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <p className="text-sm font-semibold text-slate-700 flex items-center gap-1.5">
-              <MapPin className="w-4 h-4 text-red-500" /> Exact Location
+            <p className="text-sm font-bold text-slate-700 flex items-center gap-1.5">
+              <MapPin className="w-4 h-4 text-red-500" />
+              Exact Location
             </p>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={openDirections}
-              className="rounded-full gap-1.5 border-red-200 hover:bg-red-50 hover:text-red-600 text-xs"
+            <a
+              href={`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 text-xs font-semibold text-red-600 hover:text-red-700 cursor-pointer"
             >
-              <Navigation className="w-3.5 h-3.5" />
-              Directions
-            </Button>
+              <Navigation className="w-3.5 h-3.5" /> Directions
+            </a>
           </div>
-          <div className="h-[260px] w-full rounded-xl overflow-hidden border border-slate-200 shadow-md">
+          <div className="h-56 sm:h-64 w-full rounded-2xl overflow-hidden border border-slate-200 shadow-md">
             <MapComponent
               latitude={lat!}
               longitude={lng!}
@@ -533,27 +613,23 @@ const UnlockedLocationSection = ({
         </div>
       )}
 
-      {/* Full address */}
       <button
         onClick={copyAddress}
-        className="w-full flex items-center gap-2 text-sm text-slate-600 bg-slate-50 p-3 rounded-lg hover:bg-slate-100 transition-colors text-left group border border-slate-100"
+        className="w-full flex items-center gap-2 text-sm text-slate-600 bg-slate-50 p-3.5 rounded-xl hover:bg-slate-100 transition-colors text-left group border border-slate-200 cursor-pointer"
       >
         <MapPin className="w-4 h-4 text-red-400 shrink-0" />
-        <span className="flex-1">{fullAddress}</span>
+        <span className="flex-1 text-xs leading-relaxed">{fullAddress}</span>
         <Copy className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-600 shrink-0" />
       </button>
 
-      {/* WhatsApp */}
       {hostPhone && (
         <a
-          href={`https://wa.me/${hostPhone.replace(/\D/g, "")}?text=${encodeURIComponent(`Hello! I found your room listing and I'm interested. Room: ${room.title}`)}`}
+          href={`https://wa.me/${hostPhone.replace(/\D/g, "")}?text=${encodeURIComponent(`Hello! I found your listing and I'm interested. Room: ${room.title}`)}`}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl bg-green-600 hover:bg-green-700 text-white font-semibold text-sm transition-colors shadow-lg"
+          className="flex items-center justify-center gap-2 w-full py-4 rounded-2xl bg-green-600 hover:bg-green-700 text-white font-bold text-sm transition-colors shadow-lg cursor-pointer"
         >
-          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M19.077 4.928C17.191 3.041 14.683 2 12.006 2 6.798 2 2.528 6.17 2.527 11.26c0 1.695.444 3.355 1.291 4.815L2 22l5.995-1.788c1.44.79 3.064 1.206 4.722 1.207h.005c5.195 0 9.476-4.17 9.477-9.26 0-2.476-.966-4.804-2.842-6.69z" />
-          </svg>
+          <WhatsAppIcon />
           WhatsApp मा सम्पर्क गर्नुस्
           <ExternalLink className="w-3.5 h-3.5" />
         </a>
@@ -562,21 +638,20 @@ const UnlockedLocationSection = ({
   );
 };
 
-// ─── Locked Location Placeholder ──────────────────────────────────────────────
-
-const LockedLocationPlaceholder = ({
+// ── Locked Placeholder ──
+const LockedPlaceholder = ({
   isAuthenticated,
   unlockStatus,
   address,
-  onUnlockClick,
-  onTopUpClick,
+  onUnlock,
+  onTopUp,
   isLoaded,
 }: {
   isAuthenticated: boolean;
   unlockStatus: UnlockStatus | null;
   address: string;
-  onUnlockClick: () => void;
-  onTopUpClick: () => void;
+  onUnlock: () => void;
+  onTopUp: () => void;
   isLoaded: boolean;
 }) => {
   const serviceCharge = unlockStatus?.serviceCharge ?? 0;
@@ -586,118 +661,140 @@ const LockedLocationPlaceholder = ({
 
   return (
     <div className="space-y-4">
-      {/* Blurred map area */}
-      <div className="h-[260px] w-full rounded-xl overflow-hidden border border-slate-200 shadow-md relative bg-gradient-to-br from-slate-100 to-slate-200">
-        {/* Fake blurred background */}
-        <div className="absolute inset-0 flex items-center justify-center opacity-30 select-none pointer-events-none">
-          <MapPin className="w-20 h-20 text-slate-400" />
+      {/* Blurred map */}
+      <div className="h-56 sm:h-64 w-full rounded-2xl overflow-hidden border border-slate-200 shadow-md relative bg-gradient-to-br from-slate-100 to-slate-200">
+        <div className="absolute inset-0 flex items-center justify-center opacity-20 pointer-events-none select-none">
+          <MapPin className="w-24 h-24 text-slate-400" />
         </div>
-        <div className="absolute inset-0 backdrop-blur-sm bg-white/20" />
+        <div className="absolute inset-0 backdrop-blur-sm bg-white/10" />
 
-        {/* Lock overlay */}
+        {/* Lock card overlay */}
         <div className="absolute inset-0 flex items-center justify-center z-10 p-4">
-          <div className="bg-white/96 backdrop-blur-sm rounded-2xl px-6 py-5 shadow-2xl border border-slate-200 text-center max-w-xs w-full">
-            <div className="w-12 h-12 rounded-2xl bg-slate-900 flex items-center justify-center mx-auto mb-3 shadow-lg">
-              <Lock className="w-5 h-5 text-white" />
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ type: "spring", stiffness: 300, damping: 25 }}
+            className="bg-white/98 backdrop-blur-md rounded-2xl px-5 py-6 shadow-2xl border border-slate-200 text-center max-w-[260px] w-full"
+          >
+            <div className="w-14 h-14 rounded-2xl bg-slate-900 flex items-center justify-center mx-auto mb-3 shadow-lg">
+              <Lock className="w-6 h-6 text-white" />
             </div>
             <p className="font-bold text-slate-900 text-sm mb-1">
               Location & Contact Locked
             </p>
             <p className="text-slate-500 text-xs leading-relaxed mb-4">
-              Unlock to see the exact map, host phone number, and owner details.
+              Unlock to see exact map, phone number, and owner name.
             </p>
 
             {!isLoaded ? (
               <div className="flex justify-center">
-                <div className="w-5 h-5 rounded-full border-2 border-slate-200 border-t-red-500 animate-spin" />
+                <LoadingSpinner />
               </div>
             ) : !isAuthenticated ? (
               <Button
                 size="sm"
-                className="w-full rounded-xl bg-red-500 hover:bg-red-600 text-white gap-1.5"
-                onClick={onUnlockClick}
+                className="w-full rounded-xl bg-red-500 hover:bg-red-600 text-white font-semibold cursor-pointer"
+                onClick={onUnlock}
               >
-                <Lock className="w-3.5 h-3.5" />
-                Sign In to Unlock
+                <Lock className="w-3.5 h-3.5 mr-1.5" /> Sign In to Unlock
               </Button>
             ) : unlockStatus === null ? (
               <div className="flex justify-center">
-                <div className="w-5 h-5 rounded-full border-2 border-slate-200 border-t-red-500 animate-spin" />
+                <LoadingSpinner />
               </div>
             ) : (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-xs px-1 mb-2">
+              <div className="space-y-2.5">
+                <div className="flex items-center justify-between text-xs bg-slate-50 rounded-lg px-3 py-2">
                   <span className="text-slate-500">Your balance</span>
                   <span
-                    className={`font-bold ${hasSufficient ? "text-emerald-600" : "text-red-500"}`}
+                    className={cn(
+                      "font-bold",
+                      hasSufficient ? "text-emerald-600" : "text-red-500",
+                    )}
                   >
                     {formatPriceNPR(walletBalance)}
                   </span>
                 </div>
                 <Button
                   size="sm"
-                  className="w-full rounded-xl bg-red-500 hover:bg-red-600 text-white font-semibold gap-1.5 shadow-md shadow-red-100 cursor-pointer"
-                  onClick={onUnlockClick}
+                  className="w-full rounded-xl bg-red-500 hover:bg-red-600 text-white font-bold gap-1.5 shadow-md shadow-red-100 cursor-pointer"
+                  onClick={onUnlock}
                 >
-                  <Lock className="w-3.5 h-3.5" />
-                  Unlock · {formatPriceNPR(serviceCharge)}
+                  <Lock className="w-3.5 h-3.5" /> Unlock ·{" "}
+                  {formatPriceNPR(serviceCharge)}
                 </Button>
                 {!hasSufficient && (
                   <Button
                     size="sm"
                     variant="outline"
-                    className="w-full rounded-xl gap-1.5 border-emerald-200 text-emerald-700 hover:bg-emerald-600 text-xs cursor-pointer"
-                    onClick={onTopUpClick}
+                    className="w-full rounded-xl gap-1.5 border-emerald-300 text-emerald-700 hover:bg-emerald-50 text-xs cursor-pointer"
+                    onClick={onTopUp}
                   >
                     Add Money to Wallet
                   </Button>
                 )}
               </div>
             )}
-          </div>
+          </motion.div>
         </div>
       </div>
 
-      {/* Short address — only first word */}
-      <div className="flex items-center gap-2 text-sm text-slate-500 bg-slate-50 p-3 rounded-lg border border-slate-100">
+      {/* Short address */}
+      <div className="flex items-center gap-2 text-sm text-slate-500 bg-slate-50 p-3.5 rounded-xl border border-slate-200">
         <MapPin className="w-4 h-4 text-red-400 shrink-0" />
-        <span className="italic">Area: {shortAddress}</span>
+        <span className="text-xs italic flex-1">Area: {shortAddress}</span>
         <Badge
           variant="outline"
-          className="ml-auto text-[10px] flex-shrink-0 gap-1"
+          className="text-[10px] gap-1 py-0.5 flex-shrink-0"
         >
           <Lock className="w-2.5 h-2.5" />
-          Exact hidden
+          Hidden
         </Badge>
       </div>
 
-      {/* Locked info cards */}
+      {/* Locked cards */}
       <div className="grid grid-cols-3 gap-2">
         {[
           { icon: MapPin, label: "Exact Map", color: "text-red-400" },
-          { icon: Phone, label: "Host Phone", color: "text-blue-400" },
-          { icon: User, label: "Owner Name", color: "text-purple-400" },
+          { icon: Phone, label: "Phone", color: "text-blue-400" },
+          { icon: User, label: "Owner", color: "text-purple-400" },
         ].map(({ icon: Icon, label, color }) => (
           <div
             key={label}
-            className="flex flex-col items-center gap-1.5 p-3 bg-slate-50 rounded-xl border border-slate-100"
+            className="flex flex-col items-center gap-2 p-3 bg-slate-50 rounded-xl border border-slate-100"
           >
             <div className="relative">
-              <Icon className={`w-5 h-5 ${color} opacity-40`} />
-              <Lock className="w-3 h-3 text-slate-400 absolute -bottom-1 -right-1" />
+              <Icon className={cn("w-5 h-5 opacity-30", color)} />
+              <Lock className="w-2.5 h-2.5 text-slate-400 absolute -bottom-0.5 -right-0.5" />
             </div>
-            <p className="text-[10px] font-semibold text-slate-400">{label}</p>
+            <p className="text-[9px] font-semibold text-slate-400 text-center">
+              {label}
+            </p>
           </div>
         ))}
       </div>
-
-      <p className="text-[11px] text-slate-400 text-center">
-        🔒 One-time unlock · Unlimited access afterwards
+      <p className="text-[10px] text-slate-400 text-center">
+        🔒 One-time unlock · Access forever afterwards
       </p>
     </div>
   );
 };
 
+// ── WhatsApp Icon ──
+const WhatsAppIcon = () => (
+  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M19.077 4.928C17.191 3.041 14.683 2 12.006 2 6.798 2 2.528 6.17 2.527 11.26c0 1.695.444 3.355 1.291 4.815L2 22l5.995-1.788c1.44.79 3.064 1.206 4.722 1.207h.005c5.195 0 9.476-4.17 9.477-9.26 0-2.476-.966-4.804-2.842-6.69z" />
+  </svg>
+);
+
+// ── Loading Spinner ──
+const LoadingSpinner = () => (
+  <div className="w-5 h-5 rounded-full border-2 border-slate-200 border-t-red-500 animate-spin" />
+);
+
+// ════════════════════════════════════════════════════
+// ── MAIN PAGE ──
+// ════════════════════════════════════════════════════
 export default function PropertyDetailsPage() {
   const { id } = useParams();
   const user = useUserStore((state) => state.user);
@@ -714,7 +811,7 @@ export default function PropertyDetailsPage() {
   const [showUnlockDialog, setShowUnlockDialog] = useState(false);
   const [showTopUpDialog, setShowTopUpDialog] = useState(false);
 
-  // ── Fetch room ──
+  // Fetch room
   useEffect(() => {
     if (!id) return;
     (async () => {
@@ -723,14 +820,14 @@ export default function PropertyDetailsPage() {
         const data = await res.json();
         setRoom(data.data || data);
       } catch {
-        toast.error("Failed to load property details");
+        toast.error("Failed to load property");
       } finally {
         setLoading(false);
       }
     })();
   }, [id]);
 
-  // ── Fetch unlock status (authenticated users only) ──
+  // Fetch unlock status
   useEffect(() => {
     if (!isLoaded || !isAuthenticated || !id) return;
     (async () => {
@@ -746,12 +843,11 @@ export default function PropertyDetailsPage() {
           setUnlockedData(result);
         }
       } catch (err) {
-        console.error("Failed to fetch unlock status:", err);
+        console.error("Unlock status error:", err);
       }
     })();
   }, [id, isLoaded, isAuthenticated]);
 
-  // ── Fetch settings for unauthenticated users (for TopUp QR display) ──
   useEffect(() => {
     if (!isLoaded || isAuthenticated) return;
     unlockService
@@ -759,12 +855,6 @@ export default function PropertyDetailsPage() {
       .then(setCommissionSettings)
       .catch(() => {});
   }, [isLoaded, isAuthenticated]);
-
-  // ── Copy link — NO navigator.share (that was causing the popup) ──
-  const handleCopyLink = () => {
-    navigator.clipboard.writeText(window.location.href);
-    toast.success("Link copied!", { icon: "🔗", duration: 2500 });
-  };
 
   const handleUnlocked = (result: UnlockResult) => {
     setUnlockedData(result);
@@ -779,218 +869,228 @@ export default function PropertyDetailsPage() {
     );
   };
 
-  if (loading) {
+  const copyLink = () => {
+    navigator.clipboard.writeText(window.location.href);
+    toast.success("Link copied!", { icon: "🔗", duration: 2500 });
+  };
+
+  // ── Loading skeleton ──
+  if (loading)
     return (
       <>
         <NavBar />
-        <div className="min-h-screen bg-slate-50 pt-24">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="animate-pulse space-y-8">
-              <div className="h-8 bg-slate-200 rounded w-1/4" />
-              <div className="h-[420px] bg-slate-200 rounded-2xl" />
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <div className="lg:col-span-2 space-y-4">
-                  <div className="h-6 bg-slate-200 rounded w-3/4" />
-                  <div className="h-4 bg-slate-200 rounded w-1/2" />
-                  <div className="h-32 bg-slate-200 rounded" />
-                </div>
-                <div className="h-64 bg-slate-200 rounded" />
-              </div>
+        <div className="min-h-screen bg-slate-50 pt-16">
+          <div className="animate-pulse">
+            <div className="h-72 sm:h-96 bg-slate-200 w-full" />
+            <div className="max-w-4xl mx-auto px-4 py-6 space-y-4">
+              <div className="h-7 bg-slate-200 rounded-xl w-3/4" />
+              <div className="h-4 bg-slate-200 rounded-xl w-1/2" />
+              <div className="h-48 bg-slate-200 rounded-2xl" />
             </div>
           </div>
         </div>
-        <Footer />
       </>
     );
-  }
 
-  if (!room) {
+  if (!room)
     return (
       <>
         <NavBar />
-        <div className="min-h-screen bg-slate-50 pt-24 flex items-center justify-center">
-          <div className="text-center max-w-md mx-auto px-4">
-            <div className="w-24 h-24 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-6">
-              <Home className="w-12 h-12 text-red-500" />
+        <div className="min-h-screen bg-slate-50 pt-24 flex items-center justify-center px-4">
+          <div className="text-center max-w-md">
+            <div className="w-20 h-20 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-4">
+              <Home className="w-10 h-10 text-red-400" />
             </div>
-            <h2 className="text-2xl font-bold text-slate-900 mb-2">
+            <h2 className="text-xl font-bold text-slate-900 mb-2">
               Property Not Found
             </h2>
-            <p className="text-slate-500 mb-8">
-              The property you're looking for doesn't exist or may have been
-              removed.
+            <p className="text-slate-500 text-sm mb-6">
+              This property doesn't exist or may have been removed.
             </p>
             <Link href="/rooms">
-              <Button className="rounded-full px-8 bg-gradient-to-r from-red-500 to-red-600 text-white hover:from-red-600 hover:to-red-700">
-                <ArrowLeft className="w-4 h-4 mr-2" /> Back to Listings
+              <Button className="rounded-full px-8 bg-red-500 hover:bg-red-600 text-white cursor-pointer">
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Back to Listings
               </Button>
             </Link>
           </div>
         </div>
-        <Footer />
       </>
     );
-  }
 
-  const mainAmenities = room.amenities?.slice(0, 6) || [];
-  const additionalAmenities = room.amenities?.slice(6) || [];
-  const formattedPrice = formatPriceNPR(Number(room.price));
   const isAdminHost = room.user?.role === UserRole.ADMIN;
-
-  // Short address for display before unlock
   const shortAddress =
     room.location?.city ??
     getShortAddress(room.location?.formattedAddress ?? room.address);
+  const serviceCharge =
+    unlockStatus?.serviceCharge ?? commissionSettings?.serviceCharge ?? 0;
 
   return (
     <>
       <NavBar />
-      <div className="min-h-screen bg-slate-50 pt-24 pb-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* ── Top nav ── */}
-          <div className="flex items-center justify-between mb-6">
+      <div className="min-h-screen bg-slate-50 pt-16">
+        {/* ── Image Carousel (full-bleed) ── */}
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+          <ImageCarousel images={room.images || []} title={room.title} />
+        </motion.div>
+
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-32">
+          {/* ── Top nav row ── */}
+          <div className="flex items-center justify-between mb-5">
             <Link
               href="/rooms"
-              className="inline-flex items-center gap-2 text-slate-500 hover:text-red-500 text-sm font-medium transition-colors group"
+              className="flex items-center gap-2 text-slate-500 hover:text-red-500 text-sm font-medium transition-colors group cursor-pointer"
             >
-              <div className="w-8 h-8 rounded-full bg-white shadow-sm flex items-center justify-center group-hover:bg-red-50 transition-colors">
+              <div className="w-9 h-9 rounded-full bg-white shadow-sm border border-slate-200 flex items-center justify-center group-hover:bg-red-50 group-hover:border-red-200 transition-colors">
                 <ArrowLeft className="w-4 h-4" />
               </div>
-              <span>Back to listings</span>
+              <span className="hidden sm:inline">Back to listings</span>
             </Link>
             <div className="flex items-center gap-2">
-              {getStatusBadge(room.approvalStatus)}
-              {/* Copy link button — no navigator.share to avoid the permission popup */}
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={handleCopyLink}
-                className="rounded-full w-10 h-10 border-slate-200 hover:bg-red-50 hover:border-red-200 transition-all"
+              <StatusBadge status={room.approvalStatus} />
+              <button
+                onClick={copyLink}
                 title="Copy link"
+                className="w-9 h-9 rounded-full bg-white shadow-sm border border-slate-200 flex items-center justify-center hover:bg-slate-50 transition-colors cursor-pointer"
               >
-                <Copy className="w-4 h-4 text-slate-600" />
-              </Button>
+                <Copy className="w-4 h-4 text-slate-500" />
+              </button>
             </div>
           </div>
 
-          {/* ── Carousel ── */}
+          {/* ── Title + address ── */}
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mb-10"
+            transition={{ delay: 0.05 }}
+            className="mb-5"
           >
-            <ImageCarousel images={room.images || []} title={room.title} />
+            <Badge className="mb-3 bg-red-50 text-red-600 border-0 font-semibold px-3 py-1 capitalize">
+              {room.category}
+            </Badge>
+            <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight leading-tight">
+              {room.title}
+            </h1>
+            <div className="flex items-center flex-wrap gap-x-4 gap-y-1 mt-2">
+              <div className="flex items-center gap-1 text-slate-500 text-sm">
+                <MapPin className="w-4 h-4 text-red-400 flex-shrink-0" />
+                <span>{shortAddress}</span>
+                {!unlockedData && (
+                  <Badge
+                    variant="outline"
+                    className="ml-1 text-[10px] gap-0.5 py-0"
+                  >
+                    <Lock className="w-2.5 h-2.5" />
+                    Exact hidden
+                  </Badge>
+                )}
+              </div>
+              <span className="text-xs text-slate-400 flex items-center gap-1">
+                <Clock className="w-3.5 h-3.5" /> Added{" "}
+                {timeAgo(room.createdAt)}
+              </span>
+            </div>
           </motion.div>
 
-          {/* ── Main grid ── */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
-            {/* LEFT COLUMN */}
-            <div className="lg:col-span-2 space-y-8">
-              {/* Title & address */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 }}
+          {/* ── Price highlight (mobile-visible) ── */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="flex items-center justify-between p-4 bg-white rounded-2xl border border-slate-100 shadow-sm mb-5 lg:hidden"
+          >
+            <div>
+              <p className="text-xs text-slate-400 font-medium">Monthly Rent</p>
+              <p className="text-2xl font-bold text-slate-900 flex items-center gap-1">
+                <Landmark className="w-5 h-5 text-red-500" />
+                {formatPriceNPR(Number(room.price))}
+              </p>
+              <p className="text-xs text-slate-400">per month</p>
+            </div>
+            {unlockedData?.room?.contactPhone ? (
+              <a
+                href={`https://wa.me/${unlockedData.room.user?.phoneNumber?.replace(/\D/g, "")}?text=${encodeURIComponent(`Hi! Interested in: ${room.title}`)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 px-4 py-3 bg-green-600 hover:bg-green-700 text-white font-bold text-sm rounded-xl transition-colors cursor-pointer shadow-lg shadow-green-100"
               >
-                <Badge className="mb-3 bg-red-50 text-red-600 border-0 font-semibold px-3 py-1 capitalize">
-                  {room.category}
-                </Badge>
-                <h1 className="text-3xl md:text-4xl font-bold text-slate-900 tracking-tight">
-                  {room.title}
-                </h1>
-                <div className="flex items-center gap-2 mt-3 flex-wrap">
-                  <div className="flex items-center gap-1 text-slate-500">
-                    <MapPin className="w-4 h-4 text-red-400 flex-shrink-0" />
-                    {/* Show only short address (city/first word) until unlocked */}
-                    <span className="text-sm">{shortAddress}</span>
-                    {!unlockedData && (
-                      <Badge
-                        variant="outline"
-                        className="ml-1 text-[10px] gap-1 py-0"
-                      >
-                        <Lock className="w-2.5 h-2.5" /> Exact hidden
-                      </Badge>
-                    )}
-                  </div>
-                  <span className="text-xs md:text-md  text-slate-800 font-bold flex items-center gap-1 ml-auto">
-                    <Clock className="w-3.5 h-3.5" />
-                    Added {timeAgo(room.createdAt)}
-                  </span>
-                </div>
-              </motion.div>
+                <WhatsAppIcon />
+                <span>Chat</span>
+              </a>
+            ) : (
+              <Button
+                onClick={() => setShowUnlockDialog(true)}
+                className="bg-red-500 hover:bg-red-600 text-white rounded-xl font-bold px-4 cursor-pointer shadow-lg shadow-red-100"
+              >
+                <Lock className="w-4 h-4 mr-1.5" />
+                Unlock
+              </Button>
+            )}
+          </motion.div>
 
-              {/* Host Info — name/phone hidden until unlocked */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
+            {/* ── LEFT COLUMN ── */}
+            <div className="lg:col-span-2 space-y-5">
+              {/* Host info */}
               <motion.div
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.15 }}
-                className="flex items-center gap-4 p-5 bg-white rounded-2xl border border-slate-100 shadow-sm"
+                transition={{ delay: 0.12 }}
+                className="flex items-center gap-4 p-4 bg-white rounded-2xl border border-slate-100 shadow-sm"
               >
-                <Avatar className="h-14 w-14 ring-2 ring-red-100 flex-shrink-0">
+                <Avatar className="h-12 w-12 ring-2 ring-red-100 flex-shrink-0">
                   <AvatarFallback className="bg-red-50 text-red-600 text-lg font-bold">
                     {isAdminHost
                       ? "R"
                       : unlockedData
-                        ? room.user?.name?.charAt(0)
+                        ? room.user?.name?.charAt(0) || "?"
                         : "?"}
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs text-slate-400 mb-0.5">Hosted by</p>
+                  <p className="text-xs text-slate-400">Hosted by</p>
                   {unlockedData ? (
-                    <>
-                      {isAdminHost ? (
-                        <>
-                          <p className="font-bold text-slate-900 leading-tight">
-                            Rental Service
-                          </p>
-                          <p className="text-xs text-slate-500">
-                            The Administrator
-                          </p>
-                        </>
-                      ) : (
-                        <p className="font-semibold text-slate-900">
-                          {room.user?.name ||
-                            room.contactPerson ||
-                            "Property Owner"}
-                        </p>
-                      )}
-                    </>
+                    <p className="font-bold text-slate-900">
+                      {isAdminHost
+                        ? "Rental Service"
+                        : room.user?.name ||
+                          room.contactPerson ||
+                          "Property Owner"}
+                    </p>
                   ) : (
-                    <div className="flex items-center gap-2">
-                      <div className="h-4 w-28 bg-slate-200 rounded animate-pulse" />
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <div className="h-4 w-24 bg-slate-200 rounded-lg animate-pulse" />
                       <Lock className="w-3 h-3 text-slate-400" />
                     </div>
                   )}
-                  <div className="flex items-center gap-1.5 mt-1">
+                  <div className="flex items-center gap-1 mt-1">
                     <Shield className="w-3 h-3 text-emerald-500" />
                     <span className="text-xs text-emerald-600 font-medium">
                       {room.user?.isVerified ? "Verified host" : "New host"}
                     </span>
                   </div>
                 </div>
-                {/* Phone only after unlock */}
                 {unlockedData?.room.user?.phoneNumber && (
                   <a
                     href={`tel:${unlockedData.room.contactPhone}`}
-                    className="flex-shrink-0 flex flex-col items-center gap-1 group"
+                    className="flex flex-col items-center gap-0.5 group cursor-pointer flex-shrink-0"
                   >
-                    <div className="w-11 h-11 rounded-full bg-red-50 group-hover:bg-red-100 border border-red-200 flex items-center justify-center transition-colors">
+                    <div className="w-10 h-10 rounded-full bg-red-50 group-hover:bg-red-100 border border-red-200 flex items-center justify-center transition-colors">
                       <Phone className="w-4 h-4 text-red-500" />
                     </div>
-                    <span className="text-xs text-red-500 font-medium">
+                    <span className="text-[10px] text-red-500 font-semibold">
                       {unlockedData.room.user.phoneNumber}
                     </span>
                   </a>
                 )}
               </motion.div>
 
-              {/* Quick Stats */}
+              {/* Quick stats */}
               <motion.div
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 }}
-                className="grid grid-cols-3 gap-4 p-6 bg-white rounded-2xl border border-slate-100 shadow-sm"
+                transition={{ delay: 0.15 }}
+                className="grid grid-cols-3 gap-3 p-5 bg-white rounded-2xl border border-slate-100 shadow-sm"
               >
                 {[
                   { icon: Users, value: room.roomCapacity, label: "Guests" },
@@ -1001,13 +1101,13 @@ export default function PropertyDetailsPage() {
                   },
                   {
                     icon: Square,
-                    value: `${Number(room.roomArea).toFixed(0)} m²`,
+                    value: `${Number(room.roomArea).toFixed(0)}m²`,
                     label: "Area",
                   },
                 ].map(({ icon: Icon, value, label }) => (
                   <div key={label} className="text-center">
-                    <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-2">
-                      <Icon className="w-5 h-5 text-red-500" />
+                    <div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center mx-auto mb-2">
+                      <Icon className="w-4 h-4 text-red-500" />
                     </div>
                     <p className="text-lg font-bold text-slate-900">{value}</p>
                     <p className="text-xs text-slate-500">{label}</p>
@@ -1017,14 +1117,15 @@ export default function PropertyDetailsPage() {
 
               {/* Description */}
               <motion.div
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.25 }}
+                transition={{ delay: 0.18 }}
+                className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5"
               >
-                <h3 className="text-xl font-semibold text-slate-900 mb-3">
+                <h3 className="text-base font-bold text-slate-900 mb-3">
                   About this property
                 </h3>
-                <p className="text-slate-600 leading-relaxed whitespace-pre-wrap">
+                <p className="text-slate-600 text-sm leading-relaxed whitespace-pre-wrap">
                   {room.description}
                 </p>
               </motion.div>
@@ -1032,194 +1133,211 @@ export default function PropertyDetailsPage() {
               {/* TikTok */}
               {room.tiktokUrl && (
                 <motion.div
-                  initial={{ opacity: 0, y: 20 }}
+                  initial={{ opacity: 0, y: 15 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.28 }}
+                  transition={{ delay: 0.2 }}
                 >
-                  <h3 className="text-xl font-semibold text-slate-900 mb-3">
-                    भिडियो हेर्नुहोस्
-                  </h3>
                   <TikTokCard url={room.tiktokUrl} />
                 </motion.div>
               )}
 
               {/* Amenities */}
-              {room.amenities && room.amenities.length > 0 && (
+              {room.amenities?.length > 0 && (
                 <motion.div
-                  initial={{ opacity: 0, y: 20 }}
+                  initial={{ opacity: 0, y: 15 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.3 }}
+                  transition={{ delay: 0.22 }}
+                  className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5"
                 >
-                  <h3 className="text-xl font-semibold text-slate-900 mb-4">
+                  <h3 className="text-base font-bold text-slate-900 mb-4">
                     Amenities
                   </h3>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                    {mainAmenities.map((amenity: string) => {
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    {(showAllAmenities
+                      ? room.amenities
+                      : room.amenities.slice(0, 6)
+                    ).map((amenity: string) => {
                       const Icon = amenityIcons[amenity.toLowerCase()] || Check;
                       return (
                         <div
                           key={amenity}
-                          className="flex items-center gap-2.5 p-3 rounded-xl bg-white border border-slate-100 hover:border-red-200 transition-colors group"
+                          className="flex items-center gap-2.5 p-3 rounded-xl bg-slate-50 border border-slate-100 hover:border-red-200 transition-colors"
                         >
-                          <Icon className="w-4 h-4 text-red-500 group-hover:scale-110 transition-transform" />
-                          <span className="text-sm text-slate-700 capitalize">
+                          <Icon className="w-4 h-4 text-red-500 flex-shrink-0" />
+                          <span className="text-xs text-slate-700 capitalize font-medium">
                             {amenity}
                           </span>
                         </div>
                       );
                     })}
                   </div>
-                  {additionalAmenities.length > 0 && (
+                  {room.amenities.length > 6 && (
                     <button
-                      onClick={() => setShowAllAmenities(true)}
-                      className="mt-4 text-sm text-red-500 hover:text-red-600 font-medium inline-flex items-center gap-1"
+                      onClick={() => setShowAllAmenities(!showAllAmenities)}
+                      className="mt-3 text-sm text-red-500 hover:text-red-600 font-semibold flex items-center gap-1 cursor-pointer"
                     >
-                      View all {room.amenities.length} amenities
-                      <ChevronRight className="w-4 h-4" />
+                      {showAllAmenities ? (
+                        <>
+                          <ChevronUp className="w-4 h-4" />
+                          Show less
+                        </>
+                      ) : (
+                        <>
+                          <ChevronDown className="w-4 h-4" />
+                          View all {room.amenities.length} amenities
+                        </>
+                      )}
                     </button>
                   )}
                 </motion.div>
               )}
 
               {/* Water Supply */}
-              <WaterSupplySection timings={room.waterSupplyTimings} />
-
-              {/* ── Location & Contact section ── */}
               <motion.div
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.4 }}
-                className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6"
+                transition={{ delay: 0.25 }}
               >
-                <h3 className="text-xl font-semibold text-slate-900 mb-5 flex items-center gap-2">
-                  <MapPin className="w-5 h-5 text-red-500" />
-                  Location & Contact
-                </h3>
+                <WaterSupplySection timings={room.waterSupplyTimings} />
+              </motion.div>
 
+              {/* Location & Contact */}
+              <motion.div
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.28 }}
+                className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5"
+              >
+                <h3 className="text-base font-bold text-slate-900 mb-5 flex items-center gap-2">
+                  <MapPin className="w-4 h-4 text-red-500" /> Location & Contact
+                </h3>
                 {unlockedData ? (
                   <UnlockedLocationSection
                     unlockedData={unlockedData}
                     room={room}
                   />
                 ) : (
-                  <LockedLocationPlaceholder
+                  <LockedPlaceholder
                     isAuthenticated={isAuthenticated}
                     unlockStatus={unlockStatus}
                     address={room.location?.formattedAddress ?? room.address}
-                    onUnlockClick={() => setShowUnlockDialog(true)}
-                    onTopUpClick={() => setShowTopUpDialog(true)}
+                    onUnlock={() => setShowUnlockDialog(true)}
+                    onTopUp={() => setShowTopUpDialog(true)}
                     isLoaded={isLoaded}
                   />
                 )}
               </motion.div>
             </div>
 
-            {/* RIGHT COLUMN */}
+            {/* ── RIGHT COLUMN (desktop sticky) ── */}
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="lg:col-span-1"
+              transition={{ delay: 0.15 }}
+              className="lg:col-span-1 hidden lg:block"
             >
-              <div className="sticky top-28 space-y-5">
-                {/* Price Card */}
-                <Card className="rounded-2xl border-slate-100 shadow-lg overflow-hidden hover:shadow-xl transition-shadow">
+              <div className="sticky top-24 space-y-4">
+                {/* Price card */}
+                <Card className="rounded-2xl border-slate-100 shadow-lg overflow-hidden">
                   <CardContent className="p-6">
                     <div className="flex items-baseline justify-between mb-5">
                       <div>
-                        <span className="text-3xl font-bold text-slate-900 flex items-center gap-1">
-                          <Landmark className="w-5 h-5 text-red-500" />
-                          {formattedPrice}
+                        <span className="text-3xl font-bold text-slate-900 flex items-baseline gap-1">
+                          <Landmark className="w-5 h-5 text-red-500 mb-1" />
+                          {formatPriceNPR(Number(room.price))}
                         </span>
-                        <span className="text-slate-500 text-sm">/month</span>
+                        <span className="text-slate-400 text-sm">/month</span>
                       </div>
-                      <Badge className="bg-emerald-50 text-emerald-600 border-0">
+                      <Badge className="bg-emerald-50 text-emerald-600 border-0 font-semibold">
                         Available
                       </Badge>
                     </div>
 
-                    <div className="space-y-2.5 mb-5">
-                      <div className="flex items-center gap-2 text-sm">
-                        <Users className="w-4 h-4 text-slate-400" />
-                        <span className="text-slate-600">
-                          Room capacity: {room.roomCapacity} persons
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2 text-sm">
-                        <Home className="w-4 h-4 text-slate-400" />
-                        <span className="text-slate-600">
-                          House capacity: {room.totalHouseCapacity} persons
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2 text-sm">
-                        <Clock className="w-4 h-4 text-slate-400" />
-                        <span className="text-slate-600">
-                          Added {timeAgo(room.createdAt)}
-                        </span>
-                      </div>
+                    <div className="space-y-2 mb-5">
+                      {[
+                        {
+                          icon: Users,
+                          text: `Room: ${room.roomCapacity} persons`,
+                        },
+                        {
+                          icon: Home,
+                          text: `House: ${room.totalHouseCapacity} persons`,
+                        },
+                        { icon: Building2, text: `Floor ${room.floorNumber}` },
+                        {
+                          icon: Clock,
+                          text: `Added ${timeAgo(room.createdAt)}`,
+                        },
+                      ].map(({ icon: Icon, text }) => (
+                        <div
+                          key={text}
+                          className="flex items-center gap-2 text-sm text-slate-600"
+                        >
+                          <Icon className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                          <span>{text}</span>
+                        </div>
+                      ))}
                     </div>
 
                     {unlockedData?.room?.contactPhone ? (
                       <a
-                        href={`https://wa.me/${unlockedData?.room?.user?.phoneNumber?.replace(/\D/g, "")}?text=${encodeURIComponent(`Hello! I'm interested in: ${room.title}`)}`}
+                        href={`https://wa.me/${unlockedData.room.user?.phoneNumber?.replace(/\D/g, "")}?text=${encodeURIComponent(`Hi! I'm interested in: ${room.title}`)}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center justify-center gap-2 w-full py-4 rounded-xl bg-green-600 hover:bg-green-700 text-white font-semibold text-sm transition-colors shadow-lg"
+                        className="flex items-center justify-center gap-2 w-full py-4 rounded-xl bg-green-600 hover:bg-green-700 text-white font-bold text-sm transition-colors shadow-lg cursor-pointer"
                       >
-                        <svg
-                          className="w-5 h-5"
-                          viewBox="0 0 24 24"
-                          fill="currentColor"
-                        >
-                          <path d="M19.077 4.928C17.191 3.041 14.683 2 12.006 2 6.798 2 2.528 6.17 2.527 11.26c0 1.695.444 3.355 1.291 4.815L2 22l5.995-1.788c1.44.79 3.064 1.206 4.722 1.207h.005c5.195 0 9.476-4.17 9.477-9.26 0-2.476-.966-4.804-2.842-6.69z" />
-                        </svg>
-                        Contact on WhatsApp
+                        <WhatsAppIcon /> Contact on WhatsApp
                       </a>
                     ) : (
                       <Button
-                        className="w-full rounded-xl py-6 bg-slate-900 hover:bg-slate-800 text-white font-semibold shadow-lg transition-all group cursor-pointer"
                         onClick={() => setShowUnlockDialog(true)}
+                        className="w-full rounded-xl py-6 bg-slate-900 hover:bg-slate-800 text-white font-bold shadow-lg cursor-pointer group"
                       >
                         <Lock className="w-4 h-4 mr-2 group-hover:scale-110 transition-transform" />
                         Unlock to Contact Host
                       </Button>
                     )}
-
                     <p className="text-xs text-slate-400 text-center mt-2">
                       {unlockedData
-                        ? "Chat directly with the host"
-                        : "Unlock to see host contact details"}
+                        ? "Chat directly with the owner"
+                        : `Service charge: ${formatPriceNPR(serviceCharge)}`}
                     </p>
                   </CardContent>
                 </Card>
 
-                {/* Property Details */}
+                {/* Property details */}
                 <Card className="rounded-2xl border-slate-100 shadow-sm">
-                  <CardContent className="p-6">
-                    <h4 className="text-sm font-semibold text-slate-900 mb-4">
+                  <CardContent className="p-5">
+                    <h4 className="text-sm font-bold text-slate-900 mb-4">
                       Property Details
                     </h4>
                     <div className="space-y-3">
                       {[
                         {
-                          label: "Property Type",
+                          label: "Type",
                           value: room.category,
                           cls: "capitalize",
                         },
+                        { label: "Floor", value: room.floorNumber, cls: "" },
                         {
-                          label: "Floor Number",
-                          value: room.floorNumber,
+                          label: "Room Capacity",
+                          value: `${room.roomCapacity} persons`,
                           cls: "",
                         },
                         {
-                          label: "Owner Lives Here",
+                          label: "House Capacity",
+                          value: `${room.totalHouseCapacity} persons`,
+                          cls: "",
+                        },
+                        {
+                          label: "Owner lives here",
                           value: room.ownerLivesInHouse ? "Yes" : "No",
                           cls: room.ownerLivesInHouse
                             ? "text-emerald-600"
                             : "text-slate-900",
                         },
                         {
-                          label: "Women Allowed",
+                          label: "Women allowed",
                           value: room.allowsWomen ? "Yes" : "No",
                           cls: room.allowsWomen
                             ? "text-emerald-600"
@@ -1232,98 +1350,102 @@ export default function PropertyDetailsPage() {
                         >
                           <span className="text-slate-500">{label}</span>
                           <span
-                            className={`font-medium ${cls || "text-slate-900"}`}
+                            className={cn("font-semibold text-slate-900", cls)}
                           >
                             {value}
                           </span>
                         </div>
                       ))}
                     </div>
-
-                    {room.tiktokUrl && (
-                      <>
-                        <Separator className="my-4" />
-                        <a
-                          href={room.tiktokUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-3 group"
-                        >
-                          <div className="w-10 h-10 rounded-full bg-black flex items-center justify-center flex-shrink-0">
-                            <svg
-                              viewBox="0 0 24 24"
-                              className="w-5 h-5"
-                              fill="white"
-                            >
-                              <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1V9.01a6.32 6.32 0 0 0-.79-.05 6.34 6.34 0 0 0-6.34 6.34 6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.33-6.34l-.01-8.83a8.18 8.18 0 0 0 4.78 1.52V4.56a4.85 4.85 0 0 1-1-.13z" />
-                            </svg>
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs text-slate-500">
-                              TikTok Profile
-                            </p>
-                            <p className="text-sm font-semibold text-slate-900 group-hover:text-pink-600 transition-colors flex items-center gap-1">
-                              View Profile <ExternalLink className="w-3 h-3" />
-                            </p>
-                          </div>
-                        </a>
-                      </>
-                    )}
                   </CardContent>
                 </Card>
               </div>
             </motion.div>
           </div>
+
+          {/* ── Mobile Property Details (below location section) ── */}
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="mt-5 lg:hidden bg-white rounded-2xl border border-slate-100 shadow-sm p-5"
+          >
+            <h4 className="text-sm font-bold text-slate-900 mb-4">
+              Property Details
+            </h4>
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                { label: "Type", value: room.category, cls: "capitalize" },
+                { label: "Floor", value: room.floorNumber, cls: "" },
+                {
+                  label: "Room Capacity",
+                  value: `${room.roomCapacity} persons`,
+                  cls: "",
+                },
+                {
+                  label: "House Capacity",
+                  value: `${room.totalHouseCapacity} persons`,
+                  cls: "",
+                },
+                {
+                  label: "Owner lives here",
+                  value: room.ownerLivesInHouse ? "Yes ✓" : "No",
+                  cls: room.ownerLivesInHouse ? "text-emerald-600" : "",
+                },
+                {
+                  label: "Women allowed",
+                  value: room.allowsWomen ? "Yes ✓" : "No ✗",
+                  cls: room.allowsWomen ? "text-emerald-600" : "text-red-500",
+                },
+              ].map(({ label, value, cls }) => (
+                <div key={label} className="p-3 bg-slate-50 rounded-xl">
+                  <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wide">
+                    {label}
+                  </p>
+                  <p
+                    className={cn(
+                      "text-sm font-bold text-slate-800 mt-0.5 capitalize",
+                      cls,
+                    )}
+                  >
+                    {value}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        </div>
+
+        {/* ── Mobile sticky CTA ── */}
+        <div className="fixed bottom-0 left-0 right-0 z-30 lg:hidden bg-white/95 backdrop-blur-md border-t border-slate-200 shadow-xl px-4 py-3">
+          <div className="max-w-4xl mx-auto flex items-center gap-3">
+            <div className="flex-1">
+              <p className="text-xs text-slate-400">Monthly Rent</p>
+              <p className="text-xl font-bold text-slate-900">
+                {formatPriceNPR(Number(room.price))}
+              </p>
+            </div>
+            {unlockedData?.room?.contactPhone ? (
+              <a
+                href={`https://wa.me/${unlockedData.room.user?.phoneNumber?.replace(/\D/g, "")}?text=${encodeURIComponent(`Hi! Interested in: ${room.title}`)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 px-5 py-3.5 bg-green-600 hover:bg-green-700 text-white font-bold text-sm rounded-xl transition-colors cursor-pointer shadow-lg"
+              >
+                <WhatsAppIcon /> WhatsApp
+              </a>
+            ) : (
+              <Button
+                onClick={() => setShowUnlockDialog(true)}
+                className="px-5 py-3.5 bg-red-500 hover:bg-red-600 text-white font-bold text-sm rounded-xl shadow-lg shadow-red-200 cursor-pointer"
+              >
+                <Lock className="w-4 h-4 mr-1.5" /> Unlock ·{" "}
+                {formatPriceNPR(serviceCharge)}
+              </Button>
+            )}
+          </div>
         </div>
       </div>
-
-      {/* ── All Amenities Modal ── */}
-      <AnimatePresence>
-        {showAllAmenities && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-            onClick={() => setShowAllAmenities(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white rounded-2xl max-w-2xl w-full max-h-[80vh] overflow-y-auto"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="sticky top-0 bg-white border-b border-slate-100 p-6 flex items-center justify-between">
-                <h3 className="text-xl font-semibold text-slate-900">
-                  All Amenities
-                </h3>
-                <button
-                  onClick={() => setShowAllAmenities(false)}
-                  className="w-10 h-10 rounded-full hover:bg-slate-100 flex items-center justify-center transition-colors"
-                >
-                  <X className="w-5 h-5 text-slate-500" />
-                </button>
-              </div>
-              <div className="p-6">
-                <div className="grid grid-cols-2 gap-4">
-                  {room.amenities?.map((amenity: string) => {
-                    const Icon = amenityIcons[amenity.toLowerCase()] || Check;
-                    return (
-                      <div key={amenity} className="flex items-center gap-3">
-                        <Icon className="w-5 h-5 text-red-500" />
-                        <span className="text-sm text-slate-700 capitalize">
-                          {amenity}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {/* ── Dialogs ── */}
       <RoomUnlockDialog
@@ -1339,7 +1461,6 @@ export default function PropertyDetailsPage() {
           setShowTopUpDialog(true);
         }}
       />
-
       <TopUpRequestDialog
         open={showTopUpDialog}
         onOpenChange={setShowTopUpDialog}
