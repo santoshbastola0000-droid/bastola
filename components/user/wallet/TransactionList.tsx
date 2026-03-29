@@ -25,17 +25,6 @@ export function TransactionList({ transactions, limit, showAll }: Props) {
     ? transactions
     : transactions.slice(0, limit);
 
-  const getStatusIcon = (status: TransactionStatus) => {
-    switch (status) {
-      case TransactionStatus.COMPLETED:
-        return <CheckCircle className="h-4 w-4 text-green-500" />;
-      case TransactionStatus.FAILED:
-        return <XCircle className="h-4 w-4 text-red-500" />;
-      default:
-        return <Clock className="h-4 w-4 text-yellow-500" />;
-    }
-  };
-
   const getStatusBadge = (status: TransactionStatus) => {
     const variants = {
       [TransactionStatus.COMPLETED]:
@@ -65,6 +54,8 @@ export function TransactionList({ transactions, limit, showAll }: Props) {
       </div>
     );
   }
+
+  console.log("Transactions", transactions);
 
   return (
     <div className="space-y-4">
@@ -115,7 +106,10 @@ export function TransactionList({ transactions, limit, showAll }: Props) {
                   : "text-red-600"
               }`}
             >
-              {transaction.type === TransactionType.COMMISSION ? "+" : "-"}
+              {transaction.type === TransactionType.COMMISSION ||
+              transaction.type === TransactionType.ADJUSTMENT
+                ? "+"
+                : "-"}
               Rs. {formatCurrency(transaction.netAmount)}
             </p>
             {transaction.commissionAmount > 0 && (

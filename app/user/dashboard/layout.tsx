@@ -19,132 +19,111 @@ export default function UserLayout({
   const pathname = usePathname();
   const { isUser, isLoaded, user } = useUserRole();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
   const isMobile = useMediaQuery("(max-width: 768px)");
   const isTablet = useMediaQuery("(min-width: 769px) and (max-width: 1024px)");
 
-  // Auto collapse sidebar on tablet
+  // Auto-collapse on tablet
   useEffect(() => {
-    if (isTablet) {
-      setIsSidebarCollapsed(true);
-    }
-  }, [isTablet]);
+    if (isTablet) setIsSidebarCollapsed(true);
+    else if (!isMobile) setIsSidebarCollapsed(false);
+  }, [isTablet, isMobile]);
 
-  // Close mobile menu on route change
+  // Close mobile sidebar on route change
   useEffect(() => {
-    setIsMobileMenuOpen(false);
+    setIsMobileOpen(false);
   }, [pathname]);
 
-  // Check if user is user
+  // Lock body scroll when mobile sidebar is open
   useEffect(() => {
-    if (isLoaded) {
-      if (!user) {
-        // Not logged in
-        router.push("/auth/login");
-      } else if (!isUser) {
-        // Logged in but not user
-        if (user.role?.toLowerCase() === "admin") {
-          router.push("/admin/dashboard");
-        } else {
-          router.push("/");
-        }
-      }
+    document.body.style.overflow = isMobile && isMobileOpen ? "hidden" : "";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isMobile, isMobileOpen]);
+
+  // Auth redirect
+  useEffect(() => {
+    if (!isLoaded) return;
+    if (!user) {
+      router.push("/auth/login");
+    } else if (!isUser) {
+      router.push(
+        user.role?.toLowerCase() === "admin" ? "/admin/dashboard" : "/",
+      );
     }
   }, [isLoaded, isUser, user, router]);
 
-  // Handle body scroll when mobile menu is open
-  useEffect(() => {
-    if (isMobile && isMobileMenuOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "unset";
-    }
-    return () => {
-      document.body.style.overflow = "unset";
-    };
-  }, [isMobile, isMobileMenuOpen]);
-
-  // Show loading state while checking auth
   if (!isLoaded) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-white">
         <div className="text-center">
-          <div className="relative">
-            <div className="absolute inset-0 rounded-full bg-primary/20 animate-ping"></div>
-            <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto mb-4 relative" />
+          <div className="relative mb-4">
+            <div className="absolute inset-0 rounded-full bg-primary/20 animate-ping" />
+            <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto relative" />
           </div>
-          <p className="text-sm text-gray-600">Loading your dashboard...</p>
+          <p className="text-sm text-gray-500">Loading your dashboard…</p>
         </div>
       </div>
     );
   }
 
-  // If not user, don't render the layout (redirect will happen)
-  if (!isUser || !user) {
-    return null;
-  }
+  if (!isUser || !user) return null;
+
+  const desktopSidebarWidth = isSidebarCollapsed ? "72px" : "256px";
 
   return (
     <div className={cn("min-h-screen bg-background", inter.className)}>
-      <div className="flex">
-        {/* Sidebar - Desktop */}
-        <div
-          className={cn(
-            "hidden md:block fixed inset-y-0 left-0 z-50 transition-all duration-300",
-            isSidebarCollapsed ? "w-20" : "w-64",
-          )}
-        >
-          <UserSidebar
-            isCollapsed={isSidebarCollapsed}
-            setIsCollapsed={setIsSidebarCollapsed}
-          />
-        </div>
-
-        {/* Mobile Menu Overlay */}
-        {isMobile && isMobileMenuOpen && (
-          <div
-            className="fixed inset-0 bg-black/50 z-40 md:hidden animate-fade-in"
-            onClick={() => setIsMobileMenuOpen(false)}
-          />
+      {/* ── Desktop sidebar (sticky, fixed width) ── */}
+      <aside
+        className={cn(
+          "hidden md:flex flex-col fixed inset-y-0 left-0 z-40 transition-all duration-300",
+          isSidebarCollapsed ? "w-[72px]" : "w-64",
         )}
+      >
+        <UserSidebar
+          isCollapsed={isSidebarCollapsed}
+          setIsCollapsed={setIsSidebarCollapsed}
+        />
+      </aside>
 
-        {/* Mobile Sidebar */}
+      {/* ── Mobile sidebar drawer ── */}
+      {/* Backdrop */}
+      {isMobileOpen && (
         <div
-          className={cn(
-            "fixed inset-y-0 left-0 z-50 w-64 transform transition-transform duration-300 ease-in-out md:hidden",
-          )}
-        >
-          <UserSidebar
-            isCollapsed={false}
-            setIsCollapsed={() => {}}
-            isMobile={true}
-            onClose={() => setIsMobileMenuOpen(false)}
-          />
-        </div>
+          className="fixed inset-0 bg-black/60 z-40 md:hidden"
+          onClick={() => setIsMobileOpen(false)}
+        />
+      )}
+      {/* Drawer */}
+      <aside
+        className={cn(
+          "fixed inset-y-0 left-0 z-50 w-72 md:hidden transition-transform duration-300 ease-in-out",
+          isMobileOpen ? "translate-x-0" : "-translate-x-full",
+        )}
+      >
+        <UserSidebar
+          isCollapsed={false}
+          setIsCollapsed={() => {}}
+          isMobile
+          onClose={() => setIsMobileOpen(false)}
+        />
+      </aside>
 
-        {/* Main Content */}
-        <div
-          className={cn(
-            "flex-1 transition-all duration-300 ease-in-out min-h-screen",
-            !isMobile && (isSidebarCollapsed ? "md:ml-20" : "md:ml-64"),
-          )}
-        >
-          {/* Header */}
-          <UserHeader
-            isSidebarCollapsed={isSidebarCollapsed}
-            onMenuClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          />
-
-          {/* Main Content Area */}
-          <main className="min-h-[calc(100vh-4rem)] bg-gradient-to-br from-gray-50 via-white to-gray-50">
-            <div className="p-3 sm:p-4 md:p-6 lg:p-8">
-              <div className="max-w-7xl mx-auto">
-                {/* Page Content */}
-                {children}
-              </div>
-            </div>
-          </main>
-        </div>
+      {/* ── Main content ── */}
+      <div
+        className="flex flex-col min-h-screen transition-all duration-300"
+        style={{ marginLeft: isMobile ? 0 : desktopSidebarWidth }}
+      >
+        <UserHeader
+          isSidebarCollapsed={isSidebarCollapsed}
+          onMenuClick={() => setIsMobileOpen((v) => !v)}
+        />
+        <main className="flex-1 bg-gradient-to-br from-gray-50 via-white to-gray-50">
+          <div className="p-3 sm:p-4 md:p-6 lg:p-8">
+            <div className="max-w-7xl mx-auto">{children}</div>
+          </div>
+        </main>
       </div>
     </div>
   );

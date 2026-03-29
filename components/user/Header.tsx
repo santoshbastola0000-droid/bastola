@@ -1,10 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Search, ChevronDown, LogOut, Home, Moon, Sun } from "lucide-react";
+import {
+  ChevronDown,
+  LogOut,
+  Home,
+  Moon,
+  Sun,
+  Menu,
+  Globe,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,14 +19,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-  DropdownMenuGroup,
 } from "@/components/ui/dropdown-menu";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { useUserStore } from "@/stores/user-store";
@@ -32,199 +32,191 @@ interface UserHeaderProps {
   onMenuClick?: () => void;
 }
 
+// Map pathname segments → human-readable titles
+const PAGE_TITLES: Record<string, string> = {
+  dashboard: "Dashboard",
+  rooms: "My Rooms",
+  create: "Add New Room",
+  pending: "Pending Approvals",
+  approved: "Approved Rooms",
+  wallet: "My Wallet",
+};
+
 export function UserHeader({ onMenuClick }: UserHeaderProps) {
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
-  const [showSearch, setShowSearch] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [mounted, setMounted] = useState(false);
 
   const pathname = usePathname();
   const router = useRouter();
   const { user } = useUserStore();
   const { logout } = useLogout();
   const { theme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
 
-  useState(() => {
+  useEffect(() => {
     setMounted(true);
-  });
+  }, []);
 
-  const getPageTitle = () => {
-    const path = pathname?.split("/").pop() || "Dashboard";
-    return path
-      .split("-")
-      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(" ");
-  };
+  // Derive page title from last non-empty segment
+  const pageTitle = (() => {
+    const segments = pathname?.split("/").filter(Boolean) ?? [];
+    const last = segments[segments.length - 1] ?? "dashboard";
+    return (
+      PAGE_TITLES[last] ??
+      last
+        .split("-")
+        .map((w) => w[0].toUpperCase() + w.slice(1))
+        .join(" ")
+    );
+  })();
 
-  const getInitials = () => {
-    if (user?.name) {
-      return user.name
+  const initials = user?.name
+    ? user.name
         .split(" ")
         .map((n) => n[0])
         .join("")
         .toUpperCase()
-        .slice(0, 2);
-    }
-    return user?.email?.slice(0, 2).toUpperCase() || "GU";
-  };
+        .slice(0, 2)
+    : (user?.email?.slice(0, 2).toUpperCase() ?? "U");
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      router.push(`/search?q=${encodeURIComponent(searchQuery)}`);
-      setShowSearch(false);
-    }
-  };
-
-  const handleLogoutClick = () => {
-    setShowLogoutDialog(true);
-  };
-
-  const handleLogoutConfirm = async () => {
+  const handleLogout = async () => {
     setShowLogoutDialog(false);
     await logout();
+    router.push("/auth/login");
   };
 
   return (
     <>
-      <header className="sticky top-0 z-30 h-16 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-border/50">
-        <div className="flex items-center justify-between h-full px-4 md:px-6 lg:px-8">
-          <div className="flex items-center gap-4">
-            <div>
-              <h1 className="text-xl md:text-2xl font-bold text-gray-800 dark:text-gray-100">
-                {getPageTitle()}
+      <header className="sticky top-0 z-30 h-16 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border-b border-border/50 shrink-0">
+        <div className="flex items-center justify-between h-full px-4 gap-3">
+          {/* LEFT: hamburger (mobile) + page title */}
+          <div className="flex items-center gap-3 min-w-0">
+            {/* Hamburger — only on mobile */}
+            <button
+              type="button"
+              onClick={onMenuClick}
+              className="md:hidden w-9 h-9 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors cursor-pointer flex-shrink-0"
+              aria-label="Open sidebar"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+
+            <div className="min-w-0">
+              <h1 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100 truncate">
+                {pageTitle}
               </h1>
-              <p className="text-xs text-muted-foreground hidden sm:flex items-center gap-1">
-                <span>
-                  {new Date().toLocaleDateString("en-US", {
-                    weekday: "long",
-                    year: "numeric",
-                    month: "long",
-                    day: "numeric",
-                  })}
-                </span>
-                <span className="w-1 h-1 rounded-full bg-muted-foreground mx-1" />
-                <span className="text-primary">
-                  Welcome back, {user?.name?.split(" ")[0] || "User"}!
+              <p className="text-[11px] text-muted-foreground hidden sm:block truncate">
+                {new Date().toLocaleDateString("en-US", {
+                  weekday: "short",
+                  month: "short",
+                  day: "numeric",
+                })}
+                {" · "}
+                <span className="text-red-500 font-medium">
+                  Welcome, {user?.name?.split(" ")[0] || "User"}!
                 </span>
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 md:gap-4">
-            {/* Theme Toggle */}
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="hover:bg-primary/60 cursor-pointer"
-                    onClick={() =>
-                      setTheme(theme === "dark" ? "light" : "dark")
-                    }
-                  >
-                    {mounted && theme === "dark" ? (
-                      <Sun className="h-5 w-5" />
-                    ) : (
-                      <Moon className="h-5 w-5" />
-                    )}
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Toggle theme</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+          {/* RIGHT: theme toggle + avatar menu */}
+          <div className="flex items-center gap-1.5 flex-shrink-0">
+            {/* Theme toggle */}
+            {mounted && (
+              <button
+                type="button"
+                onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                className="w-9 h-9 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors cursor-pointer"
+                aria-label="Toggle theme"
+              >
+                {theme === "dark" ? (
+                  <Sun className="w-4 h-4" />
+                ) : (
+                  <Moon className="w-4 h-4" />
+                )}
+              </button>
+            )}
 
-            {/* User Menu */}
+            {/* User dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  className="flex items-center gap-2 px-2 hover:bg-primary/50 cursor-pointer h-auto py-1"
+                <button
+                  type="button"
+                  className="flex items-center gap-2 px-2 py-1.5 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors cursor-pointer"
                 >
-                  <Avatar className="h-8 w-8 ring-2 ring-primary/20">
-                    <AvatarFallback className="bg-gradient-to-br from-primary to-primary-dark text-white">
-                      {getInitials()}
+                  <Avatar className="h-8 w-8 ring-2 ring-red-200 dark:ring-red-900">
+                    <AvatarFallback className="bg-gradient-to-br from-red-500 to-rose-600 text-white text-xs font-bold">
+                      {initials}
                     </AvatarFallback>
                   </Avatar>
                   <div className="hidden lg:flex flex-col items-start">
-                    <span className="text-sm font-semibold">
-                      {user?.name || "Guest User"}
+                    <span className="text-sm font-semibold text-gray-800 dark:text-gray-100 leading-none">
+                      {user?.name?.split(" ")[0] || "User"}
                     </span>
-                    <span className="text-xs text-muted-foreground">
-                      {user?.email || "user@example.com"}
+                    <span className="text-[10px] text-muted-foreground mt-0.5 leading-none">
+                      {user?.email || ""}
                     </span>
                   </div>
-                  <ChevronDown className="h-4 w-4 hidden lg:block text-muted-foreground" />
-                </Button>
+                  <ChevronDown className="h-3.5 w-3.5 hidden lg:block text-muted-foreground" />
+                </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-64">
-                <DropdownMenuLabel>
-                  <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-medium leading-none">
-                      {user?.name || "Guest User"}
-                    </p>
-                    <p className="text-xs leading-none text-muted-foreground">
-                      {user?.email || "user@example.com"}
-                    </p>
-                    <Badge variant="outline" className="mt-1 w-fit">
-                      {user?.role || "USER"}
-                    </Badge>
+
+              <DropdownMenuContent
+                align="end"
+                className="w-60 rounded-2xl p-1.5"
+              >
+                <DropdownMenuLabel className="pb-2">
+                  <div className="flex items-center gap-3">
+                    <Avatar className="h-10 w-10 ring-2 ring-red-200">
+                      <AvatarFallback className="bg-gradient-to-br from-red-500 to-rose-600 text-white font-bold">
+                        {initials}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold truncate">
+                        {user?.name || "Guest"}
+                      </p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {user?.email || ""}
+                      </p>
+                      <Badge
+                        variant="outline"
+                        className="mt-1 text-[10px] px-1.5 py-0 h-4"
+                      >
+                        {user?.role || "USER"}
+                      </Badge>
+                    </div>
                   </div>
                 </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-
-                <DropdownMenuSeparator />
-
-                <DropdownMenuGroup>
-                  <DropdownMenuItem
-                    className="cursor-pointer"
-                    onClick={() => router.push("/")}
-                  >
-                    <Home className="mr-2 h-4 w-4" />
-                    <span>Visit Homepage</span>
-                  </DropdownMenuItem>
-                </DropdownMenuGroup>
 
                 <DropdownMenuSeparator />
 
                 <DropdownMenuItem
-                  className="cursor-pointer text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950 focus:text-red-700 focus:bg-red-50"
-                  onClick={handleLogoutClick}
+                  className="cursor-pointer rounded-xl gap-2"
+                  onClick={() => router.push("/")}
                 >
-                  <LogOut className="mr-2 h-4 w-4" />
+                  <Globe className="h-4 w-4 text-slate-500" />
+                  <span>View Site</span>
+                </DropdownMenuItem>
+
+                <DropdownMenuSeparator />
+
+                <DropdownMenuItem
+                  className="cursor-pointer rounded-xl gap-2 text-red-600 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-950"
+                  onClick={() => setShowLogoutDialog(true)}
+                >
+                  <LogOut className="h-4 w-4" />
                   <span>Log out</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
         </div>
-
-        {/* Mobile Search Bar */}
-        {showSearch && (
-          <div className="md:hidden p-4 border-t">
-            <form onSubmit={handleSearch} className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                type="search"
-                placeholder="Search rooms..."
-                className="pl-9 w-full"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                autoFocus
-              />
-            </form>
-          </div>
-        )}
       </header>
 
-      {/* Logout Confirmation Dialog */}
       <LogoutConfirmDialog
         open={showLogoutDialog}
         onOpenChange={setShowLogoutDialog}
-        onConfirm={handleLogoutConfirm}
+        onConfirm={handleLogout}
       />
     </>
   );

@@ -15,6 +15,7 @@ import {
   Clock,
   CheckCircle,
   X,
+  Globe,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -55,12 +56,13 @@ interface UserSidebarProps {
   onClose?: () => void;
 }
 
+// ── Single nav link ──────────────────────────────────────────────────────────
 function NavLink({
   item,
   collapsed,
   onClick,
 }: {
-  item: { title: string; href: string; icon: React.ElementType };
+  item: (typeof navItems)[number];
   collapsed: boolean;
   onClick?: () => void;
 }) {
@@ -73,19 +75,23 @@ function NavLink({
       href={item.href}
       onClick={onClick}
       className={cn(
-        "flex items-center gap-3 px-3 py-2 rounded-lg transition-all text-sm",
+        "flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all text-sm font-medium cursor-pointer",
         collapsed ? "justify-center" : "",
         isActive
-          ? "bg-red-600 text-white shadow-md shadow-red-200"
-          : "text-gray-300 hover:bg-gray-800 hover:text-white",
+          ? "bg-red-600 text-white shadow-md shadow-red-900/40"
+          : "text-gray-300 hover:bg-white/10 hover:text-white",
       )}
     >
-      <Icon className="h-4 w-4 flex-shrink-0" />
-      {!collapsed && <span className="flex-1">{item.title}</span>}
+      <Icon className="h-[18px] w-[18px] flex-shrink-0" />
+      {!collapsed && <span className="flex-1 truncate">{item.title}</span>}
+      {!collapsed && isActive && (
+        <span className="w-1.5 h-1.5 rounded-full bg-white/70 flex-shrink-0" />
+      )}
     </Link>
   );
 }
 
+// ── Sidebar body shared between desktop + mobile ──────────────────────────────
 function SidebarBody({
   collapsed,
   onNavClick,
@@ -112,17 +118,26 @@ function SidebarBody({
     router.push("/auth/login");
   };
 
+  const initials = user?.name
+    ? user.name
+        .split(" ")
+        .map((n) => n[0])
+        .join("")
+        .toUpperCase()
+        .slice(0, 2)
+    : (user?.email?.slice(0, 2).toUpperCase() ?? "U");
+
   return (
-    <>
-      {/* Logo */}
-      <div className="flex items-center justify-between px-4 h-16 border-b border-gray-700 shrink-0">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-red-500 to-rose-600 flex items-center justify-center shrink-0">
+    <div className="flex flex-col h-full bg-gradient-to-b from-gray-900 via-gray-900 to-gray-800">
+      {/* ── Logo / brand ── */}
+      <div className="flex items-center justify-between px-4 h-16 border-b border-white/10 shrink-0">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-red-500 to-rose-600 flex items-center justify-center flex-shrink-0 shadow-lg">
             <Home className="w-4 h-4 text-white" />
           </div>
           {!collapsed && (
-            <div>
-              <p className="font-bold text-sm text-white leading-none">
+            <div className="min-w-0">
+              <p className="font-bold text-sm text-white leading-none truncate">
                 RentalService
               </p>
               <p className="text-[10px] text-gray-400 mt-0.5">User Dashboard</p>
@@ -133,7 +148,7 @@ function SidebarBody({
           <button
             type="button"
             onClick={onCollapse}
-            className="text-gray-400 hover:text-white p-1 rounded-md hover:bg-gray-700 transition-colors"
+            className="text-gray-400 hover:text-white p-1.5 rounded-lg hover:bg-white/10 transition-colors cursor-pointer flex-shrink-0"
           >
             {collapsed ? (
               <ChevronRight className="w-4 h-4" />
@@ -144,8 +159,23 @@ function SidebarBody({
         )}
       </div>
 
-      {/* Nav */}
-      <nav className="flex-1 overflow-y-auto p-3 space-y-0.5">
+      {/* ── User pill (expanded only) ── */}
+      {!collapsed && user && (
+        <div className="mx-3 mt-3 px-3 py-2.5 bg-white/5 rounded-xl border border-white/10 flex items-center gap-2.5">
+          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-red-500 to-rose-600 flex items-center justify-center flex-shrink-0 text-white text-xs font-bold">
+            {initials}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-semibold text-white truncate">
+              {user.name || "User"}
+            </p>
+            <p className="text-[10px] text-gray-400 truncate">{user.email}</p>
+          </div>
+        </div>
+      )}
+
+      {/* ── Nav items ── */}
+      <nav className="flex-1 overflow-y-auto p-3 space-y-0.5 mt-2">
         <TooltipProvider delayDuration={0}>
           {navItems.map((item) =>
             collapsed && mounted ? (
@@ -159,7 +189,9 @@ function SidebarBody({
                     />
                   </div>
                 </TooltipTrigger>
-                <TooltipContent side="right">{item.title}</TooltipContent>
+                <TooltipContent side="right" className="font-medium">
+                  {item.title}
+                </TooltipContent>
               </Tooltip>
             ) : (
               <NavLink
@@ -173,8 +205,8 @@ function SidebarBody({
         </TooltipProvider>
       </nav>
 
-      {/* Footer */}
-      <div className="p-3 border-t border-gray-700 shrink-0 space-y-1">
+      {/* ── Footer actions ── */}
+      <div className="p-3 border-t border-white/10 shrink-0 space-y-0.5">
         <TooltipProvider delayDuration={0}>
           {collapsed && mounted ? (
             <>
@@ -182,10 +214,13 @@ function SidebarBody({
                 <TooltipTrigger asChild>
                   <button
                     type="button"
-                    onClick={() => router.push("/")}
-                    className="w-full flex justify-center p-2 rounded-lg text-gray-300 hover:text-white hover:bg-gray-800 transition-colors"
+                    onClick={() => {
+                      router.push("/");
+                      onNavClick?.();
+                    }}
+                    className="w-full flex justify-center p-2.5 rounded-xl text-gray-300 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
                   >
-                    <Home className="w-4 h-4" />
+                    <Globe className="w-[18px] h-[18px]" />
                   </button>
                 </TooltipTrigger>
                 <TooltipContent side="right">View Site</TooltipContent>
@@ -195,9 +230,9 @@ function SidebarBody({
                   <button
                     type="button"
                     onClick={() => setShowLogout(true)}
-                    className="w-full flex justify-center p-2 rounded-lg text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-colors"
+                    className="w-full flex justify-center p-2.5 rounded-xl text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-colors cursor-pointer"
                   >
-                    <LogOut className="w-4 h-4" />
+                    <LogOut className="w-[18px] h-[18px]" />
                   </button>
                 </TooltipTrigger>
                 <TooltipContent side="right">Logout</TooltipContent>
@@ -211,17 +246,17 @@ function SidebarBody({
                   router.push("/");
                   onNavClick?.();
                 }}
-                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-gray-300 hover:text-white hover:bg-gray-800 transition-colors text-sm"
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-300 hover:text-white hover:bg-white/10 transition-colors text-sm font-medium cursor-pointer"
               >
-                <Home className="w-4 h-4 shrink-0" />
+                <Globe className="w-[18px] h-[18px] flex-shrink-0" />
                 <span>View Site</span>
               </button>
               <button
                 type="button"
                 onClick={() => setShowLogout(true)}
-                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-colors text-sm"
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-colors text-sm font-medium cursor-pointer"
               >
-                <LogOut className="w-4 h-4 shrink-0" />
+                <LogOut className="w-[18px] h-[18px] flex-shrink-0" />
                 <span>Logout</span>
               </button>
             </>
@@ -234,78 +269,48 @@ function SidebarBody({
         onOpenChange={setShowLogout}
         onConfirm={handleLogout}
       />
-    </>
+    </div>
   );
 }
 
+// ════════════════════════════════════════════════════════════
+// ── EXPORTED SIDEBAR ────────────────────────────────────────
+// ════════════════════════════════════════════════════════════
 export function UserSidebar({
   isCollapsed,
   setIsCollapsed,
   isMobile = false,
+  onClose,
 }: UserSidebarProps) {
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const pathname = usePathname();
-
-  useEffect(() => {
-    setMobileOpen(false);
-  }, [pathname]);
-
+  // Mobile mode: the drawer open/close is controlled by the parent (UserLayout)
+  // via onClose callback. The hamburger button is rendered inside UserHeader.
   if (isMobile) {
     return (
-      <>
-        {/* Hamburger */}
-        <button
-          type="button"
-          onClick={() => setMobileOpen(true)}
-          aria-label="Open menu"
-          className="md:hidden fixed top-4 left-4 z-50 w-10 h-10 rounded-xl bg-gray-900 text-white flex items-center justify-center shadow-lg"
-        >
-          <Menu className="w-5 h-5" />
-        </button>
-
-        {/* Backdrop */}
-        {mobileOpen && (
-          <div
-            className="fixed inset-0 bg-black/60 z-40 md:hidden"
-            onClick={() => setMobileOpen(false)}
-          />
-        )}
-
-        {/* Drawer */}
-        <aside
-          className={cn(
-            "fixed top-0 left-0 h-full w-72 bg-gradient-to-b from-gray-900 to-gray-800 z-50 flex flex-col transition-transform duration-300 md:hidden",
-            mobileOpen ? "translate-x-0" : "-translate-x-full",
-          )}
-        >
+      // Full-height drawer — parent handles the translate via className
+      <div className="h-full flex flex-col">
+        <div className="relative flex flex-col h-full">
+          {/* Close button inside drawer */}
           <button
             type="button"
-            onClick={() => setMobileOpen(false)}
-            className="absolute top-4 right-4 text-gray-400 hover:text-white"
+            onClick={onClose}
+            className="absolute top-4 right-4 z-10 w-8 h-8 rounded-lg bg-white/10 text-gray-300 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
-          <SidebarBody
-            collapsed={false}
-            onNavClick={() => setMobileOpen(false)}
-          />
-        </aside>
-      </>
+          <SidebarBody collapsed={false} onNavClick={onClose} />
+        </div>
+      </div>
     );
   }
 
+  // Desktop
   return (
-    <aside
-      className={cn(
-        "hidden md:flex flex-col h-screen sticky top-0 bg-gradient-to-b from-gray-900 to-gray-800 transition-all duration-300 shrink-0",
-        isCollapsed ? "w-[72px]" : "w-64",
-      )}
-    >
+    <div className="h-full flex flex-col">
       <SidebarBody
         collapsed={isCollapsed}
         onCollapse={() => setIsCollapsed(!isCollapsed)}
         showCollapseBtn
       />
-    </aside>
+    </div>
   );
 }
