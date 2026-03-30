@@ -21,7 +21,6 @@ import {
   Phone,
   CheckCircle2,
   XCircle,
-  HelpCircle,
   Wifi,
   Car,
   Snowflake,
@@ -31,11 +30,18 @@ import {
   Sun,
   Moon,
   Instagram,
-  Clock,
   Plus,
-  Trash2,
   ChevronRight,
-  Star,
+  Users2,
+  Heart,
+  Ban,
+  Coffee,
+  MoonStar,
+  Baby,
+  DoorClosed,
+  SunDim,
+  Shirt,
+  Loader,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -58,20 +64,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
+
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { toast } from "sonner";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { RoomCategory } from "@/types/room.types";
+import {
+  RoomCategory,
+  GenderPreference,
+  IdealTenantType,
+  RestrictionType,
+  ReligionType,
+} from "@/types/room.types";
 import { cn } from "@/lib/utils";
 import { useCreateRoomMutation } from "@/http/mutations/room.mutation";
 import { createRoomSchema, CreateRoomFormValues } from "@/schema/room";
@@ -83,13 +89,38 @@ import { FAILURETOAST, SUCCESSTOAST } from "@/lib/constants/app.constants";
 const amenitiesList = [
   { id: "wifi", label: "WiFi", icon: Wifi, description: "High-speed internet" },
   { id: "ac", label: "AC", icon: Snowflake, description: "Air conditioning" },
-  { id: "parking", label: "Parking", icon: Car, description: "Vehicle parking" },
+  {
+    id: "parking",
+    label: "Parking",
+    icon: Car,
+    description: "Vehicle parking",
+  },
   { id: "tv", label: "TV", icon: Tv, description: "Cable TV" },
-  { id: "modular-kitchen", label: "Modular Kitchen", icon: Utensils, description: "Modern modular kitchen" },
-  { id: "kitchen", label: "Kitchen", icon: Utensils, description: "Shared kitchen" },
-  { id: "security", label: "Security", icon: Shield, description: "24/7 security" },
+  {
+    id: "modular-kitchen",
+    label: "Modular Kitchen",
+    icon: Utensils,
+    description: "Modern modular kitchen",
+  },
+  {
+    id: "kitchen",
+    label: "Kitchen",
+    icon: Utensils,
+    description: "Shared kitchen",
+  },
+  {
+    id: "security",
+    label: "Security",
+    icon: Shield,
+    description: "24/7 security",
+  },
   { id: "water", label: "पानी", icon: Droplets, description: "पानी सुविधा" },
-  { id: "furnished", label: "Furnished", icon: Home, description: "Fully furnished" },
+  {
+    id: "furnished",
+    label: "Furnished",
+    icon: Home,
+    description: "Fully furnished",
+  },
 ];
 
 const WATER_SUPPLY_OPTIONS = [
@@ -101,17 +132,40 @@ const WATER_SUPPLY_OPTIONS = [
   { value: "tanker", label: "ट्याङ्कर", emoji: "🚛" },
 ];
 
-const morningSlots = ["५:०० - ७:०० बिहान", "६:०० - ८:०० बिहान", "७:०० - ९:०० बिहान", "८:०० - १०:०० बिहान"];
-const eveningSlots = ["४:०० - ६:०० साँझ", "५:०० - ७:०० साँझ", "६:०० - ८:०० साँझ", "७:०० - ९:०० (राति)"];
-const morningSlotValues = ["05:00-07:00", "06:00-08:00", "07:00-09:00", "08:00-10:00"];
-const eveningSlotValues = ["16:00-18:00", "17:00-19:00", "18:00-20:00", "19:00-21:00"];
+const morningSlots = [
+  "५:०० - ७:०० बिहान",
+  "६:०० - ८:०० बिहान",
+  "७:०० - ९:०० बिहान",
+  "८:०० - १०:०० बिहान",
+];
+const eveningSlots = [
+  "४:०० - ६:०० साँझ",
+  "५:०० - ७:०० साँझ",
+  "६:०० - ८:०० साँझ",
+  "७:०० - ९:०० (राति)",
+];
+const morningSlotValues = [
+  "05:00-07:00",
+  "06:00-08:00",
+  "07:00-09:00",
+  "08:00-10:00",
+];
+const eveningSlotValues = [
+  "16:00-18:00",
+  "17:00-19:00",
+  "18:00-20:00",
+  "19:00-21:00",
+];
 
 const DEFAULT_LAT = 27.7172;
 const DEFAULT_LNG = 85.324;
 
 const extractLocationName = (formattedAddress: string): string => {
   if (!formattedAddress) return "";
-  const patterns = [/^([^,]+(?:चोक|चोक्|टोल|गाउँ|बजार|मार्ग|रोड|Road|Chowk))/i, /^([^,]+)/];
+  const patterns = [
+    /^([^,]+(?:चोक|चोक्|टोल|गाउँ|बजार|मार्ग|रोड|Road|Chowk))/i,
+    /^([^,]+)/,
+  ];
   for (const pattern of patterns) {
     const match = formattedAddress.match(pattern);
     if (match?.[1]) return match[1].trim();
@@ -123,12 +177,18 @@ const TABS = [
   { value: "basic", label: "Basic", icon: Home, color: "text-orange-500" },
   { value: "location", label: "Location", icon: MapPin, color: "text-red-500" },
   { value: "details", label: "Details", icon: Bed, color: "text-blue-500" },
-  { value: "amenities", label: "Amenities", icon: Wifi, color: "text-green-500" },
-  { value: "photos", label: "Photos", icon: ImageIcon, color: "text-purple-500" },
-  { value: "contact", label: "Contact", icon: User, color: "text-pink-500" },
+  { value: "tenant", label: "Tenant", icon: Users2, color: "text-purple-500" },
+  { value: "rules", label: "Rules", icon: Shield, color: "text-amber-500" },
+  {
+    value: "amenities",
+    label: "Amenities",
+    icon: Wifi,
+    color: "text-green-500",
+  },
+  { value: "photos", label: "Photos", icon: ImageIcon, color: "text-pink-500" },
+  { value: "contact", label: "Contact", icon: User, color: "text-teal-500" },
 ];
 
-// Counter component for better mobile UX
 const CounterField = ({
   label,
   description,
@@ -137,21 +197,17 @@ const CounterField = ({
   min = 0,
   max = 100,
   icon: Icon,
-}: {
-  label: string;
-  description?: string;
-  value: number;
-  onChange: (v: number) => void;
-  min?: number;
-  max?: number;
-  icon?: any;
-}) => (
+}: any) => (
   <div className="flex items-center justify-between gap-3 p-4 bg-slate-50 rounded-xl border border-slate-200">
     <div className="flex items-center gap-3 min-w-0">
       {Icon && <Icon className="w-4 h-4 text-slate-500 flex-shrink-0" />}
       <div className="min-w-0">
         <p className="text-sm font-medium text-slate-800 truncate">{label}</p>
-        {description && <p className="text-xs text-slate-500 mt-0.5 leading-tight">{description}</p>}
+        {description && (
+          <p className="text-xs text-slate-500 mt-0.5 leading-tight">
+            {description}
+          </p>
+        )}
       </div>
     </div>
     <div className="flex items-center gap-2 flex-shrink-0">
@@ -163,7 +219,9 @@ const CounterField = ({
       >
         <span className="text-lg font-light leading-none">−</span>
       </button>
-      <span className="w-10 text-center text-lg font-bold text-slate-900 tabular-nums">{value}</span>
+      <span className="w-10 text-center text-lg font-bold text-slate-900 tabular-nums">
+        {value}
+      </span>
       <button
         type="button"
         onClick={() => onChange(Math.min(max, value + 1))}
@@ -197,7 +255,7 @@ export default function CreateRoomPage() {
       title: "",
       description: "",
       category: RoomCategory.APARTMENT,
-      price: undefined as unknown as number, // show placeholder
+      price: undefined as unknown as number,
       address: "",
       amenities: [],
       bathroomCapacity: 1,
@@ -212,8 +270,51 @@ export default function CreateRoomPage() {
       contactPhone: "",
       contactPerson: "",
       tiktokUrl: "",
-      waterSupplyTimings: { morning: "06:00-08:00", evening: "17:00-19:00", notes: "" },
-      location: { name: "", formattedAddress: "", latitude: DEFAULT_LAT, longitude: DEFAULT_LNG, city: "", state: "", country: "", postalCode: "" },
+      waterSupplyTimings: {
+        morning: "06:00-08:00",
+        evening: "17:00-19:00",
+        notes: "",
+      },
+      location: {
+        name: "",
+        formattedAddress: "",
+        latitude: DEFAULT_LAT,
+        longitude: DEFAULT_LNG,
+        city: "",
+        state: "",
+        country: "",
+        postalCode: "",
+      },
+      // New fields defaults
+      idealTenants: [],
+      genderPreference: undefined,
+      lifestyleRules: {
+        smokingAllowed: false,
+        alcoholAllowed: false,
+        nonVegetarianAllowed: false,
+        buffaloMeatAllowed: false,
+        porkAllowed: false,
+        lateNightAllowed: false,
+        babyAllowed: false,
+        otherRules: "",
+      },
+      gateClosingTime: "",
+      foodPreferences: {
+        vegetarianAllowed: false,
+        nonVegetarianAllowed: false,
+        buffaloMeatAllowed: false,
+        porkAllowed: false,
+        allAllowed: false,
+      },
+      restrictions: [],
+      ownerCommunity: "",
+      allMixCommunity: false,
+      communityWelcomeNote: "",
+      ownerFloor: undefined,
+      hasClothesDryingArea: false,
+      getsSunlight: false,
+      roomIssues: "",
+      religionPreference: undefined,
     },
     mode: "onChange",
   });
@@ -221,19 +322,30 @@ export default function CreateRoomPage() {
   const formErrors = form.formState.errors;
   const currentLat = form.watch("location.latitude");
   const currentLng = form.watch("location.longitude");
-  const isValidLocation = currentLat !== DEFAULT_LAT || currentLng !== DEFAULT_LNG;
+  const isValidLocation =
+    currentLat !== DEFAULT_LAT || currentLng !== DEFAULT_LNG;
 
-  // Tab completion tracking
   const getTabStatus = (tab: string) => {
     const v = form.getValues();
     switch (tab) {
-      case "basic": return !!(v.title && v.description && v.price);
-      case "location": return isValidLocation;
-      case "details": return true;
-      case "amenities": return selectedAmenities.length > 0;
-      case "photos": return images.length > 0;
-      case "contact": return !!(v.contactPhone && v.contactPerson);
-      default: return false;
+      case "basic":
+        return !!(v.title && v.description && v.price);
+      case "location":
+        return isValidLocation;
+      case "details":
+        return true;
+      case "tenant":
+        return true;
+      case "rules":
+        return true;
+      case "amenities":
+        return selectedAmenities.length > 0;
+      case "photos":
+        return images.length > 0;
+      case "contact":
+        return !!(v.contactPhone && v.contactPerson);
+      default:
+        return false;
     }
   };
 
@@ -249,24 +361,33 @@ export default function CreateRoomPage() {
     }
   }, [waterSupplyType, form]);
 
-  // Scroll active tab into view on mobile
   useEffect(() => {
     if (tabsRef.current) {
-      const activeEl = tabsRef.current.querySelector(`[data-tab="${activeTab}"]`);
-      activeEl?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+      const activeEl = tabsRef.current.querySelector(
+        `[data-tab="${activeTab}"]`,
+      );
+      activeEl?.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+        inline: "center",
+      });
     }
   }, [activeTab]);
 
   const toggleAmenity = (amenityId: string) => {
     setSelectedAmenities((prev) => {
-      const next = prev.includes(amenityId) ? prev.filter((a) => a !== amenityId) : [...prev, amenityId];
+      const next = prev.includes(amenityId)
+        ? prev.filter((a) => a !== amenityId)
+        : [...prev, amenityId];
       form.setValue("amenities", next, { shouldValidate: true });
       return next;
     });
   };
 
-  const handleLocationSelect = (location: { lat: number; lng: number; name?: string; formattedAddress?: string; city?: string; state?: string; country?: string; postalCode?: string }) => {
-    const extractedName = location.formattedAddress ? extractLocationName(location.formattedAddress) : location.name || "Selected Location";
+  const handleLocationSelect = (location: any) => {
+    const extractedName = location.formattedAddress
+      ? extractLocationName(location.formattedAddress)
+      : location.name || "Selected Location";
     form.setValue("location.latitude", location.lat);
     form.setValue("location.longitude", location.lng);
     form.setValue("location.name", extractedName);
@@ -275,29 +396,55 @@ export default function CreateRoomPage() {
     form.setValue("location.state", location.state || "");
     form.setValue("location.country", location.country || "");
     form.setValue("location.postalCode", location.postalCode || "");
-    if (location.formattedAddress) form.setValue("address", location.formattedAddress);
+    if (location.formattedAddress)
+      form.setValue("address", location.formattedAddress);
     form.trigger("location");
-    toast.success("📍 Location selected!", { description: extractedName, duration: 2500 });
+    toast.success("📍 Location selected!", {
+      description: extractedName,
+      duration: 2500,
+    });
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     const invalid = files.filter((f) => !f.type.startsWith("image/"));
-    if (invalid.length > 0) { toast.error("Please upload images only (JPEG, PNG, WEBP)"); return; }
+    if (invalid.length > 0) {
+      toast.error("Please upload images only (JPEG, PNG, WEBP)");
+      return;
+    }
     const valid = files.filter((f) => f.size <= 10 * 1024 * 1024);
     const oversized = files.filter((f) => f.size > 10 * 1024 * 1024);
-    if (oversized.length > 0) toast.warning(`${oversized.length} file(s) exceed 10MB and were skipped`);
-    if (images.length + valid.length > 10) { toast.error("Maximum 10 photos allowed"); return; }
+    if (oversized.length > 0)
+      toast.warning(`${oversized.length} file(s) exceed 10MB and were skipped`);
+    if (images.length + valid.length > 10) {
+      toast.error("Maximum 10 photos allowed");
+      return;
+    }
 
     setUploadProgress(0);
-    const interval = setInterval(() => setUploadProgress((p) => { if (p >= 100) { clearInterval(interval); return 100; } return p + 10; }), 80);
+    const interval = setInterval(
+      () =>
+        setUploadProgress((p) => {
+          if (p >= 100) {
+            clearInterval(interval);
+            return 100;
+          }
+          return p + 10;
+        }),
+      80,
+    );
     setImages((prev) => [...prev, ...valid]);
     valid.forEach((file) => {
       const reader = new FileReader();
-      reader.onloadend = () => setImagePreviews((prev) => [...prev, reader.result as string]);
+      reader.onloadend = () =>
+        setImagePreviews((prev) => [...prev, reader.result as string]);
       reader.readAsDataURL(file);
     });
-    setTimeout(() => { clearInterval(interval); setUploadProgress(0); toast.success(`${valid.length} photo(s) added!`); }, 900);
+    setTimeout(() => {
+      clearInterval(interval);
+      setUploadProgress(0);
+      toast.success(`${valid.length} photo(s) added!`);
+    }, 900);
   };
 
   const removeImage = (index: number) => {
@@ -307,20 +454,36 @@ export default function CreateRoomPage() {
 
   const navigateTab = (direction: "next" | "prev") => {
     const idx = TABS.findIndex((t) => t.value === activeTab);
-    if (direction === "next" && idx < TABS.length - 1) setActiveTab(TABS[idx + 1].value);
+    if (direction === "next" && idx < TABS.length - 1)
+      setActiveTab(TABS[idx + 1].value);
     if (direction === "prev" && idx > 0) setActiveTab(TABS[idx - 1].value);
   };
 
   const onSubmit = async (values: CreateRoomFormValues) => {
-    if (images.length === 0) { toast.error("📸 Add at least one photo"); setActiveTab("photos"); return; }
-    if (!isValidLocation) { toast.error("📍 Please set the location on map"); setActiveTab("location"); return; }
-    if (selectedAmenities.length === 0) { toast.error("✨ Select at least one amenity"); setActiveTab("amenities"); return; }
+    if (images.length === 0) {
+      toast.error("📸 Add at least one photo");
+      setActiveTab("photos");
+      return;
+    }
+    if (!isValidLocation) {
+      toast.error("📍 Please set the location on map");
+      setActiveTab("location");
+      return;
+    }
+    if (selectedAmenities.length === 0) {
+      toast.error("✨ Select at least one amenity");
+      setActiveTab("amenities");
+      return;
+    }
 
     values.amenities = selectedAmenities;
     const formData = new FormData();
     const append = (key: string, value: unknown) => {
       if (value === undefined || value === null) return;
-      formData.append(key, typeof value === "object" ? JSON.stringify(value) : String(value));
+      formData.append(
+        key,
+        typeof value === "object" ? JSON.stringify(value) : String(value),
+      );
     };
 
     append("title", values.title);
@@ -340,33 +503,76 @@ export default function CreateRoomPage() {
     append("roomArea", values.roomArea);
     append("contactPerson", values.contactPerson);
     append("contactPhone", values.contactPhone);
-    append("contactEmail", values.contactEmail);
-    append("contactWhatsapp", values.contactWhatsapp);
     append("location", values.location);
     if (values.tiktokUrl) append("tiktokUrl", values.tiktokUrl);
     formData.append("amenities", JSON.stringify(selectedAmenities));
+
+    // New fields
+    if (values.idealTenants?.length)
+      append("idealTenants", values.idealTenants);
+    if (values.genderPreference)
+      append("genderPreference", values.genderPreference);
+    if (values.lifestyleRules) append("lifestyleRules", values.lifestyleRules);
+    if (values.gateClosingTime)
+      append("gateClosingTime", values.gateClosingTime);
+    if (values.foodPreferences)
+      append("foodPreferences", values.foodPreferences);
+    if (values.restrictions?.length)
+      append("restrictions", values.restrictions);
+    if (values.ownerCommunity) append("ownerCommunity", values.ownerCommunity);
+    if (values.allMixCommunity !== undefined)
+      append("allMixCommunity", values.allMixCommunity);
+    if (values.communityWelcomeNote)
+      append("communityWelcomeNote", values.communityWelcomeNote);
+    if (values.ownerFloor !== undefined)
+      append("ownerFloor", values.ownerFloor);
+    if (values.hasClothesDryingArea !== undefined)
+      append("hasClothesDryingArea", values.hasClothesDryingArea);
+    if (values.getsSunlight !== undefined)
+      append("getsSunlight", values.getsSunlight);
+    if (values.roomIssues) append("roomIssues", values.roomIssues);
+    if (values.religionPreference)
+      append("religionPreference", values.religionPreference);
+
     images.forEach((img) => formData.append("images", img));
 
     const tid = toast.loading("Creating room listing...");
-    createRoomMutation.mutate({ data: formData }, {
-      onSuccess: () => {
-        toast.dismiss(tid);
-        toast.success("🎉 Room listed successfully!", { duration: 4000, style: { background: SUCCESSTOAST, color: "#fff" } });
-        router.push(isAdmin ? "/admin/dashboard/rooms" : "/user/dashboard/rooms");
+    createRoomMutation.mutate(
+      { data: formData },
+      {
+        onSuccess: () => {
+          toast.dismiss(tid);
+          toast.success("🎉 Room listed successfully!", {
+            duration: 4000,
+            style: { background: SUCCESSTOAST, color: "#fff" },
+          });
+          router.push(
+            isAdmin ? "/admin/dashboard/rooms" : "/user/dashboard/rooms",
+          );
+        },
+        onError: (error: unknown) => {
+          toast.dismiss(tid);
+          const err = error as { response?: { data?: { message?: string } } };
+          toast.error(
+            err?.response?.data?.message ||
+              "Failed to create room. Please try again.",
+            {
+              duration: 5000,
+              style: { background: FAILURETOAST, color: "#fff" },
+            },
+          );
+        },
       },
-      onError: (error: unknown) => {
-        toast.dismiss(tid);
-        const err = error as { response?: { data?: { message?: string } } };
-        toast.error(err?.response?.data?.message || "Failed to create room. Please try again.", { duration: 5000, style: { background: FAILURETOAST, color: "#fff" } });
-      },
-    });
+    );
   };
 
   const currentTabIdx = TABS.findIndex((t) => t.value === activeTab);
+  const religionPreference = form.watch("religionPreference");
+  const showFaded = religionPreference === ReligionType.HINDU;
 
   return (
     <div className="min-h-screen bg-slate-50">
-      {/* ── Sticky Header ── */}
+      {/* Sticky Header */}
       <div className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-sm">
         <div className="px-4 py-3 md:px-6 lg:px-8">
           <div className="flex items-center justify-between gap-3">
@@ -380,9 +586,23 @@ export default function CreateRoomPage() {
               </button>
               <div className="min-w-0">
                 <div className="flex items-center gap-1.5 text-xs text-slate-400 hidden sm:flex">
-                  <Link href={isAdmin ? "/admin/dashboard" : "/user/dashboard"} className="hover:text-red-500 transition-colors cursor-pointer">Dashboard</Link>
+                  <Link
+                    href={isAdmin ? "/admin/dashboard" : "/user/dashboard"}
+                    className="hover:text-red-500 transition-colors cursor-pointer"
+                  >
+                    Dashboard
+                  </Link>
                   <span>/</span>
-                  <Link href={isAdmin ? "/admin/dashboard/rooms" : "/user/dashboard/rooms"} className="hover:text-red-500 transition-colors cursor-pointer">Rooms</Link>
+                  <Link
+                    href={
+                      isAdmin
+                        ? "/admin/dashboard/rooms"
+                        : "/user/dashboard/rooms"
+                    }
+                    className="hover:text-red-500 transition-colors cursor-pointer"
+                  >
+                    Rooms
+                  </Link>
                   <span>/</span>
                   <span className="text-slate-700 font-medium">Add Room</span>
                 </div>
@@ -392,24 +612,27 @@ export default function CreateRoomPage() {
                 </h1>
               </div>
             </div>
-            {/* Overall progress pill */}
             <div className="flex-shrink-0 hidden sm:flex items-center gap-2">
               <div className="text-xs text-slate-500 font-medium">
-                {TABS.filter((t) => getTabStatus(t.value)).length}/{TABS.length} done
+                {TABS.filter((t) => getTabStatus(t.value)).length}/{TABS.length}{" "}
+                done
               </div>
             </div>
           </div>
-
-          {/* Progress bar */}
           <div className="mt-3">
             <Progress
-              value={(TABS.filter((t) => getTabStatus(t.value)).length / TABS.length) * 100}
+              value={
+                (TABS.filter((t) => getTabStatus(t.value)).length /
+                  TABS.length) *
+                100
+              }
               className="h-1.5 bg-slate-100"
             />
           </div>
-
-          {/* ── Scrollable Tab Bar ── */}
-          <div ref={tabsRef} className="flex gap-1 mt-3 overflow-x-auto scrollbar-none pb-1 -mx-1 px-1">
+          <div
+            ref={tabsRef}
+            className="flex gap-1 mt-3 overflow-x-auto scrollbar-none pb-1 -mx-1 px-1"
+          >
             {TABS.map((tab, idx) => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.value;
@@ -425,8 +648,8 @@ export default function CreateRoomPage() {
                     isActive
                       ? "bg-red-500 text-white shadow-sm shadow-red-200"
                       : isDone
-                      ? "bg-green-50 text-green-700 border border-green-200"
-                      : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                        ? "bg-green-50 text-green-700 border border-green-200"
+                        : "bg-slate-100 text-slate-500 hover:bg-slate-200",
                   )}
                 >
                   {isDone && !isActive ? (
@@ -442,7 +665,7 @@ export default function CreateRoomPage() {
         </div>
       </div>
 
-      {/* ── Form Body ── */}
+      {/* Form Body */}
       <div className="max-w-3xl mx-auto px-4 py-6 md:px-6 pb-40">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)}>
@@ -454,301 +677,1060 @@ export default function CreateRoomPage() {
                 exit={{ opacity: 0, x: -20 }}
                 transition={{ duration: 0.2 }}
               >
-
-                {/* ══ BASIC INFO ══ */}
+                {/* BASIC INFO */}
                 {activeTab === "basic" && (
                   <div className="space-y-4">
-                    <SectionHeader icon={Home} title="Basic Information" subtitle="Tell us about your room" />
-
-                    <FormField control={form.control} name="title" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-slate-700 font-semibold">Room Title <span className="text-red-500">*</span></FormLabel>
-                        <FormControl>
-                          <Input placeholder="e.g. Cozy Room with AC & WiFi near Lakeside" {...field} className={cn("h-12 rounded-xl border-slate-200 focus:border-red-400 focus:ring-red-100", formErrors.title && "border-red-400")} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
-
-                    <FormField control={form.control} name="description" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-slate-700 font-semibold">Description <span className="text-red-500">*</span></FormLabel>
-                        <FormControl>
-                          <Textarea placeholder="Describe your room — neighbourhood, nearby facilities, what makes it special..." className={cn("min-h-[120px] rounded-xl border-slate-200 focus:border-red-400 resize-none", formErrors.description && "border-red-400")} {...field} />
-                        </FormControl>
-                        <FormDescription className="text-xs">At least 10 characters. More detail = more inquiries!</FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <FormField control={form.control} name="category" render={({ field }) => (
+                    <SectionHeader
+                      icon={Home}
+                      title="Basic Information"
+                      subtitle="Tell us about your room"
+                    />
+                    <FormField
+                      control={form.control}
+                      name="title"
+                      render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-slate-700 font-semibold">Room Type <span className="text-red-500">*</span></FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                              <SelectTrigger className="h-12 rounded-xl border-slate-200 focus:border-red-400 cursor-pointer">
-                                <SelectValue placeholder="Select type" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent className="rounded-xl">
-                              {Object.values(RoomCategory).map((cat) => (
-                                <SelectItem key={cat} value={cat} className="capitalize cursor-pointer py-3">{cat.replace("_", " ")}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )} />
-
-                      <FormField control={form.control} name="price" render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-slate-700 font-semibold">Monthly Rent (रु.) <span className="text-red-500">*</span></FormLabel>
+                          <FormLabel className="text-slate-700 font-semibold">
+                            Room Title <span className="text-red-500">*</span>
+                          </FormLabel>
                           <FormControl>
-                            <div className="relative">
-                              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm pointer-events-none">रु.</span>
-                              <Input
-                                type="number"
-                                placeholder="e.g. 8000"
-                                className={cn("h-12 pl-10 rounded-xl border-slate-200 focus:border-red-400", formErrors.price && "border-red-400")}
-                                value={field.value ?? ""}
-                                onChange={(e) => field.onChange(e.target.value === "" ? undefined : Number(e.target.value))}
-                              />
-                            </div>
+                            <Input
+                              placeholder="e.g. Cozy Room with AC & WiFi near Lakeside"
+                              {...field}
+                              className={cn(
+                                "h-12 rounded-xl border-slate-200 focus:border-red-400",
+                                formErrors.title && "border-red-400",
+                              )}
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
-                      )} />
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="description"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-slate-700 font-semibold">
+                            Description <span className="text-red-500">*</span>
+                          </FormLabel>
+                          <FormControl>
+                            <Textarea
+                              placeholder="Describe your room — neighbourhood, nearby facilities, what makes it special..."
+                              className={cn(
+                                "min-h-[120px] rounded-xl border-slate-200 focus:border-red-400 resize-none",
+                                formErrors.description && "border-red-400",
+                              )}
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormDescription className="text-xs">
+                            At least 10 characters. More detail = more
+                            inquiries!
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="category"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-slate-700 font-semibold">
+                              Room Type <span className="text-red-500">*</span>
+                            </FormLabel>
+                            <Select
+                              onValueChange={field.onChange}
+                              defaultValue={field.value}
+                            >
+                              <FormControl>
+                                <SelectTrigger className="h-12 rounded-xl border-slate-200 focus:border-red-400 cursor-pointer">
+                                  <SelectValue placeholder="Select type" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent className="rounded-xl">
+                                {Object.values(RoomCategory).map((cat) => (
+                                  <SelectItem
+                                    key={cat}
+                                    value={cat}
+                                    className="capitalize cursor-pointer py-3"
+                                  >
+                                    {cat.replace("_", " ")}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="price"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-slate-700 font-semibold">
+                              Monthly Rent (रु.){" "}
+                              <span className="text-red-500">*</span>
+                            </FormLabel>
+                            <FormControl>
+                              <div className="relative">
+                                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm pointer-events-none">
+                                  रु.
+                                </span>
+                                <Input
+                                  type="number"
+                                  placeholder="e.g. 8000"
+                                  className={cn(
+                                    "h-12 pl-10 rounded-xl border-slate-200 focus:border-red-400",
+                                    formErrors.price && "border-red-400",
+                                  )}
+                                  value={field.value ?? ""}
+                                  onChange={(e) =>
+                                    field.onChange(
+                                      e.target.value === ""
+                                        ? undefined
+                                        : Number(e.target.value),
+                                    )
+                                  }
+                                />
+                              </div>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
                     </div>
                   </div>
                 )}
 
-                {/* ══ LOCATION ══ */}
+                {/* LOCATION */}
                 {activeTab === "location" && (
                   <div className="space-y-4">
-                    <SectionHeader icon={MapPin} title="Location & Map" subtitle="Pin your room on the map" />
-
+                    <SectionHeader
+                      icon={MapPin}
+                      title="Location & Map"
+                      subtitle="Pin your room on the map"
+                    />
                     {!isValidLocation && (
                       <Alert variant="destructive" className="rounded-xl">
                         <AlertCircle className="h-4 w-4" />
                         <AlertTitle>Location required</AlertTitle>
-                        <AlertDescription>Click on the map below to set the exact location.</AlertDescription>
+                        <AlertDescription>
+                          Click on the map below to set the exact location.
+                        </AlertDescription>
                       </Alert>
                     )}
-
                     {isValidLocation && (
                       <div className="flex items-center gap-2 p-3 bg-green-50 rounded-xl border border-green-200">
                         <CheckCircle2 className="w-4 h-4 text-green-600 flex-shrink-0" />
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold text-green-700">Location Set</p>
-                          <p className="text-xs text-green-600 truncate">{form.getValues("location.formattedAddress") || `${currentLat.toFixed(4)}, ${currentLng.toFixed(4)}`}</p>
+                          <p className="text-sm font-semibold text-green-700">
+                            Location Set
+                          </p>
+                          <p className="text-xs text-green-600 truncate">
+                            {form.getValues("location.formattedAddress") ||
+                              `${currentLat.toFixed(4)}, ${currentLng.toFixed(4)}`}
+                          </p>
                         </div>
-                        <Badge variant="outline" className="text-xs border-green-300 text-green-700 flex-shrink-0">✓ Pinned</Badge>
+                        <Badge
+                          variant="outline"
+                          className="text-xs border-green-300 text-green-700 flex-shrink-0"
+                        >
+                          ✓ Pinned
+                        </Badge>
                       </div>
                     )}
-
                     <div className="rounded-2xl overflow-hidden border border-slate-200 shadow-sm">
                       <MapPicker
                         onLocationSelect={handleLocationSelect}
-                        initialLocation={isValidLocation ? { lat: currentLat, lng: currentLng } : null}
+                        initialLocation={
+                          isValidLocation
+                            ? { lat: currentLat, lng: currentLng }
+                            : null
+                        }
                       />
                     </div>
-
                     <div className="space-y-3">
-                      <p className="text-sm font-semibold text-slate-700">Address Details</p>
+                      <p className="text-sm font-semibold text-slate-700">
+                        Address Details
+                      </p>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <FormField control={form.control} name="location.name" render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-sm text-slate-600">Location Name</FormLabel>
-                            <FormControl><Input placeholder="e.g. Lakeside, Srijana Chowk" {...field} className="h-11 rounded-xl border-slate-200" /></FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )} />
-                        <FormField control={form.control} name="location.city" render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-sm text-slate-600">City</FormLabel>
-                            <FormControl><Input placeholder="e.g. Pokhara" {...field} className="h-11 rounded-xl border-slate-200" /></FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )} />
-                        <FormField control={form.control} name="location.state" render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-sm text-slate-600">Province</FormLabel>
-                            <FormControl><Input placeholder="e.g. Gandaki" {...field} className="h-11 rounded-xl border-slate-200" /></FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )} />
-                        <FormField control={form.control} name="location.postalCode" render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-sm text-slate-600">Postal Code</FormLabel>
-                            <FormControl><Input placeholder="e.g. 33700" {...field} className="h-11 rounded-xl border-slate-200" /></FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )} />
+                        <FormField
+                          control={form.control}
+                          name="location.name"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-sm text-slate-600">
+                                Location Name
+                              </FormLabel>
+                              <FormControl>
+                                <Input
+                                  placeholder="e.g. Lakeside, Srijana Chowk"
+                                  {...field}
+                                  className="h-11 rounded-xl border-slate-200"
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="location.city"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-sm text-slate-600">
+                                City
+                              </FormLabel>
+                              <FormControl>
+                                <Input
+                                  placeholder="e.g. Pokhara"
+                                  {...field}
+                                  className="h-11 rounded-xl border-slate-200"
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="location.state"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-sm text-slate-600">
+                                Province
+                              </FormLabel>
+                              <FormControl>
+                                <Input
+                                  placeholder="e.g. Gandaki"
+                                  {...field}
+                                  className="h-11 rounded-xl border-slate-200"
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="location.postalCode"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-sm text-slate-600">
+                                Postal Code
+                              </FormLabel>
+                              <FormControl>
+                                <Input
+                                  placeholder="e.g. 33700"
+                                  {...field}
+                                  className="h-11 rounded-xl border-slate-200"
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
                       </div>
-                      <FormField control={form.control} name="location.formattedAddress" render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-sm text-slate-600">Full Address</FormLabel>
-                          <FormControl>
-                            <Textarea className="rounded-xl border-slate-200 bg-slate-50 text-sm resize-none" readOnly {...field} placeholder="Auto-filled after map selection" />
-                          </FormControl>
-                        </FormItem>
-                      )} />
+                      <FormField
+                        control={form.control}
+                        name="location.formattedAddress"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-sm text-slate-600">
+                              Full Address
+                            </FormLabel>
+                            <FormControl>
+                              <Textarea
+                                className="rounded-xl border-slate-200 bg-slate-50 text-sm resize-none"
+                                readOnly
+                                {...field}
+                                placeholder="Auto-filled after map selection"
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
                     </div>
                   </div>
                 )}
 
-                {/* ══ DETAILS ══ */}
+                {/* DETAILS */}
                 {activeTab === "details" && (
                   <div className="space-y-5">
-                    <SectionHeader icon={Bed} title="Room Details" subtitle="Capacity, floor, and house rules" />
-
-                    {/* Counters */}
+                    <SectionHeader
+                      icon={Bed}
+                      title="Room Details"
+                      subtitle="Capacity, floor, and house rules"
+                    />
                     <div className="space-y-3">
-                      <p className="text-sm font-semibold text-slate-700">Capacity & Size</p>
-
-                      <FormField control={form.control} name="roomCapacity" render={({ field }) => (
-                        <CounterField label="Room Capacity" description="How many people can sleep here" icon={Users} value={field.value} onChange={field.onChange} min={1} max={20} />
-                      )} />
-                      <FormField control={form.control} name="bathroomCapacity" render={({ field }) => (
-                        <CounterField label="Bathroom Capacity" description="How many people share" icon={Droplets} value={field.value} onChange={field.onChange} min={1} max={20} />
-                      )} />
-                      <FormField control={form.control} name="floorNumber" render={({ field }) => (
-                        <CounterField label="Floor Number" description="0 = Ground floor" icon={Building2} value={field.value} onChange={field.onChange} min={0} max={30} />
-                      )} />
-                      <FormField control={form.control} name="totalHouseCapacity" render={({ field }) => (
-                        <CounterField label="Total House Capacity" description="All rooms combined" icon={Home} value={field.value} onChange={field.onChange} min={1} max={100} />
-                      )} />
-                      <FormField control={form.control} name="currentOccupants" render={({ field }) => (
-                        <CounterField label="Current Occupants" description="People living right now" icon={Users} value={field.value} onChange={field.onChange} min={0} max={100} />
-                      )} />
-
-                      <FormField control={form.control} name="roomArea" render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-slate-700 font-semibold">Room Area (m²)</FormLabel>
-                          <FormControl>
-                            <div className="relative">
-                              <Ruler className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
-                              <Input type="number" min="1" step="0.5" className="h-11 pl-10 rounded-xl border-slate-200" {...field} onChange={(e) => field.onChange(Number(e.target.value))} />
-                              <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm pointer-events-none">m²</span>
-                            </div>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )} />
+                      <p className="text-sm font-semibold text-slate-700">
+                        Capacity & Size
+                      </p>
+                      <FormField
+                        control={form.control}
+                        name="roomCapacity"
+                        render={({ field }) => (
+                          <CounterField
+                            label="Room Capacity"
+                            description="How many people can sleep here"
+                            icon={Users}
+                            value={field.value}
+                            onChange={field.onChange}
+                            min={1}
+                            max={20}
+                          />
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="bathroomCapacity"
+                        render={({ field }) => (
+                          <CounterField
+                            label="Bathroom Capacity"
+                            description="How many people share"
+                            icon={Droplets}
+                            value={field.value}
+                            onChange={field.onChange}
+                            min={1}
+                            max={20}
+                          />
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="floorNumber"
+                        render={({ field }) => (
+                          <CounterField
+                            label="Floor Number"
+                            description="0 = Ground floor"
+                            icon={Building2}
+                            value={field.value}
+                            onChange={field.onChange}
+                            min={0}
+                            max={30}
+                          />
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="totalHouseCapacity"
+                        render={({ field }) => (
+                          <CounterField
+                            label="Total House Capacity"
+                            description="All rooms combined"
+                            icon={Home}
+                            value={field.value}
+                            onChange={field.onChange}
+                            min={1}
+                            max={100}
+                          />
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="currentOccupants"
+                        render={({ field }) => (
+                          <CounterField
+                            label="Current Occupants"
+                            description="People living right now"
+                            icon={Users}
+                            value={field.value}
+                            onChange={field.onChange}
+                            min={0}
+                            max={100}
+                          />
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="roomArea"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-slate-700 font-semibold">
+                              Room Area (m²)
+                            </FormLabel>
+                            <FormControl>
+                              <div className="relative">
+                                <Ruler className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+                                <Input
+                                  type="number"
+                                  min="1"
+                                  step="0.5"
+                                  className="h-11 pl-10 rounded-xl border-slate-200"
+                                  {...field}
+                                  onChange={(e) =>
+                                    field.onChange(Number(e.target.value))
+                                  }
+                                />
+                                <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm pointer-events-none">
+                                  m²
+                                </span>
+                              </div>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
                     </div>
-
                     <Separator />
-
-                    {/* Water Supply */}
                     <div className="space-y-3">
-                      <p className="text-sm font-semibold text-slate-700 flex items-center gap-1.5"><Droplets className="w-4 h-4 text-blue-500" /> पानी आपूर्ति (Water Supply)</p>
+                      <p className="text-sm font-semibold text-slate-700 flex items-center gap-1.5">
+                        <Droplets className="w-4 h-4 text-blue-500" /> पानी
+                        आपूर्ति (Water Supply)
+                      </p>
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                         {WATER_SUPPLY_OPTIONS.map((opt) => (
-                          <button key={opt.value} type="button" onClick={() => setWaterSupplyType(opt.value)}
-                            className={cn("flex flex-col items-center gap-1 p-3 rounded-xl border-2 text-xs font-semibold transition-all cursor-pointer",
-                              waterSupplyType === opt.value ? "border-blue-500 bg-blue-50 text-blue-700" : "border-slate-200 bg-white text-slate-600 hover:border-blue-300")}>
+                          <button
+                            key={opt.value}
+                            type="button"
+                            onClick={() => setWaterSupplyType(opt.value)}
+                            className={cn(
+                              "flex flex-col items-center gap-1 p-3 rounded-xl border-2 text-xs font-semibold transition-all cursor-pointer",
+                              waterSupplyType === opt.value
+                                ? "border-blue-500 bg-blue-50 text-blue-700"
+                                : "border-slate-200 bg-white text-slate-600 hover:border-blue-300",
+                            )}
+                          >
                             <span className="text-xl">{opt.emoji}</span>
                             {opt.label}
                           </button>
                         ))}
                       </div>
-
                       {waterSupplyType === "24-hour" && (
                         <div className="flex items-center gap-3 p-3 bg-emerald-50 border border-emerald-200 rounded-xl">
                           <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0" />
-                          <p className="text-sm font-semibold text-emerald-800">२४ घण्टा पानी उपलब्ध</p>
+                          <p className="text-sm font-semibold text-emerald-800">
+                            २४ घण्टा पानी उपलब्ध
+                          </p>
                         </div>
                       )}
-
-                      {(waterSupplyType === "morning-only" || waterSupplyType === "morning-evening") && (
-                        <FormField control={form.control} name="waterSupplyTimings.morning" render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-sm text-slate-700 flex items-center gap-1"><Sun className="w-3.5 h-3.5 text-amber-500" /> Morning Time</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
-                              <FormControl>
-                                <SelectTrigger className="h-11 rounded-xl border-slate-200 cursor-pointer">
-                                  <SelectValue />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent className="rounded-xl">
-                                {morningSlots.map((slot, i) => <SelectItem key={morningSlotValues[i]} value={morningSlotValues[i]} className="cursor-pointer py-3">{slot}</SelectItem>)}
-                              </SelectContent>
-                            </Select>
-                          </FormItem>
-                        )} />
+                      {(waterSupplyType === "morning-only" ||
+                        waterSupplyType === "morning-evening") && (
+                        <FormField
+                          control={form.control}
+                          name="waterSupplyTimings.morning"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-sm text-slate-700 flex items-center gap-1">
+                                <Sun className="w-3.5 h-3.5 text-amber-500" />{" "}
+                                Morning Time
+                              </FormLabel>
+                              <Select
+                                onValueChange={field.onChange}
+                                defaultValue={field.value}
+                              >
+                                <FormControl>
+                                  <SelectTrigger className="h-11 rounded-xl border-slate-200 cursor-pointer">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent className="rounded-xl">
+                                  {morningSlots.map((slot, i) => (
+                                    <SelectItem
+                                      key={morningSlotValues[i]}
+                                      value={morningSlotValues[i]}
+                                      className="cursor-pointer py-3"
+                                    >
+                                      {slot}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </FormItem>
+                          )}
+                        />
                       )}
-
-                      {(waterSupplyType === "evening-only" || waterSupplyType === "morning-evening") && (
-                        <FormField control={form.control} name="waterSupplyTimings.evening" render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-sm text-slate-700 flex items-center gap-1"><Moon className="w-3.5 h-3.5 text-indigo-500" /> Evening Time</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
-                              <FormControl>
-                                <SelectTrigger className="h-11 rounded-xl border-slate-200 cursor-pointer">
-                                  <SelectValue />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent className="rounded-xl">
-                                {eveningSlots.map((slot, i) => <SelectItem key={eveningSlotValues[i]} value={eveningSlotValues[i]} className="cursor-pointer py-3">{slot}</SelectItem>)}
-                              </SelectContent>
-                            </Select>
-                          </FormItem>
-                        )} />
+                      {(waterSupplyType === "evening-only" ||
+                        waterSupplyType === "morning-evening") && (
+                        <FormField
+                          control={form.control}
+                          name="waterSupplyTimings.evening"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-sm text-slate-700 flex items-center gap-1">
+                                <Moon className="w-3.5 h-3.5 text-indigo-500" />{" "}
+                                Evening Time
+                              </FormLabel>
+                              <Select
+                                onValueChange={field.onChange}
+                                defaultValue={field.value}
+                              >
+                                <FormControl>
+                                  <SelectTrigger className="h-11 rounded-xl border-slate-200 cursor-pointer">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent className="rounded-xl">
+                                  {eveningSlots.map((slot, i) => (
+                                    <SelectItem
+                                      key={eveningSlotValues[i]}
+                                      value={eveningSlotValues[i]}
+                                      className="cursor-pointer py-3"
+                                    >
+                                      {slot}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </FormItem>
+                          )}
+                        />
                       )}
-
-                      <FormField control={form.control} name="waterSupplyTimings.notes" render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-sm text-slate-600">Additional Notes (optional)</FormLabel>
-                          <FormControl><Input placeholder="e.g. No water on Saturdays..." {...field} disabled={waterSupplyType === "24-hour"} className="h-11 rounded-xl border-slate-200" /></FormControl>
-                        </FormItem>
-                      )} />
+                      <FormField
+                        control={form.control}
+                        name="waterSupplyTimings.notes"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-sm text-slate-600">
+                              Additional Notes (optional)
+                            </FormLabel>
+                            <FormControl>
+                              <Input
+                                placeholder="e.g. No water on Saturdays..."
+                                {...field}
+                                disabled={waterSupplyType === "24-hour"}
+                                className="h-11 rounded-xl border-slate-200"
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
                     </div>
-
                     <Separator />
-
-                    {/* Rules */}
                     <div className="space-y-3">
-                      <p className="text-sm font-semibold text-slate-700">House Rules</p>
-                      <FormField control={form.control} name="allowsWomen" render={({ field }) => (
-                        <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-200">
-                          <div>
-                            <p className="text-sm font-semibold text-slate-800">Women tenants allowed?</p>
-                            <p className="text-xs text-slate-500 mt-0.5">महिला भाडाटारु अनुमति</p>
+                      <p className="text-sm font-semibold text-slate-700">
+                        House Rules
+                      </p>
+                      <FormField
+                        control={form.control}
+                        name="allowsWomen"
+                        render={({ field }) => (
+                          <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-200">
+                            <div>
+                              <p className="text-sm font-semibold text-slate-800">
+                                Women tenants allowed?
+                              </p>
+                              <p className="text-xs text-slate-500 mt-0.5">
+                                महिला भाडाटारु अनुमति
+                              </p>
+                            </div>
+                            <Switch
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                            />
                           </div>
-                          <Switch checked={field.value} onCheckedChange={field.onChange} />
-                        </div>
-                      )} />
-                      <FormField control={form.control} name="ownerLivesInHouse" render={({ field }) => (
-                        <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-200">
-                          <div>
-                            <p className="text-sm font-semibold text-slate-800">Owner lives in building?</p>
-                            <p className="text-xs text-slate-500 mt-0.5">घरधनी घरमा बस्छन्?</p>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="ownerLivesInHouse"
+                        render={({ field }) => (
+                          <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-200">
+                            <div>
+                              <p className="text-sm font-semibold text-slate-800">
+                                Owner lives in building?
+                              </p>
+                              <p className="text-xs text-slate-500 mt-0.5">
+                                घरधनी घरमा बस्छन्?
+                              </p>
+                            </div>
+                            <Switch
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                            />
                           </div>
-                          <Switch checked={field.value} onCheckedChange={field.onChange} />
-                        </div>
-                      )} />
+                        )}
+                      />
                     </div>
                   </div>
                 )}
 
-                {/* ══ AMENITIES ══ */}
+                {/* TENANT PREFERENCES */}
+                {activeTab === "tenant" && (
+                  <div className="space-y-5">
+                    <SectionHeader
+                      icon={Users2}
+                      title="Tenant Preferences"
+                      subtitle="Who is your ideal tenant?"
+                    />
+
+                    <div className="space-y-2">
+                      <FormLabel className="text-sm font-semibold">
+                        Ideal Tenant / आदर्श भाडाटारु
+                      </FormLabel>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                        {Object.values(IdealTenantType).map((option) => (
+                          <label
+                            key={option}
+                            className="flex items-center gap-2 p-3 border rounded-lg cursor-pointer hover:bg-slate-50"
+                          >
+                            <input
+                              type="checkbox"
+                              value={option}
+                              checked={form
+                                .watch("idealTenants")
+                                ?.includes(option)}
+                              onChange={(e) => {
+                                const current =
+                                  form.watch("idealTenants") || [];
+                                if (e.target.checked) {
+                                  form.setValue("idealTenants", [
+                                    ...current,
+                                    option,
+                                  ]);
+                                } else {
+                                  form.setValue(
+                                    "idealTenants",
+                                    current.filter((v) => v !== option),
+                                  );
+                                }
+                              }}
+                              className="rounded border-slate-300 text-red-500 focus:ring-red-500"
+                            />
+                            <span className="text-sm">{option}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <FormLabel className="text-sm font-semibold">
+                        Gender Preference / लिङ्ग प्राथमिकता
+                      </FormLabel>
+                      <div className="flex flex-wrap gap-4">
+                        {Object.values(GenderPreference).map((option) => (
+                          <label
+                            key={option}
+                            className="flex items-center gap-2 cursor-pointer"
+                          >
+                            <input
+                              type="radio"
+                              name="genderPreference"
+                              value={option}
+                              checked={
+                                form.watch("genderPreference") === option
+                              }
+                              onChange={(e) =>
+                                form.setValue(
+                                  "genderPreference",
+                                  e.target.value as GenderPreference,
+                                )
+                              }
+                              className="text-red-500 focus:ring-red-500"
+                            />
+                            <span className="text-sm">{option}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <FormLabel className="text-sm font-semibold">
+                        Religion Preference / धर्म प्राथमिकता
+                      </FormLabel>
+                      <Select
+                        onValueChange={(v) =>
+                          form.setValue("religionPreference", v as ReligionType)
+                        }
+                        value={form.watch("religionPreference")}
+                      >
+                        <FormControl>
+                          <SelectTrigger className="h-11 rounded-xl cursor-pointer">
+                            <SelectValue placeholder="Select religion preference" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {Object.values(ReligionType).map((rel) => (
+                            <SelectItem
+                              key={rel}
+                              value={rel}
+                              className="cursor-pointer py-3"
+                            >
+                              {rel}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {showFaded && (
+                        <Alert className="mt-2 bg-amber-50 border-amber-200">
+                          <AlertCircle className="h-4 w-4 text-amber-600" />
+                          <AlertDescription className="text-amber-700 text-sm">
+                            Note: Since you selected Hindu, Muslim and Christian
+                            preferences will be shown faded but still visible to
+                            users.
+                          </AlertDescription>
+                        </Alert>
+                      )}
+                    </div>
+
+                    <div className="space-y-2">
+                      <FormLabel className="text-sm font-semibold">
+                        Gate Closing Time / गेट बन्द हुने समय{" "}
+                        <span className="text-red-500">*</span>
+                      </FormLabel>
+                      <FormField
+                        control={form.control}
+                        name="gateClosingTime"
+                        render={({ field }) => (
+                          <FormControl>
+                            <Input
+                              type="time"
+                              {...field}
+                              className="h-11 rounded-xl"
+                            />
+                          </FormControl>
+                        )}
+                      />
+                      <FormDescription>
+                        What time does the gate close? / गेट कति बजे बन्द हुन्छ?
+                      </FormDescription>
+                    </div>
+                  </div>
+                )}
+
+                {/* RULES & RESTRICTIONS */}
+                {activeTab === "rules" && (
+                  <div className="space-y-5">
+                    <SectionHeader
+                      icon={Shield}
+                      title="Rules & Restrictions"
+                      subtitle="Lifestyle rules and food preferences"
+                    />
+
+                    <div className="space-y-2">
+                      <FormLabel className="text-sm font-semibold">
+                        Lifestyle Rules
+                      </FormLabel>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {[
+                          {
+                            key: "smokingAllowed",
+                            label: "Smoking Allowed?",
+                            nepali: "धुम्रपान अनुमति?",
+                          },
+                          {
+                            key: "alcoholAllowed",
+                            label: "Alcohol Allowed?",
+                            nepali: "मदिरा अनुमति?",
+                          },
+                          {
+                            key: "nonVegetarianAllowed",
+                            label: "Non-vegetarian Allowed?",
+                            nepali: "मासु अनुमति?",
+                          },
+                          {
+                            key: "buffaloMeatAllowed",
+                            label: "Buffalo Meat Allowed?",
+                            nepali: "राँगाको मासु?",
+                          },
+                          {
+                            key: "porkAllowed",
+                            label: "Pork Allowed?",
+                            nepali: "सुङ्गुरको मासु?",
+                          },
+                          {
+                            key: "lateNightAllowed",
+                            label: "Late Night Allowed?",
+                            nepali: "राती बस्न अनुमति?",
+                          },
+                          {
+                            key: "babyAllowed",
+                            label: "Baby Allowed?",
+                            nepali: "बच्चा अनुमति?",
+                          },
+                        ].map(({ key, label, nepali }) => (
+                          <FormField
+                            key={key}
+                            control={form.control}
+                            name={`lifestyleRules.${key}`}
+                            render={({ field }) => (
+                              <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border">
+                                <div>
+                                  <p className="text-sm font-medium">{label}</p>
+                                  <p className="text-xs text-slate-500">
+                                    {nepali}
+                                  </p>
+                                </div>
+                                <Switch
+                                  checked={field.value}
+                                  onCheckedChange={field.onChange}
+                                />
+                              </div>
+                            )}
+                          />
+                        ))}
+                      </div>
+                      <FormField
+                        control={form.control}
+                        name="lifestyleRules.otherRules"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-sm">
+                              Other Rules / अन्य नियमहरू
+                            </FormLabel>
+                            <FormControl>
+                              <Textarea
+                                placeholder="e.g., No loud music after 10 PM"
+                                {...field}
+                                className="rounded-xl"
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <FormLabel className="text-sm font-semibold">
+                        Food Preferences / खाना प्राथमिकताहरू
+                      </FormLabel>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                        {[
+                          {
+                            key: "vegetarianAllowed",
+                            label: "Vegetarian Only",
+                          },
+                          {
+                            key: "nonVegetarianAllowed",
+                            label: "Non-Vegetarian Allowed",
+                          },
+                          {
+                            key: "buffaloMeatAllowed",
+                            label: "Buffalo Meat Allowed",
+                          },
+                          { key: "porkAllowed", label: "Pork Allowed" },
+                          { key: "allAllowed", label: "All Food Allowed" },
+                        ].map(({ key, label }) => (
+                          <label
+                            key={key}
+                            className="flex items-center gap-2 p-2 border rounded-lg cursor-pointer"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={form.watch(`foodPreferences.${key}`)}
+                              onChange={(e) =>
+                                form.setValue(
+                                  `foodPreferences.${key}`,
+                                  e.target.checked,
+                                )
+                              }
+                              className="rounded border-slate-300 text-red-500"
+                            />
+                            <span className="text-sm">{label}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <FormLabel className="text-sm font-semibold">
+                        Restrictions (if any)
+                      </FormLabel>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                        {Object.values(RestrictionType).map((option) => (
+                          <label
+                            key={option}
+                            className="flex items-center gap-2 p-2 border rounded-lg cursor-pointer"
+                          >
+                            <input
+                              type="checkbox"
+                              value={option}
+                              checked={form
+                                .watch("restrictions")
+                                ?.includes(option)}
+                              onChange={(e) => {
+                                const current =
+                                  form.watch("restrictions") || [];
+                                if (e.target.checked) {
+                                  form.setValue("restrictions", [
+                                    ...current,
+                                    option,
+                                  ]);
+                                } else {
+                                  form.setValue(
+                                    "restrictions",
+                                    current.filter((v) => v !== option),
+                                  );
+                                }
+                              }}
+                              className="rounded border-slate-300 text-red-500"
+                            />
+                            <span className="text-sm">{option}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <FormLabel className="text-sm font-semibold">
+                        Owner's Community / घरधनीको समुदाय{" "}
+                        <span className="text-red-500">*</span>
+                      </FormLabel>
+                      <FormField
+                        control={form.control}
+                        name="ownerCommunity"
+                        render={({ field }) => (
+                          <FormControl>
+                            <Input
+                              placeholder="e.g., Brahmin, Chhetri, Newar, etc."
+                              {...field}
+                              className="h-11 rounded-xl"
+                            />
+                          </FormControl>
+                        )}
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl">
+                      <div>
+                        <p className="text-sm font-semibold">
+                          All Mix Community / सबै समुदाय मिल्ने?
+                        </p>
+                        <p className="text-xs text-slate-500">
+                          Can people from any community stay? / जुनसुकै समुदाय
+                          को मानिस बस्न मिल्च त ?
+                        </p>
+                      </div>
+                      <FormField
+                        control={form.control}
+                        name="allMixCommunity"
+                        render={({ field }) => (
+                          <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        )}
+                      />
+                    </div>
+
+                    <FormField
+                      control={form.control}
+                      name="communityWelcomeNote"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-sm">
+                            Community Welcome Note (Optional)
+                          </FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="All community are welcome ✅"
+                              {...field}
+                              className="h-11 rounded-xl"
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="ownerFloor"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-sm">
+                            Owner Floor / घरधनी कुन तलामा बस्नुहुन्छ?
+                          </FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              min="0"
+                              placeholder="e.g., 2"
+                              {...field}
+                              className="h-11 rounded-xl"
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                        <div>
+                          <p className="text-sm font-medium">
+                            Clothes Drying Area
+                          </p>
+                          <p className="text-xs text-slate-500">
+                            लुगा सुकाउने ठाउँ छ?
+                          </p>
+                        </div>
+                        <FormField
+                          control={form.control}
+                          name="hasClothesDryingArea"
+                          render={({ field }) => (
+                            <Switch
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                            />
+                          )}
+                        />
+                      </div>
+                      <div className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                        <div>
+                          <p className="text-sm font-medium">Gets Sunlight</p>
+                          <p className="text-xs text-slate-500">घाम लाग्छ?</p>
+                        </div>
+                        <FormField
+                          control={form.control}
+                          name="getsSunlight"
+                          render={({ field }) => (
+                            <Switch
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                            />
+                          )}
+                        />
+                      </div>
+                    </div>
+
+                    <FormField
+                      control={form.control}
+                      name="roomIssues"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-sm">
+                            Any Issues with the Room?
+                          </FormLabel>
+                          <FormControl>
+                            <Textarea
+                              placeholder="कोठा/flat/ appartment मा कुनै समस्या छ कि छैन???"
+                              {...field}
+                              className="min-h-[80px] rounded-xl"
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                )}
+
+                {/* AMENITIES */}
                 {activeTab === "amenities" && (
                   <div className="space-y-4">
-                    <SectionHeader icon={Wifi} title="Amenities / सुविधाहरू" subtitle="Select everything available in your room" />
-
+                    <SectionHeader
+                      icon={Wifi}
+                      title="Amenities / सुविधाहरू"
+                      subtitle="Select everything available in your room"
+                    />
                     {selectedAmenities.length === 0 && (
                       <Alert variant="destructive" className="rounded-xl">
                         <AlertCircle className="h-4 w-4" />
                         <AlertTitle>Select at least one amenity</AlertTitle>
-                        <AlertDescription>कृपया कम्तीमा एउटा सुविधा चयन गर्नुहोस्।</AlertDescription>
+                        <AlertDescription>
+                          कृपया कम्तीमा एउटा सुविधा चयन गर्नुहोस्।
+                        </AlertDescription>
                       </Alert>
                     )}
-
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                       {amenitiesList.map((amenity) => {
                         const Icon = amenity.icon;
-                        const isSelected = selectedAmenities.includes(amenity.id);
+                        const isSelected = selectedAmenities.includes(
+                          amenity.id,
+                        );
                         return (
                           <motion.button
                             key={amenity.id}
@@ -760,12 +1742,16 @@ export default function CreateRoomPage() {
                               "relative flex flex-col items-center gap-2 p-4 rounded-2xl border-2 transition-all cursor-pointer text-center",
                               isSelected
                                 ? "border-red-500 bg-red-50 text-red-700 shadow-sm shadow-red-100"
-                                : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50"
+                                : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50",
                             )}
                           >
                             <Icon className="w-6 h-6" />
-                            <span className="text-xs font-semibold leading-tight">{amenity.label}</span>
-                            <span className="text-[10px] text-current opacity-60">{amenity.description}</span>
+                            <span className="text-xs font-semibold leading-tight">
+                              {amenity.label}
+                            </span>
+                            <span className="text-[10px] text-current opacity-60">
+                              {amenity.description}
+                            </span>
                             {isSelected && (
                               <div className="absolute top-2 right-2 w-4 h-4 rounded-full bg-red-500 flex items-center justify-center">
                                 <CheckCircle2 className="w-3 h-3 text-white" />
@@ -775,45 +1761,59 @@ export default function CreateRoomPage() {
                         );
                       })}
                     </div>
-
                     {selectedAmenities.length > 0 && (
                       <div className="flex items-center gap-2 p-3 bg-green-50 rounded-xl border border-green-200">
                         <CheckCircle2 className="w-4 h-4 text-green-600 flex-shrink-0" />
-                        <p className="text-sm font-semibold text-green-700">{selectedAmenities.length} amenities selected</p>
+                        <p className="text-sm font-semibold text-green-700">
+                          {selectedAmenities.length} amenities selected
+                        </p>
                       </div>
                     )}
                   </div>
                 )}
 
-                {/* ══ PHOTOS ══ */}
+                {/* PHOTOS */}
                 {activeTab === "photos" && (
                   <div className="space-y-4">
-                    <SectionHeader icon={ImageIcon} title="Room Photos" subtitle="Good photos attract 3x more tenants" />
-
+                    <SectionHeader
+                      icon={ImageIcon}
+                      title="Room Photos"
+                      subtitle="Good photos attract 3x more tenants"
+                    />
                     {images.length === 0 && (
                       <Alert variant="destructive" className="rounded-xl">
                         <AlertCircle className="h-4 w-4" />
                         <AlertTitle>At least one photo required</AlertTitle>
-                        <AlertDescription>Upload clear, well-lit photos of your room.</AlertDescription>
+                        <AlertDescription>
+                          Upload clear, well-lit photos of your room.
+                        </AlertDescription>
                       </Alert>
                     )}
-
-                    {/* Tips */}
                     <div className="grid grid-cols-3 gap-2">
                       {[
                         { tip: "Natural light", emoji: "☀️" },
                         { tip: "Max 10MB each", emoji: "📦" },
                         { tip: "JPEG / PNG / WEBP", emoji: "🖼️" },
                       ].map(({ tip, emoji }) => (
-                        <div key={tip} className="flex flex-col items-center gap-1 p-2.5 bg-blue-50 rounded-xl border border-blue-100 text-center">
+                        <div
+                          key={tip}
+                          className="flex flex-col items-center gap-1 p-2.5 bg-blue-50 rounded-xl border border-blue-100 text-center"
+                        >
                           <span className="text-xl">{emoji}</span>
-                          <p className="text-[10px] text-blue-700 font-semibold">{tip}</p>
+                          <p className="text-[10px] text-blue-700 font-semibold">
+                            {tip}
+                          </p>
                         </div>
                       ))}
                     </div>
-
-                    <input type="file" ref={fileInputRef} onChange={handleImageUpload} accept="image/jpeg,image/png,image/gif,image/webp" multiple className="hidden" />
-
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      onChange={handleImageUpload}
+                      accept="image/jpeg,image/png,image/gif,image/webp"
+                      multiple
+                      className="hidden"
+                    />
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
@@ -823,18 +1823,23 @@ export default function CreateRoomPage() {
                         <Plus className="w-7 h-7 text-red-500" />
                       </div>
                       <div className="text-center">
-                        <p className="text-sm font-semibold text-slate-700">Tap to add photos</p>
-                        <p className="text-xs text-slate-400 mt-1">{images.length}/10 photos · Max 10MB each</p>
+                        <p className="text-sm font-semibold text-slate-700">
+                          Tap to add photos
+                        </p>
+                        <p className="text-xs text-slate-400 mt-1">
+                          {images.length}/10 photos · Max 10MB each
+                        </p>
                       </div>
                     </button>
-
                     {uploadProgress > 0 && (
                       <div className="space-y-1.5">
-                        <div className="flex justify-between text-xs text-slate-500"><span>Processing...</span><span>{uploadProgress}%</span></div>
+                        <div className="flex justify-between text-xs text-slate-500">
+                          <span>Processing...</span>
+                          <span>{uploadProgress}%</span>
+                        </div>
                         <Progress value={uploadProgress} className="h-2" />
                       </div>
                     )}
-
                     {imagePreviews.length > 0 && (
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                         {imagePreviews.map((preview, i) => (
@@ -845,7 +1850,11 @@ export default function CreateRoomPage() {
                             className="relative group aspect-square"
                           >
                             <div className="w-full h-full rounded-xl overflow-hidden border-2 border-slate-200 group-hover:border-red-300 transition-colors">
-                              <img src={preview} alt={`Room ${i + 1}`} className="w-full h-full object-cover" />
+                              <img
+                                src={preview}
+                                alt={`Room ${i + 1}`}
+                                className="w-full h-full object-cover"
+                              />
                             </div>
                             <button
                               type="button"
@@ -855,8 +1864,17 @@ export default function CreateRoomPage() {
                               <XCircle className="w-4 h-4" />
                             </button>
                             <div className="absolute bottom-1.5 left-1.5 flex items-center gap-1">
-                              <Badge variant="secondary" className="text-[10px] px-1.5 py-0.5 bg-black/60 text-white border-0">#{i + 1}</Badge>
-                              {i === 0 && <Badge className="text-[10px] px-1.5 py-0.5 bg-red-500 text-white border-0">Main</Badge>}
+                              <Badge
+                                variant="secondary"
+                                className="text-[10px] px-1.5 py-0.5 bg-black/60 text-white border-0"
+                              >
+                                #{i + 1}
+                              </Badge>
+                              {i === 0 && (
+                                <Badge className="text-[10px] px-1.5 py-0.5 bg-red-500 text-white border-0">
+                                  Main
+                                </Badge>
+                              )}
                             </div>
                           </motion.div>
                         ))}
@@ -865,65 +1883,115 @@ export default function CreateRoomPage() {
                   </div>
                 )}
 
-                {/* ══ CONTACT ══ */}
+                {/* CONTACT */}
                 {activeTab === "contact" && (
                   <div className="space-y-4">
-                    <SectionHeader icon={User} title="Contact Information" subtitle="How can tenants reach the owner?" />
-
+                    <SectionHeader
+                      icon={User}
+                      title="Contact Information"
+                      subtitle="How can tenants reach the owner?"
+                    />
                     <div className="p-4 bg-amber-50 rounded-xl border border-amber-200">
-                      <p className="text-sm text-amber-800 font-semibold">🔒 This info is shown only after room unlock</p>
-                      <p className="text-xs text-amber-700 mt-1">Tenants pay a service charge to see the owner's name and phone number.</p>
+                      <p className="text-sm text-amber-800 font-semibold">
+                        🔒 This info is shown only after room unlock
+                      </p>
+                      <p className="text-xs text-amber-700 mt-1">
+                        Tenants pay a service charge to see the owner's name and
+                        phone number.
+                      </p>
                     </div>
-
-                    <FormField control={form.control} name="contactPerson" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-slate-700 font-semibold flex items-center gap-1.5"><User className="w-3.5 h-3.5" /> Owner Name <span className="text-red-500">*</span></FormLabel>
-                        <FormControl>
-                          <Input placeholder="e.g. Ram Prasad Sharma" {...field} className={cn("h-12 rounded-xl border-slate-200 focus:border-red-400", formErrors.contactPerson && "border-red-400")} />
-                        </FormControl>
-                        <FormDescription className="text-xs">Full name of the owner / घरधनीको पुरा नाम</FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
-
-                    <FormField control={form.control} name="contactPhone" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-slate-700 font-semibold flex items-center gap-1.5"><Phone className="w-3.5 h-3.5" /> Owner Phone <span className="text-red-500">*</span></FormLabel>
-                        <FormControl>
-                          <div className="relative">
-                            <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
-                            <Input placeholder="+977 98XXXXXXXX" className={cn("h-12 pl-10 rounded-xl border-slate-200 focus:border-red-400", formErrors.contactPhone && "border-red-400")} {...field} />
-                          </div>
-                        </FormControl>
-                        <FormDescription className="text-xs">Tenants will call this number / यस नम्बरमा सम्पर्क गर्नेछन्</FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
-
+                    <FormField
+                      control={form.control}
+                      name="contactPerson"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-slate-700 font-semibold flex items-center gap-1.5">
+                            <User className="w-3.5 h-3.5" /> Owner Name{" "}
+                            <span className="text-red-500">*</span>
+                          </FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="e.g. Ram Prasad Sharma"
+                              {...field}
+                              className={cn(
+                                "h-12 rounded-xl border-slate-200 focus:border-red-400",
+                                formErrors.contactPerson && "border-red-400",
+                              )}
+                            />
+                          </FormControl>
+                          <FormDescription className="text-xs">
+                            Full name of the owner / घरधनीको पुरा नाम
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="contactPhone"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-slate-700 font-semibold flex items-center gap-1.5">
+                            <Phone className="w-3.5 h-3.5" /> Owner Phone{" "}
+                            <span className="text-red-500">*</span>
+                          </FormLabel>
+                          <FormControl>
+                            <div className="relative">
+                              <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+                              <Input
+                                placeholder="+977 98XXXXXXXX"
+                                className={cn(
+                                  "h-12 pl-10 rounded-xl border-slate-200 focus:border-red-400",
+                                  formErrors.contactPhone && "border-red-400",
+                                )}
+                                {...field}
+                              />
+                            </div>
+                          </FormControl>
+                          <FormDescription className="text-xs">
+                            Tenants will call this number / यस नम्बरमा सम्पर्क
+                            गर्नेछन्
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                     {isAdmin && (
                       <>
                         <Separator />
-                        <FormField control={form.control} name="tiktokUrl" render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-slate-700 font-semibold flex items-center gap-2"><Instagram className="w-4 h-4" /> TikTok URL <Badge variant="outline" className="text-xs">Admin</Badge></FormLabel>
-                            <FormControl>
-                              <Input placeholder="https://tiktok.com/@username" {...field} className="h-12 rounded-xl border-slate-200" />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )} />
+                        <FormField
+                          control={form.control}
+                          name="tiktokUrl"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-slate-700 font-semibold flex items-center gap-2">
+                                <Instagram className="w-4 h-4" /> TikTok URL{" "}
+                                <Badge variant="outline" className="text-xs">
+                                  Admin
+                                </Badge>
+                              </FormLabel>
+                              <FormControl>
+                                <Input
+                                  placeholder="https://tiktok.com/@username"
+                                  {...field}
+                                  className="h-12 rounded-xl border-slate-200"
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
                       </>
                     )}
                   </div>
                 )}
-
               </motion.div>
             </AnimatePresence>
           </form>
         </Form>
       </div>
 
-      {/* ── Sticky Bottom Navigation ── */}
+      {/* Sticky Bottom Navigation */}
       <div className="fixed bottom-0 left-0 right-0 z-30 bg-white/95 backdrop-blur-md border-t border-slate-200 shadow-xl">
         <div className="max-w-3xl mx-auto px-4 py-3">
           <div className="flex items-center gap-3">
@@ -935,7 +2003,6 @@ export default function CreateRoomPage() {
             >
               <ChevronLeft className="w-5 h-5" />
             </button>
-
             <div className="flex-1 flex items-center gap-1.5 justify-center">
               {TABS.map((tab, i) => (
                 <button
@@ -944,20 +2011,31 @@ export default function CreateRoomPage() {
                   onClick={() => setActiveTab(tab.value)}
                   className={cn(
                     "h-2 rounded-full transition-all cursor-pointer",
-                    activeTab === tab.value ? "w-6 bg-red-500" : getTabStatus(tab.value) ? "w-2 bg-green-400" : "w-2 bg-slate-200"
+                    activeTab === tab.value
+                      ? "w-6 bg-red-500"
+                      : getTabStatus(tab.value)
+                        ? "w-2 bg-green-400"
+                        : "w-2 bg-slate-200",
                   )}
                 />
               ))}
             </div>
-
             {currentTabIdx === TABS.length - 1 ? (
               <button
                 type="button"
                 onClick={form.handleSubmit(onSubmit)}
-                disabled={createRoomMutation.isPending || images.length === 0 || !isValidLocation}
+                disabled={
+                  createRoomMutation.isPending ||
+                  images.length === 0 ||
+                  !isValidLocation
+                }
                 className="flex items-center gap-2 px-5 h-11 rounded-xl bg-red-500 hover:bg-red-600 text-white font-semibold text-sm disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer shadow-lg shadow-red-200"
               >
-                {createRoomMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                {createRoomMutation.isPending ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Save className="w-4 h-4" />
+                )}
                 {createRoomMutation.isPending ? "Listing..." : "List Room"}
               </button>
             ) : (
@@ -976,8 +2054,7 @@ export default function CreateRoomPage() {
   );
 }
 
-// ── Section Header ──
-const SectionHeader = ({ icon: Icon, title, subtitle }: { icon: any; title: string; subtitle: string }) => (
+const SectionHeader = ({ icon: Icon, title, subtitle }: any) => (
   <div className="mb-2">
     <div className="flex items-center gap-2 mb-1">
       <div className="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center">

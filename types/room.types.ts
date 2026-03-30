@@ -10,6 +10,36 @@ export enum RoomStatus {
   ARCHIVED = "Archived",
 }
 
+export enum GenderPreference {
+  MALE_ONLY = "Male Only",
+  FEMALE_ONLY = "Female Only",
+  NO_PREFERENCE = "No Preference",
+}
+
+export enum IdealTenantType {
+  STUDENT = "Student",
+  WORKING_PROFESSIONAL = "Working Professional",
+  FAMILY_ONLY = "Family only",
+  SINGLE_PERSON = "Single Person",
+  COUPLE_ONLY = "Couple only",
+}
+
+export enum RestrictionType {
+  NO_PORK = "no Pork",
+  NO_BUFFALO_MEAT = "no Buffalo meat",
+  ALCOHOL = "Alcohol",
+  LATE_NIGHT = "late night",
+  SMOKING = "smoking",
+  NO_RESTRICTION = "No any restriction",
+}
+
+export enum ReligionType {
+  HINDU = "Hindu",
+  MUSLIM = "Muslim",
+  CHRISTIAN = "Christian",
+  ANY = "Any",
+}
+
 export enum RoomCategory {
   FLAT = "Flat",
   SINGLE = "Single",
@@ -40,6 +70,25 @@ export interface WaterSupplyTimings {
   morning: string;
   evening: string;
   notes?: string;
+}
+
+export interface LifestyleRules {
+  smokingAllowed: boolean;
+  alcoholAllowed: boolean;
+  nonVegetarianAllowed: boolean;
+  buffaloMeatAllowed: boolean;
+  porkAllowed: boolean;
+  lateNightAllowed: boolean;
+  babyAllowed: boolean;
+  otherRules?: string;
+}
+
+export interface FoodPreferences {
+  vegetarianAllowed: boolean;
+  nonVegetarianAllowed: boolean;
+  buffaloMeatAllowed: boolean;
+  porkAllowed: boolean;
+  allAllowed: boolean;
 }
 
 export interface Room {
@@ -87,6 +136,20 @@ export interface Room {
   adminRemarks?: string;
   approvedAt?: string;
   approvedById?: string;
+  idealTenants?: string[];
+  genderPreference?: string;
+  lifestyleRules?: LifestyleRules;
+  gateClosingTime?: string;
+  foodPreferences?: FoodPreferences;
+  restrictions?: string[];
+  ownerCommunity?: string;
+  allMixCommunity?: boolean;
+  communityWelcomeNote?: string;
+  ownerFloor?: number;
+  hasClothesDryingArea?: boolean;
+  getsSunlight?: boolean;
+  roomIssues?: string;
+  religionPreference?: string;
 }
 
 export interface RoomStats {

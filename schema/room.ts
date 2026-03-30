@@ -18,6 +18,24 @@ export const locationSchema = z.object({
   postalCode: z.string().optional(),
 });
 
+export const lifestyleRulesSchema = z.object({
+  smokingAllowed: z.boolean().default(false),
+  alcoholAllowed: z.boolean().default(false),
+  nonVegetarianAllowed: z.boolean().default(false),
+  buffaloMeatAllowed: z.boolean().default(false),
+  porkAllowed: z.boolean().default(false),
+  lateNightAllowed: z.boolean().default(false),
+  babyAllowed: z.boolean().default(false),
+  otherRules: z.string().optional(),
+});
+
+export const foodPreferencesSchema = z.object({
+  vegetarianAllowed: z.boolean().default(false),
+  nonVegetarianAllowed: z.boolean().default(false),
+  buffaloMeatAllowed: z.boolean().default(false),
+  porkAllowed: z.boolean().default(false),
+  allAllowed: z.boolean().default(false),
+});
 export const createRoomSchema = z.object({
   title: z.string().min(3, "Title must be at least 3 characters"),
   description: z.string().min(10, "Description must be at least 10 characters"),
@@ -45,6 +63,20 @@ export const createRoomSchema = z.object({
     .url("Please provide a valid TikTok URL")
     .optional()
     .or(z.literal("")),
+  idealTenants: z.array(z.string()).default([]),
+  genderPreference: z.string().optional(),
+  lifestyleRules: lifestyleRulesSchema.default({}),
+  gateClosingTime: z.string().optional(),
+  foodPreferences: foodPreferencesSchema.default({}),
+  restrictions: z.array(z.string()).default([]),
+  ownerCommunity: z.string().optional(),
+  allMixCommunity: z.boolean().default(false),
+  communityWelcomeNote: z.string().optional(),
+  ownerFloor: z.coerce.number().optional(),
+  hasClothesDryingArea: z.boolean().default(false),
+  getsSunlight: z.boolean().default(false),
+  roomIssues: z.string().optional(),
+  religionPreference: z.string().optional(),
 });
 
 export type CreateRoomFormValues = z.infer<typeof createRoomSchema>;

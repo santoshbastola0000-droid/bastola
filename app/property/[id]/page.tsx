@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   motion,
@@ -47,6 +47,17 @@ import {
   Heart,
   ChevronUp,
   ChevronDown,
+  Users2,
+  HeartHandshake,
+  Baby,
+  MoonStar,
+  Sun,
+  Beef,
+  EggFried,
+  Ban,
+  Church,
+  Gem,
+  Shirt,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -63,7 +74,14 @@ import {
   getShortAddress,
   timeAgo,
 } from "@/lib/utils";
-import { Room, RoomStatus } from "@/types/room.types";
+import {
+  Room,
+  RoomStatus,
+  IdealTenantType,
+  GenderPreference,
+  RestrictionType,
+  ReligionType,
+} from "@/types/room.types";
 import { UserRole } from "@/types/user.types";
 import { api } from "@/http/api/api";
 import { RoomUnlockDialog } from "@/components/rooms/RoomUnlockDialog";
@@ -100,7 +118,7 @@ const NEPALI_TIME_LABELS: Record<string, string> = {
   "16:00-18:00": "४:०० – ६:०० साँझ",
   "17:00-19:00": "५:०० – ७:०० साँझ",
   "18:00-20:00": "६:०० – ८:०० साँझ",
-  "19:00-21:00": "७:०० – ९:०° साँझ",
+  "19:00-21:00": "७:०० – ९:०० साँझ",
 };
 
 interface WaterInfo {
@@ -147,9 +165,7 @@ function parseWaterTimings(
   };
 }
 
-// ════════════════════════════════════════════════════
-// ── SWIPEABLE IMAGE CAROUSEL (mobile-native) ──
-// ════════════════════════════════════════════════════
+// ── Image Carousel (same as before, unchanged) ──
 const ImageCarousel = ({
   images,
   title,
@@ -191,7 +207,6 @@ const ImageCarousel = ({
         ref={containerRef}
         className="relative h-72 sm:h-[420px] w-full overflow-hidden bg-slate-900"
       >
-        {/* Images */}
         <AnimatePresence initial={false} mode="wait">
           <motion.img
             key={current}
@@ -213,16 +228,13 @@ const ImageCarousel = ({
           />
         </AnimatePresence>
 
-        {/* Gradient overlays */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/20 pointer-events-none" />
 
-        {/* Counter pill */}
         <div className="absolute top-4 left-4 bg-black/60 backdrop-blur-sm text-white text-xs font-semibold px-3 py-1.5 rounded-full flex items-center gap-1.5">
           <ImageIcon className="w-3 h-3" />
           {current + 1} / {images.length}
         </div>
 
-        {/* Fullscreen button */}
         <button
           onClick={() => setShowFullscreen(true)}
           className="absolute top-4 right-4 w-9 h-9 bg-black/60 backdrop-blur-sm text-white rounded-full flex items-center justify-center hover:bg-black/80 transition-colors cursor-pointer"
@@ -230,7 +242,6 @@ const ImageCarousel = ({
           <Maximize2 className="w-4 h-4" />
         </button>
 
-        {/* Nav arrows — hidden on mobile, shown md+ */}
         {images.length > 1 && (
           <>
             <button
@@ -250,7 +261,6 @@ const ImageCarousel = ({
           </>
         )}
 
-        {/* Dot indicators */}
         {images.length > 1 && (
           <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5">
             {images.slice(0, 8).map((_, i) => (
@@ -274,7 +284,6 @@ const ImageCarousel = ({
         )}
       </div>
 
-      {/* Thumbnail strip */}
       {images.length > 1 && (
         <div className="flex gap-2 px-4 py-3 overflow-x-auto scrollbar-none bg-white border-b border-slate-100">
           {images.map((img, i) => (
@@ -298,7 +307,6 @@ const ImageCarousel = ({
         </div>
       )}
 
-      {/* Fullscreen Dialog */}
       <Dialog open={showFullscreen} onOpenChange={setShowFullscreen}>
         <DialogContent className="max-w-none w-screen h-screen p-0 bg-black border-0 rounded-none">
           <DialogTitle className="sr-only">Room Images</DialogTitle>
@@ -357,7 +365,6 @@ const ImageCarousel = ({
   );
 };
 
-// ── Missing import fix ──
 const ImageIcon = ({ className }: { className?: string }) => (
   <svg
     className={className}
@@ -431,7 +438,7 @@ const TikTokCard = ({ url }: { url: string }) => (
   </a>
 );
 
-// ── Water Supply ──
+// ── Water Supply Section ──
 const WaterSupplySection = ({
   timings,
 }: {
@@ -512,7 +519,418 @@ const WaterSupplySection = ({
   );
 };
 
-// ── Unlocked Location ──
+// ── Tenant Preferences Section ──
+const TenantPreferencesSection = ({ room }: { room: Room }) => {
+  const hasPreferences =
+    room.idealTenants?.length ||
+    room.genderPreference ||
+    room.religionPreference;
+  if (!hasPreferences) return null;
+
+  const religion = room.religionPreference;
+  const showFaded = religion === ReligionType.HINDU;
+
+  return (
+    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+      <h3 className="text-base font-bold text-slate-900 mb-4 flex items-center gap-2">
+        <Users2 className="w-4 h-4 text-purple-500" /> Tenant Preferences /
+        भाडाटारु प्राथमिकताहरू
+      </h3>
+      <div className="space-y-4">
+        {room.idealTenants && room.idealTenants.length > 0 && (
+          <div>
+            <p className="text-xs text-slate-500 mb-2 font-semibold uppercase tracking-wide">
+              Ideal Tenant / आदर्श भाडाटारु
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {room.idealTenants.map((tenant) => (
+                <Badge
+                  key={tenant}
+                  variant="secondary"
+                  className="bg-purple-50 text-purple-700 border-purple-200"
+                >
+                  {tenant}
+                </Badge>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {room.genderPreference && (
+          <div className="flex justify-between items-center p-3 bg-slate-50 rounded-xl">
+            <span className="text-sm text-slate-600">
+              Gender Preference / लिङ्ग प्राथमिकता
+            </span>
+            <Badge className="bg-blue-50 text-blue-700 border-blue-200">
+              {room.genderPreference}
+            </Badge>
+          </div>
+        )}
+
+        {room.religionPreference && (
+          <div
+            className={cn(
+              "flex justify-between items-center p-3 rounded-xl",
+              showFaded ? "bg-amber-50/50" : "bg-slate-50",
+            )}
+          >
+            <span className="text-sm text-slate-600">
+              Religion Preference / धर्म प्राथमिकता
+            </span>
+            <Badge
+              className={cn(
+                "gap-1",
+                showFaded ? "bg-amber-100 text-amber-700" : "bg-slate-100",
+              )}
+            >
+              {room.religionPreference === ReligionType.HINDU && (
+                <Church className="w-3 h-3" />
+              )}
+              {room.religionPreference === ReligionType.MUSLIM && (
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="24"
+                  height="24"
+                  fill="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path d="m19,2c-1.65,0-3,1.35-3,3v3.59c0-1.67-.84-3.26-2.32-4.28l-3.12-2.14c-.34-.23-.79-.23-1.13,0l-3.12,2.14c-1.6,1.1-2.43,2.88-2.29,4.68h-1.03c-.55,0-1,.45-1,1v11c0,.55.45,1,1,1h18c.55,0,1-.45,1-1V5c0-1.65-1.35-3-3-3Zm-3,7h-.03c0-.1.03-.21.03-.31v.31Zm-8.55-3.04l2.55-1.75,2.55,1.75c1.04.72,1.56,1.88,1.42,3.04h-7.94c-.14-1.16.38-2.32,1.42-3.04Zm8.55,5.04v1H4v-1h12Zm-3.5,4s-1.5,1-1.5,3v2h-2v-2c0-2-1.5-3-1.5-3,0,0-1.5,1-1.5,3v2h-2v-6h12v6h-2v-2c0-2-1.5-3-1.5-3Zm7.5,5h-2v-12h2v12Zm-2-14v-1c0-.55.45-1,1-1s1,.45,1,1v1h-2Z" />
+                </svg>
+              )}
+              {room.religionPreference === ReligionType.CHRISTIAN && (
+                <Gem className="w-3 h-3" />
+              )}
+              {room.religionPreference}
+            </Badge>
+          </div>
+        )}
+
+        {showFaded && (
+          <p className="text-xs text-amber-600 bg-amber-50 p-3 rounded-lg flex items-start gap-2">
+            <AlertCircle className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
+            <span>
+              Note: Since the owner prefers Hindu, Muslim and Christian
+              preferences will be shown faded but are still welcome to inquire.
+            </span>
+          </p>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// ── Lifestyle Rules Section ──
+const LifestyleRulesSection = ({ room }: { room: Room }) => {
+  const rules = room.lifestyleRules;
+  if (!rules) return null;
+
+  const hasAnyRule =
+    rules.smokingAllowed ||
+    rules.alcoholAllowed ||
+    rules.nonVegetarianAllowed ||
+    rules.buffaloMeatAllowed ||
+    rules.porkAllowed ||
+    rules.lateNightAllowed ||
+    rules.babyAllowed;
+
+  if (!hasAnyRule && !rules.otherRules) return null;
+
+  return (
+    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+      <h3 className="text-base font-bold text-slate-900 mb-4 flex items-center gap-2">
+        <Shield className="w-4 h-4 text-amber-500" /> Lifestyle Rules / जीवनशैली
+        नियमहरू
+      </h3>
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        {rules.smokingAllowed !== undefined && (
+          <div className="flex items-center gap-2 p-2 bg-slate-50 rounded-lg">
+            <CheckCircle
+              className={cn(
+                "w-4 h-4",
+                rules.smokingAllowed ? "text-green-500" : "text-red-400",
+              )}
+            />
+            <span className="text-xs text-slate-600">
+              Smoking {rules.smokingAllowed ? "Allowed" : "Not Allowed"}
+            </span>
+          </div>
+        )}
+        {rules.alcoholAllowed !== undefined && (
+          <div className="flex items-center gap-2 p-2 bg-slate-50 rounded-lg">
+            <CheckCircle
+              className={cn(
+                "w-4 h-4",
+                rules.alcoholAllowed ? "text-green-500" : "text-red-400",
+              )}
+            />
+            <span className="text-xs text-slate-600">
+              Alcohol {rules.alcoholAllowed ? "Allowed" : "Not Allowed"}
+            </span>
+          </div>
+        )}
+        {rules.nonVegetarianAllowed !== undefined && (
+          <div className="flex items-center gap-2 p-2 bg-slate-50 rounded-lg">
+            <Beef className="w-4 h-4 text-slate-500" />
+            <span className="text-xs text-slate-600">
+              Non-Veg {rules.nonVegetarianAllowed ? "✓" : "✗"}
+            </span>
+          </div>
+        )}
+        {rules.buffaloMeatAllowed !== undefined && (
+          <div className="flex items-center gap-2 p-2 bg-slate-50 rounded-lg">
+            <EggFried className="w-4 h-4 text-slate-500" />
+            <span className="text-xs text-slate-600">
+              Buffalo Meat {rules.buffaloMeatAllowed ? "✓" : "✗"}
+            </span>
+          </div>
+        )}
+        {rules.porkAllowed !== undefined && (
+          <div className="flex items-center gap-2 p-2 bg-slate-50 rounded-lg">
+            <Ban className="w-4 h-4 text-slate-500" />
+            <span className="text-xs text-slate-600">
+              Pork {rules.porkAllowed ? "✓" : "✗"}
+            </span>
+          </div>
+        )}
+        {rules.lateNightAllowed !== undefined && (
+          <div className="flex items-center gap-2 p-2 bg-slate-50 rounded-lg">
+            <MoonStar className="w-4 h-4 text-slate-500" />
+            <span className="text-xs text-slate-600">
+              Late Night {rules.lateNightAllowed ? "Allowed" : "Not Allowed"}
+            </span>
+          </div>
+        )}
+        {rules.babyAllowed !== undefined && (
+          <div className="flex items-center gap-2 p-2 bg-slate-50 rounded-lg">
+            <Baby className="w-4 h-4 text-slate-500" />
+            <span className="text-xs text-slate-600">
+              Baby {rules.babyAllowed ? "Allowed" : "Not Allowed"}
+            </span>
+          </div>
+        )}
+      </div>
+      {rules.otherRules && (
+        <div className="mt-3 p-3 bg-amber-50 rounded-lg border border-amber-100">
+          <p className="text-xs text-amber-700 font-medium">Other Rules:</p>
+          <p className="text-xs text-amber-600 mt-1">{rules.otherRules}</p>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ── Food Preferences Section ──
+const FoodPreferencesSection = ({ room }: { room: Room }) => {
+  const food = room.foodPreferences;
+  if (!food) return null;
+
+  const hasAny =
+    food.vegetarianAllowed ||
+    food.nonVegetarianAllowed ||
+    food.buffaloMeatAllowed ||
+    food.porkAllowed ||
+    food.allAllowed;
+  if (!hasAny) return null;
+
+  return (
+    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+      <h3 className="text-base font-bold text-slate-900 mb-4 flex items-center gap-2">
+        <Utensils className="w-4 h-4 text-orange-500" /> Food Preferences / खाना
+        प्राथमिकताहरू
+      </h3>
+      <div className="flex flex-wrap gap-2">
+        {food.vegetarianAllowed && (
+          <Badge className="bg-green-50 text-green-700 border-green-200">
+            Vegetarian Only
+          </Badge>
+        )}
+        {food.nonVegetarianAllowed && (
+          <Badge className="bg-orange-50 text-orange-700 border-orange-200">
+            Non-Veg Allowed
+          </Badge>
+        )}
+        {food.buffaloMeatAllowed && (
+          <Badge className="bg-red-50 text-red-700 border-red-200">
+            Buffalo Meat
+          </Badge>
+        )}
+        {food.porkAllowed && (
+          <Badge className="bg-pink-50 text-pink-700 border-pink-200">
+            Pork Allowed
+          </Badge>
+        )}
+        {food.allAllowed && (
+          <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200">
+            All Food Allowed
+          </Badge>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// ── Restrictions Section ──
+const RestrictionsSection = ({ room }: { room: Room }) => {
+  if (!room.restrictions || room.restrictions.length === 0) return null;
+
+  return (
+    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+      <h3 className="text-base font-bold text-slate-900 mb-4 flex items-center gap-2">
+        <Ban className="w-4 h-4 text-red-500" /> Restrictions / निषेधहरू
+      </h3>
+      <div className="flex flex-wrap gap-2">
+        {room.restrictions.map((restriction) => (
+          <Badge
+            key={restriction}
+            variant="outline"
+            className="border-red-200 text-red-600 bg-red-50"
+          >
+            {restriction}
+          </Badge>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+// ── Owner Details Section ──
+const OwnerDetailsSection = ({ room }: { room: Room }) => {
+  const hasOwnerDetails =
+    room.ownerCommunity ||
+    room.ownerFloor !== undefined ||
+    room.allMixCommunity ||
+    room.communityWelcomeNote;
+  if (!hasOwnerDetails) return null;
+
+  return (
+    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+      <h3 className="text-base font-bold text-slate-900 mb-4 flex items-center gap-2">
+        <HeartHandshake className="w-4 h-4 text-red-500" /> Owner Information /
+        घरधनीको जानकारी
+      </h3>
+      <div className="space-y-3">
+        {room.ownerCommunity && (
+          <div className="flex justify-between items-center p-3 bg-slate-50 rounded-xl">
+            <span className="text-sm text-slate-600">
+              Owner's Community / घरधनीको समुदाय
+            </span>
+            <span className="font-semibold text-slate-800">
+              {room.ownerCommunity}
+            </span>
+          </div>
+        )}
+        {room.ownerFloor !== undefined && (
+          <div className="flex justify-between items-center p-3 bg-slate-50 rounded-xl">
+            <span className="text-sm text-slate-600">
+              Owner Floor / घरधनीको तला
+            </span>
+            <span className="font-semibold text-slate-800">
+              {room.ownerFloor}
+            </span>
+          </div>
+        )}
+        <div className="flex justify-between items-center p-3 bg-slate-50 rounded-xl">
+          <span className="text-sm text-slate-600">
+            All Mix Community / सबै समुदाय मिल्ने?
+          </span>
+          <Badge
+            className={
+              room.allMixCommunity
+                ? "bg-green-100 text-green-700"
+                : "bg-slate-100"
+            }
+          >
+            {room.allMixCommunity ? "Yes / हुन्छ" : "No / हुँदैन"}
+          </Badge>
+        </div>
+        {room.communityWelcomeNote && (
+          <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-100">
+            <p className="text-xs text-emerald-700">
+              {room.communityWelcomeNote}
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// ── Additional Features Section ──
+const AdditionalFeaturesSection = ({ room }: { room: Room }) => {
+  const hasFeatures =
+    room.hasClothesDryingArea !== undefined ||
+    room.getsSunlight !== undefined ||
+    room.roomIssues;
+  if (!hasFeatures) return null;
+
+  return (
+    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+      <h3 className="text-base font-bold text-slate-900 mb-4 flex items-center gap-2">
+        <Sun className="w-4 h-4 text-yellow-500" /> Additional Features / थप
+        सुविधाहरू
+      </h3>
+      <div className="grid grid-cols-2 gap-3 mb-3">
+        <div className="flex items-center gap-2 p-3 bg-slate-50 rounded-xl">
+          <Shirt className="w-4 h-4 text-blue-500" />
+          <span className="text-sm text-slate-600">Clothes Drying Area</span>
+          <Badge
+            className={
+              room.hasClothesDryingArea
+                ? "bg-green-100 text-green-700 ml-auto"
+                : "bg-red-100 text-red-700 ml-auto"
+            }
+          >
+            {room.hasClothesDryingArea ? "Available" : "Not Available"}
+          </Badge>
+        </div>
+        <div className="flex items-center gap-2 p-3 bg-slate-50 rounded-xl">
+          <Sun className="w-4 h-4 text-amber-500" />
+          <span className="text-sm text-slate-600">Gets Sunlight</span>
+          <Badge
+            className={
+              room.getsSunlight
+                ? "bg-green-100 text-green-700 ml-auto"
+                : "bg-red-100 text-red-700 ml-auto"
+            }
+          >
+            {room.getsSunlight ? "Yes" : "No"}
+          </Badge>
+        </div>
+      </div>
+      {room.roomIssues && (
+        <div className="p-3 bg-amber-50 rounded-xl border border-amber-100">
+          <p className="text-xs text-amber-700 font-medium">
+            Room Issues / कोठाको समस्या:
+          </p>
+          <p className="text-xs text-amber-600 mt-1">{room.roomIssues}</p>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ── Gate Closing Time Section ──
+const GateClosingTimeSection = ({ time }: { time?: string }) => {
+  if (!time) return null;
+
+  return (
+    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+      <h3 className="text-base font-bold text-slate-900 mb-4 flex items-center gap-2">
+        <Clock className="w-4 h-4 text-slate-500" /> Gate Closing Time / गेट
+        बन्द हुने समय
+      </h3>
+      <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-xl">
+        <Clock className="w-5 h-5 text-slate-400" />
+        <div>
+          <p className="text-sm font-bold text-slate-800">{time}</p>
+          <p className="text-xs text-slate-500">गेट कति बजे बन्द हुन्छ?</p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ── Unlocked Location Section (unchanged) ──
 const UnlockedLocationSection = ({
   unlockedData,
   room,
@@ -530,7 +948,6 @@ const UnlockedLocationSection = ({
   const fullAddress =
     unlockedData.room?.location?.formattedAddress ?? room.address;
   const contactPhone = unlockedData.room?.contactPhone;
-  const hostPhone = unlockedData.room.user?.phoneNumber;
   const contactPerson = room.contactPerson;
 
   const copyAddress = () => {
@@ -591,8 +1008,7 @@ const UnlockedLocationSection = ({
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <p className="text-sm font-bold text-slate-700 flex items-center gap-1.5">
-              <MapPin className="w-4 h-4 text-red-500" />
-              Exact Location
+              <MapPin className="w-4 h-4 text-red-500" /> Exact Location
             </p>
             <a
               href={`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`}
@@ -621,24 +1037,11 @@ const UnlockedLocationSection = ({
         <span className="flex-1 text-xs leading-relaxed">{fullAddress}</span>
         <Copy className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-600 shrink-0" />
       </button>
-
-      {hostPhone && (
-        <a
-          href={`https://wa.me/${hostPhone.replace(/\D/g, "")}?text=${encodeURIComponent(`Hello! I found your listing and I'm interested. Room: ${room.title}`)}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center justify-center gap-2 w-full py-4 rounded-2xl bg-green-600 hover:bg-green-700 text-white font-bold text-sm transition-colors shadow-lg cursor-pointer"
-        >
-          <WhatsAppIcon />
-          WhatsApp मा सम्पर्क गर्नुस्
-          <ExternalLink className="w-3.5 h-3.5" />
-        </a>
-      )}
     </motion.div>
   );
 };
 
-// ── Locked Placeholder ──
+// ── Locked Placeholder (unchanged) ──
 const LockedPlaceholder = ({
   isAuthenticated,
   unlockStatus,
@@ -661,14 +1064,11 @@ const LockedPlaceholder = ({
 
   return (
     <div className="space-y-4">
-      {/* Blurred map */}
       <div className="h-56 sm:h-64 w-full rounded-2xl overflow-hidden border border-slate-200 shadow-md relative bg-gradient-to-br from-slate-100 to-slate-200">
         <div className="absolute inset-0 flex items-center justify-center opacity-20 pointer-events-none select-none">
           <MapPin className="w-24 h-24 text-slate-400" />
         </div>
         <div className="absolute inset-0 backdrop-blur-sm bg-white/10" />
-
-        {/* Lock card overlay */}
         <div className="absolute inset-0 flex items-center justify-center z-10 p-4">
           <motion.div
             initial={{ scale: 0.9, opacity: 0 }}
@@ -685,7 +1085,6 @@ const LockedPlaceholder = ({
             <p className="text-slate-500 text-xs leading-relaxed mb-4">
               Unlock to see exact map, phone number, and owner name.
             </p>
-
             {!isLoaded ? (
               <div className="flex justify-center">
                 <LoadingSpinner />
@@ -738,8 +1137,6 @@ const LockedPlaceholder = ({
           </motion.div>
         </div>
       </div>
-
-      {/* Short address */}
       <div className="flex items-center gap-2 text-sm text-slate-500 bg-slate-50 p-3.5 rounded-xl border border-slate-200">
         <MapPin className="w-4 h-4 text-red-400 shrink-0" />
         <span className="text-xs italic flex-1">Area: {shortAddress}</span>
@@ -747,12 +1144,9 @@ const LockedPlaceholder = ({
           variant="outline"
           className="text-[10px] gap-1 py-0.5 flex-shrink-0"
         >
-          <Lock className="w-2.5 h-2.5" />
-          Hidden
+          <Lock className="w-2.5 h-2.5" /> Hidden
         </Badge>
       </div>
-
-      {/* Locked cards */}
       <div className="grid grid-cols-3 gap-2">
         {[
           { icon: MapPin, label: "Exact Map", color: "text-red-400" },
@@ -780,21 +1174,17 @@ const LockedPlaceholder = ({
   );
 };
 
-// ── WhatsApp Icon ──
 const WhatsAppIcon = () => (
   <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
     <path d="M19.077 4.928C17.191 3.041 14.683 2 12.006 2 6.798 2 2.528 6.17 2.527 11.26c0 1.695.444 3.355 1.291 4.815L2 22l5.995-1.788c1.44.79 3.064 1.206 4.722 1.207h.005c5.195 0 9.476-4.17 9.477-9.26 0-2.476-.966-4.804-2.842-6.69z" />
   </svg>
 );
 
-// ── Loading Spinner ──
 const LoadingSpinner = () => (
   <div className="w-5 h-5 rounded-full border-2 border-slate-200 border-t-red-500 animate-spin" />
 );
 
-// ════════════════════════════════════════════════════
-// ── MAIN PAGE ──
-// ════════════════════════════════════════════════════
+// ── Main Component ──
 export default function PropertyDetailsPage() {
   const { id } = useParams();
   const user = useUserStore((state) => state.user);
@@ -811,7 +1201,6 @@ export default function PropertyDetailsPage() {
   const [showUnlockDialog, setShowUnlockDialog] = useState(false);
   const [showTopUpDialog, setShowTopUpDialog] = useState(false);
 
-  // Fetch room
   useEffect(() => {
     if (!id) return;
     (async () => {
@@ -827,7 +1216,6 @@ export default function PropertyDetailsPage() {
     })();
   }, [id]);
 
-  // Fetch unlock status
   useEffect(() => {
     if (!isLoaded || !isAuthenticated || !id) return;
     (async () => {
@@ -874,49 +1262,8 @@ export default function PropertyDetailsPage() {
     toast.success("Link copied!", { icon: "🔗", duration: 2500 });
   };
 
-  // ── Loading skeleton ──
-  if (loading)
-    return (
-      <>
-        <NavBar />
-        <div className="min-h-screen bg-slate-50 pt-16">
-          <div className="animate-pulse">
-            <div className="h-72 sm:h-96 bg-slate-200 w-full" />
-            <div className="max-w-4xl mx-auto px-4 py-6 space-y-4">
-              <div className="h-7 bg-slate-200 rounded-xl w-3/4" />
-              <div className="h-4 bg-slate-200 rounded-xl w-1/2" />
-              <div className="h-48 bg-slate-200 rounded-2xl" />
-            </div>
-          </div>
-        </div>
-      </>
-    );
-
-  if (!room)
-    return (
-      <>
-        <NavBar />
-        <div className="min-h-screen bg-slate-50 pt-24 flex items-center justify-center px-4">
-          <div className="text-center max-w-md">
-            <div className="w-20 h-20 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-4">
-              <Home className="w-10 h-10 text-red-400" />
-            </div>
-            <h2 className="text-xl font-bold text-slate-900 mb-2">
-              Property Not Found
-            </h2>
-            <p className="text-slate-500 text-sm mb-6">
-              This property doesn't exist or may have been removed.
-            </p>
-            <Link href="/rooms">
-              <Button className="rounded-full px-8 bg-red-500 hover:bg-red-600 text-white cursor-pointer">
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to Listings
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </>
-    );
+  if (loading) return <LoadingSkeleton />;
+  if (!room) return <NotFoundPage />;
 
   const isAdminHost = room.user?.role === UserRole.ADMIN;
   const shortAddress =
@@ -929,13 +1276,12 @@ export default function PropertyDetailsPage() {
     <>
       <NavBar />
       <div className="min-h-screen bg-slate-50 pt-16">
-        {/* ── Image Carousel (full-bleed) ── */}
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
           <ImageCarousel images={room.images || []} title={room.title} />
         </motion.div>
 
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-32">
-          {/* ── Top nav row ── */}
+          {/* Top nav row */}
           <div className="flex items-center justify-between mb-5">
             <Link
               href="/rooms"
@@ -958,7 +1304,7 @@ export default function PropertyDetailsPage() {
             </div>
           </div>
 
-          {/* ── Title + address ── */}
+          {/* Title + address */}
           <motion.div
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
@@ -980,8 +1326,7 @@ export default function PropertyDetailsPage() {
                     variant="outline"
                     className="ml-1 text-[10px] gap-0.5 py-0"
                   >
-                    <Lock className="w-2.5 h-2.5" />
-                    Exact hidden
+                    <Lock className="w-2.5 h-2.5" /> Exact hidden
                   </Badge>
                 )}
               </div>
@@ -992,7 +1337,7 @@ export default function PropertyDetailsPage() {
             </div>
           </motion.div>
 
-          {/* ── Price highlight (mobile-visible) ── */}
+          {/* Mobile price CTA */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -1022,14 +1367,13 @@ export default function PropertyDetailsPage() {
                 onClick={() => setShowUnlockDialog(true)}
                 className="bg-red-500 hover:bg-red-600 text-white rounded-xl font-bold px-4 cursor-pointer shadow-lg shadow-red-100"
               >
-                <Lock className="w-4 h-4 mr-1.5" />
-                Unlock
+                <Lock className="w-4 h-4 mr-1.5" /> Unlock
               </Button>
             )}
           </motion.div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
-            {/* ── LEFT COLUMN ── */}
+            {/* LEFT COLUMN */}
             <div className="lg:col-span-2 space-y-5">
               {/* Host info */}
               <motion.div
@@ -1178,13 +1522,12 @@ export default function PropertyDetailsPage() {
                     >
                       {showAllAmenities ? (
                         <>
-                          <ChevronUp className="w-4 h-4" />
-                          Show less
+                          <ChevronUp className="w-4 h-4" /> Show less
                         </>
                       ) : (
                         <>
-                          <ChevronDown className="w-4 h-4" />
-                          View all {room.amenities.length} amenities
+                          <ChevronDown className="w-4 h-4" /> View all{" "}
+                          {room.amenities.length} amenities
                         </>
                       )}
                     </button>
@@ -1193,13 +1536,16 @@ export default function PropertyDetailsPage() {
               )}
 
               {/* Water Supply */}
-              <motion.div
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.25 }}
-              >
-                <WaterSupplySection timings={room.waterSupplyTimings} />
-              </motion.div>
+              <WaterSupplySection timings={room.waterSupplyTimings} />
+
+              {/* NEW SECTIONS */}
+              <TenantPreferencesSection room={room} />
+              <LifestyleRulesSection room={room} />
+              <FoodPreferencesSection room={room} />
+              <RestrictionsSection room={room} />
+              <OwnerDetailsSection room={room} />
+              <AdditionalFeaturesSection room={room} />
+              <GateClosingTimeSection time={room.gateClosingTime} />
 
               {/* Location & Contact */}
               <motion.div
@@ -1229,7 +1575,7 @@ export default function PropertyDetailsPage() {
               </motion.div>
             </div>
 
-            {/* ── RIGHT COLUMN (desktop sticky) ── */}
+            {/* RIGHT COLUMN */}
             <motion.div
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
@@ -1237,7 +1583,6 @@ export default function PropertyDetailsPage() {
               className="lg:col-span-1 hidden lg:block"
             >
               <div className="sticky top-24 space-y-4">
-                {/* Price card */}
                 <Card className="rounded-2xl border-slate-100 shadow-lg overflow-hidden">
                   <CardContent className="p-6">
                     <div className="flex items-baseline justify-between mb-5">
@@ -1252,7 +1597,6 @@ export default function PropertyDetailsPage() {
                         Available
                       </Badge>
                     </div>
-
                     <div className="space-y-2 mb-5">
                       {[
                         {
@@ -1278,7 +1622,6 @@ export default function PropertyDetailsPage() {
                         </div>
                       ))}
                     </div>
-
                     {unlockedData?.room?.contactPhone ? (
                       <a
                         href={`https://wa.me/${unlockedData.room.user?.phoneNumber?.replace(/\D/g, "")}?text=${encodeURIComponent(`Hi! I'm interested in: ${room.title}`)}`}
@@ -1293,7 +1636,7 @@ export default function PropertyDetailsPage() {
                         onClick={() => setShowUnlockDialog(true)}
                         className="w-full rounded-xl py-6 bg-slate-900 hover:bg-slate-800 text-white font-bold shadow-lg cursor-pointer group"
                       >
-                        <Lock className="w-4 h-4 mr-2 group-hover:scale-110 transition-transform" />
+                        <Lock className="w-4 h-4 mr-2 group-hover:scale-110 transition-transform" />{" "}
                         Unlock to Contact Host
                       </Button>
                     )}
@@ -1305,7 +1648,6 @@ export default function PropertyDetailsPage() {
                   </CardContent>
                 </Card>
 
-                {/* Property details */}
                 <Card className="rounded-2xl border-slate-100 shadow-sm">
                   <CardContent className="p-5">
                     <h4 className="text-sm font-bold text-slate-900 mb-4">
@@ -1318,23 +1660,19 @@ export default function PropertyDetailsPage() {
                           value: room.category,
                           cls: "capitalize",
                         },
-                        { label: "Floor", value: room.floorNumber, cls: "" },
+                        { label: "Floor", value: room.floorNumber },
                         {
                           label: "Room Capacity",
                           value: `${room.roomCapacity} persons`,
-                          cls: "",
                         },
                         {
                           label: "House Capacity",
                           value: `${room.totalHouseCapacity} persons`,
-                          cls: "",
                         },
                         {
                           label: "Owner lives here",
                           value: room.ownerLivesInHouse ? "Yes" : "No",
-                          cls: room.ownerLivesInHouse
-                            ? "text-emerald-600"
-                            : "text-slate-900",
+                          cls: room.ownerLivesInHouse ? "text-emerald-600" : "",
                         },
                         {
                           label: "Women allowed",
@@ -1363,7 +1701,7 @@ export default function PropertyDetailsPage() {
             </motion.div>
           </div>
 
-          {/* ── Mobile Property Details (below location section) ── */}
+          {/* Mobile Property Details */}
           <motion.div
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
@@ -1376,16 +1714,14 @@ export default function PropertyDetailsPage() {
             <div className="grid grid-cols-2 gap-3">
               {[
                 { label: "Type", value: room.category, cls: "capitalize" },
-                { label: "Floor", value: room.floorNumber, cls: "" },
+                { label: "Floor", value: room.floorNumber },
                 {
                   label: "Room Capacity",
                   value: `${room.roomCapacity} persons`,
-                  cls: "",
                 },
                 {
                   label: "House Capacity",
                   value: `${room.totalHouseCapacity} persons`,
-                  cls: "",
                 },
                 {
                   label: "Owner lives here",
@@ -1416,7 +1752,7 @@ export default function PropertyDetailsPage() {
           </motion.div>
         </div>
 
-        {/* ── Mobile sticky CTA ── */}
+        {/* Mobile sticky CTA */}
         <div className="fixed bottom-0 left-0 right-0 z-30 lg:hidden bg-white/95 backdrop-blur-md border-t border-slate-200 shadow-xl px-4 py-3">
           <div className="max-w-4xl mx-auto flex items-center gap-3">
             <div className="flex-1">
@@ -1447,7 +1783,7 @@ export default function PropertyDetailsPage() {
         </div>
       </div>
 
-      {/* ── Dialogs ── */}
+      {/* Dialogs */}
       <RoomUnlockDialog
         open={showUnlockDialog}
         onOpenChange={setShowUnlockDialog}
@@ -1467,7 +1803,55 @@ export default function PropertyDetailsPage() {
         settings={commissionSettings}
         onSuccess={() => {}}
       />
+      <Footer />
+    </>
+  );
+}
 
+// ── Loading Skeleton ──
+function LoadingSkeleton() {
+  return (
+    <>
+      <NavBar />
+      <div className="min-h-screen bg-slate-50 pt-16">
+        <div className="animate-pulse">
+          <div className="h-72 sm:h-96 bg-slate-200 w-full" />
+          <div className="max-w-4xl mx-auto px-4 py-6 space-y-4">
+            <div className="h-7 bg-slate-200 rounded-xl w-3/4" />
+            <div className="h-4 bg-slate-200 rounded-xl w-1/2" />
+            <div className="h-48 bg-slate-200 rounded-2xl" />
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+// ── Not Found Page ──
+function NotFoundPage() {
+  const router = useRouter();
+  return (
+    <>
+      <NavBar />
+      <div className="min-h-screen bg-slate-50 pt-24 flex items-center justify-center px-4">
+        <div className="text-center max-w-md">
+          <div className="w-20 h-20 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-4">
+            <Home className="w-10 h-10 text-red-400" />
+          </div>
+          <h2 className="text-xl font-bold text-slate-900 mb-2">
+            Property Not Found
+          </h2>
+          <p className="text-slate-500 text-sm mb-6">
+            This property doesn't exist or may have been removed.
+          </p>
+          <Button
+            onClick={() => router.push("/rooms")}
+            className="rounded-full px-8 bg-red-500 hover:bg-red-600 text-white cursor-pointer"
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" /> Back to Listings
+          </Button>
+        </div>
+      </div>
       <Footer />
     </>
   );
