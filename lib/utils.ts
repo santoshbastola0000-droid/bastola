@@ -122,3 +122,44 @@ export function timeAgo(dateStr: string): string {
     return formatDate(dateStr);
   }
 }
+
+export const isTokenExpired = (token: string): boolean => {
+  try {
+    const payload = JSON.parse(atob(token.split(".")[1]));
+    const exp = payload.exp;
+    const now = Math.floor(Date.now() / 1000);
+    return now >= exp;
+  } catch (error) {
+    return true; // If we can't decode, assume it's expired
+  }
+};
+
+export const getTokenExpiration = (token: string): Date | null => {
+  try {
+    const payload = JSON.parse(atob(token.split(".")[1]));
+    const exp = payload.exp;
+    return exp ? new Date(exp * 1000) : null;
+  } catch (error) {
+    return null;
+  }
+};
+
+export const formatGateClosingTime = (
+  time: string | null | undefined,
+): string => {
+  if (!time) return "";
+
+  if (/^\d{2}:\d{2}$/.test(time)) {
+    const [hours, minutes] = time.split(":");
+    const hour = parseInt(hours, 10);
+    const ampm = hour >= 12 ? "PM" : "AM";
+    const hour12 = hour % 12 || 12;
+    return `${hour12}:${minutes} ${ampm}`;
+  }
+
+  if (time.includes("AM") || time.includes("PM")) {
+    return time;
+  }
+
+  return time;
+};

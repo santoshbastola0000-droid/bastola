@@ -31,10 +31,13 @@ export const useUserStore = create<UserState>()(
         })),
 
       clearUser: () => {
-        // Clear both Zustand state and localStorage
+        // Clear Zustand state
         set({ user: null, isLoaded: true });
-        // Force clear localStorage
-        localStorage.removeItem("user-storage");
+
+        // Clear localStorage
+        if (typeof window !== "undefined") {
+          localStorage.removeItem("user-storage");
+        }
       },
 
       setIsLoaded: (isLoaded) => set({ isLoaded }),

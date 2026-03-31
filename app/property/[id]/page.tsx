@@ -19,7 +19,6 @@ import {
   Home,
   Wifi,
   Car,
-  Coffee,
   Tv,
   Utensils,
   Wind,
@@ -37,21 +36,26 @@ import {
   ExternalLink,
   Landmark,
   Lock,
-  PlayCircle,
   CheckCircle,
   Copy,
   Navigation,
   User,
-  Star,
-  Share2,
   Heart,
   ChevronUp,
   ChevronDown,
+  Cigarette,
+  Wine,
+  UtensilsCrossed,
+  Moon,
+  Baby,
+  Shirt,
+  Sun,
+  Clock3,
+  AlertTriangle,
+  MessageSquare,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
@@ -62,8 +66,14 @@ import {
   resolveImageUrl,
   getShortAddress,
   timeAgo,
+  formatGateClosingTime,
 } from "@/lib/utils";
-import { Room, RoomStatus } from "@/types/room.types";
+import {
+  Room,
+  RoomStatus,
+  TenantType,
+  GenderPreference,
+} from "@/types/room.types";
 import { UserRole } from "@/types/user.types";
 import { api } from "@/http/api/api";
 import { RoomUnlockDialog } from "@/components/rooms/RoomUnlockDialog";
@@ -77,17 +87,21 @@ import type {
   UnlockStatus,
 } from "@/types/unlock.types";
 import { cn } from "@/lib/utils";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
-// ── Amenity icons ──
+// ── Amenity icon map ──
 const amenityIcons: Record<string, any> = {
   wifi: Wifi,
   parking: Car,
-  kitchen: Coffee,
+  kitchen: Utensils,
+  "modular-kitchen": Utensils,
   "air conditioning": Wind,
   ac: Wind,
   tv: Tv,
   gym: Dumbbell,
-  "dining area": Utensils,
+  furnished: Home,
+  security: Shield,
+  water: Droplets,
 };
 
 // ── Nepali time labels ──
@@ -100,7 +114,7 @@ const NEPALI_TIME_LABELS: Record<string, string> = {
   "16:00-18:00": "४:०० – ६:०० साँझ",
   "17:00-19:00": "५:०० – ७:०० साँझ",
   "18:00-20:00": "६:०० – ८:०० साँझ",
-  "19:00-21:00": "७:०० – ९:०° साँझ",
+  "19:00-21:00": "७:०० – ९:०० साँझ",
 };
 
 interface WaterInfo {
@@ -147,8 +161,48 @@ function parseWaterTimings(
   };
 }
 
+// ── Inline SVG icon (avoids missing import) ──
+const ImageIcon = ({ className }: { className?: string }) => (
+  <svg
+    className={className}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={2}
+  >
+    <rect x="3" y="3" width="18" height="18" rx="2" />
+    <circle cx="8.5" cy="8.5" r="1.5" />
+    <polyline points="21 15 16 10 5 21" />
+  </svg>
+);
+
+// ── TriState display helper ──
+const TriBadge = ({
+  value,
+  labelYes,
+  labelNo,
+  labelNull = "Not specified",
+}: {
+  value: boolean | null | undefined;
+  labelYes: string;
+  labelNo: string;
+  labelNull?: string;
+}) => {
+  if (value === null || value === undefined)
+    return <span className="text-xs text-slate-400">{labelNull}</span>;
+  return value ? (
+    <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+      <Check className="w-3 h-3" /> {labelYes}
+    </span>
+  ) : (
+    <span className="inline-flex items-center gap-1 text-xs font-semibold text-red-600 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full">
+      <X className="w-3 h-3" /> {labelNo}
+    </span>
+  );
+};
+
 // ════════════════════════════════════════════════════
-// ── SWIPEABLE IMAGE CAROUSEL (mobile-native) ──
+// ── SWIPEABLE IMAGE CAROUSEL ──
 // ════════════════════════════════════════════════════
 const ImageCarousel = ({
   images,
@@ -160,7 +214,6 @@ const ImageCarousel = ({
   const [current, setCurrent] = useState(0);
   const [showFullscreen, setShowFullscreen] = useState(false);
   const dragX = useMotionValue(0);
-  const containerRef = useRef<HTMLDivElement>(null);
 
   const goTo = useCallback(
     (idx: number) => setCurrent(Math.max(0, Math.min(images.length - 1, idx))),
@@ -177,9 +230,12 @@ const ImageCarousel = ({
 
   if (!images?.length)
     return (
-      <div className="h-72 sm:h-96 w-full bg-slate-100 flex items-center justify-center rounded-b-3xl">
+      <div className="h-72 sm:h-96 w-full bg-slate-100 flex items-center justify-center">
         <div className="text-center">
-          <Building2 className="w-14 h-14 text-slate-300 mx-auto mb-2" />
+          <Building2
+            className="w-14 h-14 text-slate-300 mx-auto mb-2"
+            aria-hidden
+          />
           <p className="text-slate-400 text-sm">No photos yet</p>
         </div>
       </div>
@@ -187,16 +243,12 @@ const ImageCarousel = ({
 
   return (
     <>
-      <div
-        ref={containerRef}
-        className="relative h-72 sm:h-[420px] w-full overflow-hidden bg-slate-900"
-      >
-        {/* Images */}
+      <div className="relative h-72 sm:h-[420px] w-full overflow-hidden bg-slate-900">
         <AnimatePresence initial={false} mode="wait">
           <motion.img
             key={current}
             src={resolveImageUrl(images[current])}
-            alt={`${title} ${current + 1}`}
+            alt={`${title} — photo ${current + 1} of ${images.length}`}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -213,49 +265,58 @@ const ImageCarousel = ({
           />
         </AnimatePresence>
 
-        {/* Gradient overlays */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/20 pointer-events-none" />
 
-        {/* Counter pill */}
+        {/* Counter */}
         <div className="absolute top-4 left-4 bg-black/60 backdrop-blur-sm text-white text-xs font-semibold px-3 py-1.5 rounded-full flex items-center gap-1.5">
           <ImageIcon className="w-3 h-3" />
           {current + 1} / {images.length}
         </div>
 
-        {/* Fullscreen button */}
+        {/* Fullscreen */}
         <button
           onClick={() => setShowFullscreen(true)}
+          aria-label="View fullscreen"
           className="absolute top-4 right-4 w-9 h-9 bg-black/60 backdrop-blur-sm text-white rounded-full flex items-center justify-center hover:bg-black/80 transition-colors cursor-pointer"
         >
-          <Maximize2 className="w-4 h-4" />
+          <Maximize2 className="w-4 h-4" aria-hidden />
         </button>
 
-        {/* Nav arrows — hidden on mobile, shown md+ */}
+        {/* Desktop nav arrows */}
         {images.length > 1 && (
           <>
             <button
               onClick={prev}
               disabled={current === 0}
+              aria-label="Previous photo"
               className="hidden md:flex absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/60 backdrop-blur-sm text-white rounded-full items-center justify-center hover:bg-black/80 disabled:opacity-30 transition-all cursor-pointer"
             >
-              <ChevronLeft className="w-5 h-5" />
+              <ChevronLeft className="w-5 h-5" aria-hidden />
             </button>
             <button
               onClick={next}
               disabled={current === images.length - 1}
+              aria-label="Next photo"
               className="hidden md:flex absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/60 backdrop-blur-sm text-white rounded-full items-center justify-center hover:bg-black/80 disabled:opacity-30 transition-all cursor-pointer"
             >
-              <ChevronRight className="w-5 h-5" />
+              <ChevronRight className="w-5 h-5" aria-hidden />
             </button>
           </>
         )}
 
-        {/* Dot indicators */}
+        {/* Dots */}
         {images.length > 1 && (
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5">
+          <div
+            className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5"
+            role="tablist"
+            aria-label="Image navigation"
+          >
             {images.slice(0, 8).map((_, i) => (
               <button
                 key={i}
+                role="tab"
+                aria-selected={i === current}
+                aria-label={`Photo ${i + 1}`}
                 onClick={() => goTo(i)}
                 className={cn(
                   "rounded-full transition-all cursor-pointer",
@@ -281,6 +342,7 @@ const ImageCarousel = ({
             <button
               key={i}
               onClick={() => goTo(i)}
+              aria-label={`Go to photo ${i + 1}`}
               className={cn(
                 "flex-shrink-0 w-14 h-14 sm:w-16 sm:h-16 rounded-xl overflow-hidden border-2 transition-all cursor-pointer",
                 i === current
@@ -292,16 +354,17 @@ const ImageCarousel = ({
                 src={resolveImageUrl(img)}
                 alt=""
                 className="w-full h-full object-cover"
+                aria-hidden
               />
             </button>
           ))}
         </div>
       )}
 
-      {/* Fullscreen Dialog */}
+      {/* Fullscreen dialog */}
       <Dialog open={showFullscreen} onOpenChange={setShowFullscreen}>
         <DialogContent className="max-w-none w-screen h-screen p-0 bg-black border-0 rounded-none">
-          <DialogTitle className="sr-only">Room Images</DialogTitle>
+          <DialogTitle className="sr-only">Room Photos Fullscreen</DialogTitle>
           <div className="relative w-full h-full flex items-center justify-center">
             <AnimatePresence mode="wait">
               <motion.img
@@ -325,25 +388,28 @@ const ImageCarousel = ({
             </AnimatePresence>
             <button
               onClick={() => setShowFullscreen(false)}
+              aria-label="Close fullscreen"
               className="absolute top-4 right-4 w-10 h-10 bg-white/20 backdrop-blur-sm text-white rounded-full flex items-center justify-center hover:bg-white/30 cursor-pointer"
             >
-              <X className="w-5 h-5" />
+              <X className="w-5 h-5" aria-hidden />
             </button>
             {images.length > 1 && (
               <>
                 <button
                   onClick={prev}
                   disabled={current === 0}
+                  aria-label="Previous"
                   className="absolute left-4 top-1/2 -translate-y-1/2 w-11 h-11 bg-white/20 backdrop-blur-sm text-white rounded-full flex items-center justify-center hover:bg-white/30 disabled:opacity-30 cursor-pointer"
                 >
-                  <ChevronLeft className="w-6 h-6" />
+                  <ChevronLeft className="w-6 h-6" aria-hidden />
                 </button>
                 <button
                   onClick={next}
                   disabled={current === images.length - 1}
+                  aria-label="Next"
                   className="absolute right-4 top-1/2 -translate-y-1/2 w-11 h-11 bg-white/20 backdrop-blur-sm text-white rounded-full flex items-center justify-center hover:bg-white/30 disabled:opacity-30 cursor-pointer"
                 >
-                  <ChevronRight className="w-6 h-6" />
+                  <ChevronRight className="w-6 h-6" aria-hidden />
                 </button>
                 <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-black/60 text-white text-sm px-4 py-2 rounded-full font-medium">
                   {current + 1} / {images.length}
@@ -356,21 +422,6 @@ const ImageCarousel = ({
     </>
   );
 };
-
-// ── Missing import fix ──
-const ImageIcon = ({ className }: { className?: string }) => (
-  <svg
-    className={className}
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth={2}
-  >
-    <rect x="3" y="3" width="18" height="18" rx="2" />
-    <circle cx="8.5" cy="8.5" r="1.5" />
-    <polyline points="21 15 16 10 5 21" />
-  </svg>
-);
 
 // ── Status badge ──
 const StatusBadge = ({ status }: { status: RoomStatus }) => {
@@ -402,36 +453,29 @@ const StatusBadge = ({ status }: { status: RoomStatus }) => {
   };
   return (
     <Badge className={cn("border gap-1 cursor-default font-semibold", cls)}>
-      <Icon className="w-3 h-3" />
+      <Icon className="w-3 h-3" aria-hidden />
       {label}
     </Badge>
   );
 };
 
-// ── TikTok Card ──
-const TikTokCard = ({ url }: { url: string }) => (
-  <a
-    href={url}
-    target="_blank"
-    rel="noopener noreferrer"
-    className="flex items-center gap-4 p-4 bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl border border-slate-700 hover:from-slate-800 hover:to-slate-700 transition-all group cursor-pointer"
-  >
-    <div className="w-12 h-12 rounded-xl bg-black flex items-center justify-center flex-shrink-0">
-      <svg viewBox="0 0 24 24" className="w-7 h-7" fill="white">
-        <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1V9.01a6.32 6.32 0 0 0-.79-.05 6.34 6.34 0 0 0-6.34 6.34 6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.33-6.34l-.01-8.83a8.18 8.18 0 0 0 4.78 1.52V4.56a4.85 4.85 0 0 1-1-.13z" />
-      </svg>
-    </div>
-    <div className="flex-1 min-w-0">
-      <p className="text-white font-bold text-sm">TikTok मा हेर्नुहोस्</p>
-      <p className="text-slate-400 text-xs mt-0.5">यस घरको भिडियो उपलब्ध छ</p>
-    </div>
-    <div className="w-9 h-9 rounded-full bg-gradient-to-br from-pink-500 to-orange-400 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform shadow-lg">
-      <PlayCircle className="w-4 h-4 text-white" />
-    </div>
-  </a>
+// ── WhatsApp Icon ──
+const WhatsAppIcon = () => (
+  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+    <path d="M19.077 4.928C17.191 3.041 14.683 2 12.006 2 6.798 2 2.528 6.17 2.527 11.26c0 1.695.444 3.355 1.291 4.815L2 22l5.995-1.788c1.44.79 3.064 1.206 4.722 1.207h.005c5.195 0 9.476-4.17 9.477-9.26 0-2.476-.966-4.804-2.842-6.69z" />
+  </svg>
 );
 
-// ── Water Supply ──
+// ── Loading Spinner ──
+const LoadingSpinner = () => (
+  <div
+    className="w-5 h-5 rounded-full border-2 border-slate-200 border-t-red-500 animate-spin"
+    role="status"
+    aria-label="Loading"
+  />
+);
+
+// ── Water Supply Section ──
 const WaterSupplySection = ({
   timings,
 }: {
@@ -446,12 +490,15 @@ const WaterSupplySection = ({
   return (
     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
       <h3 className="text-base font-bold text-slate-900 mb-4 flex items-center gap-2">
-        <Droplets className="w-4 h-4 text-blue-500" /> पानी आपूर्ति (Water
-        Supply)
+        <Droplets className="w-4 h-4 text-blue-500" aria-hidden /> पानी आपूर्ति
+        / Water Supply
       </h3>
       {info.is24Hour && (
         <div className="flex items-center gap-3 p-4 bg-emerald-50 rounded-xl border border-emerald-200">
-          <CheckCircle className="w-5 h-5 text-emerald-600 flex-shrink-0" />
+          <CheckCircle
+            className="w-5 h-5 text-emerald-600 flex-shrink-0"
+            aria-hidden
+          />
           <div>
             <p className="text-sm font-bold text-emerald-800">
               २४ घण्टा पानी उपलब्ध
@@ -462,7 +509,10 @@ const WaterSupplySection = ({
       )}
       {!info.is24Hour && info.note && !info.morning && !info.evening && (
         <div className="flex items-center gap-3 p-4 bg-blue-50 rounded-xl border border-blue-100">
-          <Droplets className="w-5 h-5 text-blue-500 flex-shrink-0" />
+          <Droplets
+            className="w-5 h-5 text-blue-500 flex-shrink-0"
+            aria-hidden
+          />
           <p className="text-sm font-semibold text-blue-800">{info.note}</p>
         </div>
       )}
@@ -477,7 +527,9 @@ const WaterSupplySection = ({
         >
           {info.morning && (
             <div className="flex items-center gap-3 p-4 bg-amber-50 rounded-xl border border-amber-100">
-              <span className="text-2xl flex-shrink-0">🌅</span>
+              <span className="text-2xl flex-shrink-0" aria-hidden>
+                🌅
+              </span>
               <div>
                 <p className="text-[10px] text-amber-600 font-bold uppercase tracking-wide">
                   बिहान
@@ -490,7 +542,9 @@ const WaterSupplySection = ({
           )}
           {info.evening && (
             <div className="flex items-center gap-3 p-4 bg-indigo-50 rounded-xl border border-indigo-100">
-              <span className="text-2xl flex-shrink-0">🌙</span>
+              <span className="text-2xl flex-shrink-0" aria-hidden>
+                🌙
+              </span>
               <div>
                 <p className="text-[10px] text-indigo-600 font-bold uppercase tracking-wide">
                   साँझ
@@ -512,7 +566,292 @@ const WaterSupplySection = ({
   );
 };
 
-// ── Unlocked Location ──
+// ── Tenant Preferences Section (public-facing) ──
+const TenantPreferencesSection = ({ room }: { room: Room }) => {
+  const hasTenantTypes = room.tenantTypes && room.tenantTypes.length > 0;
+  const hasGender =
+    room.genderPreference &&
+    room.genderPreference !== GenderPreference.NO_PREFERENCE;
+  const hasLifestyle = [
+    room.smokingAllowed,
+    room.alcoholAllowed,
+    room.nonVegAllowed,
+    room.buffaloMeatAllowed,
+    room.porkAllowed,
+    room.lateNightAllowed,
+    room.babyAllowed,
+  ].some((v) => v !== null && v !== undefined);
+  const hasGate = !!room.gateClosingTime;
+  const hasSun = room.hasSunlight !== null && room.hasSunlight !== undefined;
+  const hasDrying =
+    room.hasClothDryingArea !== null && room.hasClothDryingArea !== undefined;
+  const hasProblems = !!room.existingProblems;
+  const hasOtherRules = !!room.otherRules;
+  const hasCommunity = !!(room.ownerCommunity || room.communityPreference);
+
+  const hasAny =
+    hasTenantTypes ||
+    hasGender ||
+    hasLifestyle ||
+    hasGate ||
+    hasSun ||
+    hasDrying ||
+    hasProblems ||
+    hasOtherRules ||
+    hasCommunity;
+  if (!hasAny) return null;
+
+  const lifestyleRules = [
+    {
+      icon: Cigarette,
+      label: "Smoking",
+      labelNp: "धुम्रपान",
+      value: room.smokingAllowed,
+    },
+    {
+      icon: Wine,
+      label: "Alcohol",
+      labelNp: "मदिरा",
+      value: room.alcoholAllowed,
+    },
+    {
+      icon: UtensilsCrossed,
+      label: "Non-Veg",
+      labelNp: "माछामासु",
+      value: room.nonVegAllowed,
+    },
+    {
+      icon: UtensilsCrossed,
+      label: "Buffalo Meat",
+      labelNp: "राँगाको मासु",
+      value: room.buffaloMeatAllowed,
+    },
+    {
+      icon: UtensilsCrossed,
+      label: "Pork",
+      labelNp: "सुँगुरको मासु",
+      value: room.porkAllowed,
+    },
+    {
+      icon: Moon,
+      label: "Late Night",
+      labelNp: "राति ढिलो",
+      value: room.lateNightAllowed,
+    },
+    {
+      icon: Baby,
+      label: "Children",
+      labelNp: "बच्चा",
+      value: room.babyAllowed,
+    },
+  ].filter((r) => r.value !== null && r.value !== undefined);
+
+  const TENANT_EMOJIS: Record<string, string> = {
+    [TenantType.STUDENT]: "🎓",
+    [TenantType.WORKING_PROFESSIONAL]: "💼",
+    [TenantType.FAMILY]: "👨‍👩‍👧",
+    [TenantType.SINGLE_PERSON]: "🧑",
+    [TenantType.COUPLE]: "💑",
+    [TenantType.ANY]: "🤝",
+  };
+
+  return (
+    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 space-y-5">
+      <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+        <Heart className="w-4 h-4 text-red-500" aria-hidden /> Tenant
+        Preferences / भाडाटारु सम्बन्धी
+      </h3>
+
+      {/* Ideal tenant */}
+      {hasTenantTypes && (
+        <div className="space-y-2">
+          <p className="text-xs font-bold text-slate-600 uppercase tracking-wide">
+            Ideal Tenant / आदर्श भाडाटारु
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {room.tenantTypes!.map((t) => (
+              <span
+                key={t}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-50 border border-red-200 rounded-full text-xs font-semibold text-red-700"
+              >
+                <span aria-hidden>{TENANT_EMOJIS[t] ?? "👤"}</span> {t}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Gender preference */}
+      {hasGender && (
+        <div className="space-y-2">
+          <p className="text-xs font-bold text-slate-600 uppercase tracking-wide">
+            Gender / लिङ्ग
+          </p>
+          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 border border-indigo-200 rounded-full text-xs font-semibold text-indigo-700">
+            {room.genderPreference === "Male Only" ? "👨" : "👩"}{" "}
+            {room.genderPreference}
+          </span>
+        </div>
+      )}
+
+      {/* Lifestyle rules */}
+      {lifestyleRules.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-xs font-bold text-slate-600 uppercase tracking-wide">
+            House Rules / घरका नियम
+          </p>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            {lifestyleRules.map(({ icon: Icon, label, labelNp, value }) => (
+              <div
+                key={label}
+                className={cn(
+                  "flex items-center gap-2 p-2.5 rounded-xl border text-xs font-semibold",
+                  value
+                    ? "bg-green-50 border-green-200 text-green-700"
+                    : "bg-red-50 border-red-200 text-red-700",
+                )}
+              >
+                <Icon className="w-3.5 h-3.5 flex-shrink-0" aria-hidden />
+                <div className="min-w-0">
+                  <p className="truncate">{label}</p>
+                  <p className="text-[10px] opacity-70 truncate">{labelNp}</p>
+                </div>
+                <span className="ml-auto flex-shrink-0">
+                  {value ? "✓" : "✗"}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Gate closing time */}
+      {hasGate && (
+        <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200">
+          <Clock3
+            className="w-4 h-4 text-slate-500 flex-shrink-0"
+            aria-hidden
+          />
+          <div>
+            <p className="text-xs text-slate-500 font-bold uppercase tracking-wide">
+              Gate Closes / गेट बन्द
+            </p>
+            <p className="text-sm font-bold text-slate-800">
+              {formatGateClosingTime(room.gateClosingTime)}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Sunlight & Drying */}
+      {(hasSun || hasDrying) && (
+        <div className="grid grid-cols-2 gap-2">
+          {hasSun && (
+            <div
+              className={cn(
+                "flex items-center gap-2 p-3 rounded-xl border text-xs font-semibold",
+                room.hasSunlight
+                  ? "bg-amber-50 border-amber-200 text-amber-700"
+                  : "bg-slate-50 border-slate-200 text-slate-500",
+              )}
+            >
+              <Sun className="w-4 h-4 flex-shrink-0" aria-hidden />
+              <div>
+                <p>Sunlight / घाम</p>
+                <p className="text-[10px] opacity-70">
+                  {room.hasSunlight ? "Yes ✓" : "No ✗"}
+                </p>
+              </div>
+            </div>
+          )}
+          {hasDrying && (
+            <div
+              className={cn(
+                "flex items-center gap-2 p-3 rounded-xl border text-xs font-semibold",
+                room.hasClothDryingArea
+                  ? "bg-green-50 border-green-200 text-green-700"
+                  : "bg-slate-50 border-slate-200 text-slate-500",
+              )}
+            >
+              <Shirt className="w-4 h-4 flex-shrink-0" aria-hidden />
+              <div>
+                <p>Drying Area</p>
+                <p className="text-[10px] opacity-70">
+                  {room.hasClothDryingArea ? "Yes ✓" : "No ✗"}
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Community */}
+      {hasCommunity && (
+        <div className="space-y-2">
+          <p className="text-xs font-bold text-slate-600 uppercase tracking-wide">
+            Community / समुदाय
+          </p>
+          {room.ownerCommunity && (
+            <p className="text-sm text-slate-700">
+              <span className="text-slate-500">Owner: </span>
+              <span className="font-semibold">{room.ownerCommunity}</span>
+            </p>
+          )}
+          {room.communityPreference && (
+            <p
+              className={cn(
+                "text-xs px-3 py-2 rounded-xl border",
+                room.communityPreference === "All community are welcome"
+                  ? "bg-green-50 border-green-200 text-green-700 font-semibold"
+                  : "bg-slate-50 border-slate-200 text-slate-600",
+              )}
+            >
+              {room.communityPreference}
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Existing problems */}
+      {hasProblems && (
+        <div className="flex items-start gap-2 p-3 bg-amber-50 rounded-xl border border-amber-200">
+          <AlertTriangle
+            className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5"
+            aria-hidden
+          />
+          <div>
+            <p className="text-xs font-bold text-amber-700 uppercase tracking-wide mb-1">
+              Known Issues / समस्याहरू
+            </p>
+            <p className="text-xs text-amber-700 leading-relaxed">
+              {room.existingProblems}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Other rules */}
+      {hasOtherRules && (
+        <div className="flex items-start gap-2 p-3 bg-slate-50 rounded-xl border border-slate-200">
+          <MessageSquare
+            className="w-4 h-4 text-slate-500 flex-shrink-0 mt-0.5"
+            aria-hidden
+          />
+          <div>
+            <p className="text-xs font-bold text-slate-600 uppercase tracking-wide mb-1">
+              Other Rules / अन्य नियम
+            </p>
+            <p className="text-xs text-slate-600 leading-relaxed">
+              {room.otherRules}
+            </p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ── Unlocked Location Section ──
 const UnlockedLocationSection = ({
   unlockedData,
   room,
@@ -531,7 +870,6 @@ const UnlockedLocationSection = ({
     unlockedData.room?.location?.formattedAddress ?? room.address;
   const contactPhone = unlockedData.room?.contactPhone;
   const hostPhone = unlockedData.room.user?.phoneNumber;
-  const contactPerson = room.contactPerson;
 
   const copyAddress = () => {
     navigator.clipboard.writeText(fullAddress);
@@ -545,7 +883,10 @@ const UnlockedLocationSection = ({
       className="space-y-4"
     >
       <div className="flex items-center gap-2 p-3 bg-emerald-50 rounded-xl border border-emerald-200">
-        <CheckCircle className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+        <CheckCircle
+          className="w-4 h-4 text-emerald-600 flex-shrink-0"
+          aria-hidden
+        />
         <p className="text-sm font-semibold text-emerald-700">
           Room unlocked — full details revealed!
         </p>
@@ -558,7 +899,7 @@ const UnlockedLocationSection = ({
             className="flex items-center gap-3 p-4 bg-blue-50 border border-blue-100 rounded-xl hover:bg-blue-100 transition-colors cursor-pointer group"
           >
             <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center flex-shrink-0 shadow group-hover:scale-110 transition-transform">
-              <Phone className="w-4 h-4 text-white" />
+              <Phone className="w-4 h-4 text-white" aria-hidden />
             </div>
             <div className="min-w-0">
               <p className="text-[10px] font-bold text-blue-600 uppercase tracking-wide">
@@ -570,17 +911,17 @@ const UnlockedLocationSection = ({
             </div>
           </a>
         )}
-        {contactPerson && (
+        {room.contactPerson && (
           <div className="flex items-center gap-3 p-4 bg-slate-50 border border-slate-100 rounded-xl">
             <div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center flex-shrink-0">
-              <User className="w-4 h-4 text-slate-600" />
+              <User className="w-4 h-4 text-slate-600" aria-hidden />
             </div>
             <div className="min-w-0">
               <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">
                 Owner Name
               </p>
               <p className="text-sm font-bold text-slate-800 truncate">
-                {contactPerson}
+                {room.contactPerson}
               </p>
             </div>
           </div>
@@ -591,8 +932,8 @@ const UnlockedLocationSection = ({
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <p className="text-sm font-bold text-slate-700 flex items-center gap-1.5">
-              <MapPin className="w-4 h-4 text-red-500" />
-              Exact Location
+              <MapPin className="w-4 h-4 text-red-500" aria-hidden /> Exact
+              Location
             </p>
             <a
               href={`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`}
@@ -600,7 +941,7 @@ const UnlockedLocationSection = ({
               rel="noopener noreferrer"
               className="flex items-center gap-1.5 text-xs font-semibold text-red-600 hover:text-red-700 cursor-pointer"
             >
-              <Navigation className="w-3.5 h-3.5" /> Directions
+              <Navigation className="w-3.5 h-3.5" aria-hidden /> Directions
             </a>
           </div>
           <div className="h-56 sm:h-64 w-full rounded-2xl overflow-hidden border border-slate-200 shadow-md">
@@ -617,9 +958,12 @@ const UnlockedLocationSection = ({
         onClick={copyAddress}
         className="w-full flex items-center gap-2 text-sm text-slate-600 bg-slate-50 p-3.5 rounded-xl hover:bg-slate-100 transition-colors text-left group border border-slate-200 cursor-pointer"
       >
-        <MapPin className="w-4 h-4 text-red-400 shrink-0" />
+        <MapPin className="w-4 h-4 text-red-400 shrink-0" aria-hidden />
         <span className="flex-1 text-xs leading-relaxed">{fullAddress}</span>
-        <Copy className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-600 shrink-0" />
+        <Copy
+          className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-600 shrink-0"
+          aria-hidden
+        />
       </button>
 
       {hostPhone && (
@@ -629,9 +973,8 @@ const UnlockedLocationSection = ({
           rel="noopener noreferrer"
           className="flex items-center justify-center gap-2 w-full py-4 rounded-2xl bg-green-600 hover:bg-green-700 text-white font-bold text-sm transition-colors shadow-lg cursor-pointer"
         >
-          <WhatsAppIcon />
-          WhatsApp मा सम्पर्क गर्नुस्
-          <ExternalLink className="w-3.5 h-3.5" />
+          <WhatsAppIcon /> WhatsApp मा सम्पर्क गर्नुस्{" "}
+          <ExternalLink className="w-3.5 h-3.5" aria-hidden />
         </a>
       )}
     </motion.div>
@@ -661,14 +1004,15 @@ const LockedPlaceholder = ({
 
   return (
     <div className="space-y-4">
-      {/* Blurred map */}
+      {/* Blurred map placeholder */}
       <div className="h-56 sm:h-64 w-full rounded-2xl overflow-hidden border border-slate-200 shadow-md relative bg-gradient-to-br from-slate-100 to-slate-200">
-        <div className="absolute inset-0 flex items-center justify-center opacity-20 pointer-events-none select-none">
+        <div
+          className="absolute inset-0 flex items-center justify-center opacity-20 pointer-events-none select-none"
+          aria-hidden
+        >
           <MapPin className="w-24 h-24 text-slate-400" />
         </div>
         <div className="absolute inset-0 backdrop-blur-sm bg-white/10" />
-
-        {/* Lock card overlay */}
         <div className="absolute inset-0 flex items-center justify-center z-10 p-4">
           <motion.div
             initial={{ scale: 0.9, opacity: 0 }}
@@ -677,7 +1021,7 @@ const LockedPlaceholder = ({
             className="bg-white/98 backdrop-blur-md rounded-2xl px-5 py-6 shadow-2xl border border-slate-200 text-center max-w-[260px] w-full"
           >
             <div className="w-14 h-14 rounded-2xl bg-slate-900 flex items-center justify-center mx-auto mb-3 shadow-lg">
-              <Lock className="w-6 h-6 text-white" />
+              <Lock className="w-6 h-6 text-white" aria-hidden />
             </div>
             <p className="font-bold text-slate-900 text-sm mb-1">
               Location & Contact Locked
@@ -696,7 +1040,8 @@ const LockedPlaceholder = ({
                 className="w-full rounded-xl bg-red-500 hover:bg-red-600 text-white font-semibold cursor-pointer"
                 onClick={onUnlock}
               >
-                <Lock className="w-3.5 h-3.5 mr-1.5" /> Sign In to Unlock
+                <Lock className="w-3.5 h-3.5 mr-1.5" aria-hidden /> Sign In to
+                Unlock
               </Button>
             ) : unlockStatus === null ? (
               <div className="flex justify-center">
@@ -720,7 +1065,7 @@ const LockedPlaceholder = ({
                   className="w-full rounded-xl bg-red-500 hover:bg-red-600 text-white font-bold gap-1.5 shadow-md shadow-red-100 cursor-pointer"
                   onClick={onUnlock}
                 >
-                  <Lock className="w-3.5 h-3.5" /> Unlock ·{" "}
+                  <Lock className="w-3.5 h-3.5" aria-hidden /> Unlock ·{" "}
                   {formatPriceNPR(serviceCharge)}
                 </Button>
                 {!hasSufficient && (
@@ -739,20 +1084,19 @@ const LockedPlaceholder = ({
         </div>
       </div>
 
-      {/* Short address */}
+      {/* Short address hint */}
       <div className="flex items-center gap-2 text-sm text-slate-500 bg-slate-50 p-3.5 rounded-xl border border-slate-200">
-        <MapPin className="w-4 h-4 text-red-400 shrink-0" />
+        <MapPin className="w-4 h-4 text-red-400 shrink-0" aria-hidden />
         <span className="text-xs italic flex-1">Area: {shortAddress}</span>
         <Badge
           variant="outline"
           className="text-[10px] gap-1 py-0.5 flex-shrink-0"
         >
-          <Lock className="w-2.5 h-2.5" />
-          Hidden
+          <Lock className="w-2.5 h-2.5" aria-hidden /> Hidden
         </Badge>
       </div>
 
-      {/* Locked cards */}
+      {/* Locked icon pills */}
       <div className="grid grid-cols-3 gap-2">
         {[
           { icon: MapPin, label: "Exact Map", color: "text-red-400" },
@@ -764,8 +1108,11 @@ const LockedPlaceholder = ({
             className="flex flex-col items-center gap-2 p-3 bg-slate-50 rounded-xl border border-slate-100"
           >
             <div className="relative">
-              <Icon className={cn("w-5 h-5 opacity-30", color)} />
-              <Lock className="w-2.5 h-2.5 text-slate-400 absolute -bottom-0.5 -right-0.5" />
+              <Icon className={cn("w-5 h-5 opacity-30", color)} aria-hidden />
+              <Lock
+                className="w-2.5 h-2.5 text-slate-400 absolute -bottom-0.5 -right-0.5"
+                aria-hidden
+              />
             </div>
             <p className="text-[9px] font-semibold text-slate-400 text-center">
               {label}
@@ -780,21 +1127,6 @@ const LockedPlaceholder = ({
   );
 };
 
-// ── WhatsApp Icon ──
-const WhatsAppIcon = () => (
-  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-    <path d="M19.077 4.928C17.191 3.041 14.683 2 12.006 2 6.798 2 2.528 6.17 2.527 11.26c0 1.695.444 3.355 1.291 4.815L2 22l5.995-1.788c1.44.79 3.064 1.206 4.722 1.207h.005c5.195 0 9.476-4.17 9.477-9.26 0-2.476-.966-4.804-2.842-6.69z" />
-  </svg>
-);
-
-// ── Loading Spinner ──
-const LoadingSpinner = () => (
-  <div className="w-5 h-5 rounded-full border-2 border-slate-200 border-t-red-500 animate-spin" />
-);
-
-// ════════════════════════════════════════════════════
-// ── MAIN PAGE ──
-// ════════════════════════════════════════════════════
 export default function PropertyDetailsPage() {
   const { id } = useParams();
   const user = useUserStore((state) => state.user);
@@ -811,7 +1143,6 @@ export default function PropertyDetailsPage() {
   const [showUnlockDialog, setShowUnlockDialog] = useState(false);
   const [showTopUpDialog, setShowTopUpDialog] = useState(false);
 
-  // Fetch room
   useEffect(() => {
     if (!id) return;
     (async () => {
@@ -827,7 +1158,6 @@ export default function PropertyDetailsPage() {
     })();
   }, [id]);
 
-  // Fetch unlock status
   useEffect(() => {
     if (!isLoaded || !isAuthenticated || !id) return;
     (async () => {
@@ -874,7 +1204,6 @@ export default function PropertyDetailsPage() {
     toast.success("Link copied!", { icon: "🔗", duration: 2500 });
   };
 
-  // ── Loading skeleton ──
   if (loading)
     return (
       <>
@@ -899,7 +1228,7 @@ export default function PropertyDetailsPage() {
         <div className="min-h-screen bg-slate-50 pt-24 flex items-center justify-center px-4">
           <div className="text-center max-w-md">
             <div className="w-20 h-20 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-4">
-              <Home className="w-10 h-10 text-red-400" />
+              <Home className="w-10 h-10 text-red-400" aria-hidden />
             </div>
             <h2 className="text-xl font-bold text-slate-900 mb-2">
               Property Not Found
@@ -909,8 +1238,8 @@ export default function PropertyDetailsPage() {
             </p>
             <Link href="/rooms">
               <Button className="rounded-full px-8 bg-red-500 hover:bg-red-600 text-white cursor-pointer">
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to Listings
+                <ArrowLeft className="w-4 h-4 mr-2" aria-hidden /> Back to
+                Listings
               </Button>
             </Link>
           </div>
@@ -919,9 +1248,9 @@ export default function PropertyDetailsPage() {
     );
 
   const isAdminHost = room.user?.role === UserRole.ADMIN;
-  const shortAddress =
-    room.location?.city ??
-    getShortAddress(room.location?.formattedAddress ?? room.address);
+  const shortAddress = getShortAddress(
+    room.location?.formattedAddress ?? room.address,
+  );
   const serviceCharge =
     unlockStatus?.serviceCharge ?? commissionSettings?.serviceCharge ?? 0;
 
@@ -929,20 +1258,19 @@ export default function PropertyDetailsPage() {
     <>
       <NavBar />
       <div className="min-h-screen bg-slate-50 pt-16">
-        {/* ── Image Carousel (full-bleed) ── */}
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
           <ImageCarousel images={room.images || []} title={room.title} />
         </motion.div>
 
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-32">
-          {/* ── Top nav row ── */}
+          {/* Top row */}
           <div className="flex items-center justify-between mb-5">
             <Link
               href="/rooms"
               className="flex items-center gap-2 text-slate-500 hover:text-red-500 text-sm font-medium transition-colors group cursor-pointer"
             >
               <div className="w-9 h-9 rounded-full bg-white shadow-sm border border-slate-200 flex items-center justify-center group-hover:bg-red-50 group-hover:border-red-200 transition-colors">
-                <ArrowLeft className="w-4 h-4" />
+                <ArrowLeft className="w-4 h-4" aria-hidden />
               </div>
               <span className="hidden sm:inline">Back to listings</span>
             </Link>
@@ -951,14 +1279,15 @@ export default function PropertyDetailsPage() {
               <button
                 onClick={copyLink}
                 title="Copy link"
+                aria-label="Copy link to this listing"
                 className="w-9 h-9 rounded-full bg-white shadow-sm border border-slate-200 flex items-center justify-center hover:bg-slate-50 transition-colors cursor-pointer"
               >
-                <Copy className="w-4 h-4 text-slate-500" />
+                <Copy className="w-4 h-4 text-slate-500" aria-hidden />
               </button>
             </div>
           </div>
 
-          {/* ── Title + address ── */}
+          {/* Title + address */}
           <motion.div
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
@@ -973,26 +1302,39 @@ export default function PropertyDetailsPage() {
             </h1>
             <div className="flex items-center flex-wrap gap-x-4 gap-y-1 mt-2">
               <div className="flex items-center gap-1 text-slate-500 text-sm">
-                <MapPin className="w-4 h-4 text-red-400 flex-shrink-0" />
+                <MapPin
+                  className="w-4 h-4 text-red-400 flex-shrink-0"
+                  aria-hidden
+                />
                 <span>{shortAddress}</span>
                 {!unlockedData && (
                   <Badge
                     variant="outline"
                     className="ml-1 text-[10px] gap-0.5 py-0"
                   >
-                    <Lock className="w-2.5 h-2.5" />
-                    Exact hidden
+                    <Lock className="w-2.5 h-2.5" aria-hidden /> Exact hidden
                   </Badge>
                 )}
               </div>
+              {/* Highway distance — shown publicly */}
+              {room.distanceHighwayM !== null &&
+                room.distanceHighwayM !== undefined && (
+                  <span className="flex items-center gap-1 text-xs text-slate-500">
+                    🛣️{" "}
+                    {room.distanceHighwayM >= 1000
+                      ? `${(room.distanceHighwayM / 1000).toFixed(1)} km`
+                      : `${room.distanceHighwayM} m`}{" "}
+                    from highway
+                  </span>
+                )}
               <span className="text-xs text-slate-400 flex items-center gap-1">
-                <Clock className="w-3.5 h-3.5" /> Added{" "}
+                <Clock className="w-3.5 h-3.5" aria-hidden /> Added{" "}
                 {timeAgo(room.createdAt)}
               </span>
             </div>
           </motion.div>
 
-          {/* ── Price highlight (mobile-visible) ── */}
+          {/* Mobile price bar */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -1002,7 +1344,7 @@ export default function PropertyDetailsPage() {
             <div>
               <p className="text-xs text-slate-400 font-medium">Monthly Rent</p>
               <p className="text-2xl font-bold text-slate-900 flex items-center gap-1">
-                <Landmark className="w-5 h-5 text-red-500" />
+                <Landmark className="w-5 h-5 text-red-500" aria-hidden />{" "}
                 {formatPriceNPR(Number(room.price))}
               </p>
               <p className="text-xs text-slate-400">per month</p>
@@ -1014,22 +1356,20 @@ export default function PropertyDetailsPage() {
                 rel="noopener noreferrer"
                 className="flex items-center gap-2 px-4 py-3 bg-green-600 hover:bg-green-700 text-white font-bold text-sm rounded-xl transition-colors cursor-pointer shadow-lg shadow-green-100"
               >
-                <WhatsAppIcon />
-                <span>Chat</span>
+                <WhatsAppIcon /> <span>Chat</span>
               </a>
             ) : (
               <Button
                 onClick={() => setShowUnlockDialog(true)}
                 className="bg-red-500 hover:bg-red-600 text-white rounded-xl font-bold px-4 cursor-pointer shadow-lg shadow-red-100"
               >
-                <Lock className="w-4 h-4 mr-1.5" />
-                Unlock
+                <Lock className="w-4 h-4 mr-1.5" aria-hidden /> Unlock
               </Button>
             )}
           </motion.div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
-            {/* ── LEFT COLUMN ── */}
+            {/* LEFT */}
             <div className="lg:col-span-2 space-y-5">
               {/* Host info */}
               <motion.div
@@ -1059,12 +1399,15 @@ export default function PropertyDetailsPage() {
                     </p>
                   ) : (
                     <div className="flex items-center gap-1.5 mt-0.5">
-                      <div className="h-4 w-24 bg-slate-200 rounded-lg animate-pulse" />
-                      <Lock className="w-3 h-3 text-slate-400" />
+                      <div
+                        className="h-4 w-24 bg-slate-200 rounded-lg animate-pulse"
+                        aria-hidden
+                      />
+                      <Lock className="w-3 h-3 text-slate-400" aria-hidden />
                     </div>
                   )}
                   <div className="flex items-center gap-1 mt-1">
-                    <Shield className="w-3 h-3 text-emerald-500" />
+                    <Shield className="w-3 h-3 text-emerald-500" aria-hidden />
                     <span className="text-xs text-emerald-600 font-medium">
                       {room.user?.isVerified ? "Verified host" : "New host"}
                     </span>
@@ -1076,7 +1419,7 @@ export default function PropertyDetailsPage() {
                     className="flex flex-col items-center gap-0.5 group cursor-pointer flex-shrink-0"
                   >
                     <div className="w-10 h-10 rounded-full bg-red-50 group-hover:bg-red-100 border border-red-200 flex items-center justify-center transition-colors">
-                      <Phone className="w-4 h-4 text-red-500" />
+                      <Phone className="w-4 h-4 text-red-500" aria-hidden />
                     </div>
                     <span className="text-[10px] text-red-500 font-semibold">
                       {unlockedData.room.user.phoneNumber}
@@ -1093,11 +1436,15 @@ export default function PropertyDetailsPage() {
                 className="grid grid-cols-3 gap-3 p-5 bg-white rounded-2xl border border-slate-100 shadow-sm"
               >
                 {[
-                  { icon: Users, value: room.roomCapacity, label: "Guests" },
+                  {
+                    icon: Users,
+                    value: room.roomCapacity,
+                    label: "Guests / जना",
+                  },
                   {
                     icon: Bath,
                     value: room.bathroomCapacity,
-                    label: "Bathrooms",
+                    label: "Bathroom",
                   },
                   {
                     icon: Square,
@@ -1107,7 +1454,7 @@ export default function PropertyDetailsPage() {
                 ].map(({ icon: Icon, value, label }) => (
                   <div key={label} className="text-center">
                     <div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center mx-auto mb-2">
-                      <Icon className="w-4 h-4 text-red-500" />
+                      <Icon className="w-4 h-4 text-red-500" aria-hidden />
                     </div>
                     <p className="text-lg font-bold text-slate-900">{value}</p>
                     <p className="text-xs text-slate-500">{label}</p>
@@ -1122,24 +1469,13 @@ export default function PropertyDetailsPage() {
                 transition={{ delay: 0.18 }}
                 className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5"
               >
-                <h3 className="text-base font-bold text-slate-900 mb-3">
+                <h2 className="text-base font-bold text-slate-900 mb-3">
                   About this property
-                </h3>
+                </h2>
                 <p className="text-slate-600 text-sm leading-relaxed whitespace-pre-wrap">
                   {room.description}
                 </p>
               </motion.div>
-
-              {/* TikTok */}
-              {room.tiktokUrl && (
-                <motion.div
-                  initial={{ opacity: 0, y: 15 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.2 }}
-                >
-                  <TikTokCard url={room.tiktokUrl} />
-                </motion.div>
-              )}
 
               {/* Amenities */}
               {room.amenities?.length > 0 && (
@@ -1149,9 +1485,9 @@ export default function PropertyDetailsPage() {
                   transition={{ delay: 0.22 }}
                   className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5"
                 >
-                  <h3 className="text-base font-bold text-slate-900 mb-4">
-                    Amenities
-                  </h3>
+                  <h2 className="text-base font-bold text-slate-900 mb-4">
+                    Amenities / सुविधाहरू
+                  </h2>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                     {(showAllAmenities
                       ? room.amenities
@@ -1163,9 +1499,12 @@ export default function PropertyDetailsPage() {
                           key={amenity}
                           className="flex items-center gap-2.5 p-3 rounded-xl bg-slate-50 border border-slate-100 hover:border-red-200 transition-colors"
                         >
-                          <Icon className="w-4 h-4 text-red-500 flex-shrink-0" />
+                          <Icon
+                            className="w-4 h-4 text-red-500 flex-shrink-0"
+                            aria-hidden
+                          />
                           <span className="text-xs text-slate-700 capitalize font-medium">
-                            {amenity}
+                            {amenity.replace("-", " ")}
                           </span>
                         </div>
                       );
@@ -1178,13 +1517,13 @@ export default function PropertyDetailsPage() {
                     >
                       {showAllAmenities ? (
                         <>
-                          <ChevronUp className="w-4 h-4" />
-                          Show less
+                          <ChevronUp className="w-4 h-4" aria-hidden /> Show
+                          less
                         </>
                       ) : (
                         <>
-                          <ChevronDown className="w-4 h-4" />
-                          View all {room.amenities.length} amenities
+                          <ChevronDown className="w-4 h-4" aria-hidden /> View
+                          all {room.amenities.length} amenities
                         </>
                       )}
                     </button>
@@ -1201,6 +1540,15 @@ export default function PropertyDetailsPage() {
                 <WaterSupplySection timings={room.waterSupplyTimings} />
               </motion.div>
 
+              {/* Tenant Preferences (new) */}
+              <motion.div
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.27 }}
+              >
+                <TenantPreferencesSection room={room} />
+              </motion.div>
+
               {/* Location & Contact */}
               <motion.div
                 initial={{ opacity: 0, y: 15 }}
@@ -1208,9 +1556,10 @@ export default function PropertyDetailsPage() {
                 transition={{ delay: 0.28 }}
                 className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5"
               >
-                <h3 className="text-base font-bold text-slate-900 mb-5 flex items-center gap-2">
-                  <MapPin className="w-4 h-4 text-red-500" /> Location & Contact
-                </h3>
+                <h2 className="text-base font-bold text-slate-900 mb-5 flex items-center gap-2">
+                  <MapPin className="w-4 h-4 text-red-500" aria-hidden />{" "}
+                  Location & Contact
+                </h2>
                 {unlockedData ? (
                   <UnlockedLocationSection
                     unlockedData={unlockedData}
@@ -1229,7 +1578,7 @@ export default function PropertyDetailsPage() {
               </motion.div>
             </div>
 
-            {/* ── RIGHT COLUMN (desktop sticky) ── */}
+            {/* RIGHT (desktop sticky) */}
             <motion.div
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
@@ -1237,13 +1586,15 @@ export default function PropertyDetailsPage() {
               className="lg:col-span-1 hidden lg:block"
             >
               <div className="sticky top-24 space-y-4">
-                {/* Price card */}
                 <Card className="rounded-2xl border-slate-100 shadow-lg overflow-hidden">
                   <CardContent className="p-6">
                     <div className="flex items-baseline justify-between mb-5">
                       <div>
                         <span className="text-3xl font-bold text-slate-900 flex items-baseline gap-1">
-                          <Landmark className="w-5 h-5 text-red-500 mb-1" />
+                          <Landmark
+                            className="w-5 h-5 text-red-500 mb-1"
+                            aria-hidden
+                          />
                           {formatPriceNPR(Number(room.price))}
                         </span>
                         <span className="text-slate-400 text-sm">/month</span>
@@ -1273,10 +1624,25 @@ export default function PropertyDetailsPage() {
                           key={text}
                           className="flex items-center gap-2 text-sm text-slate-600"
                         >
-                          <Icon className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                          <Icon
+                            className="w-4 h-4 text-slate-400 flex-shrink-0"
+                            aria-hidden
+                          />
                           <span>{text}</span>
                         </div>
                       ))}
+                      {room.distanceHighwayM !== null &&
+                        room.distanceHighwayM !== undefined && (
+                          <div className="flex items-center gap-2 text-sm text-slate-600">
+                            <span aria-hidden>🛣️</span>
+                            <span>
+                              {room.distanceHighwayM >= 1000
+                                ? `${(room.distanceHighwayM / 1000).toFixed(1)} km`
+                                : `${room.distanceHighwayM} m`}{" "}
+                              from highway
+                            </span>
+                          </div>
+                        )}
                     </div>
 
                     {unlockedData?.room?.contactPhone ? (
@@ -1293,7 +1659,10 @@ export default function PropertyDetailsPage() {
                         onClick={() => setShowUnlockDialog(true)}
                         className="w-full rounded-xl py-6 bg-slate-900 hover:bg-slate-800 text-white font-bold shadow-lg cursor-pointer group"
                       >
-                        <Lock className="w-4 h-4 mr-2 group-hover:scale-110 transition-transform" />
+                        <Lock
+                          className="w-4 h-4 mr-2 group-hover:scale-110 transition-transform"
+                          aria-hidden
+                        />{" "}
                         Unlock to Contact Host
                       </Button>
                     )}
@@ -1305,12 +1674,12 @@ export default function PropertyDetailsPage() {
                   </CardContent>
                 </Card>
 
-                {/* Property details */}
+                {/* Property details card */}
                 <Card className="rounded-2xl border-slate-100 shadow-sm">
                   <CardContent className="p-5">
-                    <h4 className="text-sm font-bold text-slate-900 mb-4">
+                    <h3 className="text-sm font-bold text-slate-900 mb-4">
                       Property Details
-                    </h4>
+                    </h3>
                     <div className="space-y-3">
                       {[
                         {
@@ -1318,7 +1687,11 @@ export default function PropertyDetailsPage() {
                           value: room.category,
                           cls: "capitalize",
                         },
-                        { label: "Floor", value: room.floorNumber, cls: "" },
+                        {
+                          label: "Floor",
+                          value: String(room.floorNumber),
+                          cls: "",
+                        },
                         {
                           label: "Room Capacity",
                           value: `${room.roomCapacity} persons`,
@@ -1331,14 +1704,14 @@ export default function PropertyDetailsPage() {
                         },
                         {
                           label: "Owner lives here",
-                          value: room.ownerLivesInHouse ? "Yes" : "No",
+                          value: room.ownerLivesInHouse ? "Yes ✓" : "No",
                           cls: room.ownerLivesInHouse
                             ? "text-emerald-600"
                             : "text-slate-900",
                         },
                         {
                           label: "Women allowed",
-                          value: room.allowsWomen ? "Yes" : "No",
+                          value: room.allowsWomen ? "Yes ✓" : "No ✗",
                           cls: room.allowsWomen
                             ? "text-emerald-600"
                             : "text-red-500",
@@ -1363,20 +1736,20 @@ export default function PropertyDetailsPage() {
             </motion.div>
           </div>
 
-          {/* ── Mobile Property Details (below location section) ── */}
+          {/* Mobile property details */}
           <motion.div
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
             className="mt-5 lg:hidden bg-white rounded-2xl border border-slate-100 shadow-sm p-5"
           >
-            <h4 className="text-sm font-bold text-slate-900 mb-4">
+            <h3 className="text-sm font-bold text-slate-900 mb-4">
               Property Details
-            </h4>
+            </h3>
             <div className="grid grid-cols-2 gap-3">
               {[
                 { label: "Type", value: room.category, cls: "capitalize" },
-                { label: "Floor", value: room.floorNumber, cls: "" },
+                { label: "Floor", value: String(room.floorNumber), cls: "" },
                 {
                   label: "Room Capacity",
                   value: `${room.roomCapacity} persons`,
@@ -1416,7 +1789,7 @@ export default function PropertyDetailsPage() {
           </motion.div>
         </div>
 
-        {/* ── Mobile sticky CTA ── */}
+        {/* Mobile sticky CTA */}
         <div className="fixed bottom-0 left-0 right-0 z-30 lg:hidden bg-white/95 backdrop-blur-md border-t border-slate-200 shadow-xl px-4 py-3">
           <div className="max-w-4xl mx-auto flex items-center gap-3">
             <div className="flex-1">
@@ -1439,7 +1812,7 @@ export default function PropertyDetailsPage() {
                 onClick={() => setShowUnlockDialog(true)}
                 className="px-5 py-3.5 bg-red-500 hover:bg-red-600 text-white font-bold text-sm rounded-xl shadow-lg shadow-red-200 cursor-pointer"
               >
-                <Lock className="w-4 h-4 mr-1.5" /> Unlock ·{" "}
+                <Lock className="w-4 h-4 mr-1.5" aria-hidden /> Unlock ·{" "}
                 {formatPriceNPR(serviceCharge)}
               </Button>
             )}
@@ -1447,7 +1820,6 @@ export default function PropertyDetailsPage() {
         </div>
       </div>
 
-      {/* ── Dialogs ── */}
       <RoomUnlockDialog
         open={showUnlockDialog}
         onOpenChange={setShowUnlockDialog}

@@ -1,9 +1,9 @@
 export enum PaymentMethod {
-  BANK_TRANSFER = "Bank Transfer",
-  ESEWA = "eSewa",
-  KHALTI = "Khalti",
-  QR_CODE = "QR Code",
-  CASH = "Cash",
+  BANK_TRANSFER = "BANK_TRANSFER",
+  ESEWA = "ESEWA",
+  KHALTI = "KHALTI",
+  QR_CODE = "QR_CODE",
+  CASH = "CASH",
 }
 
 export enum WithdrawalStatus {

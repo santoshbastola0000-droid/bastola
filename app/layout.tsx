@@ -5,6 +5,7 @@ import { QueryClientProviderWrapper } from "@/app/providers";
 import { Toaster } from "sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/theme-provider";
+import { SessionChecker } from "@/components/SessionChecker";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -31,6 +32,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+        <SessionChecker />
         <ThemeProvider>
           <QueryClientProviderWrapper>
             <TooltipProvider>{children}</TooltipProvider>

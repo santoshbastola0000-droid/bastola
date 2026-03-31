@@ -1,30 +1,55 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { AdminSidebar } from "@/components/admin/Sidebar";
 import { AdminHeader } from "@/components/admin/Header";
-import { cn } from "@/lib/utils";
 import { useUserRole } from "@/stores/user-store";
 import { Loader2 } from "lucide-react";
+import useTokenStore from "@/store";
+import { isTokenExpired } from "@/lib/utils";
+import { toast } from "sonner";
+import { FAILURETOAST } from "@/lib/constants/app.constants";
 
 export default function AdminLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   const router = useRouter();
-  const { isAdmin, isLoaded, user } = useUserRole();
+  const pathname = usePathname();
+  const { isAdmin, isLoaded, user, clearUser } = useUserRole();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const token = useTokenStore((state) => state.token);
 
   useEffect(() => {
-    if (!isLoaded) return;
-    if (!user) {
-      router.push("/auth/login");
-    } else if (!isAdmin) {
-      router.push(
-        user.role?.toLowerCase() === "user" ? "/user/dashboard" : "/",
-      );
-    }
-  }, [isLoaded, isAdmin, user, router]);
+    const checkAuth = () => {
+      if (token && isTokenExpired(token)) {
+        toast.error("Session Expired", {
+          description: "Your session has expired. Please log in again.",
+          style: { background: FAILURETOAST, color: "#ffff" },
+        });
+        clearUser();
+        useTokenStore.getState().clearToken();
+        router.push("/auth/login");
+        return;
+      }
+
+      // If no user and not loaded, redirect
+      if (isLoaded && !user) {
+        router.push("/auth/login");
+        return;
+      }
+
+      // Check role-based access
+      if (isLoaded && user && !isAdmin) {
+        router.push(
+          user.role?.toLowerCase() === "user" ? "/user/dashboard" : "/",
+        );
+        return;
+      }
+    };
+
+    checkAuth();
+  }, [isLoaded, isAdmin, user, token, router, clearUser]);
 
   if (!isLoaded) {
     return (
@@ -55,7 +80,7 @@ export default function AdminLayout({
           isMobile={false}
         />
 
-        {/* Main content — offset on desktop only via sidebar width class */}
+        {/* Main content */}
         <div className="flex-1 flex flex-col min-w-0">
           <AdminHeader isSidebarCollapsed={isSidebarCollapsed} />
           <main className="flex-1 p-4 md:p-6 lg:p-8 bg-gradient-to-br from-gray-50 to-white">

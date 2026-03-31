@@ -24,6 +24,21 @@ export enum RoomCategory {
   HOSTEL = "Hostel",
 }
 
+export enum TenantType {
+  STUDENT = "Student",
+  WORKING_PROFESSIONAL = "Working Professional",
+  FAMILY = "Family",
+  SINGLE_PERSON = "Single Person",
+  COUPLE = "Couple",
+  ANY = "Any",
+}
+
+export enum GenderPreference {
+  MALE_ONLY = "Male Only",
+  FEMALE_ONLY = "Female Only",
+  NO_PREFERENCE = "No Preference",
+}
+
 export interface Location {
   id: string;
   name: string;
@@ -55,6 +70,7 @@ export interface Room {
   bathroomCapacity: number;
   floorNumber: number;
   ownerLivesInHouse: boolean;
+  ownerFloorNumber?: number | null;
   totalHouseCapacity: number;
   rentedRoomsCount: number;
   currentOccupants: number;
@@ -87,6 +103,26 @@ export interface Room {
   adminRemarks?: string;
   approvedAt?: string;
   approvedById?: string;
+
+  // ── New tenant preference fields ─────────────────────────────────────────
+  tenantTypes?: TenantType[] | null;
+  genderPreference?: GenderPreference | null;
+  smokingAllowed?: boolean | null;
+  alcoholAllowed?: boolean | null;
+  nonVegAllowed?: boolean | null;
+  buffaloMeatAllowed?: boolean | null;
+  porkAllowed?: boolean | null;
+  lateNightAllowed?: boolean | null;
+  babyAllowed?: boolean | null;
+  otherRules?: string | null;
+  gateClosingTime?: string | null;
+  hasClothDryingArea?: boolean | null;
+  hasSunlight?: boolean | null;
+  existingProblems?: string | null;
+  ownerCommunity?: string | null;
+  communityPreference?: string | null;
+  // Distances
+  distanceHighwayM?: number | null;
 }
 
 export interface RoomStats {
@@ -110,6 +146,7 @@ export interface CreateRoomDTO {
   bathroomCapacity: number;
   floorNumber: number;
   ownerLivesInHouse: boolean;
+  ownerFloorNumber?: number | null;
   totalHouseCapacity: number;
   waterSupplyTimings: WaterSupplyTimings;
   allowsWomen: boolean;
@@ -117,11 +154,26 @@ export interface CreateRoomDTO {
   roomArea: number;
   contactPerson?: string;
   contactPhone?: string;
-  contactEmail?: string;
-  contactWhatsapp?: string;
   images: File[];
   location: Omit<Location, "id">;
   tiktokUrl?: string;
+  tenantTypes?: TenantType[];
+  genderPreference?: GenderPreference;
+  smokingAllowed?: boolean | null;
+  alcoholAllowed?: boolean | null;
+  nonVegAllowed?: boolean | null;
+  buffaloMeatAllowed?: boolean | null;
+  porkAllowed?: boolean | null;
+  lateNightAllowed?: boolean | null;
+  babyAllowed?: boolean | null;
+  otherRules?: string;
+  gateClosingTime?: string;
+  hasClothDryingArea?: boolean | null;
+  hasSunlight?: boolean | null;
+  existingProblems?: string;
+  ownerCommunity?: string;
+  communityPreference?: string;
+  distanceHighwayM?: number | null;
 }
 
 export interface UpdateRoomDTO {
@@ -134,6 +186,7 @@ export interface UpdateRoomDTO {
   bathroomCapacity?: number;
   floorNumber?: number;
   ownerLivesInHouse?: boolean;
+  ownerFloorNumber?: number | null;
   totalHouseCapacity?: number;
   rentedRoomsCount?: number;
   currentOccupants?: number;
@@ -143,11 +196,26 @@ export interface UpdateRoomDTO {
   roomArea?: number;
   contactPerson?: string;
   contactPhone?: string;
-  contactEmail?: string;
-  contactWhatsapp?: string;
   images?: string[];
   location?: Partial<Location>;
   tiktokUrl?: string;
+  tenantTypes?: TenantType[];
+  genderPreference?: GenderPreference;
+  smokingAllowed?: boolean | null;
+  alcoholAllowed?: boolean | null;
+  nonVegAllowed?: boolean | null;
+  buffaloMeatAllowed?: boolean | null;
+  porkAllowed?: boolean | null;
+  lateNightAllowed?: boolean | null;
+  babyAllowed?: boolean | null;
+  otherRules?: string;
+  gateClosingTime?: string;
+  hasClothDryingArea?: boolean | null;
+  hasSunlight?: boolean | null;
+  existingProblems?: string;
+  ownerCommunity?: string;
+  communityPreference?: string;
+  distanceHighwayM?: number | null;
 }
 
 export interface RoomFilters {
@@ -166,7 +234,7 @@ export interface RoomFilters {
   includeAll?: boolean;
   latitude?: number;
   longitude?: number;
-  radius?: number; // in kilometers
+  radius?: number;
 }
 
 export interface RoomsResponse {

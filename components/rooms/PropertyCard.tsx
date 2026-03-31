@@ -187,24 +187,6 @@ export function PropertyCard({ room, index = 0 }: PropertyCardProps) {
             </div>
           )}
 
-          {/* Like button */}
-          <button
-            type="button"
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              setIsLiked(!isLiked);
-            }}
-            aria-label={
-              isLiked ? "Remove from favourites" : "Add to favourites"
-            }
-            className="absolute top-3 right-3 z-10 w-8 h-8 rounded-full bg-white/85 backdrop-blur-sm flex items-center justify-center shadow transition-transform hover:scale-110"
-          >
-            <Heart
-              className={`w-4 h-4 transition-colors ${isLiked ? "fill-red-500 text-red-500" : "text-slate-400"}`}
-            />
-          </button>
-
           {/* Price at bottom */}
           <div className="absolute bottom-0 left-0 right-0 z-10 p-4">
             <div className="flex items-end justify-between">
@@ -213,7 +195,7 @@ export function PropertyCard({ room, index = 0 }: PropertyCardProps) {
                   Monthly Rent
                 </p>
                 <p className="text-white font-bold text-xl leading-none">
-                  रू {formatPriceNPR(Number(room.price))}
+                  {formatPriceNPR(Number(room.price))}
                 </p>
               </div>
               <motion.div

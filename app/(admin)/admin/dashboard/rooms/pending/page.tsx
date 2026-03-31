@@ -1,4 +1,3 @@
-// src/app/admin/dashboard/rooms/pending/page.tsx
 "use client";
 
 import { useState, useEffect } from "react";
