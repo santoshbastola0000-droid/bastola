@@ -1,4 +1,3 @@
-// src/app/(public)/rooms/page.tsx
 "use client";
 
 import { Suspense, useState, useEffect, useCallback, useRef } from "react";

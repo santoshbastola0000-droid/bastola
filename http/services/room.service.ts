@@ -73,9 +73,14 @@ export const roomService = {
 
   updateRoom: async (
     id: string,
-    data: UpdateRoomDTO,
+    data: UpdateRoomDTO | FormData,
   ): Promise<{ data: Room }> => {
-    const response = await privateApi.patch(`/rooms/${id}`, data);
+    const isFormData = data instanceof FormData;
+    const response = await privateApi.patch(`/rooms/${id}`, data, {
+      headers: isFormData
+        ? { "Content-Type": "multipart/form-data" }
+        : undefined,
+    });
     return response.data;
   },
 

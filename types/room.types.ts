@@ -10,36 +10,6 @@ export enum RoomStatus {
   ARCHIVED = "Archived",
 }
 
-export enum GenderPreference {
-  MALE_ONLY = "Male Only",
-  FEMALE_ONLY = "Female Only",
-  NO_PREFERENCE = "No Preference",
-}
-
-export enum IdealTenantType {
-  STUDENT = "Student",
-  WORKING_PROFESSIONAL = "Working Professional",
-  FAMILY_ONLY = "Family only",
-  SINGLE_PERSON = "Single Person",
-  COUPLE_ONLY = "Couple only",
-}
-
-export enum RestrictionType {
-  NO_PORK = "no Pork",
-  NO_BUFFALO_MEAT = "no Buffalo meat",
-  ALCOHOL = "Alcohol",
-  LATE_NIGHT = "late night",
-  SMOKING = "smoking",
-  NO_RESTRICTION = "No any restriction",
-}
-
-export enum ReligionType {
-  HINDU = "Hindu",
-  MUSLIM = "Muslim",
-  CHRISTIAN = "Christian",
-  ANY = "Any",
-}
-
 export enum RoomCategory {
   FLAT = "Flat",
   SINGLE = "Single",
@@ -52,6 +22,21 @@ export enum RoomCategory {
   HOTEL = "Hotel",
   OFFICE_SPACE = "Office Space",
   HOSTEL = "Hostel",
+}
+
+export enum TenantType {
+  STUDENT = "Student",
+  WORKING_PROFESSIONAL = "Working Professional",
+  FAMILY = "Family",
+  SINGLE_PERSON = "Single Person",
+  COUPLE = "Couple",
+  ANY = "Any",
+}
+
+export enum GenderPreference {
+  MALE_ONLY = "Male Only",
+  FEMALE_ONLY = "Female Only",
+  NO_PREFERENCE = "No Preference",
 }
 
 export interface Location {
@@ -72,25 +57,6 @@ export interface WaterSupplyTimings {
   notes?: string;
 }
 
-export interface LifestyleRules {
-  smokingAllowed: boolean;
-  alcoholAllowed: boolean;
-  nonVegetarianAllowed: boolean;
-  buffaloMeatAllowed: boolean;
-  porkAllowed: boolean;
-  lateNightAllowed: boolean;
-  babyAllowed: boolean;
-  otherRules?: string;
-}
-
-export interface FoodPreferences {
-  vegetarianAllowed: boolean;
-  nonVegetarianAllowed: boolean;
-  buffaloMeatAllowed: boolean;
-  porkAllowed: boolean;
-  allAllowed: boolean;
-}
-
 export interface Room {
   id: string;
   title: string;
@@ -104,6 +70,7 @@ export interface Room {
   bathroomCapacity: number;
   floorNumber: number;
   ownerLivesInHouse: boolean;
+  ownerFloorNumber?: number | null;
   totalHouseCapacity: number;
   rentedRoomsCount: number;
   currentOccupants: number;
@@ -136,20 +103,26 @@ export interface Room {
   adminRemarks?: string;
   approvedAt?: string;
   approvedById?: string;
-  idealTenants?: string[];
-  genderPreference?: string;
-  lifestyleRules?: LifestyleRules;
-  gateClosingTime?: string;
-  foodPreferences?: FoodPreferences;
-  restrictions?: string[];
-  ownerCommunity?: string;
-  allMixCommunity?: boolean;
-  communityWelcomeNote?: string;
-  ownerFloor?: number;
-  hasClothesDryingArea?: boolean;
-  getsSunlight?: boolean;
-  roomIssues?: string;
-  religionPreference?: string;
+
+  // ── New tenant preference fields ─────────────────────────────────────────
+  tenantTypes?: TenantType[] | null;
+  genderPreference?: GenderPreference | null;
+  smokingAllowed?: boolean | null;
+  alcoholAllowed?: boolean | null;
+  nonVegAllowed?: boolean | null;
+  buffaloMeatAllowed?: boolean | null;
+  porkAllowed?: boolean | null;
+  lateNightAllowed?: boolean | null;
+  babyAllowed?: boolean | null;
+  otherRules?: string | null;
+  gateClosingTime?: string | null;
+  hasClothDryingArea?: boolean | null;
+  hasSunlight?: boolean | null;
+  existingProblems?: string | null;
+  ownerCommunity?: string | null;
+  communityPreference?: string | null;
+  // Distances
+  distanceHighwayM?: number | null;
 }
 
 export interface RoomStats {
@@ -173,6 +146,7 @@ export interface CreateRoomDTO {
   bathroomCapacity: number;
   floorNumber: number;
   ownerLivesInHouse: boolean;
+  ownerFloorNumber?: number | null;
   totalHouseCapacity: number;
   waterSupplyTimings: WaterSupplyTimings;
   allowsWomen: boolean;
@@ -180,11 +154,26 @@ export interface CreateRoomDTO {
   roomArea: number;
   contactPerson?: string;
   contactPhone?: string;
-  contactEmail?: string;
-  contactWhatsapp?: string;
   images: File[];
   location: Omit<Location, "id">;
   tiktokUrl?: string;
+  tenantTypes?: TenantType[];
+  genderPreference?: GenderPreference;
+  smokingAllowed?: boolean | null;
+  alcoholAllowed?: boolean | null;
+  nonVegAllowed?: boolean | null;
+  buffaloMeatAllowed?: boolean | null;
+  porkAllowed?: boolean | null;
+  lateNightAllowed?: boolean | null;
+  babyAllowed?: boolean | null;
+  otherRules?: string;
+  gateClosingTime?: string;
+  hasClothDryingArea?: boolean | null;
+  hasSunlight?: boolean | null;
+  existingProblems?: string;
+  ownerCommunity?: string;
+  communityPreference?: string;
+  distanceHighwayM?: number | null;
 }
 
 export interface UpdateRoomDTO {
@@ -197,6 +186,7 @@ export interface UpdateRoomDTO {
   bathroomCapacity?: number;
   floorNumber?: number;
   ownerLivesInHouse?: boolean;
+  ownerFloorNumber?: number | null;
   totalHouseCapacity?: number;
   rentedRoomsCount?: number;
   currentOccupants?: number;
@@ -206,11 +196,26 @@ export interface UpdateRoomDTO {
   roomArea?: number;
   contactPerson?: string;
   contactPhone?: string;
-  contactEmail?: string;
-  contactWhatsapp?: string;
   images?: string[];
   location?: Partial<Location>;
   tiktokUrl?: string;
+  tenantTypes?: TenantType[];
+  genderPreference?: GenderPreference;
+  smokingAllowed?: boolean | null;
+  alcoholAllowed?: boolean | null;
+  nonVegAllowed?: boolean | null;
+  buffaloMeatAllowed?: boolean | null;
+  porkAllowed?: boolean | null;
+  lateNightAllowed?: boolean | null;
+  babyAllowed?: boolean | null;
+  otherRules?: string;
+  gateClosingTime?: string;
+  hasClothDryingArea?: boolean | null;
+  hasSunlight?: boolean | null;
+  existingProblems?: string;
+  ownerCommunity?: string;
+  communityPreference?: string;
+  distanceHighwayM?: number | null;
 }
 
 export interface RoomFilters {
@@ -229,7 +234,7 @@ export interface RoomFilters {
   includeAll?: boolean;
   latitude?: number;
   longitude?: number;
-  radius?: number; // in kilometers
+  radius?: number;
 }
 
 export interface RoomsResponse {

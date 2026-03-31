@@ -1224,7 +1224,7 @@ export function RoomList({ initialFilters = {} }: RoomListProps) {
                                   <Button
                                     variant="ghost"
                                     size="icon"
-                                    className="h-8 w-8 hover:bg-gray-50 cursor-pointer"
+                                    className="h-8 w-8 hover:bg-gray-600 cursor-pointer"
                                     title="More actions"
                                   >
                                     <AlertCircle className="h-4 w-4" />

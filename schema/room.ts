@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { RoomCategory } from "@/types/room.types";
+import { RoomCategory, TenantType, GenderPreference } from "@/types/room.types";
 
 export const waterSupplyTimingsSchema = z.object({
   morning: z.string().min(1, "Morning timing is required"),
@@ -18,25 +18,8 @@ export const locationSchema = z.object({
   postalCode: z.string().optional(),
 });
 
-export const lifestyleRulesSchema = z.object({
-  smokingAllowed: z.boolean().default(false),
-  alcoholAllowed: z.boolean().default(false),
-  nonVegetarianAllowed: z.boolean().default(false),
-  buffaloMeatAllowed: z.boolean().default(false),
-  porkAllowed: z.boolean().default(false),
-  lateNightAllowed: z.boolean().default(false),
-  babyAllowed: z.boolean().default(false),
-  otherRules: z.string().optional(),
-});
-
-export const foodPreferencesSchema = z.object({
-  vegetarianAllowed: z.boolean().default(false),
-  nonVegetarianAllowed: z.boolean().default(false),
-  buffaloMeatAllowed: z.boolean().default(false),
-  porkAllowed: z.boolean().default(false),
-  allAllowed: z.boolean().default(false),
-});
 export const createRoomSchema = z.object({
+  // ── Existing required fields ───────────────────────────────────────────────
   title: z.string().min(3, "Title must be at least 3 characters"),
   description: z.string().min(10, "Description must be at least 10 characters"),
   category: z.nativeEnum(RoomCategory),
@@ -46,6 +29,7 @@ export const createRoomSchema = z.object({
   bathroomCapacity: z.coerce.number().min(1).max(10),
   floorNumber: z.coerce.number().min(0),
   ownerLivesInHouse: z.boolean().default(false),
+  ownerFloorNumber: z.coerce.number().min(0).nullable().optional(),
   totalHouseCapacity: z.coerce.number().min(1),
   rentedRoomsCount: z.coerce.number().min(0).default(0),
   currentOccupants: z.coerce.number().min(0).default(0),
@@ -63,20 +47,28 @@ export const createRoomSchema = z.object({
     .url("Please provide a valid TikTok URL")
     .optional()
     .or(z.literal("")),
-  idealTenants: z.array(z.string()).default([]),
-  genderPreference: z.string().optional(),
-  lifestyleRules: lifestyleRulesSchema.default({}),
+
+  // ── New optional tenant preference fields ──────────────────────────────────
+  tenantTypes: z.array(z.nativeEnum(TenantType)).optional().default([]),
+  genderPreference: z.nativeEnum(GenderPreference).optional(),
+  smokingAllowed: z.boolean().nullable().optional(),
+  alcoholAllowed: z.boolean().nullable().optional(),
+  nonVegAllowed: z.boolean().nullable().optional(),
+  buffaloMeatAllowed: z.boolean().nullable().optional(),
+  porkAllowed: z.boolean().nullable().optional(),
+  lateNightAllowed: z.boolean().nullable().optional(),
+  babyAllowed: z.boolean().nullable().optional(),
+  otherRules: z.string().optional(),
   gateClosingTime: z.string().optional(),
-  foodPreferences: foodPreferencesSchema.default({}),
-  restrictions: z.array(z.string()).default([]),
+  hasClothDryingArea: z.boolean().nullable().optional(),
+  hasSunlight: z.boolean().nullable().optional(),
+  existingProblems: z.string().optional(),
   ownerCommunity: z.string().optional(),
-  allMixCommunity: z.boolean().default(false),
-  communityWelcomeNote: z.string().optional(),
-  ownerFloor: z.coerce.number().optional(),
-  hasClothesDryingArea: z.boolean().default(false),
-  getsSunlight: z.boolean().default(false),
-  roomIssues: z.string().optional(),
-  religionPreference: z.string().optional(),
+  communityPreference: z.string().optional(),
+
+  // ── Nearby Distance (metres) — optional ───────────────────────────────────
+  /** Distance from nearest highway / राजमार्गबाट दूरी (metres) */
+  distanceHighwayM: z.coerce.number().int().min(0).nullable().optional(),
 });
 
 export type CreateRoomFormValues = z.infer<typeof createRoomSchema>;
