@@ -52,3 +52,47 @@ export const getStatusOptions = () => {
     { value: RoomStatus.ARCHIVED, label: "Archived" },
   ];
 };
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL!;
+
+export const resolveImageUrl = (imagePath: string): string => {
+  if (!imagePath) return "";
+  if (imagePath.startsWith("http") || imagePath.startsWith("blob:"))
+    return imagePath;
+  return `${API_BASE_URL.replace(/\/$/, "")}/${imagePath.replace(/^\//, "")}`;
+};
+
+export const extractLocationName = (formattedAddress: string): string => {
+  if (!formattedAddress) return "";
+  const patterns = [
+    /^([^,]+(?:चोक|टोल|गाउँ|बजार|मार्ग|रोड|Road|Chowk))/i,
+    /^([^,]+)/,
+  ];
+  for (const pattern of patterns) {
+    const match = formattedAddress.match(pattern);
+    if (match?.[1]) return match[1].trim();
+  }
+  return formattedAddress.split(",")[0]?.trim() || "";
+};
+
+export const detectWaterType = (timings?: {
+  morning?: string;
+  evening?: string;
+  notes?: string;
+}): string => {
+  if (!timings) return "morning-evening";
+  const note = timings.notes || "";
+  if (note.startsWith("TYPE:")) return note.replace("TYPE:", "");
+  if (timings.morning === "00:00-24:00") return "24-hour";
+  if (note.includes("ट्याङ्कर")) return "tanker";
+  if (note.includes("एक दिन छाडी")) return "alternate-days";
+  if (timings.morning && !timings.evening) return "morning-only";
+  if (!timings.morning && timings.evening) return "evening-only";
+  return "morning-evening";
+};
+
+/** Formats metres into a readable distance string */
+export const formatDistance = (metres: number): string => {
+  if (metres >= 1000) return `${(metres / 1000).toFixed(2)} km`;
+  return `${metres} m`;
+};
