@@ -47,6 +47,7 @@ import {
 import { adminDashboardService } from "@/http/services/admin-dashboard.service";
 import { formatNepaliCurrency, formatDate } from "@/lib/utils";
 import Link from "next/link";
+import { WithdrawalStatus } from "@/types/wallet.types";
 
 interface StatCardProps {
   title: string;
@@ -582,19 +583,22 @@ export default function AdminDashboard() {
                         <div
                           className={cn(
                             "p-2 rounded-lg",
-                            withdrawal.status === "Pending" && "bg-yellow-100",
-                            withdrawal.status === "Approved" && "bg-green-100",
-                            withdrawal.status === "Rejected" && "bg-red-100",
+                            withdrawal.status === WithdrawalStatus.PENDING &&
+                              "bg-yellow-100",
+                            withdrawal.status === WithdrawalStatus.APPROVED &&
+                              "bg-green-100",
+                            withdrawal.status === WithdrawalStatus.REJECTED &&
+                              "bg-red-100",
                           )}
                         >
                           <Wallet
                             className={cn(
                               "h-4 w-4",
-                              withdrawal.status === "Pending" &&
+                              withdrawal.status === WithdrawalStatus.PENDING &&
                                 "text-yellow-600",
-                              withdrawal.status === "Approved" &&
+                              withdrawal.status === WithdrawalStatus.APPROVED &&
                                 "text-green-600",
-                              withdrawal.status === "Rejected" &&
+                              withdrawal.status === WithdrawalStatus.REJECTED &&
                                 "text-red-600",
                             )}
                           />
@@ -612,12 +616,12 @@ export default function AdminDashboard() {
                       <div className="text-right">
                         <Badge
                           className={cn(
-                            withdrawal.status === "Pending" &&
-                              "bg-yellow-100 text-yellow-800",
-                            withdrawal.status === "Approved" &&
-                              "bg-green-100 text-green-800",
-                            withdrawal.status === "Rejected" &&
-                              "bg-red-100 text-red-800",
+                            withdrawal.status === WithdrawalStatus.PENDING &&
+                              "text-yellow-600",
+                            withdrawal.status === WithdrawalStatus.APPROVED &&
+                              "text-green-600",
+                            withdrawal.status === WithdrawalStatus.REJECTED &&
+                              "text-red-600",
                           )}
                         >
                           {withdrawal.status}
