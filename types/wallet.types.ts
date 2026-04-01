@@ -7,9 +7,9 @@ export enum PaymentMethod {
 }
 
 export enum WithdrawalStatus {
-  PENDING = "Pending",
-  APPROVED = "Approved",
-  REJECTED = "Rejected",
+  PENDING = "PENDING",
+  APPROVED = "APPROVED",
+  REJECTED = "REJECTED",
 }
 
 export enum TransactionType {
