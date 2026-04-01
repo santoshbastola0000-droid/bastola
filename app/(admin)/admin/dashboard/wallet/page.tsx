@@ -23,7 +23,11 @@ import {
   Loader2,
 } from "lucide-react";
 import { walletService } from "@/http/services/wallet.service";
-import { WithdrawalStatus, PaymentMethod } from "@/types/wallet.types";
+import {
+  WithdrawalStatus,
+  PaymentMethod,
+  Withdrawal,
+} from "@/types/wallet.types";
 import {
   Card,
   CardContent,
@@ -83,8 +87,8 @@ export default function AdminWalletPage() {
   const [selectedWithdrawal, setSelectedWithdrawal] = useState<any>(null);
   const [showProcessDialog, setShowProcessDialog] = useState(false);
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
-  const [processAction, setProcessAction] = useState<"approve" | "reject">(
-    "approve",
+  const [processAction, setProcessAction] = useState<"Approve" | "Reject">(
+    "Approve",
   );
   const [adminRemarks, setAdminRemarks] = useState("");
   const [transactionReference, setTransactionReference] = useState("");
@@ -155,9 +159,14 @@ export default function AdminWalletPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-withdrawals"] });
       queryClient.invalidateQueries({ queryKey: ["admin-wallet-stats"] });
-      toast.success("Withdrawal request processed successfully", {
-        style: { background: SUCCESSTOAST, color: "#fff" },
-      });
+      toast.success(
+        processAction === "Approve"
+          ? "Withdrawal request approved successfully"
+          : "Withdrawal request rejected successfully",
+        {
+          style: { background: SUCCESSTOAST, color: "#fff" },
+        },
+      );
       setShowProcessDialog(false);
       setSelectedWithdrawal(null);
       setAdminRemarks("");
@@ -176,7 +185,7 @@ export default function AdminWalletPage() {
   const handleProcess = () => {
     if (!selectedWithdrawal) return;
 
-    if (processAction === "approve" && !transactionReference.trim()) {
+    if (processAction === "Approve" && !transactionReference.trim()) {
       toast.error("Transaction reference is required for approval");
       return;
     }
@@ -184,7 +193,7 @@ export default function AdminWalletPage() {
     processMutation.mutate({
       id: selectedWithdrawal.id,
       status:
-        processAction === "approve"
+        processAction === "Approve"
           ? WithdrawalStatus.APPROVED
           : WithdrawalStatus.REJECTED,
       adminRemarks: adminRemarks || undefined,
@@ -199,7 +208,7 @@ export default function AdminWalletPage() {
 
   const handleProcessClick = (
     withdrawal: any,
-    action: "approve" | "reject",
+    action: "Approve" | "Reject",
   ) => {
     setSelectedWithdrawal(withdrawal);
     setProcessAction(action);
@@ -252,6 +261,9 @@ export default function AdminWalletPage() {
   };
 
   const withdrawals = withdrawalsResponse?.data || [];
+
+  console.log("withdrawals", withdrawals[0]);
+
   const pagination = withdrawalsResponse?.pagination || {
     page: 0,
     take: 10,
@@ -593,7 +605,7 @@ export default function AdminWalletPage() {
                 </CardContent>
               </Card>
             ) : (
-              withdrawals.map((withdrawal: any) => (
+              withdrawals.map((withdrawal: Withdrawal) => (
                 <Card key={withdrawal.id} className="overflow-hidden">
                   <CardContent className="p-3">
                     <div className="flex items-center justify-between mb-2">
@@ -654,7 +666,7 @@ export default function AdminWalletPage() {
                             size="sm"
                             className="flex-1 h-7 text-xs bg-green-50 text-green-700 hover:bg-green-100 cursor-pointer"
                             onClick={() =>
-                              handleProcessClick(withdrawal, "approve")
+                              handleProcessClick(withdrawal, "Approve")
                             }
                           >
                             <CheckCircle className="h-3 w-3 mr-1" />
@@ -665,7 +677,7 @@ export default function AdminWalletPage() {
                             size="sm"
                             className="flex-1 h-7 text-xs bg-red-50 text-red-700 hover:bg-red-100 cursor-pointer"
                             onClick={() =>
-                              handleProcessClick(withdrawal, "reject")
+                              handleProcessClick(withdrawal, "Reject")
                             }
                           >
                             <XCircle className="h-3 w-3 mr-1" />
@@ -767,7 +779,7 @@ export default function AdminWalletPage() {
                                       onClick={() =>
                                         handleProcessClick(
                                           withdrawal,
-                                          "approve",
+                                          "Approve",
                                         )
                                       }
                                       className="h-8 w-8 text-green-600 hover:text-green-700 cursor-pointer"
@@ -779,7 +791,7 @@ export default function AdminWalletPage() {
                                       variant="ghost"
                                       size="icon"
                                       onClick={() =>
-                                        handleProcessClick(withdrawal, "reject")
+                                        handleProcessClick(withdrawal, "Reject")
                                       }
                                       className="h-8 w-8 text-red-600 hover:text-red-700 cursor-pointer"
                                       title="Reject"
@@ -889,16 +901,6 @@ export default function AdminWalletPage() {
                       >
                         View Pending Withdrawals ({stats.pendingWithdrawals})
                       </Button>
-                      <Button
-                        variant="outline"
-                        className="w-full justify-start cursor-pointer"
-                        onClick={() => {
-                          // Export functionality
-                        }}
-                      >
-                        <Download className="h-4 w-4 mr-2" />
-                        Export Report
-                      </Button>
                     </div>
                   </div>
                 </div>
@@ -913,7 +915,7 @@ export default function AdminWalletPage() {
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              {processAction === "approve" ? (
+              {processAction === "Approve" ? (
                 <>
                   <CheckCircle className="h-5 w-5 text-green-600" />
                   Approve Withdrawal
@@ -926,7 +928,7 @@ export default function AdminWalletPage() {
               )}
             </DialogTitle>
             <DialogDescription>
-              {processAction === "approve"
+              {processAction === "Approve"
                 ? "This will mark the withdrawal as approved and update user's wallet"
                 : "This will reject the withdrawal request and return funds to user's wallet"}
             </DialogDescription>
@@ -956,38 +958,49 @@ export default function AdminWalletPage() {
                 </div>
               </div>
 
-              {processAction === "approve" && (
+              {processAction === "Approve" && (
                 <div className="space-y-2">
-                  <Label htmlFor="transactionRef">Transaction Reference</Label>
+                  <Label htmlFor="transactionRef">
+                    Transaction Reference{" "}
+                    <span className="text-red-500">*</span>
+                  </Label>
                   <Input
                     id="transactionRef"
-                    placeholder="e.g., BANK12345, ESEWA98765"
+                    placeholder="e.g., BANK12345, ESEWA98765, KHALTI78910"
                     value={transactionReference}
                     onChange={(e) => setTransactionReference(e.target.value)}
+                    className="cursor-text"
                   />
                   <p className="text-xs text-muted-foreground">
-                    Enter the transaction ID or reference number
+                    Enter the transaction ID or reference number from your
+                    payment system
                   </p>
                 </div>
               )}
 
               <div className="space-y-2">
                 <Label htmlFor="adminRemarks">
-                  {processAction === "approve"
+                  {processAction === "Approve"
                     ? "Admin Notes (Optional)"
                     : "Rejection Reason"}
                 </Label>
                 <Textarea
                   id="adminRemarks"
                   placeholder={
-                    processAction === "approve"
-                      ? "Any additional notes..."
-                      : "Please provide reason for rejection"
+                    processAction === "Approve"
+                      ? "Any additional notes about this approval..."
+                      : "Please provide reason for rejection (e.g., invalid payment details, insufficient balance, etc.)"
                   }
                   value={adminRemarks}
                   onChange={(e) => setAdminRemarks(e.target.value)}
                   rows={3}
+                  className="cursor-text"
                 />
+                {processAction === "Reject" && !adminRemarks.trim() && (
+                  <p className="text-xs text-amber-600">
+                    It's recommended to provide a reason for rejection
+                  </p>
+                )}
               </div>
             </div>
           )}
@@ -1009,13 +1022,13 @@ export default function AdminWalletPage() {
             <Button
               onClick={handleProcess}
               className={
-                processAction === "approve"
+                processAction === "Approve"
                   ? "bg-green-600 hover:bg-green-700 cursor-pointer"
                   : "bg-red-600 hover:bg-red-700 cursor-pointer"
               }
               disabled={
                 processMutation.isPending ||
-                (processAction === "approve" && !transactionReference.trim())
+                (processAction === "Approve" && !transactionReference.trim())
               }
             >
               {processMutation.isPending ? (
@@ -1023,7 +1036,7 @@ export default function AdminWalletPage() {
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Processing...
                 </>
-              ) : processAction === "approve" ? (
+              ) : processAction === "Approve" ? (
                 "Approve Withdrawal"
               ) : (
                 "Reject Withdrawal"
@@ -1098,7 +1111,7 @@ export default function AdminWalletPage() {
                   {selectedWithdrawal.transactionReference && (
                     <>
                       <span className="text-muted-foreground">Reference</span>
-                      <span className="font-medium">
+                      <span className="font-medium font-mono text-xs">
                         {selectedWithdrawal.transactionReference}
                       </span>
                     </>
@@ -1110,13 +1123,29 @@ export default function AdminWalletPage() {
               {selectedWithdrawal.paymentDetails && (
                 <div className="bg-muted p-3 rounded-lg space-y-2">
                   <h4 className="text-sm font-medium">Payment Details</h4>
-                  <pre className="text-xs whitespace-pre-wrap font-mono bg-background p-2 rounded">
-                    {JSON.stringify(
-                      JSON.parse(selectedWithdrawal.paymentDetails),
-                      null,
-                      2,
-                    )}
-                  </pre>
+                  <div className="space-y-1 text-sm">
+                    {(() => {
+                      try {
+                        const details = JSON.parse(
+                          selectedWithdrawal.paymentDetails,
+                        );
+                        return Object.entries(details).map(([key, value]) => (
+                          <div key={key} className="flex justify-between">
+                            <span className="text-muted-foreground capitalize">
+                              {key.replace(/([A-Z])/g, " $1").trim()}:
+                            </span>
+                            <span className="font-medium">{String(value)}</span>
+                          </div>
+                        ));
+                      } catch {
+                        return (
+                          <pre className="text-xs whitespace-pre-wrap font-mono bg-background p-2 rounded">
+                            {selectedWithdrawal.paymentDetails}
+                          </pre>
+                        );
+                      }
+                    })()}
+                  </div>
                 </div>
               )}
 
@@ -1132,6 +1161,33 @@ export default function AdminWalletPage() {
                 <div className="bg-muted p-3 rounded-lg">
                   <h4 className="text-sm font-medium mb-1">Admin Remarks</h4>
                   <p className="text-sm">{selectedWithdrawal.adminRemarks}</p>
+                </div>
+              )}
+
+              {/* Quick Action Buttons for Pending */}
+              {selectedWithdrawal.status === WithdrawalStatus.PENDING && (
+                <div className="flex gap-2 pt-2">
+                  <Button
+                    className="flex-1 bg-green-600 hover:bg-green-700 cursor-pointer"
+                    onClick={() => {
+                      setShowDetailsDialog(false);
+                      handleProcessClick(selectedWithdrawal, "Approve");
+                    }}
+                  >
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    Approve
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    className="flex-1 cursor-pointer"
+                    onClick={() => {
+                      setShowDetailsDialog(false);
+                      handleProcessClick(selectedWithdrawal, "Reject");
+                    }}
+                  >
+                    <XCircle className="h-4 w-4 mr-2" />
+                    Reject
+                  </Button>
                 </div>
               )}
             </div>
