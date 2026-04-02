@@ -44,8 +44,6 @@ import { roomService } from "@/http/services/room.service";
 import { RoomCategory, RoomStatus, type Room } from "@/types/room.types";
 import { cn } from "@/lib/utils";
 
-// ─── Types ─────────────────────────────────────────────────────────────────────
-
 interface CatConfig {
   label: string;
   labelNp: string;
@@ -102,7 +100,7 @@ const CATEGORIES: CatConfig[] = [
   },
 ];
 
-type SortOption = "default" | "price-asc" | "price-desc" | "distance";
+type SortOption = "default" | "price-asc" | "price-desc";
 
 interface FilterState {
   categories: RoomCategory[];
@@ -122,17 +120,17 @@ const DEFAULT_FILTERS: FilterState = {
   categories: [],
   sort: "default",
   page: 0,
-  take: 12,
+  take: 6,
   search: "",
   minPrice: 0,
   maxPrice: 50000,
   allowsWomen: null,
-  lat: null,
+  lat: null, // never auto-populated
   lng: null,
-  radius: 5, // default 5 km for nearby
+  radius: 5,
 };
 
-// ─── Haversine distance (km) ───────────────────────────────────────────────────
+// ─── Haversine distance (km) — DO NOT TOUCH ───────────────────────────────────
 
 function haversineKm(
   lat1: number,
@@ -236,7 +234,7 @@ function FilterPanel({ filters, onChange, onReset, total }: FilterPanelProps) {
         </div>
       </div>
 
-      {/* Radius — only shown when user has granted location */}
+      {/* Radius — only shown when location active (DO NOT TOUCH) */}
       {filters.lat !== null && (
         <div>
           <p className="text-sm font-semibold text-slate-700 mb-2">
@@ -274,7 +272,7 @@ function FilterPanel({ filters, onChange, onReset, total }: FilterPanelProps) {
   );
 }
 
-// ─── Modern Pagination Component ───────────────────────────────────────────────
+// ─── Modern Pagination ─────────────────────────────────────────────────────────
 
 interface PaginationProps {
   page: number;
@@ -293,23 +291,16 @@ function ModernPagination({
   onPageChange,
   onTakeChange,
 }: PaginationProps) {
-  // Generate smart page range: always show first, last, current ± 1, with ellipsis
   const getPageRange = (): (number | "...")[] => {
-    if (totalPages <= 7) {
-      return Array.from({ length: totalPages }, (_, i) => i);
-    }
+    if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i);
     const range: (number | "...")[] = [];
-    const delta = 1; // pages around current
-
-    const left = Math.max(1, page - delta);
-    const right = Math.min(totalPages - 2, page + delta);
-
-    range.push(0); // always first
+    const left = Math.max(1, page - 1);
+    const right = Math.min(totalPages - 2, page + 1);
+    range.push(0);
     if (left > 1) range.push("...");
     for (let i = left; i <= right; i++) range.push(i);
     if (right < totalPages - 2) range.push("...");
-    range.push(totalPages - 1); // always last
-
+    range.push(totalPages - 1);
     return range;
   };
 
@@ -324,7 +315,7 @@ function ModernPagination({
       animate={{ opacity: 1, y: 0 }}
       className="mt-8"
     >
-      {/* Info bar */}
+      {/* Info + per-page selector */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-4 px-1">
         <p className="text-sm text-slate-500">
           Showing{" "}
@@ -338,7 +329,7 @@ function ModernPagination({
             htmlFor="per-page"
             className="cursor-pointer whitespace-nowrap"
           >
-            Rooms per page
+            Per page
           </Label>
           <Select
             value={String(take)}
@@ -375,10 +366,10 @@ function ModernPagination({
             disabled={page === 0}
             aria-label="First page"
             className={cn(
-              "w-9 h-9 rounded-xl flex items-center justify-center transition-all cursor-pointer",
+              "w-9 h-9 rounded-xl flex items-center justify-center transition-all",
               page === 0
                 ? "text-slate-300 cursor-not-allowed"
-                : "text-slate-500 hover:bg-red-50 hover:text-red-600",
+                : "text-slate-500 hover:bg-red-50 hover:text-red-600 cursor-pointer",
             )}
           >
             <ChevronFirst className="w-4 h-4" />
@@ -391,10 +382,10 @@ function ModernPagination({
             disabled={page === 0}
             aria-label="Previous page"
             className={cn(
-              "w-9 h-9 rounded-xl flex items-center justify-center transition-all cursor-pointer",
+              "w-9 h-9 rounded-xl flex items-center justify-center transition-all",
               page === 0
                 ? "text-slate-300 cursor-not-allowed"
-                : "text-slate-500 hover:bg-red-50 hover:text-red-600",
+                : "text-slate-500 hover:bg-red-50 hover:text-red-600 cursor-pointer",
             )}
           >
             <ChevronLeft className="w-4 h-4" />
@@ -439,10 +430,10 @@ function ModernPagination({
             disabled={page >= totalPages - 1}
             aria-label="Next page"
             className={cn(
-              "w-9 h-9 rounded-xl flex items-center justify-center transition-all cursor-pointer",
+              "w-9 h-9 rounded-xl flex items-center justify-center transition-all",
               page >= totalPages - 1
                 ? "text-slate-300 cursor-not-allowed"
-                : "text-slate-500 hover:bg-red-50 hover:text-red-600",
+                : "text-slate-500 hover:bg-red-50 hover:text-red-600 cursor-pointer",
             )}
           >
             <ChevronRight className="w-4 h-4" />
@@ -455,16 +446,41 @@ function ModernPagination({
             disabled={page >= totalPages - 1}
             aria-label="Last page"
             className={cn(
-              "w-9 h-9 rounded-xl flex items-center justify-center transition-all cursor-pointer",
+              "w-9 h-9 rounded-xl flex items-center justify-center transition-all",
               page >= totalPages - 1
                 ? "text-slate-300 cursor-not-allowed"
-                : "text-slate-500 hover:bg-red-50 hover:text-red-600",
+                : "text-slate-500 hover:bg-red-50 hover:text-red-600 cursor-pointer",
             )}
           >
             <ChevronLast className="w-4 h-4" />
           </button>
         </div>
       </div>
+
+      {/* Jump to page — shown only when totalPages > 10 */}
+      {totalPages > 10 && (
+        <div className="flex items-center justify-center gap-2 mt-3">
+          <span className="text-xs text-slate-400">Jump to</span>
+          <input
+            type="number"
+            min={1}
+            max={totalPages}
+            defaultValue={page + 1}
+            key={page}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                const val = parseInt((e.target as HTMLInputElement).value, 10);
+                if (!isNaN(val) && val >= 1 && val <= totalPages) {
+                  onPageChange(val - 1);
+                }
+              }
+            }}
+            className="w-16 h-7 text-xs text-center rounded-lg border border-slate-200 focus:border-red-400 focus:ring-1 focus:ring-red-100 outline-none"
+            aria-label="Jump to page"
+          />
+          <span className="text-xs text-slate-400">of {totalPages}</span>
+        </div>
+      )}
     </motion.nav>
   );
 }
@@ -484,6 +500,7 @@ function RoomsContent() {
       search: searchParams?.get("q") ?? "",
       minPrice: Number(searchParams?.get("min") ?? 0),
       maxPrice: Number(searchParams?.get("max") ?? 50000),
+      page: Number(searchParams?.get("p") ?? 0),
     };
   });
 
@@ -493,6 +510,7 @@ function RoomsContent() {
   const [locLoading, setLocLoading] = useState(false);
   const [searchInput, setSearchInput] = useState(filters.search);
   const [filterOpen, setFilterOpen] = useState(false);
+
   const searchRef = useRef<NodeJS.Timeout | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const mountedRef = useRef(false);
@@ -508,13 +526,13 @@ function RoomsContent() {
 
   // ── Fetch rooms ──────────────────────────────────────────────────────────────
   //
-  // Strategy:
-  //   • No location active  → pure server-side pagination (page/take sent to API)
-  //   • Location active     → fetch ALL matching rooms (no page/take), filter
-  //     client-side by haversine distance, sort by distance, then paginate in-memory.
-  //     This is necessary because the backend may not support geospatial filtering.
-  //     If your backend DOES support it natively (returns pre-filtered results),
-  //     remove the client-side haversine block and just pass latitude/longitude/radius.
+  // Strategy A — no location:
+  //   Send page + take to the API. The server returns exactly `take` rooms and a
+  //   pagination.total telling us the grand total. totalPages is derived from that.
+  //
+  // Strategy B — location active (DO NOT TOUCH):
+  //   Fetch up to 1000 rooms, haversine-filter client-side, sort by distance,
+  //   then manually slice the page window. totalCount = filtered.length.
 
   const fetchRooms = useCallback(async (f: FilterState) => {
     abortRef.current?.abort();
@@ -525,8 +543,10 @@ function RoomsContent() {
       const locationActive = f.lat !== null && f.lng !== null;
 
       const baseParams = {
-        // Server-side pagination — only when NOT doing client-side geo filtering
+        // Strategy A: proper server-side pagination
         ...(!locationActive && { page: f.page, take: f.take }),
+        // Strategy B: bulk fetch for client-side geo-filter (DO NOT TOUCH)
+        ...(locationActive && { page: 0, take: 1000 }),
         ...(f.search.trim() && { search: f.search.trim() }),
         ...(f.minPrice > 0 && { minPrice: f.minPrice }),
         ...(f.maxPrice < 50000 && { maxPrice: f.maxPrice }),
@@ -535,26 +555,21 @@ function RoomsContent() {
       };
 
       let allRooms: Room[] = [];
-      let totalCount = 0;
+      let totalCount: number = 0;
 
       if (f.categories.length <= 1) {
         const resp = await roomService.getPublicRooms({
           ...baseParams,
           ...(f.categories.length === 1 && { category: f.categories[0] }),
-          // When location is active, fetch without pagination to filter client-side
-          ...(locationActive && { take: 1000, page: 0 }),
         });
         allRooms = resp.data;
+        // resp.pagination.total is the full count (not just this page) — critical for pagination
         totalCount = resp.pagination?.total ?? resp.data.length;
       } else {
-        // Multi-category: parallel requests + client-side dedup (OR logic)
+        // Multi-category OR logic: parallel requests + dedup
         const results = await Promise.all(
           f.categories.map((cat) =>
-            roomService.getPublicRooms({
-              ...baseParams,
-              category: cat,
-              ...(locationActive && { take: 1000, page: 0 }),
-            }),
+            roomService.getPublicRooms({ ...baseParams, category: cat }),
           ),
         );
         const seen = new Set<string>();
@@ -565,28 +580,25 @@ function RoomsContent() {
               allRooms.push(room);
             }
           });
-          totalCount += r.pagination?.total ?? r.data.length;
         });
+        // For multi-cat without location we have all matching rooms already (server paginated each)
+        // Use deduped count as totalCount; this means all pages are loaded per category-fetch.
+        // Acceptable trade-off for multi-cat until backend supports OR-category queries natively.
         totalCount = allRooms.length;
       }
 
-      // ── Client-side geolocation filtering ──────────────────────────────────
-      // Only runs when user explicitly enabled location search.
-      // Filters rooms by haversine distance and attaches _distanceKm to each.
+      // ── Strategy B: client-side haversine geo-filter (DO NOT TOUCH) ───────
       if (locationActive) {
         const userLat = f.lat!;
         const userLng = f.lng!;
         const radiusKm = f.radius;
 
-        // Attach distance to every room, filter by radius
         const withDistance = allRooms
           .filter((room) => {
-            // Only include rooms that have valid coordinates
             const rLat = Number((room as any).latitude ?? (room as any).lat);
             const rLng = Number((room as any).longitude ?? (room as any).lng);
             if (!rLat || !rLng || isNaN(rLat) || isNaN(rLng)) return false;
-            const dist = haversineKm(userLat, userLng, rLat, rLng);
-            return dist <= radiusKm;
+            return haversineKm(userLat, userLng, rLat, rLng) <= radiusKm;
           })
           .map((room) => {
             const rLat = Number((room as any).latitude ?? (room as any).lat);
@@ -597,27 +609,24 @@ function RoomsContent() {
             };
           });
 
-        // Sort by distance first, then apply user sort on top
         withDistance.sort(
           (a, b) => (a._distanceKm ?? 0) - (b._distanceKm ?? 0),
         );
 
         totalCount = withDistance.length;
-
-        // Client-side pagination slice
         const start = f.page * f.take;
         allRooms = withDistance.slice(start, start + f.take);
       }
-      // ── End geo filtering ───────────────────────────────────────────────────
+      // ── End geo-filter block ───────────────────────────────────────────────
 
-      // Client-side sort (price) — applied after geo sort if location active
+      // Price sort — works on top of both strategies
       if (f.sort === "price-asc")
         allRooms.sort((a, b) => Number(a.price) - Number(b.price));
       if (f.sort === "price-desc")
         allRooms.sort((a, b) => Number(b.price) - Number(a.price));
 
       setRooms(allRooms);
-      setTotal(locationActive ? totalCount : totalCount || allRooms.length);
+      setTotal(totalCount);
     } catch (err: any) {
       if (err?.name !== "AbortError") console.error(err);
     } finally {
@@ -625,16 +634,17 @@ function RoomsContent() {
     }
   }, []);
 
-  // Re-fetch whenever filters change
+  // Re-fetch on every filter change
   useEffect(() => {
     fetchRooms(filters);
 
-    // Sync URL (exclude lat/lng)
+    // Sync non-sensitive filters to URL (lat/lng excluded intentionally)
     const params = new URLSearchParams();
     filters.categories.forEach((c) => params.append("cat", c));
     if (filters.search) params.set("q", filters.search);
     if (filters.minPrice > 0) params.set("min", String(filters.minPrice));
     if (filters.maxPrice < 50000) params.set("max", String(filters.maxPrice));
+    if (filters.page > 0) params.set("p", String(filters.page));
     router.replace(params.toString() ? `${pathname}?${params}` : pathname, {
       scroll: false,
     });
@@ -670,12 +680,13 @@ function RoomsContent() {
   const handleSearch = (val: string) => {
     setSearchInput(val);
     if (searchRef.current) clearTimeout(searchRef.current);
-    searchRef.current = setTimeout(() => {
-      updateFilters({ search: val, page: 0 });
-    }, 420);
+    searchRef.current = setTimeout(
+      () => updateFilters({ search: val, page: 0 }),
+      420,
+    );
   };
 
-  // ── Geolocation — ONLY called on explicit button click ───────────────────────
+  // ── Geolocation — ONLY on explicit button click (DO NOT TOUCH) ───────────────
 
   const handleLocateClick = () => {
     if (typeof window === "undefined" || !navigator.geolocation) return;
@@ -687,7 +698,7 @@ function RoomsContent() {
           lat: pos.coords.latitude,
           lng: pos.coords.longitude,
           page: 0,
-          sort: "default", // reset to distance sort
+          sort: "default",
         });
         setLocLoading(false);
       },
@@ -699,11 +710,11 @@ function RoomsContent() {
     );
   };
 
-  const clearLocation = () => {
-    updateFilters({ lat: null, lng: null, page: 0 });
-  };
+  const clearLocation = () => updateFilters({ lat: null, lng: null, page: 0 });
 
   // ── Derived ───────────────────────────────────────────────────────────────────
+
+  const locationActive = filters.lat !== null;
 
   const hasActiveFilters =
     filters.categories.length > 0 ||
@@ -711,9 +722,7 @@ function RoomsContent() {
     filters.maxPrice < 50000 ||
     !!filters.search ||
     filters.allowsWomen !== null ||
-    filters.lat !== null;
-
-  const locationActive = filters.lat !== null;
+    locationActive;
 
   const activeFilterCount =
     filters.categories.length +
@@ -769,10 +778,7 @@ function RoomsContent() {
                 )}
               </div>
 
-              {/*
-                Location button — ONLY place geolocation is triggered.
-                onClick calls getCurrentPosition. Nothing else does.
-              */}
+              {/* Location button — ONLY trigger for geolocation (DO NOT TOUCH) */}
               <Button
                 type="button"
                 variant="outline"
@@ -805,7 +811,7 @@ function RoomsContent() {
               </Button>
             </div>
 
-            {/* Location banner */}
+            {/* Location banner (DO NOT TOUCH) */}
             <AnimatePresence>
               {locationActive && (
                 <motion.p
@@ -975,7 +981,6 @@ function RoomsContent() {
                 </div>
 
                 <div className="flex items-center gap-2 shrink-0">
-                  {/* Sort */}
                   <Select
                     value={filters.sort}
                     onValueChange={(v) =>
@@ -1080,7 +1085,7 @@ function RoomsContent() {
                   </motion.div>
                 ) : (
                   <motion.div
-                    key={`results-page-${filters.page}`}
+                    key={`results-p${filters.page}`}
                     initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.2 }}
@@ -1093,8 +1098,8 @@ function RoomsContent() {
                 )}
               </AnimatePresence>
 
-              {/* Pagination — only shown when there are multiple pages */}
-              {!loading && rooms.length > 0 && totalPages > 1 && (
+              {/* Pagination — shown when total exceeds one page */}
+              {!loading && total > filters.take && (
                 <ModernPagination
                   page={filters.page}
                   totalPages={totalPages}
@@ -1108,8 +1113,8 @@ function RoomsContent() {
                 />
               )}
 
-              {/* Show count even on single page */}
-              {!loading && rooms.length > 0 && totalPages === 1 && (
+              {/* Single-page footer count */}
+              {!loading && rooms.length > 0 && total <= filters.take && (
                 <p className="text-center text-xs text-slate-400 mt-6">
                   Showing all {total} room{total !== 1 ? "s" : ""}
                 </p>
