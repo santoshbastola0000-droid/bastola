@@ -1,6 +1,5 @@
 "use client";
 
-import React from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -21,7 +20,7 @@ import {
 } from "lucide-react";
 import { Room, RoomStatus } from "@/types/room.types";
 import { formatNepaliCurrency, formatDate } from "@/lib/utils";
-import { api } from "@/http/api/api";
+import { useRouter } from "next/navigation";
 
 interface RoomCardProps {
   room: Room;
@@ -83,6 +82,8 @@ export function RoomCard({ room, onViewDetails }: RoomCardProps) {
   };
 
   const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "";
+
+  const router = useRouter();
 
   // Construct the full image URL
   const getImageUrl = (imagePath: string) => {

@@ -306,14 +306,14 @@ const SectionHeader = ({
   title: string;
   subtitle: string;
 }) => (
-  <div className="mb-2">
-    <div className="flex items-center gap-2 mb-1">
-      <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-        <Icon className="w-4 h-4 text-primary" />
+  <div className="mb-4">
+    <div className="flex items-center gap-3 mb-2">
+      <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+        <Icon className="w-5 h-5 text-primary" />
       </div>
-      <h2 className="text-lg font-bold text-slate-900">{title}</h2>
+      <h2 className="text-xl font-bold text-slate-900">{title}</h2>
     </div>
-    <p className="text-sm text-slate-500 ml-10">{subtitle}</p>
+    <p className="text-sm text-slate-500 ml-13">{subtitle}</p>
   </div>
 );
 
@@ -438,8 +438,6 @@ const TriToggle = ({
   );
 };
 
-// ─── Main Component ────────────────────────────────────────────────────────────
-
 export default function CreateRoomPage() {
   const router = useRouter();
   const createRoomMutation = useCreateRoomMutation();
@@ -524,7 +522,6 @@ export default function CreateRoomPage() {
   const isValidLocation =
     currentLat !== DEFAULT_LAT || currentLng !== DEFAULT_LNG;
   const ownerLivesInHouse = form.watch("ownerLivesInHouse");
-  const ownerCommunity = form.watch("ownerCommunity");
   const gateClosingTimeRaw = form.watch("gateClosingTime");
 
   // Update display when gateClosingTime changes
@@ -567,23 +564,6 @@ export default function CreateRoomPage() {
     return TABS.filter((tab) => tab.required && !getTabStatus(tab.value)).map(
       (tab) => tab.value,
     );
-  };
-
-  // Validate all required fields and navigate to first missing tab
-  const validateAndNavigate = (): boolean => {
-    const missingTabs = getMissingRequiredTabs();
-    if (missingTabs.length > 0) {
-      const firstMissing = missingTabs[0];
-      setActiveTab(firstMissing);
-      toast.warning(
-        `Please complete the ${TABS.find((t) => t.value === firstMissing)?.label} section first`,
-        {
-          duration: 3000,
-        },
-      );
-      return false;
-    }
-    return true;
   };
 
   // Water supply effect
@@ -875,7 +855,6 @@ export default function CreateRoomPage() {
   };
 
   const currentTabIdx = TABS.findIndex((t) => t.value === activeTab);
-  const completedCount = TABS.filter((t) => getTabStatus(t.value)).length;
   const requiredCompletedCount = TABS.filter(
     (t) => t.required && getTabStatus(t.value),
   ).length;
@@ -1026,7 +1005,7 @@ export default function CreateRoomPage() {
               >
                 {/* ══ BASIC INFO ══ */}
                 {activeTab === "basic" && (
-                  <div className="space-y-4">
+                  <div className="space-y-5">
                     <SectionHeader
                       icon={Home}
                       title="Basic Information"
@@ -1038,7 +1017,7 @@ export default function CreateRoomPage() {
                       name="title"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-slate-700 font-semibold">
+                          <FormLabel className="text-slate-700 font-semibold text-base">
                             Room Title / कोठाको शीर्षक{" "}
                             <span className="text-red-500" aria-hidden>
                               *
@@ -1049,7 +1028,7 @@ export default function CreateRoomPage() {
                               placeholder="e.g. Cozy Room with AC & WiFi near Lakeside"
                               {...field}
                               className={cn(
-                                "h-12 rounded-xl border-slate-200 focus:border-primary focus:ring-primary/20",
+                                "h-12 text-base rounded-xl border-slate-200 focus:border-primary focus:ring-primary/20 px-4",
                                 formErrors.title && "border-red-400",
                               )}
                             />
@@ -1064,7 +1043,7 @@ export default function CreateRoomPage() {
                       name="description"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-slate-700 font-semibold">
+                          <FormLabel className="text-slate-700 font-semibold text-base">
                             Description / विवरण{" "}
                             <span className="text-red-500" aria-hidden>
                               *
@@ -1074,7 +1053,7 @@ export default function CreateRoomPage() {
                             <Textarea
                               placeholder="Describe your room — छिमेक, नजिकैका सुविधाहरू, र कोठाको विशेषता उल्लेख गर्नुहोस्..."
                               className={cn(
-                                "min-h-[120px] rounded-xl border-slate-200 focus:border-primary resize-none",
+                                "min-h-[120px] text-base rounded-xl border-slate-200 focus:border-primary resize-none p-4",
                                 formErrors.description && "border-red-400",
                               )}
                               {...field}
@@ -1088,14 +1067,14 @@ export default function CreateRoomPage() {
                       )}
                     />
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
                       <FormField
                         control={form.control}
                         name="category"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="text-slate-700 font-semibold">
-                              Room Type / प्रकार{" "}
+                            <FormLabel className="text-slate-700 font-semibold text-base mb-2 block">
+                              Room Type / कोठाको प्रकार{" "}
                               <span className="text-red-500" aria-hidden>
                                 *
                               </span>
@@ -1105,22 +1084,75 @@ export default function CreateRoomPage() {
                               defaultValue={field.value}
                             >
                               <FormControl>
-                                <SelectTrigger className="h-12 rounded-xl border-slate-200 focus:border-primary cursor-pointer">
-                                  <SelectValue placeholder="Select type" />
+                                <SelectTrigger className="h-12 text-base rounded-xl border-2 border-slate-200 focus:border-primary focus:ring-2 focus:ring-primary/20 cursor-pointer px-4 bg-white hover:border-primary/50 transition-all">
+                                  <SelectValue placeholder="Select room type" />
                                 </SelectTrigger>
                               </FormControl>
-                              <SelectContent className="rounded-xl">
-                                {Object.values(RoomCategory).map((cat) => (
-                                  <SelectItem
-                                    key={cat}
-                                    value={cat}
-                                    className="capitalize cursor-pointer py-3"
-                                  >
-                                    {cat.replace("_", " ")}
-                                  </SelectItem>
-                                ))}
+                              <SelectContent className="rounded-xl max-h-[400px]">
+                                {Object.values(RoomCategory).map((cat) => {
+                                  let icon = "";
+                                  switch (cat) {
+                                    case RoomCategory.FLAT:
+                                      icon = "🏢";
+                                      break;
+                                    case RoomCategory.SINGLE:
+                                      icon = "🚪";
+                                      break;
+                                    case RoomCategory.APARTMENT:
+                                      icon = "🏙️";
+                                      break;
+                                    case RoomCategory.SHARED:
+                                      icon = "👥";
+                                      break;
+                                    case RoomCategory.DOUBLE:
+                                      icon = "👥👥";
+                                      break;
+                                    case RoomCategory.HOUSE:
+                                      icon = "🏠";
+                                      break;
+                                    case RoomCategory.ATTACHED_BATHROOM:
+                                      icon = "🚽";
+                                      break;
+                                    case RoomCategory.SHUTTER:
+                                      icon = "🚪🏪";
+                                      break;
+                                    case RoomCategory.HOTEL:
+                                      icon = "🏨";
+                                      break;
+                                    case RoomCategory.OFFICE_SPACE:
+                                      icon = "💼";
+                                      break;
+                                    case RoomCategory.HOSTEL:
+                                      icon = "🏛️";
+                                      break;
+                                    default:
+                                      icon = "🏠";
+                                  }
+                                  return (
+                                    <SelectItem
+                                      key={cat}
+                                      value={cat}
+                                      className="capitalize cursor-pointer py-3 text-base px-3 hover:bg-primary/5 focus:bg-primary/80 transition-all"
+                                    >
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-xl min-w-[32px]">
+                                          {icon}
+                                        </span>
+                                        <span className="font-medium">
+                                          {cat}
+                                        </span>
+                                      </div>
+                                    </SelectItem>
+                                  );
+                                })}
                               </SelectContent>
                             </Select>
+                            <FormDescription className="text-xs mt-2 text-amber-600 flex items-center gap-1">
+                              <span>⚠️</span>
+                              <span>
+                                Select carefully / ध्यानपूर्वक चयन गर्नुहोस्
+                              </span>
+                            </FormDescription>
                             <FormMessage />
                           </FormItem>
                         )}
@@ -1131,7 +1163,7 @@ export default function CreateRoomPage() {
                         name="price"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="text-slate-700 font-semibold">
+                            <FormLabel className="text-slate-700 font-semibold text-base">
                               Monthly Rent / मासिक भाडा (रु.){" "}
                               <span className="text-red-500" aria-hidden>
                                 *
@@ -1140,17 +1172,17 @@ export default function CreateRoomPage() {
                             <FormControl>
                               <div className="relative">
                                 <span
-                                  className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm pointer-events-none select-none"
+                                  className="absolute left-4 md:top-2/5 top-3 md:-translate-y-1/2 text-slate-400 font-bold text-base pointer-events-none select-none"
                                   aria-hidden
                                 >
                                   रु.
                                 </span>
                                 <Input
                                   type="number"
-                                  placeholder="e.g. 8000"
+                                  placeholder="8000"
                                   inputMode="numeric"
                                   className={cn(
-                                    "h-12 pl-10 rounded-xl border-slate-200 focus:border-primary",
+                                    "h-12 pl-15 text-base rounded-xl border-slate-200 focus:border-primary px-8",
                                     formErrors.price && "border-red-400",
                                   )}
                                   value={field.value ?? ""}
@@ -1174,7 +1206,7 @@ export default function CreateRoomPage() {
 
                 {/* ══ LOCATION ══ */}
                 {activeTab === "location" && (
-                  <div className="space-y-4">
+                  <div className="space-y-5">
                     <SectionHeader
                       icon={MapPin}
                       title="Location & Map"
@@ -1228,7 +1260,7 @@ export default function CreateRoomPage() {
                       />
                     </div>
 
-                    <div className="space-y-3">
+                    <div className="space-y-4">
                       <p className="text-sm font-semibold text-slate-700">
                         Address Details / ठेगानाको विवरण
                       </p>
@@ -1252,7 +1284,7 @@ export default function CreateRoomPage() {
                             <FormControl>
                               <Textarea
                                 placeholder="Auto-filled from map — or edit manually here / नक्साबाट स्वत: भरिन्छ वा यहाँ सम्पादन गर्नुहोस्"
-                                className="rounded-xl border-slate-200 resize-y min-h-[80px] focus:border-primary"
+                                className="rounded-xl border-slate-200 resize-y min-h-[80px] text-base p-4 focus:border-primary"
                                 {...field}
                               />
                             </FormControl>
@@ -1278,7 +1310,7 @@ export default function CreateRoomPage() {
                                 <Input
                                   placeholder="e.g. Lakeside, Srijana Chowk"
                                   {...field}
-                                  className="h-11 rounded-xl border-slate-200"
+                                  className="h-11 rounded-xl border-slate-200 px-4"
                                 />
                               </FormControl>
                               <FormMessage />
@@ -1297,7 +1329,7 @@ export default function CreateRoomPage() {
                                 <Input
                                   placeholder="e.g. Pokhara"
                                   {...field}
-                                  className="h-11 rounded-xl border-slate-200"
+                                  className="h-11 rounded-xl border-slate-200 px-4"
                                 />
                               </FormControl>
                               <FormMessage />
@@ -1316,7 +1348,7 @@ export default function CreateRoomPage() {
                                 <Input
                                   placeholder="e.g. Gandaki"
                                   {...field}
-                                  className="h-11 rounded-xl border-slate-200"
+                                  className="h-11 rounded-xl border-slate-200 px-4"
                                 />
                               </FormControl>
                               <FormMessage />
@@ -1335,7 +1367,7 @@ export default function CreateRoomPage() {
                                 <Input
                                   placeholder="e.g. 33700"
                                   {...field}
-                                  className="h-11 rounded-xl border-slate-200"
+                                  className="h-11 rounded-xl border-slate-200 px-4"
                                 />
                               </FormControl>
                               <FormMessage />
@@ -1366,7 +1398,7 @@ export default function CreateRoomPage() {
                                   min="0"
                                   step="10"
                                   placeholder="e.g. 200"
-                                  className="h-11 pr-20 rounded-xl border-slate-200 focus:border-primary"
+                                  className="h-11 pr-20 rounded-xl border-slate-200 focus:border-primary px-4"
                                   value={field.value ?? ""}
                                   onChange={(e) =>
                                     field.onChange(
@@ -1502,7 +1534,7 @@ export default function CreateRoomPage() {
                         name="roomArea"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="text-slate-700 font-semibold">
+                            <FormLabel className="text-slate-700 font-semibold text-base">
                               Room Area / कोठाको क्षेत्रफल (m²){" "}
                               <span className="text-red-500" aria-hidden>
                                 *
@@ -1510,18 +1542,14 @@ export default function CreateRoomPage() {
                             </FormLabel>
                             <FormControl>
                               <div className="relative">
-                                <Ruler
-                                  className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none"
-                                  aria-hidden
-                                />
                                 <Input
                                   type="number"
                                   inputMode="decimal"
                                   min="1"
                                   step="0.5"
-                                  placeholder="e.g. 30"
+                                  placeholder="e.g. 30 m²"
                                   className={cn(
-                                    "h-11 pl-10 rounded-xl border-slate-200 focus:border-primary",
+                                    "h-11 pl-10 text-base rounded-xl border-slate-200 focus:border-primary px-4",
                                     formErrors.roomArea && "border-red-400",
                                   )}
                                   value={field.value ?? ""}
@@ -1533,12 +1561,6 @@ export default function CreateRoomPage() {
                                     )
                                   }
                                 />
-                                <span
-                                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm pointer-events-none select-none"
-                                  aria-hidden
-                                >
-                                  m²
-                                </span>
                               </div>
                             </FormControl>
                             <FormMessage />
@@ -1781,7 +1803,7 @@ export default function CreateRoomPage() {
 
                 {/* ══ AMENITIES ══ */}
                 {activeTab === "amenities" && (
-                  <div className="space-y-4">
+                  <div className="space-y-5">
                     <SectionHeader
                       icon={Wifi}
                       title="Amenities / सुविधाहरू"
@@ -2373,7 +2395,7 @@ export default function CreateRoomPage() {
 
                 {/* ══ PHOTOS ══ */}
                 {activeTab === "photos" && (
-                  <div className="space-y-4">
+                  <div className="space-y-5">
                     <SectionHeader
                       icon={ImageIcon}
                       title="Room Photos / कोठाका फोटोहरू"
@@ -2501,7 +2523,7 @@ export default function CreateRoomPage() {
 
                 {/* ══ CONTACT ══ */}
                 {activeTab === "contact" && (
-                  <div className="space-y-4">
+                  <div className="space-y-5">
                     <SectionHeader
                       icon={User}
                       title="Contact Information / सम्पर्क जानकारी"
@@ -2523,9 +2545,9 @@ export default function CreateRoomPage() {
                       name="contactPerson"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-slate-700 font-semibold flex items-center gap-1.5">
-                            <User className="w-3.5 h-3.5" aria-hidden /> Owner
-                            Name / घरधनीको नाम{" "}
+                          <FormLabel className="text-slate-700 font-semibold text-base flex items-center gap-1.5">
+                            <User className="w-4 h-4" aria-hidden /> Owner Name
+                            / घरधनीको नाम{" "}
                             <span className="text-red-500" aria-hidden>
                               *
                             </span>
@@ -2535,7 +2557,7 @@ export default function CreateRoomPage() {
                               placeholder="e.g. Ram Prasad Sharma"
                               {...field}
                               className={cn(
-                                "h-12 rounded-xl border-slate-200 focus:border-primary",
+                                "h-12 text-base rounded-xl border-slate-200 focus:border-primary px-4",
                                 formErrors.contactPerson && "border-red-400",
                               )}
                             />
@@ -2553,8 +2575,8 @@ export default function CreateRoomPage() {
                       name="contactPhone"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-slate-700 font-semibold flex items-center gap-1.5">
-                            <Phone className="w-3.5 h-3.5" aria-hidden /> Owner
+                          <FormLabel className="text-slate-700 font-semibold text-base flex items-center gap-1.5">
+                            <Phone className="w-4 h-4" aria-hidden /> Owner
                             Phone / घरधनीको फोन{" "}
                             <span className="text-red-500" aria-hidden>
                               *
@@ -2562,16 +2584,12 @@ export default function CreateRoomPage() {
                           </FormLabel>
                           <FormControl>
                             <div className="relative">
-                              <Phone
-                                className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none"
-                                aria-hidden
-                              />
                               <Input
                                 type="tel"
                                 inputMode="tel"
                                 placeholder="+977 98XXXXXXXX"
                                 className={cn(
-                                  "h-12 pl-10 rounded-xl border-slate-200 focus:border-primary",
+                                  "h-12 pl-10 text-base rounded-xl border-slate-200 focus:border-primary px-4",
                                   formErrors.contactPhone && "border-red-400",
                                 )}
                                 {...field}
@@ -2595,7 +2613,7 @@ export default function CreateRoomPage() {
                           name="tiktokUrl"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel className="text-slate-700 font-semibold flex items-center gap-2">
+                              <FormLabel className="text-slate-700 font-semibold flex items-center gap-2 text-base">
                                 <Instagram className="w-4 h-4" aria-hidden />{" "}
                                 TikTok URL{" "}
                                 <Badge variant="outline" className="text-xs">
@@ -2607,7 +2625,7 @@ export default function CreateRoomPage() {
                                   type="url"
                                   placeholder="https://tiktok.com/@username"
                                   {...field}
-                                  className="h-12 rounded-xl border-slate-200 focus:border-primary"
+                                  className="h-12 text-base rounded-xl border-slate-200 focus:border-primary px-4"
                                 />
                               </FormControl>
                               <FormMessage />

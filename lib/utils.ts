@@ -163,3 +163,33 @@ export const formatGateClosingTime = (
 
   return time;
 };
+
+// Helper to format time for display (e.g., "22:00" -> "10:00 PM")
+export const formatTimeForDisplay = (time: string): string => {
+  if (!time) return "";
+  const [hours, minutes] = time.split(":");
+  if (!hours) return time;
+  const hour = parseInt(hours, 10);
+  const ampm = hour >= 12 ? "PM" : "AM";
+  const hour12 = hour % 12 || 12;
+  return `${hour12}:${minutes || "00"} ${ampm}`;
+};
+
+// Helper to format time for input (e.g., "10:00 PM" -> "22:00")
+export const formatTimeForInput = (time: string): string => {
+  if (!time) return "";
+  // Check if already in HH:MM format
+  if (/^\d{2}:\d{2}$/.test(time)) return time;
+
+  // Try to parse "10:00 PM" format
+  const match = time.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+  if (match) {
+    let hour = parseInt(match[1], 10);
+    const minute = match[2];
+    const period = match[3].toUpperCase();
+    if (period === "PM" && hour !== 12) hour += 12;
+    if (period === "AM" && hour === 12) hour = 0;
+    return `${hour.toString().padStart(2, "0")}:${minute}`;
+  }
+  return time;
+};

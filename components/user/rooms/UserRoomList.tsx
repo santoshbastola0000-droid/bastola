@@ -1,8 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
 import {
   Building2,
   MapPin,
@@ -22,7 +21,6 @@ import {
   X,
   Loader2,
   Archive,
-  AlertCircle,
   Home,
   Grid,
   List,
@@ -46,11 +44,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
   Dialog,
   DialogContent,
@@ -76,19 +69,14 @@ import {
   useUpdateListingStatusMutation,
 } from "@/http/mutations/room.mutation";
 import Link from "next/link";
-import { toast } from "sonner";
-import { SUCCESSTOAST, FAILURETOAST } from "@/lib/constants/app.constants";
 
 interface UserRoomListProps {
   initialFilters?: RoomFilters;
 }
 
 export function UserRoomList({ initialFilters = {} }: UserRoomListProps) {
-  const router = useRouter();
-  const queryClient = useQueryClient();
   const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
 
-  // Search and filters
   const [searchTerm, setSearchTerm] = useState(initialFilters.search || "");
   const [appliedSearchTerm, setAppliedSearchTerm] = useState(
     initialFilters.search || "",
@@ -104,21 +92,17 @@ export function UserRoomList({ initialFilters = {} }: UserRoomListProps) {
     max: initialFilters.maxPrice?.toString() || "",
   });
 
-  // Pagination
   const [page, setPage] = useState(initialFilters.page || 0);
   const [take, setTake] = useState(initialFilters.take || 12);
 
   // Room selection
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [roomToDelete, setRoomToDelete] = useState<string | null>(null);
   const [showListingDialog, setShowListingDialog] = useState(false);
   const [actionRoom, setActionRoom] = useState<Room | null>(null);
   const [actionStatus, setActionStatus] = useState<RoomStatus | null>(null);
   const [showFilters, setShowFilters] = useState(false);
 
-  // Active tab for quick filtering
   const [activeTab, setActiveTab] = useState<string>("all");
 
   const buildFilters = (): RoomFilters => {
@@ -163,7 +147,6 @@ export function UserRoomList({ initialFilters = {} }: UserRoomListProps) {
   });
 
   // Mutations
-  const deleteRoomMutation = useDeleteRoomMutation();
   const updateListingMutation = useUpdateListingStatusMutation();
 
   const handleSearch = () => {
@@ -313,7 +296,6 @@ export function UserRoomList({ initialFilters = {} }: UserRoomListProps) {
   return (
     <>
       <div className="p-4 md:p-6 space-y-6 pb-20">
-        {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
             <h1 className="text-2xl md:text-3xl font-bold text-gray-900 flex items-center gap-3">

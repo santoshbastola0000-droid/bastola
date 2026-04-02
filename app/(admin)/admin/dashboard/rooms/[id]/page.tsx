@@ -58,15 +58,9 @@ import {
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatDate, formatGateClosingTime } from "@/lib/utils";
-import {
-  Room,
-  RoomStatus,
-  TenantType,
-  GenderPreference,
-} from "@/types/room.types";
+import { Room, RoomStatus, TenantType } from "@/types/room.types";
 import { roomService } from "@/http/services/room.service";
 import Link from "next/link";
-import Image from "next/image";
 import { cn } from "@/lib/utils";
 
 const MapComponent = dynamic(() => import("@/components/ui/map"), {
