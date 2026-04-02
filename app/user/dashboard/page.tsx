@@ -258,15 +258,6 @@ export default function UserDashboard() {
       >
         <div className=" w-screen justify-between flex items-center gap-2">
           <Button
-            variant="outline"
-            size="sm"
-            onClick={handleRefresh}
-            className="cursor-pointer gap-2"
-          >
-            <RefreshCw className="h-4 w-4" />
-            Refresh
-          </Button>
-          <Button
             size="sm"
             className="cursor-pointer gap-2 bg-primary hover:bg-primary/90"
             onClick={() => router.push("/user/dashboard/rooms/create")}
