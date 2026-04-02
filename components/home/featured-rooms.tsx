@@ -19,6 +19,8 @@ export function FeaturedRooms() {
     { value: "recent", label: "Recent", icon: Clock },
   ];
 
+  const displayedRooms = rooms?.slice(0, 3) || [];
+
   return (
     <section className="py-24 bg-white relative overflow-hidden">
       {/* Background Pattern */}
@@ -84,7 +86,7 @@ export function FeaturedRooms() {
           </TabsList>
         </Tabs>
 
-        {/* Room Grid */}
+        {/* Room Grid - Only 3 rooms */}
         <AnimatePresence mode="wait">
           <motion.div
             key={activeTab}
@@ -95,14 +97,14 @@ export function FeaturedRooms() {
             className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
           >
             {loading
-              ? [...Array(6)].map((_, i) => (
+              ? [...Array(3)].map((_, i) => (
                   <div key={i} className="animate-pulse">
                     <div className="bg-slate-200 rounded-2xl h-64 mb-4" />
                     <div className="h-4 bg-slate-200 rounded w-3/4 mb-2" />
                     <div className="h-4 bg-slate-200 rounded w-1/2" />
                   </div>
                 ))
-              : rooms?.map((room, index) => (
+              : displayedRooms.map((room, index) => (
                   <motion.div
                     key={room.id}
                     initial={{ opacity: 0, y: 20 }}
