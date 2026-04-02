@@ -113,7 +113,6 @@ export function PropertyCard({
   index = 0,
   variant = "grid",
 }: PropertyCardProps) {
-  const [isLiked, setIsLiked] = useState(false);
   const [imageError, setImageError] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const [imgSrc, setImgSrc] = useState<string>("");
