@@ -1072,7 +1072,7 @@ const LockedPlaceholder = ({
                   <Button
                     size="sm"
                     variant="outline"
-                    className="w-full rounded-xl gap-1.5 border-emerald-300 text-emerald-700 hover:bg-emerald-50 text-xs cursor-pointer"
+                    className="w-full rounded-xl gap-1.5 border-emerald-300 text-emerald-700 hover:bg-emerald-600 text-xs cursor-pointer"
                     onClick={onTopUp}
                   >
                     Add Money to Wallet
@@ -1590,18 +1590,15 @@ export default function PropertyDetailsPage() {
                   <CardContent className="p-6">
                     <div className="flex items-baseline justify-between mb-5">
                       <div>
-                        <span className="text-3xl font-bold text-slate-900 flex items-baseline gap-1">
+                        <span className="text-xl font-bold text-slate-900 flex items-baseline gap-1">
                           <Landmark
                             className="w-5 h-5 text-red-500 mb-1"
                             aria-hidden
                           />
                           {formatPriceNPR(Number(room.price))}
+                          <span className="text-slate-400 text-sm">/month</span>
                         </span>
-                        <span className="text-slate-400 text-sm">/month</span>
                       </div>
-                      <Badge className="bg-emerald-50 text-emerald-600 border-0 font-semibold">
-                        Available
-                      </Badge>
                     </div>
 
                     <div className="space-y-2 mb-5">

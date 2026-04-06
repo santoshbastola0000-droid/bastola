@@ -274,7 +274,7 @@ export const TopUpRequestDialog: React.FC<TopUpRequestDialogProps> = ({
                     Quick Select
                   </Label>
                   <div className="grid grid-cols-3 gap-2">
-                    {[500, 1000, 2000, 3000, 5000, 10000].map((preset) => (
+                    {[1500, 2000, 3000, 5000, 10000].map((preset) => (
                       <button
                         key={preset}
                         onClick={() => {

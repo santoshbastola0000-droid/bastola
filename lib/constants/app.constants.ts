@@ -34,7 +34,7 @@ export const BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL!;
 
 export type Step = "info" | "amount" | "payment" | "success";
 
-export const MIN_TOPUP = 100;
+export const MIN_TOPUP = 1500;
 
 import {
   Wifi,
