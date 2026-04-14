@@ -42,7 +42,7 @@ import { cn } from "@/lib/utils";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const PAGE_SIZE = 9; // rooms per infinite-scroll batch
+const PAGE_SIZE = 9;
 
 interface CatConfig {
   label: string;
@@ -175,33 +175,7 @@ function CardSkeleton({ index = 0 }: { index?: number }) {
 
 // ─── Infinite scroll sentinel loader ──────────────────────────────────────────
 
-function LoadMoreIndicator({
-  hasMore,
-  loadingMore,
-}: {
-  hasMore: boolean;
-  loadingMore: boolean;
-}) {
-  if (loadingMore) {
-    return (
-      <div className="flex items-center justify-center py-10 gap-3">
-        {[0, 1, 2].map((i) => (
-          <motion.div
-            key={i}
-            className="w-2 h-2 rounded-full bg-red-400"
-            animate={{ y: [0, -8, 0], opacity: [0.4, 1, 0.4] }}
-            transition={{
-              duration: 0.9,
-              repeat: Infinity,
-              delay: i * 0.18,
-              ease: "easeInOut",
-            }}
-          />
-        ))}
-      </div>
-    );
-  }
-
+function LoadMoreIndicator({ hasMore }: { hasMore: boolean }) {
   if (!hasMore) {
     return (
       <motion.div
@@ -218,7 +192,23 @@ function LoadMoreIndicator({
     );
   }
 
-  return null;
+  return (
+    <div className="flex items-center justify-center py-10 gap-3">
+      {[0, 1, 2].map((i) => (
+        <motion.div
+          key={i}
+          className="w-2 h-2 rounded-full bg-red-400"
+          animate={{ y: [0, -8, 0], opacity: [0.4, 1, 0.4] }}
+          transition={{
+            duration: 0.9,
+            repeat: Infinity,
+            delay: i * 0.18,
+            ease: "easeInOut",
+          }}
+        />
+      ))}
+    </div>
+  );
 }
 
 // ─── Filter Panel ─────────────────────────────────────────────────────────────
@@ -359,7 +349,7 @@ function RoomsContent() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  // ── Filter state (no page/take — handled by infinite scroll) ─────────────
+  // ── Filter state ──────────────────────────────────────────────────────────
   const [filters, setFilters] = useState<FilterState>(() => {
     const cats = (searchParams?.getAll("cat") as RoomCategory[]) ?? [];
     return {
@@ -372,22 +362,21 @@ function RoomsContent() {
   });
 
   // ── Infinite scroll state ─────────────────────────────────────────────────
-  /** All rooms fetched and rendered so far */
   const [rooms, setRooms] = useState<Room[]>([]);
-  /** Full filtered pool (used for geo-filter client-side slicing) */
   const allPoolRef = useRef<Room[]>([]);
-  /** Grand total from server */
   const [total, setTotal] = useState(0);
-  /** Current offset into the pool */
   const [offset, setOffset] = useState(0);
-  /** Whether a fresh filter-change fetch is in progress */
   const [initialLoading, setInitialLoading] = useState(true);
-  /** Whether we're loading the next batch */
   const [loadingMore, setLoadingMore] = useState(false);
-  /** Whether there are more rooms to load */
   const [hasMore, setHasMore] = useState(true);
-  /** Current page for server-side pagination */
-  const currentPageRef = useRef(0);
+
+  // ── Refs that shadow state — these are what loadMore reads ────────────────
+  // This is the core fix: loadMore reads from refs (always current) instead of
+  // stale closure values captured at the time the callback was memoised.
+  const offsetRef = useRef(0);
+  const hasMoreRef = useRef(true);
+  const totalRef = useRef(0);
+  const filtersRef = useRef<FilterState>(filters);
 
   const [locLoading, setLocLoading] = useState(false);
   const [searchInput, setSearchInput] = useState(filters.search);
@@ -396,10 +385,13 @@ function RoomsContent() {
   const searchRef = useRef<NodeJS.Timeout | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const mountedRef = useRef(false);
-  /** IntersectionObserver sentinel element ref */
   const sentinelRef = useRef<HTMLDivElement | null>(null);
-  /** Guard against concurrent loadMore calls */
   const loadingMoreRef = useRef(false);
+
+  // Keep filtersRef in sync
+  useEffect(() => {
+    filtersRef.current = filters;
+  }, [filters]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -408,16 +400,17 @@ function RoomsContent() {
     };
   }, []);
 
-  // ── Core fetch: loads the appropriate data based on mode ───────
-  const fetchRooms = useCallback(
-    async (
-      f: FilterState,
-      page: number,
-      take: number,
-    ): Promise<{ rooms: Room[]; total: number }> => {
+  // ── Core fetch: loads the FULL pool from server when filters change ───────
+  const fetchPool = useCallback(
+    async (f: FilterState): Promise<{ pool: Room[]; total: number }> => {
+      abortRef.current?.abort();
+      abortRef.current = new AbortController();
+
+      const locationActive = f.lat !== null && f.lng !== null;
+
       const baseParams = {
-        page,
-        take,
+        ...(!locationActive && { page: 0, take: PAGE_SIZE }),
+        ...(locationActive && { page: 0, take: 1000 }),
         ...(f.search.trim() && { search: f.search.trim() }),
         ...(f.minPrice > 0 && { minPrice: f.minPrice }),
         ...(f.maxPrice < 50000 && { maxPrice: f.maxPrice }),
@@ -453,13 +446,85 @@ function RoomsContent() {
         totalCount = allRooms.length;
       }
 
-      // Apply sorting
+      // ── Strategy B: client-side haversine geo-filter (DO NOT TOUCH) ───────
+      if (locationActive) {
+        const userLat = f.lat!;
+        const userLng = f.lng!;
+        const radiusKm = f.radius;
+
+        const withDistance = allRooms
+          .filter((room) => {
+            const rLat = Number((room as any).latitude ?? (room as any).lat);
+            const rLng = Number((room as any).longitude ?? (room as any).lng);
+            if (!rLat || !rLng || isNaN(rLat) || isNaN(rLng)) return false;
+            return haversineKm(userLat, userLng, rLat, rLng) <= radiusKm;
+          })
+          .map((room) => {
+            const rLat = Number((room as any).latitude ?? (room as any).lat);
+            const rLng = Number((room as any).longitude ?? (room as any).lng);
+            return {
+              ...room,
+              _distanceKm: haversineKm(userLat, userLng, rLat, rLng),
+            };
+          });
+
+        withDistance.sort(
+          (a, b) => (a._distanceKm ?? 0) - (b._distanceKm ?? 0),
+        );
+
+        totalCount = withDistance.length;
+        allRooms = withDistance as Room[];
+      }
+      // ── End geo-filter block ───────────────────────────────────────────────
+
       if (f.sort === "price-asc")
         allRooms.sort((a, b) => Number(a.price) - Number(b.price));
       if (f.sort === "price-desc")
         allRooms.sort((a, b) => Number(b.price) - Number(a.price));
 
-      return { rooms: allRooms, total: totalCount };
+      return { pool: allRooms, total: totalCount };
+    },
+    [],
+  );
+
+  // ── Server fetch for next page (Strategy A continuation) ─────────────────
+  const fetchNextServerPage = useCallback(
+    async (f: FilterState, currentOffset: number): Promise<Room[]> => {
+      const serverPage = Math.floor(currentOffset / PAGE_SIZE);
+      const baseParams = {
+        page: serverPage,
+        take: PAGE_SIZE,
+        ...(f.search.trim() && { search: f.search.trim() }),
+        ...(f.minPrice > 0 && { minPrice: f.minPrice }),
+        ...(f.maxPrice < 50000 && { maxPrice: f.maxPrice }),
+        ...(f.allowsWomen !== null && { allowsWomen: f.allowsWomen }),
+        approvalStatus: RoomStatus.APPROVED,
+      };
+
+      if (f.categories.length <= 1) {
+        const resp = await roomService.getPublicRooms({
+          ...baseParams,
+          ...(f.categories.length === 1 && { category: f.categories[0] }),
+        });
+        return resp.data;
+      }
+
+      const results = await Promise.all(
+        f.categories.map((cat) =>
+          roomService.getPublicRooms({ ...baseParams, category: cat }),
+        ),
+      );
+      const seen = new Set<string>();
+      const merged: Room[] = [];
+      results.forEach((r) =>
+        r.data.forEach((room) => {
+          if (!seen.has(room.id)) {
+            seen.add(room.id);
+            merged.push(room);
+          }
+        }),
+      );
+      return merged;
     },
     [],
   );
@@ -469,74 +534,56 @@ function RoomsContent() {
     async (f: FilterState) => {
       setInitialLoading(true);
       setRooms([]);
+
+      // Reset both state AND refs atomically
       setOffset(0);
+      offsetRef.current = 0;
       setHasMore(true);
+      hasMoreRef.current = true;
       setTotal(0);
+      totalRef.current = 0;
       allPoolRef.current = [];
-      currentPageRef.current = 0;
+
+      // Also reset the loadingMore guard so it can fire again after filter change
+      loadingMoreRef.current = false;
 
       try {
+        const { pool, total: t } = await fetchPool(f);
+        if (!mountedRef.current) return;
+
         const locationActive = f.lat !== null && f.lng !== null;
 
         if (locationActive) {
-          // Geo mode: fetch up to 1000 rooms for client-side filtering
-          const { rooms: fetchedRooms, total: t } = await fetchRooms(
-            f,
-            0,
-            1000,
-          );
+          // Geo mode: entire pool is in memory, slice client-side
+          allPoolRef.current = pool;
+          const first = pool.slice(0, PAGE_SIZE);
+          setRooms(first);
 
-          if (!mountedRef.current) return;
+          const newOffset = PAGE_SIZE;
+          setOffset(newOffset);
+          offsetRef.current = newOffset;
 
-          // Apply haversine filter
-          const userLat = f.lat!;
-          const userLng = f.lng!;
-          const radiusKm = f.radius;
-
-          const withDistance = fetchedRooms
-            .filter((room) => {
-              const rLat = Number((room as any).latitude ?? (room as any).lat);
-              const rLng = Number((room as any).longitude ?? (room as any).lng);
-              if (!rLat || !rLng || isNaN(rLat) || isNaN(rLng)) return false;
-              return haversineKm(userLat, userLng, rLat, rLng) <= radiusKm;
-            })
-            .map((room) => {
-              const rLat = Number((room as any).latitude ?? (room as any).lat);
-              const rLng = Number((room as any).longitude ?? (room as any).lng);
-              return {
-                ...room,
-                _distanceKm: haversineKm(userLat, userLng, rLat, rLng),
-              };
-            });
-
-          withDistance.sort(
-            (a, b) => (a._distanceKm ?? 0) - (b._distanceKm ?? 0),
-          );
-
-          const filteredTotal = withDistance.length;
-          const firstBatch = withDistance.slice(0, PAGE_SIZE);
-
-          allPoolRef.current = withDistance as Room[];
-          setRooms(firstBatch);
-          setOffset(PAGE_SIZE);
-          setTotal(filteredTotal);
-          setHasMore(PAGE_SIZE < filteredTotal);
-        } else {
-          // Normal server-paginated mode
-          const { rooms: firstPage, total: t } = await fetchRooms(
-            f,
-            0,
-            PAGE_SIZE,
-          );
-
-          if (!mountedRef.current) return;
-
-          allPoolRef.current = firstPage;
-          setRooms(firstPage);
-          setOffset(firstPage.length);
           setTotal(t);
-          setHasMore(firstPage.length === PAGE_SIZE && firstPage.length < t);
-          currentPageRef.current = 1;
+          totalRef.current = t;
+
+          const more = PAGE_SIZE < t;
+          setHasMore(more);
+          hasMoreRef.current = more;
+        } else {
+          // Server-paginated mode: first page already fetched
+          allPoolRef.current = pool;
+          setRooms(pool);
+
+          const newOffset = pool.length;
+          setOffset(newOffset);
+          offsetRef.current = newOffset;
+
+          setTotal(t);
+          totalRef.current = t;
+
+          const more = pool.length < t;
+          setHasMore(more);
+          hasMoreRef.current = more;
         }
       } catch (err: any) {
         if (err?.name !== "AbortError") console.error(err);
@@ -544,63 +591,68 @@ function RoomsContent() {
         if (mountedRef.current) setInitialLoading(false);
       }
     },
-    [fetchRooms],
+    [fetchPool],
   );
 
   // ── Load next batch (sentinel triggered) ──────────────────────────────────
+  // KEY FIX: reads offsetRef / hasMoreRef / totalRef / filtersRef instead of
+  // stale closure values. The callback itself has NO dependencies on state that
+  // changes between renders — only stable refs and stable callbacks.
   const loadMore = useCallback(async () => {
-    if (loadingMoreRef.current || !hasMore || initialLoading) return;
-
+    if (loadingMoreRef.current || !hasMoreRef.current) return;
     loadingMoreRef.current = true;
     setLoadingMore(true);
 
     try {
-      const locationActive = filters.lat !== null && filters.lng !== null;
+      const currentOffset = offsetRef.current;
+      const currentFilters = filtersRef.current;
+      const locationActive =
+        currentFilters.lat !== null && currentFilters.lng !== null;
 
       if (locationActive) {
         // Geo mode: slice next chunk from in-memory pool
         const pool = allPoolRef.current;
-        const nextChunk = pool.slice(offset, offset + PAGE_SIZE);
+        const nextChunk = pool.slice(currentOffset, currentOffset + PAGE_SIZE);
+        if (!mountedRef.current) return;
 
-        if (nextChunk.length > 0 && mountedRef.current) {
-          setRooms((prev) => [...prev, ...nextChunk]);
-          const newOffset = offset + nextChunk.length;
-          setOffset(newOffset);
-          setHasMore(newOffset < pool.length);
-        } else if (mountedRef.current) {
-          setHasMore(false);
-        }
+        setRooms((prev) => [...prev, ...nextChunk]);
+
+        const newOffset = currentOffset + nextChunk.length;
+        setOffset(newOffset);
+        offsetRef.current = newOffset;
+
+        const more = newOffset < pool.length;
+        setHasMore(more);
+        hasMoreRef.current = more;
       } else {
-        // Server mode: fetch next page
-        const currentPage = currentPageRef.current;
-        const { rooms: nextPage } = await fetchRooms(
-          filters,
-          currentPage,
-          PAGE_SIZE,
+        // Server mode: fetch next server page
+        const nextRooms = await fetchNextServerPage(
+          currentFilters,
+          currentOffset,
         );
+        if (!mountedRef.current) return;
 
-        if (nextPage.length > 0 && mountedRef.current) {
-          setRooms((prev) => [...prev, ...nextPage]);
-          const newOffset = offset + nextPage.length;
-          setOffset(newOffset);
-          setHasMore(nextPage.length === PAGE_SIZE && newOffset < total);
-          currentPageRef.current = currentPage + 1;
-        } else if (mountedRef.current) {
-          setHasMore(false);
-        }
+        setRooms((prev) => [...prev, ...nextRooms]);
+
+        const newOffset = currentOffset + nextRooms.length;
+        setOffset(newOffset);
+        offsetRef.current = newOffset;
+
+        const more = newOffset < totalRef.current;
+        setHasMore(more);
+        hasMoreRef.current = more;
       }
     } catch (err: any) {
-      if (err?.name !== "AbortError") {
-        console.error("Error loading more rooms:", err);
-        setHasMore(false);
-      }
+      if (err?.name !== "AbortError") console.error(err);
     } finally {
       if (mountedRef.current) {
         setLoadingMore(false);
         loadingMoreRef.current = false;
       }
     }
-  }, [filters, offset, hasMore, total, initialLoading, fetchRooms]);
+  }, [fetchNextServerPage]);
+  // NOTE: fetchNextServerPage is stable (empty deps). loadMore intentionally
+  // does NOT depend on filters/offset/hasMore/total — it reads them from refs.
 
   // ── Re-init on filter change ──────────────────────────────────────────────
   useEffect(() => {
@@ -616,40 +668,32 @@ function RoomsContent() {
       scroll: false,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    filters.categories,
-    filters.search,
-    filters.minPrice,
-    filters.maxPrice,
-    filters.sort,
-    filters.allowsWomen,
-    filters.lat,
-    filters.lng,
-    filters.radius,
-  ]);
+  }, [JSON.stringify(filters)]);
 
   // ── IntersectionObserver for sentinel ────────────────────────────────────
+  // KEY FIX: the observer is set up ONCE and never torn down/re-created on
+  // every loadMore change. loadMore is now stable (no state deps), so this
+  // effect only runs once on mount. The sentinel element is always in the DOM
+  // (rendered unconditionally outside the grid), so the observer always has
+  // a target.
   useEffect(() => {
     const sentinel = sentinelRef.current;
     if (!sentinel) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
-        if (
-          entries[0].isIntersecting &&
-          !initialLoading &&
-          !loadingMore &&
-          hasMore
-        ) {
+        if (entries[0].isIntersecting) {
           loadMore();
         }
       },
-      { rootMargin: "300px", threshold: 0.1 },
+      { rootMargin: "400px" },
     );
 
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, [loadMore, initialLoading, loadingMore, hasMore]);
+    // loadMore is stable — this runs exactly once
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -1104,10 +1148,7 @@ function RoomsContent() {
                       ))}
                     </div>
 
-                    {/* Infinite scroll sentinel */}
-                    <div ref={sentinelRef} aria-hidden="true" />
-
-                    {/* Progress indicator */}
+                    {/* Progress indicator + sentinel */}
                     {rooms.length > 0 && !initialLoading && (
                       <div className="mt-6">
                         {/* Slim progress bar */}
@@ -1135,15 +1176,24 @@ function RoomsContent() {
                         </p>
 
                         {/* Animated dots or end state */}
-                        <LoadMoreIndicator
-                          hasMore={hasMore}
-                          loadingMore={loadingMore}
-                        />
+                        <LoadMoreIndicator hasMore={loadingMore || hasMore} />
                       </div>
                     )}
                   </motion.div>
                 )}
               </AnimatePresence>
+
+              {/*
+               * SENTINEL — lives OUTSIDE AnimatePresence so it is ALWAYS in the DOM.
+               * The IntersectionObserver (set up once on mount) always has a target.
+               * When initialLoading is true we still observe it but loadMore() returns
+               * early because loadingMoreRef.current is true (set in initLoad reset).
+               */}
+              <div
+                ref={sentinelRef}
+                aria-hidden="true"
+                style={{ height: 1, marginTop: 1 }}
+              />
             </div>
           </div>
         </main>
