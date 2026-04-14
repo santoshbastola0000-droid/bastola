@@ -8,85 +8,13 @@ import {
   Users,
   Bath,
   Square,
-  Heart,
-  Wifi,
-  Car,
-  Utensils,
-  Wind,
-  Tv,
   ArrowUpRight,
   CheckCircle,
   Home,
 } from "lucide-react";
 import type { Room } from "@/types/room.types";
 import { formatPriceNPR, resolveImageUrl } from "@/lib/utils";
-import { BASE_URL } from "@/lib/constants/app.constants";
-
-const amenityIcons: Record<string, React.ElementType> = {
-  wifi: Wifi,
-  parking: Car,
-  kitchen: Utensils,
-  "air conditioning": Wind,
-  ac: Wind,
-  tv: Tv,
-};
-
-const categoryConfig: Record<
-  string,
-  { label: string; labelNp: string; color: string; bg: string }
-> = {
-  Flat: { label: "Flat", labelNp: "फ्ल्याट", color: "#1e40af", bg: "#eff6ff" },
-  Single: { label: "Single", labelNp: "एकल", color: "#065f46", bg: "#ecfdf5" },
-  Apartment: {
-    label: "Apartment",
-    labelNp: "अपार्टमेन्ट",
-    color: "#6b21a8",
-    bg: "#faf5ff",
-  },
-  Shared: {
-    label: "Shared",
-    labelNp: "साझा",
-    color: "#92400e",
-    bg: "#fffbeb",
-  },
-  Double: {
-    label: "Double",
-    labelNp: "डबल",
-    color: "#9f1239",
-    bg: "#fff1f2",
-  },
-  House: { label: "House", labelNp: "घर", color: "#065f46", bg: "#f0fdf4" },
-  "Attached Bathroom": {
-    label: "Attached Bath",
-    labelNp: "अट्याच्ड बाथ",
-    color: "#0369a1",
-    bg: "#f0f9ff",
-  },
-  Hostel: {
-    label: "Hostel",
-    labelNp: "होस्टेल",
-    color: "#7c3aed",
-    bg: "#f5f3ff",
-  },
-  Hotel: {
-    label: "Hotel",
-    labelNp: "होटेल",
-    color: "#b45309",
-    bg: "#fffbeb",
-  },
-  "Office Space": {
-    label: "Office",
-    labelNp: "अफिस",
-    color: "#0f766e",
-    bg: "#f0fdfa",
-  },
-  Shutter: {
-    label: "Shutter",
-    labelNp: "शटर",
-    color: "#475569",
-    bg: "#f8fafc",
-  },
-};
+import { amenityIcons, categoryConfig } from "@/lib/room-utils";
 
 interface PropertyCardProps {
   room: Room;
@@ -94,7 +22,6 @@ interface PropertyCardProps {
 }
 
 export function PropertyCard({ room, index = 0 }: PropertyCardProps) {
-  const [isLiked, setIsLiked] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const [imgError, setImgError] = useState(false);
   const [imgLoaded, setImgLoaded] = useState(false);
@@ -109,8 +36,6 @@ export function PropertyCard({ room, index = 0 }: PropertyCardProps) {
   // ── Image resolution ──
   const imageUrl =
     !imgError && room.images?.length ? resolveImageUrl(room.images[0]) : null;
-
-  console.log("images", imageUrl);
 
   const topAmenities = (room.amenities ?? []).slice(0, 3);
   const city = room.location?.city ?? "";
@@ -264,7 +189,7 @@ export function PropertyCard({ room, index = 0 }: PropertyCardProps) {
             {room.user?.isVerified && (
               <span className="flex items-center gap-0.5 text-[10px] text-emerald-600 font-medium shrink-0">
                 <CheckCircle className="w-3 h-3" />
-                Verified
+                {room.listingStatus}
               </span>
             )}
           </div>

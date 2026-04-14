@@ -50,12 +50,10 @@ export default function EditRoomPage() {
   const isAdmin = user?.role === UserRole.ADMIN;
   const tabsRef = useRef<HTMLDivElement>(null);
 
-  // ── UI state ──────────────────────────────────────────────────────────────
   const [activeTab, setActiveTab] = useState("basic");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isFormReady, setIsFormReady] = useState(false);
 
-  // ── Domain state ──────────────────────────────────────────────────────────
   const [selectedAmenities, setSelectedAmenities] = useState<string[]>([]);
   const [selectedTenantTypes, setSelectedTenantTypes] = useState<TenantType[]>(
     [],
@@ -64,14 +62,16 @@ export default function EditRoomPage() {
   const [ownerCommunityCustom, setOwnerCommunityCustom] = useState("");
   const [showOwnerCommunityInput, setShowOwnerCommunityInput] = useState(false);
 
-  // ── Image state ───────────────────────────────────────────────────────────
   const [existingImages, setExistingImages] = useState<string[]>([]);
   const [removedImages, setRemovedImages] = useState<string[]>([]);
   const [newImageFiles, setNewImageFiles] = useState<File[]>([]);
   const [newImagePreviews, setNewImagePreviews] = useState<string[]>([]);
   const [uploadProgress, setUploadProgress] = useState(0);
 
-  // ── Data fetching ─────────────────────────────────────────────────────────
+  const [imageCategories, setImageCategories] = useState<
+    Record<string, string>
+  >({});
+
   const { data, isLoading } = useQuery({
     queryKey: ["room", id],
     queryFn: () => roomService.getRoomById(id),
@@ -80,7 +80,6 @@ export default function EditRoomPage() {
 
   const room = data?.data;
 
-  // ── Form ──────────────────────────────────────────────────────────────────
   const form = useForm<CreateRoomFormValues>({
     resolver: zodResolver(createRoomSchema),
     defaultValues: {
@@ -139,9 +138,47 @@ export default function EditRoomPage() {
     mode: "onChange",
   });
 
+  const getImageCategoriesFromUrls = (
+    images: string[],
+  ): Record<string, string> => {
+    const categories: Record<string, string> = {};
+
+    images.forEach((url, index) => {
+      const urlLower = url.toLowerCase();
+
+      // Check for keywords in URL
+      if (
+        urlLower.includes("toilet") ||
+        urlLower.includes("wc") ||
+        urlLower.includes("bathroom")
+      ) {
+        categories[url] = "Bathroom";
+      } else if (
+        urlLower.includes("kitchen") ||
+        urlLower.includes("outside") ||
+        urlLower.includes("balcony")
+      ) {
+        categories[url] = "Outside";
+      } else {
+        // Default: assume first 4 are room, then toilet, bathroom, outside
+        if (index < 4) categories[url] = "Room";
+        else if (index === 4) categories[url] = "Toilet";
+        else if (index === 5) categories[url] = "Bathroom";
+        else if (index >= 6 && index < 8) categories[url] = "Outside";
+        else categories[url] = "Room";
+      }
+    });
+
+    return categories;
+  };
+
   // ── Pre-fill form when room data loads ───────────────────────────────────
   useEffect(() => {
     if (!room) return;
+
+    if (room?.images) {
+      setImageCategories(getImageCategoriesFromUrls(room.images));
+    }
 
     const detectedType = detectWaterType(room.waterSupplyTimings);
     setWaterSupplyType(detectedType);
@@ -308,7 +345,10 @@ export default function EditRoomPage() {
     setRemovedImages((prev) => [...prev, url]);
   };
 
-  const addNewImages = (files: File[]) => {
+  // In EditRoomPage.tsx, replace the addNewImages function with:
+  const addNewImages = (files: File[], category: string) => {
+    if (files.length === 0) return;
+
     setUploadProgress(0);
     const interval = setInterval(
       () =>
@@ -323,18 +363,28 @@ export default function EditRoomPage() {
     );
 
     setNewImageFiles((prev) => [...prev, ...files]);
+
     files.forEach((file) => {
       const reader = new FileReader();
-      reader.onloadend = () =>
+      reader.onloadend = () => {
         setNewImagePreviews((prev) => [...prev, reader.result as string]);
+      };
       reader.readAsDataURL(file);
     });
 
     setTimeout(() => {
       clearInterval(interval);
       setUploadProgress(0);
+      const categoryNp =
+        category === "Room"
+          ? "कोठाका"
+          : category === "Toilet"
+            ? "शौचालयका"
+            : category === "Bathroom"
+              ? "नुहाउने कोठाका"
+              : "बाहिरी";
       toast.success(
-        `${files.length} photo${files.length !== 1 ? "s" : ""} added!`,
+        `${files.length} ${category} photo(s) added! / ${files.length} ${categoryNp} तस्बिरहरू थपियो!`,
       );
     }, 900);
   };

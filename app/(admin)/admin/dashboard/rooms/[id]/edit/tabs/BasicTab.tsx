@@ -100,16 +100,59 @@ export function BasicTab({ form }: BasicTabProps) {
                     <SelectValue placeholder="Select type" />
                   </SelectTrigger>
                 </FormControl>
-                <SelectContent className="rounded-xl">
-                  {Object.values(RoomCategory).map((cat) => (
-                    <SelectItem
-                      key={cat}
-                      value={cat}
-                      className="capitalize cursor-pointer py-3"
-                    >
-                      {cat.replace("_", " ")}
-                    </SelectItem>
-                  ))}
+                <SelectContent className="rounded-xl max-h-[400px]">
+                  {Object.values(RoomCategory).map((cat) => {
+                    let icon = "";
+                    switch (cat) {
+                      case RoomCategory.FLAT:
+                        icon = "🏢";
+                        break;
+                      case RoomCategory.SINGLE:
+                        icon = "🚪";
+                        break;
+                      case RoomCategory.APARTMENT:
+                        icon = "🏙️";
+                        break;
+                      case RoomCategory.SHARED:
+                        icon = "👥";
+                        break;
+                      case RoomCategory.DOUBLE:
+                        icon = "👥👥";
+                        break;
+                      case RoomCategory.HOUSE:
+                        icon = "🏠";
+                        break;
+                      case RoomCategory.ATTACHED_BATHROOM:
+                        icon = "🚽";
+                        break;
+                      case RoomCategory.SHUTTER:
+                        icon = "🚪🏪";
+                        break;
+                      case RoomCategory.HOTEL:
+                        icon = "🏨";
+                        break;
+                      case RoomCategory.OFFICE_SPACE:
+                        icon = "💼";
+                        break;
+                      case RoomCategory.HOSTEL:
+                        icon = "🏛️";
+                        break;
+                      default:
+                        icon = "🏠";
+                    }
+                    return (
+                      <SelectItem
+                        key={cat}
+                        value={cat}
+                        className="capitalize cursor-pointer py-3 text-base px-3 hover:bg-primary/5 focus:bg-primary/80 transition-all"
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="text-xl min-w-[32px]">{icon}</span>
+                          <span className="font-medium">{cat}</span>
+                        </div>
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
               <FormMessage />
