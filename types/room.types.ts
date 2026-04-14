@@ -259,3 +259,10 @@ export interface RoomUnlockDialogProps {
   onUnlocked: (result: UnlockResult) => void;
   onRequestTopUp: () => void;
 }
+
+export interface ImageWithCategory {
+  id: string;
+  file: File;
+  preview: string;
+  category: string;
+}
