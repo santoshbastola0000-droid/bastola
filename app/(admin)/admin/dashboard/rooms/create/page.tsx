@@ -15,7 +15,6 @@ import {
   Home,
   Bed,
   Users,
-  Ruler,
   Droplets,
   User,
   Phone,
@@ -69,231 +68,36 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { toast } from "sonner";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { RoomCategory, TenantType, GenderPreference } from "@/types/room.types";
-import { cn } from "@/lib/utils";
+import {
+  RoomCategory,
+  TenantType,
+  GenderPreference,
+  ImageWithCategory,
+} from "@/types/room.types";
+import { cn, formatTimeForDisplay, formatTimeForInput } from "@/lib/utils";
 import { useCreateRoomMutation } from "@/http/mutations/room.mutation";
 import { createRoomSchema, CreateRoomFormValues } from "@/schema/room";
 import { UserRole } from "@/types/user.types";
 import { useUserRole } from "@/stores/user-store";
 import MapPicker from "@/components/admin/rooms/MapPicker";
-import { FAILURETOAST, SUCCESSTOAST } from "@/lib/constants/app.constants";
-
-const amenitiesList = [
-  { id: "wifi", label: "WiFi", icon: Wifi, description: "High-speed internet" },
-  { id: "ac", label: "AC", icon: Snowflake, description: "Air conditioning" },
-  {
-    id: "parking",
-    label: "Parking",
-    icon: Car,
-    description: "Vehicle parking",
-  },
-  { id: "tv", label: "TV", icon: Tv, description: "Cable TV" },
-  {
-    id: "modular-kitchen",
-    label: "Modular Kitchen",
-    icon: Utensils,
-    description: "Modern kitchen",
-  },
-  {
-    id: "kitchen",
-    label: "Kitchen",
-    icon: Utensils,
-    description: "Shared kitchen",
-  },
-  {
-    id: "security",
-    label: "Security",
-    icon: Shield,
-    description: "24/7 security",
-  },
-  { id: "water", label: "पानी", icon: Droplets, description: "पानी सुविधा" },
-  {
-    id: "furnished",
-    label: "Furnished",
-    icon: Home,
-    description: "Fully furnished",
-  },
-];
-
-const WATER_SUPPLY_OPTIONS = [
-  { value: "24-hour", label: "२४ घण्टा", emoji: "💧" },
-  { value: "morning-only", label: "बिहान मात्र", emoji: "🌅" },
-  { value: "evening-only", label: "साँझ मात्र", emoji: "🌙" },
-  { value: "morning-evening", label: "बिहान र साँझ", emoji: "☀️" },
-  { value: "alternate-days", label: "एक दिन छाडी", emoji: "📅" },
-  { value: "tanker", label: "ट्याङ्कर", emoji: "🚛" },
-];
-
-const morningSlots = [
-  "५:०० - ७:०० बिहान",
-  "६:०० - ८:०० बिहान",
-  "७:०० - ९:०० बिहान",
-  "८:०० - १०:०० बिहान",
-];
-const eveningSlots = [
-  "४:०० - ६:०० साँझ",
-  "५:०० - ७:०० साँझ",
-  "६:०० - ८:०० साँझ",
-  "७:०० - ९:०० (राति)",
-];
-const morningSlotValues = [
-  "05:00-07:00",
-  "06:00-08:00",
-  "07:00-09:00",
-  "08:00-10:00",
-];
-const eveningSlotValues = [
-  "16:00-18:00",
-  "17:00-19:00",
-  "18:00-20:00",
-  "19:00-21:00",
-];
-
-const TENANT_TYPE_OPTIONS: {
-  value: TenantType;
-  labelEn: string;
-  labelNp: string;
-  emoji: string;
-}[] = [
-  {
-    value: TenantType.STUDENT,
-    labelEn: "Student",
-    labelNp: "विद्यार्थी",
-    emoji: "🎓",
-  },
-  {
-    value: TenantType.WORKING_PROFESSIONAL,
-    labelEn: "Working Professional",
-    labelNp: "कामकाजी",
-    emoji: "💼",
-  },
-  {
-    value: TenantType.FAMILY,
-    labelEn: "Family",
-    labelNp: "परिवार",
-    emoji: "👨‍👩‍👧",
-  },
-  {
-    value: TenantType.SINGLE_PERSON,
-    labelEn: "Single Person",
-    labelNp: "एकल व्यक्ति",
-    emoji: "🧑",
-  },
-  { value: TenantType.COUPLE, labelEn: "Couple", labelNp: "जोडी", emoji: "💑" },
-  {
-    value: TenantType.ANY,
-    labelEn: "Any / जुनसुकै",
-    labelNp: "जुनसुकै",
-    emoji: "🤝",
-  },
-];
-
-const COMMUNITY_OPTIONS = [
-  { value: "Hindu", labelEn: "Hindu", labelNp: "हिन्दू" },
-  { value: "Muslim", labelEn: "Muslim", labelNp: "मुस्लिम" },
-  { value: "Christian", labelEn: "Christian", labelNp: "क्रिस्चियन" },
-  { value: "Buddhist", labelEn: "Buddhist", labelNp: "बौद्ध" },
-  { value: "Any", labelEn: "Any Community", labelNp: "जुनसुकै" },
-  { value: "Other", labelEn: "Other", labelNp: "अन्य" },
-];
-
-const DEFAULT_LAT = 27.7172;
-const DEFAULT_LNG = 85.324;
-
-const extractLocationName = (formattedAddress: string): string => {
-  if (!formattedAddress) return "";
-  const patterns = [
-    /^([^,]+(?:चोक|टोल|गाउँ|बजार|मार्ग|रोड|Road|Chowk))/i,
-    /^([^,]+)/,
-  ];
-  for (const pattern of patterns) {
-    const match = formattedAddress.match(pattern);
-    if (match?.[1]) return match[1].trim();
-  }
-  return formattedAddress.split(",")[0]?.trim() || "";
-};
-
-const TABS = [
-  {
-    value: "basic",
-    label: "Basic",
-    labelNp: "आधारभूत",
-    icon: Home,
-    required: true,
-  },
-  {
-    value: "location",
-    label: "Location",
-    labelNp: "स्थान",
-    icon: MapPin,
-    required: true,
-  },
-  {
-    value: "details",
-    label: "Details",
-    labelNp: "विवरण",
-    icon: Bed,
-    required: true,
-  },
-  {
-    value: "amenities",
-    label: "Amenities",
-    labelNp: "सुविधा",
-    icon: Wifi,
-    required: true,
-  },
-  {
-    value: "preferences",
-    label: "Preferences",
-    labelNp: "प्राथमिकता",
-    icon: Heart,
-    required: false,
-  },
-  {
-    value: "photos",
-    label: "Photos",
-    labelNp: "फोटो",
-    icon: ImageIcon,
-    required: true,
-  },
-  {
-    value: "contact",
-    label: "Contact",
-    labelNp: "सम्पर्क",
-    icon: User,
-    required: true,
-  },
-];
-
-// Helper to format time for display (e.g., "22:00" -> "10:00 PM")
-const formatTimeForDisplay = (time: string): string => {
-  if (!time) return "";
-  const [hours, minutes] = time.split(":");
-  if (!hours) return time;
-  const hour = parseInt(hours, 10);
-  const ampm = hour >= 12 ? "PM" : "AM";
-  const hour12 = hour % 12 || 12;
-  return `${hour12}:${minutes || "00"} ${ampm}`;
-};
-
-// Helper to format time for input (e.g., "10:00 PM" -> "22:00")
-const formatTimeForInput = (time: string): string => {
-  if (!time) return "";
-  // Check if already in HH:MM format
-  if (/^\d{2}:\d{2}$/.test(time)) return time;
-
-  // Try to parse "10:00 PM" format
-  const match = time.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
-  if (match) {
-    let hour = parseInt(match[1], 10);
-    const minute = match[2];
-    const period = match[3].toUpperCase();
-    if (period === "PM" && hour !== 12) hour += 12;
-    if (period === "AM" && hour === 12) hour = 0;
-    return `${hour.toString().padStart(2, "0")}:${minute}`;
-  }
-  return time;
-};
+import {
+  DEFAULT_LAT,
+  DEFAULT_LNG,
+  FAILURETOAST,
+  SUCCESSTOAST,
+} from "@/lib/constants/app.constants";
+import {
+  amenitiesList,
+  COMMUNITY_OPTIONS,
+  eveningSlots,
+  eveningSlotValues,
+  extractLocationName,
+  morningSlots,
+  morningSlotValues,
+  TABS,
+  TENANT_TYPE_OPTIONS,
+  WATER_SUPPLY_OPTIONS,
+} from "@/lib/room-utils";
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
@@ -443,9 +247,7 @@ export default function CreateRoomPage() {
   const createRoomMutation = useCreateRoomMutation();
   const [selectedAmenities, setSelectedAmenities] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState("basic");
-  const [images, setImages] = useState<File[]>([]);
-  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
-  const [uploadProgress, setUploadProgress] = useState(0);
+  const [images, setImages] = useState<ImageWithCategory[]>([]);
   const [waterSupplyType, setWaterSupplyType] = useState("morning-evening");
   const [selectedTenantTypes, setSelectedTenantTypes] = useState<TenantType[]>(
     [],
@@ -453,7 +255,6 @@ export default function CreateRoomPage() {
   const [ownerCommunityCustom, setOwnerCommunityCustom] = useState("");
   const [showOwnerCommunityInput, setShowOwnerCommunityInput] = useState(false);
   const [gateClosingTimeDisplay, setGateClosingTimeDisplay] = useState("");
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const tabsRef = useRef<HTMLDivElement>(null);
   const { user } = useUserRole();
   const isAdmin = user?.role === UserRole.ADMIN;
@@ -657,52 +458,50 @@ export default function CreateRoomPage() {
     });
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
+  const handleImageUploadWithCategory = (files: File[], category: string) => {
     const invalid = files.filter((f) => !f.type.startsWith("image/"));
     if (invalid.length > 0) {
       toast.error("Please upload images only (JPEG, PNG, WEBP)");
       return;
     }
+
     const valid = files.filter((f) => f.size <= 10 * 1024 * 1024);
     const oversized = files.filter((f) => f.size > 10 * 1024 * 1024);
     if (oversized.length > 0)
       toast.warning(`${oversized.length} file(s) exceed 10MB and were skipped`);
-    if (images.length + valid.length > 10) {
-      toast.error("Maximum 10 photos allowed");
+
+    // Check category limits
+    const currentCategoryCount = images.filter(
+      (img) => img.category === category,
+    ).length;
+    const maxAllowed = category === "Room" ? 4 : category === "Outside" ? 2 : 1;
+
+    if (currentCategoryCount + valid.length > maxAllowed) {
+      toast.error(
+        `Maximum ${maxAllowed} photo(s) allowed for ${category} category`,
+      );
       return;
     }
 
-    setUploadProgress(0);
-    const interval = setInterval(
-      () =>
-        setUploadProgress((p) => {
-          if (p >= 100) {
-            clearInterval(interval);
-            return 100;
-          }
-          return p + 10;
-        }),
-      80,
-    );
-    setImages((prev) => [...prev, ...valid]);
-    valid.forEach((file) => {
-      const reader = new FileReader();
-      reader.onloadend = () =>
-        setImagePreviews((prev) => [...prev, reader.result as string]);
-      reader.readAsDataURL(file);
-    });
-    setTimeout(() => {
-      clearInterval(interval);
-      setUploadProgress(0);
-      toast.success(`${valid.length} photo(s) added!`);
-    }, 900);
-    e.target.value = "";
+    if (images.length + valid.length > 10) {
+      toast.error("Maximum 10 photos allowed in total");
+      return;
+    }
+
+    const newImages = valid.map((file) => ({
+      id: `${Date.now()}-${Math.random()}`,
+      file,
+      preview: URL.createObjectURL(file),
+      category,
+    }));
+
+    setImages((prev) => [...prev, ...newImages]);
+
+    toast.success(`${valid.length} ${category} photo(s) added!`);
   };
 
-  const removeImage = (index: number) => {
-    setImages((prev) => prev.filter((_, i) => i !== index));
-    setImagePreviews((prev) => prev.filter((_, i) => i !== index));
+  const removeImageWithCategory = (id: string) => {
+    setImages((prev) => prev.filter((img) => img.id !== id));
   };
 
   const navigateTab = (direction: "next" | "prev") => {
@@ -822,7 +621,7 @@ export default function CreateRoomPage() {
       formData.append("distanceHighwayM", String(values.distanceHighwayM));
     }
 
-    images.forEach((img) => formData.append("images", img));
+    images.forEach((img) => formData.append("images", img.file));
 
     const tid = toast.loading("Creating room listing...");
     createRoomMutation.mutate(
@@ -2399,29 +2198,115 @@ export default function CreateRoomPage() {
                     <SectionHeader
                       icon={ImageIcon}
                       title="Room Photos / कोठाका फोटोहरू"
-                      subtitle="Good photos attract 3x more tenants"
+                      subtitle="Good photos attract 3x more tenants · राम्रो फोटोले ३ गुणा बढी भाडाटारु ल्याउँछ"
                     />
+
+                    {/* Photo Requirements Summary */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      {[
+                        {
+                          type: "Room",
+                          required: 4,
+                          emoji: "🛏️",
+                          labelEn: "Room Photos",
+                          labelNp: "कोठाका तस्बिरहरू",
+                        },
+                        {
+                          type: "Toilet",
+                          required: 1,
+                          emoji: "🚽",
+                          labelEn: "Toilet Photo",
+                          labelNp: "शौचालयको तस्बिर",
+                        },
+                        {
+                          type: "Bathroom",
+                          required: 1,
+                          emoji: "🚿",
+                          labelEn: "Bathroom Photo",
+                          labelNp: "नुहाउने कोठाको तस्बिर",
+                        },
+                        {
+                          type: "Outside",
+                          required: 2,
+                          emoji: "🏘️",
+                          labelEn: "Outside/Background",
+                          labelNp: "बाहिरी/पृष्ठभूमि तस्बिरहरू",
+                        },
+                      ].map(({ type, required, emoji, labelEn, labelNp }) => {
+                        const currentCount = images.filter(
+                          (img) => img.category === type,
+                        ).length;
+                        const isComplete = currentCount >= required;
+                        return (
+                          <div
+                            key={type}
+                            className={cn(
+                              "flex flex-col items-center gap-1 p-3 rounded-xl border-2 text-center transition-all",
+                              isComplete
+                                ? "bg-green-50 border-green-300"
+                                : "bg-amber-50 border-amber-200",
+                            )}
+                          >
+                            <span className="text-2xl" aria-hidden>
+                              {emoji}
+                            </span>
+                            <p className="text-xs font-bold text-slate-700">
+                              {labelEn}
+                            </p>
+                            <p className="text-[10px] text-slate-500">
+                              {labelNp}
+                            </p>
+                            <div className="flex items-center gap-1 mt-1">
+                              <Badge
+                                variant={isComplete ? "default" : "secondary"}
+                                className={cn(
+                                  "text-[10px] px-2 py-0",
+                                  isComplete
+                                    ? "bg-green-600 text-white"
+                                    : "bg-amber-100 text-amber-700",
+                                )}
+                              >
+                                {currentCount}/{required}
+                              </Badge>
+                              {isComplete && (
+                                <CheckCircle2
+                                  className="w-3 h-3 text-green-600"
+                                  aria-hidden
+                                />
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
 
                     {images.length === 0 && (
                       <Alert variant="destructive" className="rounded-xl">
                         <AlertCircle className="h-4 w-4" />
                         <AlertTitle>
-                          At least one photo required / कम्तीमा एउटा फोटो
-                          चाहिन्छ
+                          Photos required / फोटोहरू आवश्यक छन्
                         </AlertTitle>
                         <AlertDescription>
-                          Upload clear, well-lit photos of your room.
+                          Please upload: 4 room photos, 1 toilet, 1 bathroom,
+                          and 2 outside photos
+                          <br />
+                          कृपया अपलोड गर्नुहोस्: ४ कोठाका, १ शौचालय, १ नुहाउने
+                          कोठा, र २ बाहिरी तस्बिरहरू
                         </AlertDescription>
                       </Alert>
                     )}
 
+                    {/* Upload Tips */}
                     <div className="grid grid-cols-3 gap-2">
                       {[
                         {
                           tip: "Natural light / प्राकृतिक उज्यालो",
                           emoji: "☀️",
                         },
-                        { tip: "Max 10MB each", emoji: "📦" },
+                        {
+                          tip: "Max 10MB each / प्रति फोटो अधिकतम १०MB",
+                          emoji: "📦",
+                        },
                         { tip: "JPEG / PNG / WEBP", emoji: "🖼️" },
                       ].map(({ tip, emoji }) => (
                         <div
@@ -2431,91 +2316,354 @@ export default function CreateRoomPage() {
                           <span className="text-xl" aria-hidden>
                             {emoji}
                           </span>
-                          <p className="text-[10px] text-blue-700 font-semibold">
+                          <p className="text-[10px] text-blue-700 font-semibold text-center">
                             {tip}
                           </p>
                         </div>
                       ))}
                     </div>
 
-                    <input
-                      type="file"
-                      ref={fileInputRef}
-                      onChange={handleImageUpload}
-                      accept="image/jpeg,image/png,image/gif,image/webp"
-                      multiple
-                      className="hidden"
-                      aria-label="Upload room photos"
-                    />
+                    {/* Category Selection when uploading */}
+                    <div className="space-y-3">
+                      <p className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                        <Plus className="w-4 h-4 text-primary" aria-hidden />
+                        Add Photos / तस्बिरहरू थप्नुहोस्
+                      </p>
 
-                    <button
-                      type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      className="w-full border-2 border-dashed border-primary/30 rounded-2xl p-8 flex flex-col items-center gap-3 hover:border-primary/60 hover:bg-primary/5 transition-all cursor-pointer group"
-                      aria-label="Add photos"
-                    >
-                      <div className="w-14 h-14 rounded-2xl bg-primary/10 group-hover:bg-primary/20 flex items-center justify-center transition-colors">
-                        <Plus className="w-7 h-7 text-primary" aria-hidden />
+                      {/* Category Buttons */}
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                        {[
+                          {
+                            category: "Room",
+                            emoji: "🛏️",
+                            labelEn: "Room Photos",
+                            labelNp: "कोठाका तस्बिरहरू",
+                            maxCount: 4,
+                            currentCount: images.filter(
+                              (img) => img.category === "Room",
+                            ).length,
+                          },
+                          {
+                            category: "Toilet",
+                            emoji: "🚽",
+                            labelEn: "Toilet",
+                            labelNp: "शौचालय",
+                            maxCount: 1,
+                            currentCount: images.filter(
+                              (img) => img.category === "Toilet",
+                            ).length,
+                          },
+                          {
+                            category: "Bathroom",
+                            emoji: "🚿",
+                            labelEn: "Bathroom",
+                            labelNp: "नुहाउने कोठा",
+                            maxCount: 1,
+                            currentCount: images.filter(
+                              (img) => img.category === "Bathroom",
+                            ).length,
+                          },
+                          {
+                            category: "Outside",
+                            emoji: "🏘️",
+                            labelEn: "Outside",
+                            labelNp: "बाहिरी",
+                            maxCount: 2,
+                            currentCount: images.filter(
+                              (img) => img.category === "Outside",
+                            ).length,
+                          },
+                        ].map(
+                          ({
+                            category,
+                            emoji,
+                            labelEn,
+                            labelNp,
+                            maxCount,
+                            currentCount,
+                          }) => {
+                            const isReachedMax = currentCount >= maxCount;
+                            return (
+                              <button
+                                key={category}
+                                type="button"
+                                onClick={() => {
+                                  if (!isReachedMax) {
+                                    // Store the category temporarily
+                                    const input =
+                                      document.createElement("input");
+                                    input.type = "file";
+                                    input.accept =
+                                      "image/jpeg,image/png,image/webp";
+                                    input.multiple = false;
+                                    input.onchange = (e) => {
+                                      const files = Array.from(
+                                        (e.target as HTMLInputElement).files ||
+                                          [],
+                                      );
+                                      if (files.length > 0) {
+                                        handleImageUploadWithCategory(
+                                          files,
+                                          category,
+                                        );
+                                      }
+                                    };
+                                    input.click();
+                                  } else {
+                                    toast.warning(
+                                      `Maximum ${maxCount} ${labelEn} already added / अधिकतम ${maxCount} ${labelNp} थपिसकियो`,
+                                      {
+                                        duration: 3000,
+                                      },
+                                    );
+                                  }
+                                }}
+                                disabled={isReachedMax}
+                                className={cn(
+                                  "flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all cursor-pointer",
+                                  isReachedMax
+                                    ? "bg-green-50 border-green-300 cursor-not-allowed opacity-70"
+                                    : "bg-white border-primary/30 hover:border-primary/60 hover:bg-primary/5",
+                                )}
+                                aria-label={`Add ${labelEn}`}
+                              >
+                                <span className="text-2xl" aria-hidden>
+                                  {emoji}
+                                </span>
+                                <div className="text-center">
+                                  <p className="text-xs font-semibold text-slate-700">
+                                    {labelEn}
+                                  </p>
+                                  <p className="text-[10px] text-slate-500">
+                                    {labelNp}
+                                  </p>
+                                </div>
+                                <Badge
+                                  variant={isReachedMax ? "default" : "outline"}
+                                  className={cn(
+                                    "text-[10px]",
+                                    isReachedMax
+                                      ? "bg-green-600"
+                                      : "border-primary/30 text-primary",
+                                  )}
+                                >
+                                  {currentCount}/{maxCount}
+                                </Badge>
+                              </button>
+                            );
+                          },
+                        )}
                       </div>
-                      <div className="text-center">
-                        <p className="text-sm font-semibold text-slate-700">
-                          Tap to add photos / फोटो थप्नुहोस्
-                        </p>
-                        <p className="text-xs text-slate-400 mt-1">
-                          {images.length}/10 photos · Max 10MB each
-                        </p>
-                      </div>
-                    </button>
+                    </div>
 
-                    {uploadProgress > 0 && (
-                      <div className="space-y-1.5">
-                        <div className="flex justify-between text-xs text-slate-500">
-                          <span>Processing...</span>
-                          <span>{uploadProgress}%</span>
-                        </div>
-                        <Progress value={uploadProgress} className="h-2" />
+                    {/* Display uploaded photos by category */}
+                    {images.length > 0 && (
+                      <div className="space-y-4">
+                        {["Room", "Toilet", "Bathroom", "Outside"].map(
+                          (category) => {
+                            const categoryImages = images.filter(
+                              (img) => img.category === category,
+                            );
+                            if (categoryImages.length === 0) return null;
+
+                            const categoryConfig = {
+                              Room: {
+                                emoji: "🛏️",
+                                labelEn: "Room Photos",
+                                labelNp: "कोठाका तस्बिरहरू",
+                              },
+                              Toilet: {
+                                emoji: "🚽",
+                                labelEn: "Toilet Photos",
+                                labelNp: "शौचालयका तस्बिरहरू",
+                              },
+                              Bathroom: {
+                                emoji: "🚿",
+                                labelEn: "Bathroom Photos",
+                                labelNp: "नुहाउने कोठाका तस्बिरहरू",
+                              },
+                              Outside: {
+                                emoji: "🏘️",
+                                labelEn: "Outside Photos",
+                                labelNp: "बाहिरी तस्बिरहरू",
+                              },
+                            };
+
+                            const { emoji, labelEn, labelNp } =
+                              categoryConfig[
+                                category as keyof typeof categoryConfig
+                              ];
+
+                            return (
+                              <div key={category} className="space-y-2">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-lg">{emoji}</span>
+                                  <h3 className="text-sm font-bold text-slate-800">
+                                    {labelEn}
+                                  </h3>
+                                  <span className="text-xs text-slate-500">
+                                    ({labelNp})
+                                  </span>
+                                  <Badge
+                                    variant="secondary"
+                                    className="text-[10px]"
+                                  >
+                                    {categoryImages.length}/
+                                    {category === "Room"
+                                      ? 4
+                                      : category === "Outside"
+                                        ? 2
+                                        : 1}
+                                  </Badge>
+                                </div>
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                  {categoryImages.map((img, idx) => (
+                                    <motion.div
+                                      key={img.id}
+                                      initial={{ opacity: 0, scale: 0.9 }}
+                                      animate={{ opacity: 1, scale: 1 }}
+                                      className="relative group aspect-square"
+                                    >
+                                      <div className="w-full h-full rounded-xl overflow-hidden border-2 border-slate-200 group-hover:border-primary transition-colors">
+                                        <img
+                                          src={img.preview}
+                                          alt={`${category} photo ${idx + 1}`}
+                                          className="w-full h-full object-cover"
+                                        />
+                                      </div>
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          removeImageWithCategory(img.id)
+                                        }
+                                        aria-label={`Remove ${category} photo ${idx + 1}`}
+                                        className="absolute -top-2 -right-2 w-7 h-7 rounded-full bg-red-500 text-white flex items-center justify-center shadow-md opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer hover:bg-red-600"
+                                      >
+                                        <XCircle
+                                          className="w-4 h-4"
+                                          aria-hidden
+                                        />
+                                      </button>
+                                      <div className="absolute bottom-1.5 left-1.5">
+                                        <Badge className="text-[10px] px-1.5 py-0.5 bg-black/60 text-white border-0">
+                                          {idx === 0 && category === "Room"
+                                            ? "Main"
+                                            : `${category.slice(0, 1)}${idx + 1}`}
+                                        </Badge>
+                                      </div>
+                                    </motion.div>
+                                  ))}
+                                </div>
+                              </div>
+                            );
+                          },
+                        )}
                       </div>
                     )}
 
-                    {imagePreviews.length > 0 && (
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                        {imagePreviews.map((preview, i) => (
-                          <motion.div
-                            key={i}
-                            initial={{ opacity: 0, scale: 0.9 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            className="relative group aspect-square"
-                          >
-                            <div className="w-full h-full rounded-xl overflow-hidden border-2 border-slate-200 group-hover:border-primary transition-colors">
-                              <img
-                                src={preview}
-                                alt={`Room photo ${i + 1}`}
-                                className="w-full h-full object-cover"
-                              />
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => removeImage(i)}
-                              aria-label={`Remove photo ${i + 1}`}
-                              className="absolute -top-2 -right-2 w-7 h-7 rounded-full bg-red-500 text-white flex items-center justify-center shadow-md opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer hover:bg-red-600"
-                            >
-                              <XCircle className="w-4 h-4" aria-hidden />
-                            </button>
-                            <div className="absolute bottom-1.5 left-1.5 flex items-center gap-1">
-                              <Badge
-                                variant="secondary"
-                                className="text-[10px] px-1.5 py-0.5 bg-black/60 text-white border-0"
-                              >
-                                #{i + 1}
-                              </Badge>
-                              {i === 0 && (
-                                <Badge className="text-[10px] px-1.5 py-0.5 bg-primary text-white border-0">
-                                  Main
-                                </Badge>
-                              )}
-                            </div>
-                          </motion.div>
-                        ))}
+                    {/* Progress Summary */}
+                    {images.length > 0 && (
+                      <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200">
+                        <div className="flex items-center justify-between mb-2">
+                          <p className="text-sm font-semibold text-slate-800">
+                            Upload Progress / अपलोड प्रगति
+                          </p>
+                          <Badge className="bg-primary text-white">
+                            {
+                              images.filter((img) => {
+                                const required =
+                                  img.category === "Room"
+                                    ? 4
+                                    : img.category === "Outside"
+                                      ? 2
+                                      : 1;
+                                return (
+                                  images.filter(
+                                    (i) => i.category === img.category,
+                                  ).length >= required
+                                );
+                              }).length
+                            }
+                            /4 Categories Complete
+                          </Badge>
+                        </div>
+                        <div className="space-y-2">
+                          {[
+                            {
+                              category: "Room",
+                              required: 4,
+                              current: images.filter(
+                                (img) => img.category === "Room",
+                              ).length,
+                              label: "Room Photos / कोठाका तस्बिरहरू",
+                            },
+                            {
+                              category: "Toilet",
+                              required: 1,
+                              current: images.filter(
+                                (img) => img.category === "Toilet",
+                              ).length,
+                              label: "Toilet Photo / शौचालयको तस्बिर",
+                            },
+                            {
+                              category: "Bathroom",
+                              required: 1,
+                              current: images.filter(
+                                (img) => img.category === "Bathroom",
+                              ).length,
+                              label: "Bathroom Photo / नुहाउने कोठाको तस्बिर",
+                            },
+                            {
+                              category: "Outside",
+                              required: 2,
+                              current: images.filter(
+                                (img) => img.category === "Outside",
+                              ).length,
+                              label: "Outside Photos / बाहिरी तस्बिरहरू",
+                            },
+                          ].map(({ category, required, current, label }) => {
+                            const percent = (current / required) * 100;
+                            return (
+                              <div key={category} className="space-y-1">
+                                <div className="flex justify-between text-xs">
+                                  <span className="text-slate-700">
+                                    {label}
+                                  </span>
+                                  <span
+                                    className={
+                                      current >= required
+                                        ? "text-green-600 font-semibold"
+                                        : "text-amber-600"
+                                    }
+                                  >
+                                    {current}/{required}
+                                  </span>
+                                </div>
+                                <Progress value={percent} className="h-1.5" />
+                              </div>
+                            );
+                          })}
+                        </div>
+                        {images.filter((img) => {
+                          const required =
+                            img.category === "Room"
+                              ? 4
+                              : img.category === "Outside"
+                                ? 2
+                                : 1;
+                          return (
+                            images.filter((i) => i.category === img.category)
+                              .length >= required
+                          );
+                        }).length === 4 && (
+                          <div className="flex items-center gap-2 mt-3 p-2 bg-green-100 rounded-lg">
+                            <CheckCircle2 className="w-4 h-4 text-green-600 flex-shrink-0" />
+                            <p className="text-xs font-semibold text-green-700">
+                              ✓ All photo requirements met! / सबै फोटो
+                              आवश्यकताहरू पूरा भए!
+                            </p>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
