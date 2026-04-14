@@ -18,7 +18,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -176,7 +175,33 @@ function CardSkeleton({ index = 0 }: { index?: number }) {
 
 // ─── Infinite scroll sentinel loader ──────────────────────────────────────────
 
-function LoadMoreIndicator({ hasMore }: { hasMore: boolean }) {
+function LoadMoreIndicator({
+  hasMore,
+  loadingMore,
+}: {
+  hasMore: boolean;
+  loadingMore: boolean;
+}) {
+  if (loadingMore) {
+    return (
+      <div className="flex items-center justify-center py-10 gap-3">
+        {[0, 1, 2].map((i) => (
+          <motion.div
+            key={i}
+            className="w-2 h-2 rounded-full bg-red-400"
+            animate={{ y: [0, -8, 0], opacity: [0.4, 1, 0.4] }}
+            transition={{
+              duration: 0.9,
+              repeat: Infinity,
+              delay: i * 0.18,
+              ease: "easeInOut",
+            }}
+          />
+        ))}
+      </div>
+    );
+  }
+
   if (!hasMore) {
     return (
       <motion.div
@@ -193,23 +218,7 @@ function LoadMoreIndicator({ hasMore }: { hasMore: boolean }) {
     );
   }
 
-  return (
-    <div className="flex items-center justify-center py-10 gap-3">
-      {[0, 1, 2].map((i) => (
-        <motion.div
-          key={i}
-          className="w-2 h-2 rounded-full bg-red-400"
-          animate={{ y: [0, -8, 0], opacity: [0.4, 1, 0.4] }}
-          transition={{
-            duration: 0.9,
-            repeat: Infinity,
-            delay: i * 0.18,
-            ease: "easeInOut",
-          }}
-        />
-      ))}
-    </div>
-  );
+  return null;
 }
 
 // ─── Filter Panel ─────────────────────────────────────────────────────────────
@@ -377,6 +386,8 @@ function RoomsContent() {
   const [loadingMore, setLoadingMore] = useState(false);
   /** Whether there are more rooms to load */
   const [hasMore, setHasMore] = useState(true);
+  /** Current page for server-side pagination */
+  const currentPageRef = useRef(0);
 
   const [locLoading, setLocLoading] = useState(false);
   const [searchInput, setSearchInput] = useState(filters.search);
@@ -397,25 +408,16 @@ function RoomsContent() {
     };
   }, []);
 
-  // ── Core fetch: loads the FULL pool from server when filters change ───────
-  //
-  // Strategy A — no location: fetch server-paginated data. We accumulate
-  //   server pages into allPoolRef as the user scrolls.
-  //
-  // Strategy B — location active (DO NOT TOUCH):
-  //   Fetch up to 1000 rooms, haversine-filter client-side, sort by distance,
-  //   then slice PAGE_SIZE chunks as sentinel fires.
-
-  const fetchPool = useCallback(
-    async (f: FilterState): Promise<{ pool: Room[]; total: number }> => {
-      abortRef.current?.abort();
-      abortRef.current = new AbortController();
-
-      const locationActive = f.lat !== null && f.lng !== null;
-
+  // ── Core fetch: loads the appropriate data based on mode ───────
+  const fetchRooms = useCallback(
+    async (
+      f: FilterState,
+      page: number,
+      take: number,
+    ): Promise<{ rooms: Room[]; total: number }> => {
       const baseParams = {
-        ...(!locationActive && { page: 0, take: PAGE_SIZE }),
-        ...(locationActive && { page: 0, take: 1000 }),
+        page,
+        take,
         ...(f.search.trim() && { search: f.search.trim() }),
         ...(f.minPrice > 0 && { minPrice: f.minPrice }),
         ...(f.maxPrice < 50000 && { maxPrice: f.maxPrice }),
@@ -451,85 +453,13 @@ function RoomsContent() {
         totalCount = allRooms.length;
       }
 
-      // ── Strategy B: client-side haversine geo-filter (DO NOT TOUCH) ───────
-      if (locationActive) {
-        const userLat = f.lat!;
-        const userLng = f.lng!;
-        const radiusKm = f.radius;
-
-        const withDistance = allRooms
-          .filter((room) => {
-            const rLat = Number((room as any).latitude ?? (room as any).lat);
-            const rLng = Number((room as any).longitude ?? (room as any).lng);
-            if (!rLat || !rLng || isNaN(rLat) || isNaN(rLng)) return false;
-            return haversineKm(userLat, userLng, rLat, rLng) <= radiusKm;
-          })
-          .map((room) => {
-            const rLat = Number((room as any).latitude ?? (room as any).lat);
-            const rLng = Number((room as any).longitude ?? (room as any).lng);
-            return {
-              ...room,
-              _distanceKm: haversineKm(userLat, userLng, rLat, rLng),
-            };
-          });
-
-        withDistance.sort(
-          (a, b) => (a._distanceKm ?? 0) - (b._distanceKm ?? 0),
-        );
-
-        totalCount = withDistance.length;
-        allRooms = withDistance as Room[];
-      }
-      // ── End geo-filter block ───────────────────────────────────────────────
-
+      // Apply sorting
       if (f.sort === "price-asc")
         allRooms.sort((a, b) => Number(a.price) - Number(b.price));
       if (f.sort === "price-desc")
         allRooms.sort((a, b) => Number(b.price) - Number(a.price));
 
-      return { pool: allRooms, total: totalCount };
-    },
-    [],
-  );
-
-  // ── Server fetch for next page (Strategy A continuation) ─────────────────
-  const fetchNextServerPage = useCallback(
-    async (f: FilterState, currentOffset: number): Promise<Room[]> => {
-      const serverPage = Math.floor(currentOffset / PAGE_SIZE);
-      const baseParams = {
-        page: serverPage,
-        take: PAGE_SIZE,
-        ...(f.search.trim() && { search: f.search.trim() }),
-        ...(f.minPrice > 0 && { minPrice: f.minPrice }),
-        ...(f.maxPrice < 50000 && { maxPrice: f.maxPrice }),
-        ...(f.allowsWomen !== null && { allowsWomen: f.allowsWomen }),
-        approvalStatus: RoomStatus.APPROVED,
-      };
-
-      if (f.categories.length <= 1) {
-        const resp = await roomService.getPublicRooms({
-          ...baseParams,
-          ...(f.categories.length === 1 && { category: f.categories[0] }),
-        });
-        return resp.data;
-      }
-
-      const results = await Promise.all(
-        f.categories.map((cat) =>
-          roomService.getPublicRooms({ ...baseParams, category: cat }),
-        ),
-      );
-      const seen = new Set<string>();
-      const merged: Room[] = [];
-      results.forEach((r) =>
-        r.data.forEach((room) => {
-          if (!seen.has(room.id)) {
-            seen.add(room.id);
-            merged.push(room);
-          }
-        }),
-      );
-      return merged;
+      return { rooms: allRooms, total: totalCount };
     },
     [],
   );
@@ -541,29 +471,72 @@ function RoomsContent() {
       setRooms([]);
       setOffset(0);
       setHasMore(true);
+      setTotal(0);
       allPoolRef.current = [];
+      currentPageRef.current = 0;
 
       try {
-        const { pool, total: t } = await fetchPool(f);
-        if (!mountedRef.current) return;
-
         const locationActive = f.lat !== null && f.lng !== null;
 
         if (locationActive) {
-          // Geo mode: entire pool is in memory, slice client-side
-          allPoolRef.current = pool;
-          const first = pool.slice(0, PAGE_SIZE);
-          setRooms(first);
+          // Geo mode: fetch up to 1000 rooms for client-side filtering
+          const { rooms: fetchedRooms, total: t } = await fetchRooms(
+            f,
+            0,
+            1000,
+          );
+
+          if (!mountedRef.current) return;
+
+          // Apply haversine filter
+          const userLat = f.lat!;
+          const userLng = f.lng!;
+          const radiusKm = f.radius;
+
+          const withDistance = fetchedRooms
+            .filter((room) => {
+              const rLat = Number((room as any).latitude ?? (room as any).lat);
+              const rLng = Number((room as any).longitude ?? (room as any).lng);
+              if (!rLat || !rLng || isNaN(rLat) || isNaN(rLng)) return false;
+              return haversineKm(userLat, userLng, rLat, rLng) <= radiusKm;
+            })
+            .map((room) => {
+              const rLat = Number((room as any).latitude ?? (room as any).lat);
+              const rLng = Number((room as any).longitude ?? (room as any).lng);
+              return {
+                ...room,
+                _distanceKm: haversineKm(userLat, userLng, rLat, rLng),
+              };
+            });
+
+          withDistance.sort(
+            (a, b) => (a._distanceKm ?? 0) - (b._distanceKm ?? 0),
+          );
+
+          const filteredTotal = withDistance.length;
+          const firstBatch = withDistance.slice(0, PAGE_SIZE);
+
+          allPoolRef.current = withDistance as Room[];
+          setRooms(firstBatch);
           setOffset(PAGE_SIZE);
-          setTotal(t);
-          setHasMore(PAGE_SIZE < t);
+          setTotal(filteredTotal);
+          setHasMore(PAGE_SIZE < filteredTotal);
         } else {
-          // Server-paginated mode: first page already fetched
-          allPoolRef.current = pool;
-          setRooms(pool);
-          setOffset(pool.length);
+          // Normal server-paginated mode
+          const { rooms: firstPage, total: t } = await fetchRooms(
+            f,
+            0,
+            PAGE_SIZE,
+          );
+
+          if (!mountedRef.current) return;
+
+          allPoolRef.current = firstPage;
+          setRooms(firstPage);
+          setOffset(firstPage.length);
           setTotal(t);
-          setHasMore(pool.length < t);
+          setHasMore(firstPage.length === PAGE_SIZE && firstPage.length < t);
+          currentPageRef.current = 1;
         }
       } catch (err: any) {
         if (err?.name !== "AbortError") console.error(err);
@@ -571,12 +544,13 @@ function RoomsContent() {
         if (mountedRef.current) setInitialLoading(false);
       }
     },
-    [fetchPool],
+    [fetchRooms],
   );
 
   // ── Load next batch (sentinel triggered) ──────────────────────────────────
   const loadMore = useCallback(async () => {
-    if (loadingMoreRef.current || !hasMore) return;
+    if (loadingMoreRef.current || !hasMore || initialLoading) return;
+
     loadingMoreRef.current = true;
     setLoadingMore(true);
 
@@ -587,29 +561,46 @@ function RoomsContent() {
         // Geo mode: slice next chunk from in-memory pool
         const pool = allPoolRef.current;
         const nextChunk = pool.slice(offset, offset + PAGE_SIZE);
-        if (!mountedRef.current) return;
-        setRooms((prev) => [...prev, ...nextChunk]);
-        const newOffset = offset + nextChunk.length;
-        setOffset(newOffset);
-        setHasMore(newOffset < pool.length);
+
+        if (nextChunk.length > 0 && mountedRef.current) {
+          setRooms((prev) => [...prev, ...nextChunk]);
+          const newOffset = offset + nextChunk.length;
+          setOffset(newOffset);
+          setHasMore(newOffset < pool.length);
+        } else if (mountedRef.current) {
+          setHasMore(false);
+        }
       } else {
-        // Server mode: fetch next server page
-        const nextRooms = await fetchNextServerPage(filters, offset);
-        if (!mountedRef.current) return;
-        setRooms((prev) => [...prev, ...nextRooms]);
-        const newOffset = offset + nextRooms.length;
-        setOffset(newOffset);
-        setHasMore(newOffset < total);
+        // Server mode: fetch next page
+        const currentPage = currentPageRef.current;
+        const { rooms: nextPage } = await fetchRooms(
+          filters,
+          currentPage,
+          PAGE_SIZE,
+        );
+
+        if (nextPage.length > 0 && mountedRef.current) {
+          setRooms((prev) => [...prev, ...nextPage]);
+          const newOffset = offset + nextPage.length;
+          setOffset(newOffset);
+          setHasMore(nextPage.length === PAGE_SIZE && newOffset < total);
+          currentPageRef.current = currentPage + 1;
+        } else if (mountedRef.current) {
+          setHasMore(false);
+        }
       }
     } catch (err: any) {
-      if (err?.name !== "AbortError") console.error(err);
+      if (err?.name !== "AbortError") {
+        console.error("Error loading more rooms:", err);
+        setHasMore(false);
+      }
     } finally {
       if (mountedRef.current) {
         setLoadingMore(false);
         loadingMoreRef.current = false;
       }
     }
-  }, [filters, offset, hasMore, total, fetchNextServerPage]);
+  }, [filters, offset, hasMore, total, initialLoading, fetchRooms]);
 
   // ── Re-init on filter change ──────────────────────────────────────────────
   useEffect(() => {
@@ -625,7 +616,17 @@ function RoomsContent() {
       scroll: false,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [JSON.stringify(filters)]);
+  }, [
+    filters.categories,
+    filters.search,
+    filters.minPrice,
+    filters.maxPrice,
+    filters.sort,
+    filters.allowsWomen,
+    filters.lat,
+    filters.lng,
+    filters.radius,
+  ]);
 
   // ── IntersectionObserver for sentinel ────────────────────────────────────
   useEffect(() => {
@@ -634,16 +635,21 @@ function RoomsContent() {
 
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && !initialLoading) {
+        if (
+          entries[0].isIntersecting &&
+          !initialLoading &&
+          !loadingMore &&
+          hasMore
+        ) {
           loadMore();
         }
       },
-      { rootMargin: "300px" }, // trigger 300px before bottom
+      { rootMargin: "300px", threshold: 0.1 },
     );
 
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, [loadMore, initialLoading]);
+  }, [loadMore, initialLoading, loadingMore, hasMore]);
 
   // ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -1129,7 +1135,10 @@ function RoomsContent() {
                         </p>
 
                         {/* Animated dots or end state */}
-                        <LoadMoreIndicator hasMore={loadingMore || hasMore} />
+                        <LoadMoreIndicator
+                          hasMore={hasMore}
+                          loadingMore={loadingMore}
+                        />
                       </div>
                     )}
                   </motion.div>
