@@ -18,6 +18,7 @@ import {
   Heart,
   ImageIcon,
   User,
+  Wind,
 } from "lucide-react";
 
 export const getStatusBadge = (status: RoomStatus) => {
@@ -288,3 +289,69 @@ export const TABS = [
     required: true,
   },
 ];
+
+export const amenityIcons: Record<string, React.ElementType> = {
+  wifi: Wifi,
+  parking: Car,
+  kitchen: Utensils,
+  "air conditioning": Wind,
+  ac: Wind,
+  tv: Tv,
+};
+
+export const categoryConfig: Record<
+  string,
+  { label: string; labelNp: string; color: string; bg: string }
+> = {
+  Flat: { label: "Flat", labelNp: "फ्ल्याट", color: "#1e40af", bg: "#eff6ff" },
+  Single: { label: "Single", labelNp: "एकल", color: "#065f46", bg: "#ecfdf5" },
+  Apartment: {
+    label: "Apartment",
+    labelNp: "अपार्टमेनट",
+    color: "#6b21a8",
+    bg: "#faf5ff",
+  },
+  Shared: {
+    label: "Shared",
+    labelNp: "साझा",
+    color: "#92400e",
+    bg: "#fffbeb",
+  },
+  Double: {
+    label: "Double",
+    labelNp: "डबल",
+    color: "#9f1239",
+    bg: "#fff1f2",
+  },
+  House: { label: "House", labelNp: "घर", color: "#065f46", bg: "#f0fdf4" },
+  "Attached Bathroom": {
+    label: "Attached Bath",
+    labelNp: "अट्याच्ड बाथ",
+    color: "#0369a1",
+    bg: "#f0f9ff",
+  },
+  Hostel: {
+    label: "Hostel",
+    labelNp: "होस्टेल",
+    color: "#7c3aed",
+    bg: "#f5f3ff",
+  },
+  Hotel: {
+    label: "Hotel",
+    labelNp: "होटेल",
+    color: "#b45309",
+    bg: "#fffbeb",
+  },
+  "Office Space": {
+    label: "Office",
+    labelNp: "अफिस",
+    color: "#0f766e",
+    bg: "#f0fdfa",
+  },
+  Shutter: {
+    label: "Shutter",
+    labelNp: "शटर",
+    color: "#475569",
+    bg: "#f8fafc",
+  },
+};

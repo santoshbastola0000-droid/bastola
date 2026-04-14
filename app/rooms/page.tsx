@@ -6,8 +6,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Search,
   X,
-  ChevronLeft,
-  ChevronRight,
   ArrowUpDown,
   SlidersHorizontal,
   MapPin,
@@ -15,8 +13,7 @@ import {
   Home,
   Navigation,
   Check,
-  ChevronFirst,
-  ChevronLast,
+  ArrowUp,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,6 +40,10 @@ import Footer from "@/components/common/footer";
 import { roomService } from "@/http/services/room.service";
 import { RoomCategory, RoomStatus, type Room } from "@/types/room.types";
 import { cn } from "@/lib/utils";
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+const PAGE_SIZE = 9; // rooms per infinite-scroll batch
 
 interface CatConfig {
   label: string;
@@ -105,27 +106,23 @@ type SortOption = "default" | "price-asc" | "price-desc";
 interface FilterState {
   categories: RoomCategory[];
   sort: SortOption;
-  page: number;
-  take: number;
   search: string;
   minPrice: number;
   maxPrice: number;
   allowsWomen: boolean | null;
   lat: number | null;
   lng: number | null;
-  radius: number; // km
+  radius: number;
 }
 
 const DEFAULT_FILTERS: FilterState = {
   categories: [],
   sort: "default",
-  page: 0,
-  take: 6,
   search: "",
   minPrice: 0,
   maxPrice: 50000,
   allowsWomen: null,
-  lat: null, // never auto-populated
+  lat: null,
   lng: null,
   radius: 5,
 };
@@ -151,23 +148,66 @@ function haversineKm(
 
 // ─── Skeleton ─────────────────────────────────────────────────────────────────
 
-function CardSkeleton() {
+function CardSkeleton({ index = 0 }: { index?: number }) {
   return (
-    <div className="bg-white rounded-2xl overflow-hidden border border-slate-100 shadow-sm animate-pulse">
-      <div className="aspect-[4/3] bg-slate-200" />
+    <motion.div
+      initial={{ opacity: 0, y: 24 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, delay: index * 0.06 }}
+      className="bg-white rounded-2xl overflow-hidden border border-slate-100 shadow-sm"
+    >
+      <div className="aspect-[4/3] bg-gradient-to-br from-slate-100 to-slate-200 animate-pulse" />
       <div className="p-4 space-y-3">
-        <div className="h-4 bg-slate-200 rounded w-3/4" />
-        <div className="h-3 bg-slate-200 rounded w-1/2" />
+        <div className="h-4 bg-slate-100 rounded-lg animate-pulse w-3/4" />
+        <div className="h-3 bg-slate-100 rounded-lg animate-pulse w-1/2" />
         <div className="flex gap-2 py-2">
-          <div className="flex-1 h-10 bg-slate-100 rounded" />
-          <div className="flex-1 h-10 bg-slate-100 rounded" />
-          <div className="flex-1 h-10 bg-slate-100 rounded" />
+          <div className="flex-1 h-10 bg-slate-50 rounded-xl animate-pulse" />
+          <div className="flex-1 h-10 bg-slate-50 rounded-xl animate-pulse" />
+          <div className="flex-1 h-10 bg-slate-50 rounded-xl animate-pulse" />
         </div>
         <div className="flex gap-2">
-          <div className="h-5 w-14 bg-slate-100 rounded-full" />
-          <div className="h-5 w-14 bg-slate-100 rounded-full" />
+          <div className="h-5 w-14 bg-slate-100 rounded-full animate-pulse" />
+          <div className="h-5 w-14 bg-slate-100 rounded-full animate-pulse" />
         </div>
       </div>
+    </motion.div>
+  );
+}
+
+// ─── Infinite scroll sentinel loader ──────────────────────────────────────────
+
+function LoadMoreIndicator({ hasMore }: { hasMore: boolean }) {
+  if (!hasMore) {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex flex-col items-center gap-2 py-12"
+      >
+        <div className="w-12 h-[2px] bg-gradient-to-r from-transparent via-red-200 to-transparent" />
+        <p className="text-xs text-slate-400 tracking-widest uppercase">
+          All caught up
+        </p>
+        <div className="w-12 h-[2px] bg-gradient-to-r from-transparent via-red-200 to-transparent" />
+      </motion.div>
+    );
+  }
+
+  return (
+    <div className="flex items-center justify-center py-10 gap-3">
+      {[0, 1, 2].map((i) => (
+        <motion.div
+          key={i}
+          className="w-2 h-2 rounded-full bg-red-400"
+          animate={{ y: [0, -8, 0], opacity: [0.4, 1, 0.4] }}
+          transition={{
+            duration: 0.9,
+            repeat: Infinity,
+            delay: i * 0.18,
+            ease: "easeInOut",
+          }}
+        />
+      ))}
     </div>
   );
 }
@@ -199,7 +239,7 @@ function FilterPanel({ filters, onChange, onReset, total }: FilterPanelProps) {
           step={500}
           value={[filters.minPrice, filters.maxPrice]}
           onValueChange={([min, max]) =>
-            onChange({ minPrice: min, maxPrice: max, page: 0 })
+            onChange({ minPrice: min, maxPrice: max })
           }
           className="w-full"
         />
@@ -220,7 +260,7 @@ function FilterPanel({ filters, onChange, onReset, total }: FilterPanelProps) {
             <button
               key={label}
               type="button"
-              onClick={() => onChange({ allowsWomen: value, page: 0 })}
+              onClick={() => onChange({ allowsWomen: value })}
               className={cn(
                 "px-3 py-1.5 rounded-lg text-xs font-medium border transition-all cursor-pointer",
                 filters.allowsWomen === value
@@ -246,7 +286,7 @@ function FilterPanel({ filters, onChange, onReset, total }: FilterPanelProps) {
             max={25}
             step={1}
             value={[filters.radius]}
-            onValueChange={([r]) => onChange({ radius: r, page: 0 })}
+            onValueChange={([r]) => onChange({ radius: r })}
           />
           <div className="flex justify-between text-xs text-slate-400 mt-1">
             <span>1 km</span>
@@ -272,216 +312,34 @@ function FilterPanel({ filters, onChange, onReset, total }: FilterPanelProps) {
   );
 }
 
-// ─── Modern Pagination ─────────────────────────────────────────────────────────
+// ─── Scroll-to-top FAB ────────────────────────────────────────────────────────
 
-interface PaginationProps {
-  page: number;
-  totalPages: number;
-  total: number;
-  take: number;
-  onPageChange: (page: number) => void;
-  onTakeChange: (take: number) => void;
-}
+function ScrollToTopFAB() {
+  const [visible, setVisible] = useState(false);
 
-function ModernPagination({
-  page,
-  totalPages,
-  total,
-  take,
-  onPageChange,
-  onTakeChange,
-}: PaginationProps) {
-  const getPageRange = (): (number | "...")[] => {
-    if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i);
-    const range: (number | "...")[] = [];
-    const left = Math.max(1, page - 1);
-    const right = Math.min(totalPages - 2, page + 1);
-    range.push(0);
-    if (left > 1) range.push("...");
-    for (let i = left; i <= right; i++) range.push(i);
-    if (right < totalPages - 2) range.push("...");
-    range.push(totalPages - 1);
-    return range;
-  };
-
-  const pageRange = getPageRange();
-  const startItem = page * take + 1;
-  const endItem = Math.min((page + 1) * take, total);
+  useEffect(() => {
+    const onScroll = () => setVisible(window.scrollY > 600);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   return (
-    <motion.nav
-      aria-label="Pagination"
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="mt-8"
-    >
-      {/* Info + per-page selector */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-4 px-1">
-        <p className="text-sm text-slate-500">
-          Showing{" "}
-          <span className="font-semibold text-slate-700">
-            {startItem}–{endItem}
-          </span>{" "}
-          of <span className="font-semibold text-slate-700">{total}</span> rooms
-        </p>
-        <div className="flex items-center gap-2 text-sm text-slate-500">
-          <Label
-            htmlFor="per-page"
-            className="cursor-pointer whitespace-nowrap"
-          >
-            Per page
-          </Label>
-          <Select
-            value={String(take)}
-            onValueChange={(v) => onTakeChange(Number(v))}
-          >
-            <SelectTrigger
-              id="per-page"
-              className="w-20 h-8 text-xs cursor-pointer"
-            >
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {[6, 12, 24, 36].map((n) => (
-                <SelectItem
-                  key={n}
-                  value={String(n)}
-                  className="cursor-pointer"
-                >
-                  {n}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
-      {/* Page buttons */}
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-3">
-        <div className="flex items-center justify-center gap-1 flex-wrap">
-          {/* First */}
-          <button
-            type="button"
-            onClick={() => onPageChange(0)}
-            disabled={page === 0}
-            aria-label="First page"
-            className={cn(
-              "w-9 h-9 rounded-xl flex items-center justify-center transition-all",
-              page === 0
-                ? "text-slate-300 cursor-not-allowed"
-                : "text-slate-500 hover:bg-red-50 hover:text-red-600 cursor-pointer",
-            )}
-          >
-            <ChevronFirst className="w-4 h-4" />
-          </button>
-
-          {/* Prev */}
-          <button
-            type="button"
-            onClick={() => onPageChange(page - 1)}
-            disabled={page === 0}
-            aria-label="Previous page"
-            className={cn(
-              "w-9 h-9 rounded-xl flex items-center justify-center transition-all",
-              page === 0
-                ? "text-slate-300 cursor-not-allowed"
-                : "text-slate-500 hover:bg-red-50 hover:text-red-600 cursor-pointer",
-            )}
-          >
-            <ChevronLeft className="w-4 h-4" />
-          </button>
-
-          <div className="w-px h-6 bg-slate-100 mx-1" />
-
-          {/* Page numbers */}
-          {pageRange.map((p, idx) =>
-            p === "..." ? (
-              <span
-                key={`ellipsis-${idx}`}
-                className="w-9 h-9 flex items-center justify-center text-slate-400 text-sm select-none"
-              >
-                …
-              </span>
-            ) : (
-              <button
-                key={p}
-                type="button"
-                onClick={() => onPageChange(p as number)}
-                aria-label={`Page ${(p as number) + 1}`}
-                aria-current={page === p ? "page" : undefined}
-                className={cn(
-                  "w-9 h-9 rounded-xl text-sm font-medium transition-all cursor-pointer",
-                  page === p
-                    ? "bg-red-600 text-white shadow-md shadow-red-200 scale-105"
-                    : "text-slate-600 hover:bg-red-50 hover:text-red-600",
-                )}
-              >
-                {(p as number) + 1}
-              </button>
-            ),
-          )}
-
-          <div className="w-px h-6 bg-slate-100 mx-1" />
-
-          {/* Next */}
-          <button
-            type="button"
-            onClick={() => onPageChange(page + 1)}
-            disabled={page >= totalPages - 1}
-            aria-label="Next page"
-            className={cn(
-              "w-9 h-9 rounded-xl flex items-center justify-center transition-all",
-              page >= totalPages - 1
-                ? "text-slate-300 cursor-not-allowed"
-                : "text-slate-500 hover:bg-red-50 hover:text-red-600 cursor-pointer",
-            )}
-          >
-            <ChevronRight className="w-4 h-4" />
-          </button>
-
-          {/* Last */}
-          <button
-            type="button"
-            onClick={() => onPageChange(totalPages - 1)}
-            disabled={page >= totalPages - 1}
-            aria-label="Last page"
-            className={cn(
-              "w-9 h-9 rounded-xl flex items-center justify-center transition-all",
-              page >= totalPages - 1
-                ? "text-slate-300 cursor-not-allowed"
-                : "text-slate-500 hover:bg-red-50 hover:text-red-600 cursor-pointer",
-            )}
-          >
-            <ChevronLast className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
-
-      {/* Jump to page — shown only when totalPages > 10 */}
-      {totalPages > 10 && (
-        <div className="flex items-center justify-center gap-2 mt-3">
-          <span className="text-xs text-slate-400">Jump to</span>
-          <input
-            type="number"
-            min={1}
-            max={totalPages}
-            defaultValue={page + 1}
-            key={page}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                const val = parseInt((e.target as HTMLInputElement).value, 10);
-                if (!isNaN(val) && val >= 1 && val <= totalPages) {
-                  onPageChange(val - 1);
-                }
-              }
-            }}
-            className="w-16 h-7 text-xs text-center rounded-lg border border-slate-200 focus:border-red-400 focus:ring-1 focus:ring-red-100 outline-none"
-            aria-label="Jump to page"
-          />
-          <span className="text-xs text-slate-400">of {totalPages}</span>
-        </div>
+    <AnimatePresence>
+      {visible && (
+        <motion.button
+          key="fab"
+          initial={{ opacity: 0, scale: 0.6, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.6, y: 20 }}
+          transition={{ type: "spring", stiffness: 400, damping: 28 }}
+          onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+          className="fixed bottom-8 right-6 z-50 w-11 h-11 rounded-2xl bg-red-600 text-white shadow-lg shadow-red-200 flex items-center justify-center hover:bg-red-700 hover:shadow-xl hover:shadow-red-300 transition-all active:scale-95 cursor-pointer"
+          aria-label="Scroll to top"
+        >
+          <ArrowUp className="w-4 h-4" />
+        </motion.button>
       )}
-    </motion.nav>
+    </AnimatePresence>
   );
 }
 
@@ -492,6 +350,7 @@ function RoomsContent() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
+  // ── Filter state (no page/take — handled by infinite scroll) ─────────────
   const [filters, setFilters] = useState<FilterState>(() => {
     const cats = (searchParams?.getAll("cat") as RoomCategory[]) ?? [];
     return {
@@ -500,13 +359,25 @@ function RoomsContent() {
       search: searchParams?.get("q") ?? "",
       minPrice: Number(searchParams?.get("min") ?? 0),
       maxPrice: Number(searchParams?.get("max") ?? 50000),
-      page: Number(searchParams?.get("p") ?? 0),
     };
   });
 
+  // ── Infinite scroll state ─────────────────────────────────────────────────
+  /** All rooms fetched and rendered so far */
   const [rooms, setRooms] = useState<Room[]>([]);
+  /** Full filtered pool (used for geo-filter client-side slicing) */
+  const allPoolRef = useRef<Room[]>([]);
+  /** Grand total from server */
   const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(true);
+  /** Current offset into the pool */
+  const [offset, setOffset] = useState(0);
+  /** Whether a fresh filter-change fetch is in progress */
+  const [initialLoading, setInitialLoading] = useState(true);
+  /** Whether we're loading the next batch */
+  const [loadingMore, setLoadingMore] = useState(false);
+  /** Whether there are more rooms to load */
+  const [hasMore, setHasMore] = useState(true);
+
   const [locLoading, setLocLoading] = useState(false);
   const [searchInput, setSearchInput] = useState(filters.search);
   const [filterOpen, setFilterOpen] = useState(false);
@@ -514,6 +385,10 @@ function RoomsContent() {
   const searchRef = useRef<NodeJS.Timeout | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const mountedRef = useRef(false);
+  /** IntersectionObserver sentinel element ref */
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  /** Guard against concurrent loadMore calls */
+  const loadingMoreRef = useRef(false);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -522,30 +397,24 @@ function RoomsContent() {
     };
   }, []);
 
-  const totalPages = Math.max(1, Math.ceil(total / filters.take));
-
-  // ── Fetch rooms ──────────────────────────────────────────────────────────────
+  // ── Core fetch: loads the FULL pool from server when filters change ───────
   //
-  // Strategy A — no location:
-  //   Send page + take to the API. The server returns exactly `take` rooms and a
-  //   pagination.total telling us the grand total. totalPages is derived from that.
+  // Strategy A — no location: fetch server-paginated data. We accumulate
+  //   server pages into allPoolRef as the user scrolls.
   //
   // Strategy B — location active (DO NOT TOUCH):
   //   Fetch up to 1000 rooms, haversine-filter client-side, sort by distance,
-  //   then manually slice the page window. totalCount = filtered.length.
+  //   then slice PAGE_SIZE chunks as sentinel fires.
 
-  const fetchRooms = useCallback(async (f: FilterState) => {
-    abortRef.current?.abort();
-    abortRef.current = new AbortController();
-    setLoading(true);
+  const fetchPool = useCallback(
+    async (f: FilterState): Promise<{ pool: Room[]; total: number }> => {
+      abortRef.current?.abort();
+      abortRef.current = new AbortController();
 
-    try {
       const locationActive = f.lat !== null && f.lng !== null;
 
       const baseParams = {
-        // Strategy A: proper server-side pagination
-        ...(!locationActive && { page: f.page, take: f.take }),
-        // Strategy B: bulk fetch for client-side geo-filter (DO NOT TOUCH)
+        ...(!locationActive && { page: 0, take: PAGE_SIZE }),
         ...(locationActive && { page: 0, take: 1000 }),
         ...(f.search.trim() && { search: f.search.trim() }),
         ...(f.minPrice > 0 && { minPrice: f.minPrice }),
@@ -555,7 +424,7 @@ function RoomsContent() {
       };
 
       let allRooms: Room[] = [];
-      let totalCount: number = 0;
+      let totalCount = 0;
 
       if (f.categories.length <= 1) {
         const resp = await roomService.getPublicRooms({
@@ -563,10 +432,8 @@ function RoomsContent() {
           ...(f.categories.length === 1 && { category: f.categories[0] }),
         });
         allRooms = resp.data;
-        // resp.pagination.total is the full count (not just this page) — critical for pagination
         totalCount = resp.pagination?.total ?? resp.data.length;
       } else {
-        // Multi-category OR logic: parallel requests + dedup
         const results = await Promise.all(
           f.categories.map((cat) =>
             roomService.getPublicRooms({ ...baseParams, category: cat }),
@@ -581,9 +448,6 @@ function RoomsContent() {
             }
           });
         });
-        // For multi-cat without location we have all matching rooms already (server paginated each)
-        // Use deduped count as totalCount; this means all pages are loaded per category-fetch.
-        // Acceptable trade-off for multi-cat until backend supports OR-category queries natively.
         totalCount = allRooms.length;
       }
 
@@ -614,42 +478,174 @@ function RoomsContent() {
         );
 
         totalCount = withDistance.length;
-        const start = f.page * f.take;
-        allRooms = withDistance.slice(start, start + f.take);
+        allRooms = withDistance as Room[];
       }
       // ── End geo-filter block ───────────────────────────────────────────────
 
-      // Price sort — works on top of both strategies
       if (f.sort === "price-asc")
         allRooms.sort((a, b) => Number(a.price) - Number(b.price));
       if (f.sort === "price-desc")
         allRooms.sort((a, b) => Number(b.price) - Number(a.price));
 
-      setRooms(allRooms);
-      setTotal(totalCount);
+      return { pool: allRooms, total: totalCount };
+    },
+    [],
+  );
+
+  // ── Server fetch for next page (Strategy A continuation) ─────────────────
+  const fetchNextServerPage = useCallback(
+    async (f: FilterState, currentOffset: number): Promise<Room[]> => {
+      const serverPage = Math.floor(currentOffset / PAGE_SIZE);
+      const baseParams = {
+        page: serverPage,
+        take: PAGE_SIZE,
+        ...(f.search.trim() && { search: f.search.trim() }),
+        ...(f.minPrice > 0 && { minPrice: f.minPrice }),
+        ...(f.maxPrice < 50000 && { maxPrice: f.maxPrice }),
+        ...(f.allowsWomen !== null && { allowsWomen: f.allowsWomen }),
+        approvalStatus: RoomStatus.APPROVED,
+      };
+
+      if (f.categories.length <= 1) {
+        const resp = await roomService.getPublicRooms({
+          ...baseParams,
+          ...(f.categories.length === 1 && { category: f.categories[0] }),
+        });
+        return resp.data;
+      }
+
+      const results = await Promise.all(
+        f.categories.map((cat) =>
+          roomService.getPublicRooms({ ...baseParams, category: cat }),
+        ),
+      );
+      const seen = new Set<string>();
+      const merged: Room[] = [];
+      results.forEach((r) =>
+        r.data.forEach((room) => {
+          if (!seen.has(room.id)) {
+            seen.add(room.id);
+            merged.push(room);
+          }
+        }),
+      );
+      return merged;
+    },
+    [],
+  );
+
+  // ── Initial load / filter reset ───────────────────────────────────────────
+  const initLoad = useCallback(
+    async (f: FilterState) => {
+      setInitialLoading(true);
+      setRooms([]);
+      setOffset(0);
+      setHasMore(true);
+      allPoolRef.current = [];
+
+      try {
+        const { pool, total: t } = await fetchPool(f);
+        if (!mountedRef.current) return;
+
+        const locationActive = f.lat !== null && f.lng !== null;
+
+        if (locationActive) {
+          // Geo mode: entire pool is in memory, slice client-side
+          allPoolRef.current = pool;
+          const first = pool.slice(0, PAGE_SIZE);
+          setRooms(first);
+          setOffset(PAGE_SIZE);
+          setTotal(t);
+          setHasMore(PAGE_SIZE < t);
+        } else {
+          // Server-paginated mode: first page already fetched
+          allPoolRef.current = pool;
+          setRooms(pool);
+          setOffset(pool.length);
+          setTotal(t);
+          setHasMore(pool.length < t);
+        }
+      } catch (err: any) {
+        if (err?.name !== "AbortError") console.error(err);
+      } finally {
+        if (mountedRef.current) setInitialLoading(false);
+      }
+    },
+    [fetchPool],
+  );
+
+  // ── Load next batch (sentinel triggered) ──────────────────────────────────
+  const loadMore = useCallback(async () => {
+    if (loadingMoreRef.current || !hasMore) return;
+    loadingMoreRef.current = true;
+    setLoadingMore(true);
+
+    try {
+      const locationActive = filters.lat !== null && filters.lng !== null;
+
+      if (locationActive) {
+        // Geo mode: slice next chunk from in-memory pool
+        const pool = allPoolRef.current;
+        const nextChunk = pool.slice(offset, offset + PAGE_SIZE);
+        if (!mountedRef.current) return;
+        setRooms((prev) => [...prev, ...nextChunk]);
+        const newOffset = offset + nextChunk.length;
+        setOffset(newOffset);
+        setHasMore(newOffset < pool.length);
+      } else {
+        // Server mode: fetch next server page
+        const nextRooms = await fetchNextServerPage(filters, offset);
+        if (!mountedRef.current) return;
+        setRooms((prev) => [...prev, ...nextRooms]);
+        const newOffset = offset + nextRooms.length;
+        setOffset(newOffset);
+        setHasMore(newOffset < total);
+      }
     } catch (err: any) {
       if (err?.name !== "AbortError") console.error(err);
     } finally {
-      if (mountedRef.current) setLoading(false);
+      if (mountedRef.current) {
+        setLoadingMore(false);
+        loadingMoreRef.current = false;
+      }
     }
-  }, []);
+  }, [filters, offset, hasMore, total, fetchNextServerPage]);
 
-  // Re-fetch on every filter change
+  // ── Re-init on filter change ──────────────────────────────────────────────
   useEffect(() => {
-    fetchRooms(filters);
+    initLoad(filters);
 
-    // Sync non-sensitive filters to URL (lat/lng excluded intentionally)
+    // Sync URL
     const params = new URLSearchParams();
     filters.categories.forEach((c) => params.append("cat", c));
     if (filters.search) params.set("q", filters.search);
     if (filters.minPrice > 0) params.set("min", String(filters.minPrice));
     if (filters.maxPrice < 50000) params.set("max", String(filters.maxPrice));
-    if (filters.page > 0) params.set("p", String(filters.page));
     router.replace(params.toString() ? `${pathname}?${params}` : pathname, {
       scroll: false,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [JSON.stringify(filters)]);
+
+  // ── IntersectionObserver for sentinel ────────────────────────────────────
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && !initialLoading) {
+          loadMore();
+        }
+      },
+      { rootMargin: "300px" }, // trigger 300px before bottom
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [loadMore, initialLoading]);
+
+  // ── Helpers ───────────────────────────────────────────────────────────────
 
   const updateFilters = useCallback((patch: Partial<FilterState>) => {
     setFilters((prev) => ({ ...prev, ...patch }));
@@ -660,8 +656,6 @@ function RoomsContent() {
     setSearchInput("");
   }, []);
 
-  // ── Category toggle ───────────────────────────────────────────────────────────
-
   const toggleCategory = (cat: RoomCategory) => {
     setFilters((prev) => {
       const has = prev.categories.includes(cat);
@@ -670,24 +664,17 @@ function RoomsContent() {
         categories: has
           ? prev.categories.filter((c) => c !== cat)
           : [...prev.categories, cat],
-        page: 0,
       };
     });
   };
 
-  // ── Search debounce ───────────────────────────────────────────────────────────
-
   const handleSearch = (val: string) => {
     setSearchInput(val);
     if (searchRef.current) clearTimeout(searchRef.current);
-    searchRef.current = setTimeout(
-      () => updateFilters({ search: val, page: 0 }),
-      420,
-    );
+    searchRef.current = setTimeout(() => updateFilters({ search: val }), 420);
   };
 
-  // ── Geolocation — ONLY on explicit button click (DO NOT TOUCH) ───────────────
-
+  // ── Geolocation — ONLY on explicit button click (DO NOT TOUCH) ───────────
   const handleLocateClick = () => {
     if (typeof window === "undefined" || !navigator.geolocation) return;
     setLocLoading(true);
@@ -697,7 +684,6 @@ function RoomsContent() {
         updateFilters({
           lat: pos.coords.latitude,
           lng: pos.coords.longitude,
-          page: 0,
           sort: "default",
         });
         setLocLoading(false);
@@ -710,9 +696,9 @@ function RoomsContent() {
     );
   };
 
-  const clearLocation = () => updateFilters({ lat: null, lng: null, page: 0 });
+  const clearLocation = () => updateFilters({ lat: null, lng: null });
 
-  // ── Derived ───────────────────────────────────────────────────────────────────
+  // ── Derived ───────────────────────────────────────────────────────────────
 
   const locationActive = filters.lat !== null;
 
@@ -733,6 +719,8 @@ function RoomsContent() {
   return (
     <>
       <NavBar />
+      <ScrollToTopFAB />
+
       <div className="min-h-screen bg-slate-50">
         {/* ── Header / Search ── */}
         <header className="bg-white border-b border-slate-100 pt-24 pb-6 shadow-sm">
@@ -768,7 +756,7 @@ function RoomsContent() {
                     type="button"
                     onClick={() => {
                       setSearchInput("");
-                      updateFilters({ search: "", page: 0 });
+                      updateFilters({ search: "" });
                     }}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
                     aria-label="Clear search"
@@ -836,7 +824,7 @@ function RoomsContent() {
             <div className="flex items-center gap-2 py-3 overflow-x-auto scrollbar-hide">
               <button
                 type="button"
-                onClick={() => updateFilters({ categories: [], page: 0 })}
+                onClick={() => updateFilters({ categories: [] })}
                 className={cn(
                   "flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-semibold whitespace-nowrap border transition-all shrink-0 cursor-pointer",
                   filters.categories.length === 0
@@ -897,12 +885,12 @@ function RoomsContent() {
               <div className="flex items-center justify-between gap-3 mb-4">
                 <div>
                   <p className="text-sm text-slate-500" aria-live="polite">
-                    {loading
+                    {initialLoading
                       ? "Searching…"
                       : `${total} room${total !== 1 ? "s" : ""} found`}
                   </p>
 
-                  {hasActiveFilters && (
+                  {hasActiveFilters && !initialLoading && (
                     <div className="flex flex-wrap gap-1.5 mt-2">
                       {filters.categories.map((cat) => (
                         <Badge
@@ -984,7 +972,7 @@ function RoomsContent() {
                   <Select
                     value={filters.sort}
                     onValueChange={(v) =>
-                      updateFilters({ sort: v as SortOption, page: 0 })
+                      updateFilters({ sort: v as SortOption })
                     }
                   >
                     <SelectTrigger className="h-9 w-44 text-xs rounded-lg border-slate-200 cursor-pointer">
@@ -1042,21 +1030,23 @@ function RoomsContent() {
                 </div>
               </div>
 
-              {/* Room grid */}
+              {/* ── Room grid ── */}
               <AnimatePresence mode="wait">
-                {loading ? (
+                {initialLoading ? (
+                  /* Initial skeleton grid */
                   <motion.div
-                    key="loading"
+                    key="skeleton"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                     className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5"
                   >
-                    {Array.from({ length: filters.take }).map((_, i) => (
-                      <CardSkeleton key={i} />
+                    {Array.from({ length: PAGE_SIZE }).map((_, i) => (
+                      <CardSkeleton key={i} index={i} />
                     ))}
                   </motion.div>
                 ) : rooms.length === 0 ? (
+                  /* Empty state */
                   <motion.div
                     key="empty"
                     initial={{ opacity: 0, y: 16 }}
@@ -1084,41 +1074,67 @@ function RoomsContent() {
                     </Button>
                   </motion.div>
                 ) : (
+                  /* Infinite grid */
                   <motion.div
-                    key={`results-p${filters.page}`}
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
+                    key="grid"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
                     transition={{ duration: 0.2 }}
-                    className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5"
                   >
-                    {rooms.map((room, i) => (
-                      <PropertyCard key={room.id} room={room} index={i} />
-                    ))}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
+                      {rooms.map((room, i) => (
+                        <motion.div
+                          key={room.id}
+                          initial={{ opacity: 0, y: 28, scale: 0.97 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          transition={{
+                            duration: 0.38,
+                            delay: Math.min(i % PAGE_SIZE, 8) * 0.055,
+                            ease: [0.22, 1, 0.36, 1],
+                          }}
+                        >
+                          <PropertyCard room={room} index={i} />
+                        </motion.div>
+                      ))}
+                    </div>
+
+                    {/* Infinite scroll sentinel */}
+                    <div ref={sentinelRef} aria-hidden="true" />
+
+                    {/* Progress indicator */}
+                    {rooms.length > 0 && !initialLoading && (
+                      <div className="mt-6">
+                        {/* Slim progress bar */}
+                        <div className="relative h-[3px] bg-slate-100 rounded-full overflow-hidden max-w-xs mx-auto mb-4">
+                          <motion.div
+                            className="absolute inset-y-0 left-0 bg-gradient-to-r from-red-400 to-red-600 rounded-full"
+                            initial={false}
+                            animate={{
+                              width: `${Math.min((rooms.length / total) * 100, 100)}%`,
+                            }}
+                            transition={{ duration: 0.5, ease: "easeOut" }}
+                          />
+                        </div>
+
+                        {/* Count chip */}
+                        <p className="text-center text-xs text-slate-400">
+                          <span className="font-semibold text-slate-600">
+                            {rooms.length}
+                          </span>{" "}
+                          of{" "}
+                          <span className="font-semibold text-slate-600">
+                            {total}
+                          </span>{" "}
+                          rooms
+                        </p>
+
+                        {/* Animated dots or end state */}
+                        <LoadMoreIndicator hasMore={loadingMore || hasMore} />
+                      </div>
+                    )}
                   </motion.div>
                 )}
               </AnimatePresence>
-
-              {/* Pagination — shown when total exceeds one page */}
-              {!loading && total > filters.take && (
-                <ModernPagination
-                  page={filters.page}
-                  totalPages={totalPages}
-                  total={total}
-                  take={filters.take}
-                  onPageChange={(p) => {
-                    updateFilters({ page: p });
-                    window.scrollTo({ top: 0, behavior: "smooth" });
-                  }}
-                  onTakeChange={(take) => updateFilters({ take, page: 0 })}
-                />
-              )}
-
-              {/* Single-page footer count */}
-              {!loading && rooms.length > 0 && total <= filters.take && (
-                <p className="text-center text-xs text-slate-400 mt-6">
-                  Showing all {total} room{total !== 1 ? "s" : ""}
-                </p>
-              )}
             </div>
           </div>
         </main>
@@ -1128,7 +1144,7 @@ function RoomsContent() {
   );
 }
 
-// ─── Page skeleton (Suspense fallback) ───────────────────────────────────────
+// ─── Page skeleton (Suspense fallback) ────────────────────────────────────────
 
 function PageSkeleton() {
   return (
@@ -1139,8 +1155,8 @@ function PageSkeleton() {
           <div className="h-10 bg-slate-200 rounded-xl animate-pulse max-w-lg mx-auto" />
           <div className="h-10 bg-slate-200 rounded-full animate-pulse max-w-2xl mx-auto" />
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <CardSkeleton key={i} />
+            {Array.from({ length: PAGE_SIZE }).map((_, i) => (
+              <CardSkeleton key={i} index={i} />
             ))}
           </div>
         </div>
