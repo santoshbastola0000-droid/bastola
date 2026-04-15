@@ -162,6 +162,57 @@ function ScrollProgressBar() {
   );
 }
 
+// ─── Elegant Loader Component for Infinite Scroll ─────────────────────────────
+
+function InfiniteScrollLoader({ isVisible }: { isVisible: boolean }) {
+  return (
+    <AnimatePresence mode="wait">
+      {isVisible && (
+        <motion.div
+          initial={{ opacity: 0, y: 20, scale: 0.95 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: -20, scale: 0.95 }}
+          transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+          className="flex flex-col items-center justify-center py-8 gap-3"
+        >
+          {/* Animated rings */}
+          <div className="relative">
+            <div className="w-12 h-12 rounded-full border-2 border-red-100 animate-ping" />
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="w-8 h-8 rounded-full border-[3px] border-t-red-500 border-r-transparent border-b-rose-500 border-l-transparent animate-spin" />
+            </div>
+          </div>
+
+          {/* Gradient text loader */}
+          <div className="flex flex-col items-center gap-1">
+            <p className="text-xs font-medium bg-gradient-to-r from-red-500 to-rose-600 bg-clip-text text-transparent animate-pulse">
+              Loading more rooms
+            </p>
+            <div className="flex gap-1">
+              {[0, 1, 2].map((i) => (
+                <motion.div
+                  key={i}
+                  className="w-1.5 h-1.5 rounded-full bg-gradient-to-r from-red-400 to-rose-500"
+                  animate={{
+                    y: [0, -6, 0],
+                    opacity: [0.4, 1, 0.4],
+                  }}
+                  transition={{
+                    duration: 0.8,
+                    repeat: Infinity,
+                    delay: i * 0.15,
+                    ease: "easeInOut",
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
 // ─── Skeleton card with shimmer ───────────────────────────────────────────────
 
 function CardSkeleton({ index = 0 }: { index?: number }) {
@@ -177,7 +228,7 @@ function CardSkeleton({ index = 0 }: { index?: number }) {
       className="bg-white rounded-2xl overflow-hidden border border-slate-100 shadow-sm"
     >
       {/* Image shimmer */}
-      <div className="relative aspect-[4/3] overflow-hidden bg-slate-100">
+      <div className="relative aspect-[4/3] overflow-hidden bg-gradient-to-br from-slate-100 to-slate-200">
         <div className="absolute inset-0 -translate-x-full animate-[shimmer_1.6s_infinite] bg-gradient-to-r from-transparent via-white/60 to-transparent" />
       </div>
       <div className="p-4 space-y-3">
@@ -264,22 +315,12 @@ function LoadMoreIndicator({
 
       {/* State label */}
       <AnimatePresence mode="wait">
-        {loadingMore ? (
-          <motion.div
-            key="loading"
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -6 }}
-            className="flex items-center gap-2 text-xs text-red-500 font-medium"
-          >
-            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-            Loading more…
-          </motion.div>
-        ) : !hasMore ? (
+        {!hasMore && loaded > 0 ? (
           <motion.div
             key="done"
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.3 }}
             className="flex flex-col items-center gap-1.5"
           >
             <div className="flex items-center gap-1.5 text-xs text-slate-400">
@@ -288,28 +329,7 @@ function LoadMoreIndicator({
               <Sparkles className="w-3.5 h-3.5 text-red-300" />
             </div>
           </motion.div>
-        ) : (
-          <motion.div
-            key="more"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="flex items-center gap-1.5"
-          >
-            {[0, 1, 2].map((i) => (
-              <motion.div
-                key={i}
-                className="w-1.5 h-1.5 rounded-full bg-red-300"
-                animate={{ y: [0, -5, 0], opacity: [0.5, 1, 0.5] }}
-                transition={{
-                  duration: 0.8,
-                  repeat: Infinity,
-                  delay: i * 0.15,
-                  ease: "easeInOut",
-                }}
-              />
-            ))}
-          </motion.div>
-        )}
+        ) : null}
       </AnimatePresence>
     </div>
   );
@@ -344,7 +364,7 @@ function FilterPanel({ filters, onChange, onReset, total }: FilterPanelProps) {
           onValueChange={([min, max]) =>
             onChange({ minPrice: min, maxPrice: max })
           }
-          className="w-full"
+          className="w-full cursor-pointer"
         />
         <div className="flex justify-between text-xs text-slate-400 mt-2">
           <span>रू ०</span>
@@ -390,6 +410,7 @@ function FilterPanel({ filters, onChange, onReset, total }: FilterPanelProps) {
             step={1}
             value={[filters.radius]}
             onValueChange={([r]) => onChange({ radius: r })}
+            className="cursor-pointer"
           />
           <div className="flex justify-between text-xs text-slate-400 mt-2">
             <span>1 km</span>
@@ -439,7 +460,7 @@ function ScrollToTopFAB() {
           whileHover={{ scale: 1.08 }}
           whileTap={{ scale: 0.93 }}
           onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-          className="fixed bottom-8 right-6 z-50 w-12 h-12 rounded-2xl bg-gradient-to-br from-red-500 to-rose-600 text-white shadow-lg shadow-red-300/50 flex items-center justify-center"
+          className="fixed bottom-8 right-6 z-50 w-12 h-12 rounded-2xl bg-gradient-to-br from-red-500 to-rose-600 text-white shadow-lg shadow-red-300/50 flex items-center justify-center cursor-pointer"
           aria-label="Scroll to top"
         >
           <ArrowUp className="w-4 h-4" />
@@ -809,7 +830,12 @@ function RoomsContent() {
 
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting) {
+        if (
+          entries[0].isIntersecting &&
+          !loadingMoreRef.current &&
+          hasMoreRef.current &&
+          !initialLoading
+        ) {
           loadMore();
         }
       },
@@ -1337,21 +1363,23 @@ function RoomsContent() {
                         />
                       ))}
 
-                      {/* Inline skeleton placeholders while loading next batch */}
+                      {/* Elegant loader shown while loading more */}
                       {loadingMore && (
-                        <InlineSkeletonRow
-                          count={Math.min(PAGE_SIZE, total - rooms.length)}
-                        />
+                        <div className="col-span-full">
+                          <InfiniteScrollLoader isVisible={loadingMore} />
+                        </div>
                       )}
                     </div>
 
                     {/* Footer: progress + indicator */}
-                    <LoadMoreIndicator
-                      hasMore={hasMore}
-                      loadingMore={loadingMore}
-                      loaded={rooms.length}
-                      total={total}
-                    />
+                    {!loadingMore && (
+                      <LoadMoreIndicator
+                        hasMore={hasMore}
+                        loadingMore={loadingMore}
+                        loaded={rooms.length}
+                        total={total}
+                      />
+                    )}
                   </motion.div>
                 )}
               </AnimatePresence>
