@@ -40,6 +40,10 @@ import Footer from "@/components/common/footer";
 import { roomService } from "@/http/services/room.service";
 import { RoomCategory, RoomStatus, type Room } from "@/types/room.types";
 import { cn } from "@/lib/utils";
+import {
+  ElegantLoader,
+  InfiniteScrollLoader,
+} from "@/components/common/elegant-loader";
 
 const PAGE_SIZE = 9;
 
@@ -125,8 +129,7 @@ const DEFAULT_FILTERS: FilterState = {
   radius: 5,
 };
 
-// ─── Haversine distance (km) — DO NOT TOUCH ───────────────────────────────────
-
+// Haversine distance calculation
 function haversineKm(
   lat1: number,
   lng1: number,
@@ -144,8 +147,7 @@ function haversineKm(
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-// ─── Page-level scroll progress bar ──────────────────────────────────────────
-
+// Scroll progress bar
 function ScrollProgressBar() {
   const { scrollYProgress } = useScroll();
   const scaleX = useSpring(scrollYProgress, {
@@ -162,59 +164,7 @@ function ScrollProgressBar() {
   );
 }
 
-// ─── Elegant Loader Component for Infinite Scroll ─────────────────────────────
-
-function InfiniteScrollLoader({ isVisible }: { isVisible: boolean }) {
-  return (
-    <AnimatePresence mode="wait">
-      {isVisible && (
-        <motion.div
-          initial={{ opacity: 0, y: 20, scale: 0.95 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: -20, scale: 0.95 }}
-          transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-          className="flex flex-col items-center justify-center py-8 gap-3"
-        >
-          {/* Animated rings */}
-          <div className="relative">
-            <div className="w-12 h-12 rounded-full border-2 border-red-100 animate-ping" />
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="w-8 h-8 rounded-full border-[3px] border-t-red-500 border-r-transparent border-b-rose-500 border-l-transparent animate-spin" />
-            </div>
-          </div>
-
-          {/* Gradient text loader */}
-          <div className="flex flex-col items-center gap-1">
-            <p className="text-xs font-medium bg-gradient-to-r from-red-500 to-rose-600 bg-clip-text text-transparent animate-pulse">
-              Loading more rooms
-            </p>
-            <div className="flex gap-1">
-              {[0, 1, 2].map((i) => (
-                <motion.div
-                  key={i}
-                  className="w-1.5 h-1.5 rounded-full bg-gradient-to-r from-red-400 to-rose-500"
-                  animate={{
-                    y: [0, -6, 0],
-                    opacity: [0.4, 1, 0.4],
-                  }}
-                  transition={{
-                    duration: 0.8,
-                    repeat: Infinity,
-                    delay: i * 0.15,
-                    ease: "easeInOut",
-                  }}
-                />
-              ))}
-            </div>
-          </div>
-        </motion.div>
-      )}
-    </AnimatePresence>
-  );
-}
-
-// ─── Skeleton card with shimmer ───────────────────────────────────────────────
-
+// Enhanced skeleton card with shimmer
 function CardSkeleton({ index = 0 }: { index?: number }) {
   return (
     <motion.div
@@ -227,7 +177,6 @@ function CardSkeleton({ index = 0 }: { index?: number }) {
       }}
       className="bg-white rounded-2xl overflow-hidden border border-slate-100 shadow-sm"
     >
-      {/* Image shimmer */}
       <div className="relative aspect-[4/3] overflow-hidden bg-gradient-to-br from-slate-100 to-slate-200">
         <div className="absolute inset-0 -translate-x-full animate-[shimmer_1.6s_infinite] bg-gradient-to-r from-transparent via-white/60 to-transparent" />
       </div>
@@ -266,77 +215,6 @@ function CardSkeleton({ index = 0 }: { index?: number }) {
   );
 }
 
-// ─── Inline load-more skeleton rows (appended below existing cards) ───────────
-
-function InlineSkeletonRow({ count = 3 }: { count?: number }) {
-  return (
-    <>
-      {Array.from({ length: count }).map((_, i) => (
-        <CardSkeleton key={`inline-skel-${i}`} index={i} />
-      ))}
-    </>
-  );
-}
-
-// ─── Load-more footer indicator ───────────────────────────────────────────────
-
-function LoadMoreIndicator({
-  hasMore,
-  loadingMore,
-  loaded,
-  total,
-}: {
-  hasMore: boolean;
-  loadingMore: boolean;
-  loaded: number;
-  total: number;
-}) {
-  const pct = total > 0 ? Math.min((loaded / total) * 100, 100) : 0;
-
-  return (
-    <div className="mt-10 flex flex-col items-center gap-3">
-      {/* Progress track */}
-      <div className="w-48 h-[3px] bg-slate-100 rounded-full overflow-hidden">
-        <motion.div
-          className="h-full bg-gradient-to-r from-red-400 to-rose-500 rounded-full"
-          initial={false}
-          animate={{ width: `${pct}%` }}
-          transition={{ duration: 0.6, ease: "easeOut" }}
-        />
-      </div>
-
-      {/* Count */}
-      <p className="text-xs text-slate-400 tabular-nums">
-        <span className="font-semibold text-slate-600">{loaded}</span>
-        {" of "}
-        <span className="font-semibold text-slate-600">{total}</span>
-        {" rooms"}
-      </p>
-
-      {/* State label */}
-      <AnimatePresence mode="wait">
-        {!hasMore && loaded > 0 ? (
-          <motion.div
-            key="done"
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.3 }}
-            className="flex flex-col items-center gap-1.5"
-          >
-            <div className="flex items-center gap-1.5 text-xs text-slate-400">
-              <Sparkles className="w-3.5 h-3.5 text-red-300" />
-              <span className="tracking-wide">You've seen it all</span>
-              <Sparkles className="w-3.5 h-3.5 text-red-300" />
-            </div>
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
-    </div>
-  );
-}
-
-// ─── Filter Panel ─────────────────────────────────────────────────────────────
-
 interface FilterPanelProps {
   filters: FilterState;
   onChange: (f: Partial<FilterState>) => void;
@@ -344,10 +222,10 @@ interface FilterPanelProps {
   total: number;
 }
 
+// Filter Panel Component
 function FilterPanel({ filters, onChange, onReset, total }: FilterPanelProps) {
   return (
     <div className="space-y-6">
-      {/* Price range */}
       <div>
         <p className="text-sm font-semibold text-slate-700 mb-3">
           Price Range
@@ -372,7 +250,6 @@ function FilterPanel({ filters, onChange, onReset, total }: FilterPanelProps) {
         </div>
       </div>
 
-      {/* Women allowed */}
       <div>
         <p className="text-sm font-semibold text-slate-700 mb-2">Tenant Type</p>
         <div className="flex gap-2">
@@ -387,7 +264,7 @@ function FilterPanel({ filters, onChange, onReset, total }: FilterPanelProps) {
               className={cn(
                 "px-3 py-1.5 rounded-lg text-xs font-medium border transition-all cursor-pointer",
                 filters.allowsWomen === value
-                  ? "bg-red-500 text-white border-red-500 shadow-sm shadow-red-200"
+                  ? "bg-gradient-to-r from-red-500 to-rose-600 text-white border-transparent shadow-md shadow-red-200"
                   : "bg-white text-slate-600 border-slate-200 hover:border-red-300 hover:text-red-600",
               )}
             >
@@ -397,7 +274,6 @@ function FilterPanel({ filters, onChange, onReset, total }: FilterPanelProps) {
         </div>
       </div>
 
-      {/* Radius — only shown when location active (DO NOT TOUCH) */}
       {filters.lat !== null && (
         <div>
           <p className="text-sm font-semibold text-slate-700 mb-2">
@@ -424,7 +300,7 @@ function FilterPanel({ filters, onChange, onReset, total }: FilterPanelProps) {
           variant="outline"
           size="sm"
           onClick={onReset}
-          className="flex-1 cursor-pointer hover:border-red-300 hover:text-red-600 transition-colors"
+          className="flex-1 cursor-pointer hover:border-red-300 hover:text-red-600 transition-all hover:bg-red-50"
         >
           Reset
         </Button>
@@ -437,8 +313,7 @@ function FilterPanel({ filters, onChange, onReset, total }: FilterPanelProps) {
   );
 }
 
-// ─── Scroll-to-top FAB ────────────────────────────────────────────────────────
-
+// Scroll to top button
 function ScrollToTopFAB() {
   const [visible, setVisible] = useState(false);
 
@@ -470,8 +345,7 @@ function ScrollToTopFAB() {
   );
 }
 
-// ─── Animated room card wrapper ───────────────────────────────────────────────
-
+// Animated room card
 function AnimatedCard({
   room,
   index,
@@ -498,14 +372,12 @@ function AnimatedCard({
   );
 }
 
-// ─── Inner content ────────────────────────────────────────────────────────────
-
+// Main content component
 function RoomsContent() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  // ── Filter state ──────────────────────────────────────────────────────────
   const [filters, setFilters] = useState<FilterState>(() => {
     const cats = (searchParams?.getAll("cat") as RoomCategory[]) ?? [];
     return {
@@ -517,7 +389,6 @@ function RoomsContent() {
     };
   });
 
-  // ── Infinite scroll state ─────────────────────────────────────────────────
   const [rooms, setRooms] = useState<Room[]>([]);
   const [newRoomIds, setNewRoomIds] = useState<Set<string>>(new Set());
   const allPoolRef = useRef<Room[]>([]);
@@ -527,7 +398,6 @@ function RoomsContent() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
 
-  // ── Refs that shadow state — these are what loadMore reads ────────────────
   const offsetRef = useRef(0);
   const hasMoreRef = useRef(true);
   const totalRef = useRef(0);
@@ -543,7 +413,6 @@ function RoomsContent() {
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const loadingMoreRef = useRef(false);
 
-  // Keep filtersRef in sync
   useEffect(() => {
     filtersRef.current = filters;
   }, [filters]);
@@ -555,7 +424,6 @@ function RoomsContent() {
     };
   }, []);
 
-  // ── Core fetch: loads the FULL pool from server when filters change ───────
   const fetchPool = useCallback(
     async (f: FilterState): Promise<{ pool: Room[]; total: number }> => {
       abortRef.current?.abort();
@@ -601,7 +469,6 @@ function RoomsContent() {
         totalCount = allRooms.length;
       }
 
-      // ── Strategy B: client-side haversine geo-filter (DO NOT TOUCH) ───────
       if (locationActive) {
         const userLat = f.lat!;
         const userLng = f.lng!;
@@ -630,7 +497,6 @@ function RoomsContent() {
         totalCount = withDistance.length;
         allRooms = withDistance as Room[];
       }
-      // ── End geo-filter block ───────────────────────────────────────────────
 
       if (f.sort === "price-asc")
         allRooms.sort((a, b) => Number(a.price) - Number(b.price));
@@ -642,7 +508,6 @@ function RoomsContent() {
     [],
   );
 
-  // ── Server fetch for next page (Strategy A continuation) ─────────────────
   const fetchNextServerPage = useCallback(
     async (f: FilterState, currentOffset: number): Promise<Room[]> => {
       const serverPage = Math.floor(currentOffset / PAGE_SIZE);
@@ -684,7 +549,6 @@ function RoomsContent() {
     [],
   );
 
-  // ── Initial load / filter reset ───────────────────────────────────────────
   const initLoad = useCallback(
     async (f: FilterState) => {
       setInitialLoading(true);
@@ -751,7 +615,6 @@ function RoomsContent() {
     [fetchPool],
   );
 
-  // ── Load next batch (sentinel triggered) ──────────────────────────────────
   const loadMore = useCallback(async () => {
     if (loadingMoreRef.current || !hasMoreRef.current) return;
     loadingMoreRef.current = true;
@@ -808,7 +671,6 @@ function RoomsContent() {
     }
   }, [fetchNextServerPage]);
 
-  // ── Re-init on filter change ──────────────────────────────────────────────
   useEffect(() => {
     initLoad(filters);
 
@@ -823,19 +685,13 @@ function RoomsContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [JSON.stringify(filters)]);
 
-  // ── IntersectionObserver — set up ONCE, never torn down ──────────────────
   useEffect(() => {
     const sentinel = sentinelRef.current;
     if (!sentinel) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
-        if (
-          entries[0].isIntersecting &&
-          !loadingMoreRef.current &&
-          hasMoreRef.current &&
-          !initialLoading
-        ) {
+        if (entries[0].isIntersecting) {
           loadMore();
         }
       },
@@ -846,8 +702,6 @@ function RoomsContent() {
     return () => observer.disconnect();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  // ── Helpers ───────────────────────────────────────────────────────────────
 
   const updateFilters = useCallback((patch: Partial<FilterState>) => {
     setFilters((prev) => ({ ...prev, ...patch }));
@@ -876,7 +730,6 @@ function RoomsContent() {
     searchRef.current = setTimeout(() => updateFilters({ search: val }), 420);
   };
 
-  // ── Geolocation — ONLY on explicit button click (DO NOT TOUCH) ───────────
   const handleLocateClick = () => {
     if (typeof window === "undefined" || !navigator.geolocation) return;
     setLocLoading(true);
@@ -899,8 +752,6 @@ function RoomsContent() {
   };
 
   const clearLocation = () => updateFilters({ lat: null, lng: null });
-
-  // ── Derived ───────────────────────────────────────────────────────────────
 
   const locationActive = filters.lat !== null;
 
@@ -925,7 +776,7 @@ function RoomsContent() {
       <ScrollToTopFAB />
 
       <div className="min-h-screen bg-[#f8f8fa]">
-        {/* ── Header / Search ── */}
+        {/* Header */}
         <header className="bg-white border-b border-slate-100 pt-24 pb-6 shadow-sm">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <motion.div
@@ -962,7 +813,6 @@ function RoomsContent() {
               }}
               className="max-w-2xl mx-auto flex gap-2"
             >
-              {/* Search input */}
               <div className="relative flex-1 group">
                 <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none transition-colors group-focus-within:text-red-400" />
                 <Input
@@ -993,7 +843,6 @@ function RoomsContent() {
                 </AnimatePresence>
               </div>
 
-              {/* Location button — ONLY trigger for geolocation (DO NOT TOUCH) */}
               <Button
                 type="button"
                 variant="outline"
@@ -1027,7 +876,6 @@ function RoomsContent() {
               </Button>
             </motion.div>
 
-            {/* Location banner (DO NOT TOUCH) */}
             <AnimatePresence>
               {locationActive && (
                 <motion.p
@@ -1047,7 +895,7 @@ function RoomsContent() {
           </div>
         </header>
 
-        {/* ── Category chips ── */}
+        {/* Category chips */}
         <div className="bg-white border-b border-slate-100 sticky top-0 z-20 shadow-sm">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center gap-2 py-3 overflow-x-auto scrollbar-hide">
@@ -1058,7 +906,7 @@ function RoomsContent() {
                   "flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-semibold whitespace-nowrap border transition-all shrink-0 cursor-pointer",
                   filters.categories.length === 0
                     ? "bg-gradient-to-r from-red-500 to-rose-600 text-white border-transparent shadow-md shadow-red-200/60"
-                    : "bg-white text-slate-600 border-slate-200 hover:border-red-400 hover:text-red-600",
+                    : "bg-white text-slate-600 border-slate-200 hover:border-red-400 hover:text-red-600 hover:bg-red-50/50",
                 )}
               >
                 <Home className="w-3.5 h-3.5" />
@@ -1076,7 +924,7 @@ function RoomsContent() {
                       "flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-semibold whitespace-nowrap border transition-all shrink-0 cursor-pointer",
                       active
                         ? "bg-gradient-to-r from-red-500 to-rose-600 text-white border-transparent shadow-md shadow-red-200/60"
-                        : "bg-white text-slate-600 border-slate-200 hover:border-red-400 hover:text-red-600",
+                        : "bg-white text-slate-600 border-slate-200 hover:border-red-400 hover:text-red-600 hover:bg-red-50/50",
                     )}
                   >
                     <span>{cat.emoji}</span>
@@ -1100,10 +948,10 @@ function RoomsContent() {
           </div>
         </div>
 
-        {/* ── Main content ── */}
+        {/* Main content */}
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex flex-col lg:flex-row gap-6">
-            {/* Sidebar (desktop) */}
+            {/* Sidebar */}
             <aside className="hidden lg:block w-64 shrink-0">
               <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 sticky top-28">
                 <h2 className="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
@@ -1237,7 +1085,7 @@ function RoomsContent() {
                       updateFilters({ sort: v as SortOption })
                     }
                   >
-                    <SelectTrigger className="h-9 w-44 text-xs rounded-lg border-slate-200 cursor-pointer">
+                    <SelectTrigger className="h-9 w-44 text-xs rounded-lg border-slate-200 cursor-pointer hover:border-red-300 transition-colors">
                       <ArrowUpDown className="w-3 h-3 mr-1.5 text-slate-400" />
                       <SelectValue />
                     </SelectTrigger>
@@ -1254,16 +1102,15 @@ function RoomsContent() {
                     </SelectContent>
                   </Select>
 
-                  {/* Mobile filter sheet */}
                   <Sheet open={filterOpen} onOpenChange={setFilterOpen}>
                     <SheetTrigger asChild>
                       <Button
                         variant="outline"
                         size="sm"
                         className={cn(
-                          "lg:hidden h-9 gap-1.5 rounded-lg border-slate-200 text-xs cursor-pointer",
+                          "lg:hidden h-9 gap-1.5 rounded-lg border-slate-200 text-xs cursor-pointer transition-all",
                           hasActiveFilters &&
-                            "border-red-400 text-red-600 bg-red-50",
+                            "border-red-400 text-red-600 bg-red-50 hover:bg-red-100",
                         )}
                       >
                         <SlidersHorizontal className="w-3.5 h-3.5" />
@@ -1274,7 +1121,7 @@ function RoomsContent() {
                               initial={{ scale: 0 }}
                               animate={{ scale: 1 }}
                               exit={{ scale: 0 }}
-                              className="w-4 h-4 rounded-full bg-red-500 text-white text-[10px] flex items-center justify-center"
+                              className="w-4 h-4 rounded-full bg-gradient-to-r from-red-500 to-rose-600 text-white text-[10px] flex items-center justify-center"
                             >
                               {activeFilterCount}
                             </motion.span>
@@ -1299,23 +1146,27 @@ function RoomsContent() {
                 </div>
               </div>
 
-              {/* ── Room grid ── */}
+              {/* Room grid with elegant loader */}
               <AnimatePresence mode="wait">
                 {initialLoading ? (
-                  /* Initial skeleton grid */
                   <motion.div
-                    key="skeleton"
+                    key="full-loader"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    exit={{ opacity: 0, transition: { duration: 0.2 } }}
-                    className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5"
+                    exit={{ opacity: 0 }}
+                    className="py-16"
                   >
-                    {Array.from({ length: PAGE_SIZE }).map((_, i) => (
-                      <CardSkeleton key={i} index={i} />
-                    ))}
+                    <ElegantLoader
+                      variant="full"
+                      text="Discovering perfect rooms for you..."
+                    />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5 mt-8">
+                      {Array.from({ length: PAGE_SIZE }).map((_, i) => (
+                        <CardSkeleton key={i} index={i} />
+                      ))}
+                    </div>
                   </motion.div>
                 ) : rooms.length === 0 ? (
-                  /* Empty state */
                   <motion.div
                     key="empty"
                     initial={{ opacity: 0, y: 20, scale: 0.97 }}
@@ -1339,13 +1190,12 @@ function RoomsContent() {
                       variant="outline"
                       size="sm"
                       onClick={resetFilters}
-                      className="cursor-pointer hover:border-red-300 hover:text-red-600"
+                      className="cursor-pointer hover:border-red-300 hover:text-red-600 hover:bg-red-50"
                     >
                       Clear All Filters
                     </Button>
                   </motion.div>
                 ) : (
-                  /* ── Infinite grid — key stays constant so the grid persists ── */
                   <motion.div
                     key="grid"
                     initial={{ opacity: 0 }}
@@ -1353,7 +1203,6 @@ function RoomsContent() {
                     transition={{ duration: 0.2 }}
                   >
                     <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
-                      {/* Existing cards — no re-animation */}
                       {rooms.map((room, i) => (
                         <AnimatedCard
                           key={room.id}
@@ -1362,32 +1211,36 @@ function RoomsContent() {
                           isNew={newRoomIds.has(room.id)}
                         />
                       ))}
-
-                      {/* Elegant loader shown while loading more */}
-                      {loadingMore && (
-                        <div className="col-span-full">
-                          <InfiniteScrollLoader isVisible={loadingMore} />
-                        </div>
-                      )}
                     </div>
 
-                    {/* Footer: progress + indicator */}
-                    {!loadingMore && (
-                      <LoadMoreIndicator
-                        hasMore={hasMore}
-                        loadingMore={loadingMore}
-                        loaded={rooms.length}
-                        total={total}
-                      />
+                    {/* Elegant Infinite Scroll Loader */}
+                    <InfiniteScrollLoader
+                      loading={loadingMore}
+                      hasMore={hasMore}
+                      className="mt-8"
+                    />
+
+                    {/* End of results indicator */}
+                    {!hasMore && rooms.length > 0 && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="mt-12 text-center"
+                      >
+                        <div className="inline-flex items-center gap-2 px-4 py-2 bg-white rounded-full shadow-sm border border-slate-100">
+                          <Sparkles className="w-4 h-4 text-red-400" />
+                          <span className="text-sm text-slate-600">
+                            You've seen all {total} rooms
+                          </span>
+                          <Sparkles className="w-4 h-4 text-red-400" />
+                        </div>
+                      </motion.div>
                     )}
                   </motion.div>
                 )}
               </AnimatePresence>
 
-              {/*
-               * SENTINEL — lives OUTSIDE AnimatePresence so it is ALWAYS in the DOM.
-               * The IntersectionObserver (set up once on mount) always has a target.
-               */}
+              {/* Sentinel for infinite scroll */}
               <div
                 ref={sentinelRef}
                 aria-hidden="true"
@@ -1402,17 +1255,19 @@ function RoomsContent() {
   );
 }
 
-// ─── Page skeleton (Suspense fallback) ────────────────────────────────────────
-
+// Page skeleton for Suspense fallback
 function PageSkeleton() {
   return (
     <>
       <NavBar />
       <div className="min-h-screen bg-[#f8f8fa] pt-24">
-        <div className="max-w-7xl mx-auto px-4 py-8 space-y-6">
-          <div className="h-10 bg-slate-200 rounded-xl animate-pulse max-w-lg mx-auto" />
-          <div className="h-10 bg-slate-200 rounded-full animate-pulse max-w-2xl mx-auto" />
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
+        <div className="max-w-7xl mx-auto px-4 py-8">
+          <ElegantLoader
+            variant="full"
+            text="Loading amazing spaces..."
+            className="py-16"
+          />
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5 mt-8">
             {Array.from({ length: PAGE_SIZE }).map((_, i) => (
               <CardSkeleton key={i} index={i} />
             ))}
@@ -1424,6 +1279,7 @@ function PageSkeleton() {
   );
 }
 
+// Main export
 export default function RoomsPage() {
   return (
     <Suspense fallback={<PageSkeleton />}>
