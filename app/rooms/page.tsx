@@ -2,7 +2,7 @@
 
 import { Suspense, useState, useEffect, useCallback, useRef } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useScroll, useSpring } from "framer-motion";
 import {
   Search,
   X,
@@ -14,6 +14,7 @@ import {
   Navigation,
   Check,
   ArrowUp,
+  Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,8 +40,6 @@ import Footer from "@/components/common/footer";
 import { roomService } from "@/http/services/room.service";
 import { RoomCategory, RoomStatus, type Room } from "@/types/room.types";
 import { cn } from "@/lib/utils";
-
-// ─── Constants ────────────────────────────────────────────────────────────────
 
 const PAGE_SIZE = 9;
 
@@ -145,68 +144,173 @@ function haversineKm(
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-// ─── Skeleton ─────────────────────────────────────────────────────────────────
+// ─── Page-level scroll progress bar ──────────────────────────────────────────
+
+function ScrollProgressBar() {
+  const { scrollYProgress } = useScroll();
+  const scaleX = useSpring(scrollYProgress, {
+    stiffness: 200,
+    damping: 30,
+    restDelta: 0.001,
+  });
+
+  return (
+    <motion.div
+      style={{ scaleX, transformOrigin: "0%" }}
+      className="fixed top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-red-500 via-red-400 to-rose-500 z-[100] shadow-[0_0_10px_rgba(239,68,68,0.6)]"
+    />
+  );
+}
+
+// ─── Skeleton card with shimmer ───────────────────────────────────────────────
 
 function CardSkeleton({ index = 0 }: { index?: number }) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 24 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, delay: index * 0.06 }}
+      initial={{ opacity: 0, y: 32, scale: 0.96 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{
+        duration: 0.5,
+        delay: index * 0.07,
+        ease: [0.22, 1, 0.36, 1],
+      }}
       className="bg-white rounded-2xl overflow-hidden border border-slate-100 shadow-sm"
     >
-      <div className="aspect-[4/3] bg-gradient-to-br from-slate-100 to-slate-200 animate-pulse" />
+      {/* Image shimmer */}
+      <div className="relative aspect-[4/3] overflow-hidden bg-slate-100">
+        <div className="absolute inset-0 -translate-x-full animate-[shimmer_1.6s_infinite] bg-gradient-to-r from-transparent via-white/60 to-transparent" />
+      </div>
       <div className="p-4 space-y-3">
-        <div className="h-4 bg-slate-100 rounded-lg animate-pulse w-3/4" />
-        <div className="h-3 bg-slate-100 rounded-lg animate-pulse w-1/2" />
+        <div className="relative overflow-hidden h-4 bg-slate-100 rounded-lg w-3/4">
+          <div className="absolute inset-0 -translate-x-full animate-[shimmer_1.6s_0.1s_infinite] bg-gradient-to-r from-transparent via-white/60 to-transparent" />
+        </div>
+        <div className="relative overflow-hidden h-3 bg-slate-100 rounded-lg w-1/2">
+          <div className="absolute inset-0 -translate-x-full animate-[shimmer_1.6s_0.2s_infinite] bg-gradient-to-r from-transparent via-white/60 to-transparent" />
+        </div>
         <div className="flex gap-2 py-2">
-          <div className="flex-1 h-10 bg-slate-50 rounded-xl animate-pulse" />
-          <div className="flex-1 h-10 bg-slate-50 rounded-xl animate-pulse" />
-          <div className="flex-1 h-10 bg-slate-50 rounded-xl animate-pulse" />
+          {[0, 1, 2].map((j) => (
+            <div
+              key={j}
+              className="relative flex-1 overflow-hidden h-10 bg-slate-50 rounded-xl"
+            >
+              <div
+                className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/60 to-transparent"
+                style={{
+                  animation: `shimmer 1.6s ${0.15 * j}s infinite`,
+                }}
+              />
+            </div>
+          ))}
         </div>
         <div className="flex gap-2">
-          <div className="h-5 w-14 bg-slate-100 rounded-full animate-pulse" />
-          <div className="h-5 w-14 bg-slate-100 rounded-full animate-pulse" />
+          <div className="relative overflow-hidden h-5 w-14 bg-slate-100 rounded-full">
+            <div className="absolute inset-0 -translate-x-full animate-[shimmer_1.6s_0.3s_infinite] bg-gradient-to-r from-transparent via-white/60 to-transparent" />
+          </div>
+          <div className="relative overflow-hidden h-5 w-14 bg-slate-100 rounded-full">
+            <div className="absolute inset-0 -translate-x-full animate-[shimmer_1.6s_0.4s_infinite] bg-gradient-to-r from-transparent via-white/60 to-transparent" />
+          </div>
         </div>
       </div>
     </motion.div>
   );
 }
 
-// ─── Infinite scroll sentinel loader ──────────────────────────────────────────
+// ─── Inline load-more skeleton rows (appended below existing cards) ───────────
 
-function LoadMoreIndicator({ hasMore }: { hasMore: boolean }) {
-  if (!hasMore) {
-    return (
-      <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex flex-col items-center gap-2 py-12"
-      >
-        <div className="w-12 h-[2px] bg-gradient-to-r from-transparent via-red-200 to-transparent" />
-        <p className="text-xs text-slate-400 tracking-widest uppercase">
-          All caught up
-        </p>
-        <div className="w-12 h-[2px] bg-gradient-to-r from-transparent via-red-200 to-transparent" />
-      </motion.div>
-    );
-  }
+function InlineSkeletonRow({ count = 3 }: { count?: number }) {
+  return (
+    <>
+      {Array.from({ length: count }).map((_, i) => (
+        <CardSkeleton key={`inline-skel-${i}`} index={i} />
+      ))}
+    </>
+  );
+}
+
+// ─── Load-more footer indicator ───────────────────────────────────────────────
+
+function LoadMoreIndicator({
+  hasMore,
+  loadingMore,
+  loaded,
+  total,
+}: {
+  hasMore: boolean;
+  loadingMore: boolean;
+  loaded: number;
+  total: number;
+}) {
+  const pct = total > 0 ? Math.min((loaded / total) * 100, 100) : 0;
 
   return (
-    <div className="flex items-center justify-center py-10 gap-3">
-      {[0, 1, 2].map((i) => (
+    <div className="mt-10 flex flex-col items-center gap-3">
+      {/* Progress track */}
+      <div className="w-48 h-[3px] bg-slate-100 rounded-full overflow-hidden">
         <motion.div
-          key={i}
-          className="w-2 h-2 rounded-full bg-red-400"
-          animate={{ y: [0, -8, 0], opacity: [0.4, 1, 0.4] }}
-          transition={{
-            duration: 0.9,
-            repeat: Infinity,
-            delay: i * 0.18,
-            ease: "easeInOut",
-          }}
+          className="h-full bg-gradient-to-r from-red-400 to-rose-500 rounded-full"
+          initial={false}
+          animate={{ width: `${pct}%` }}
+          transition={{ duration: 0.6, ease: "easeOut" }}
         />
-      ))}
+      </div>
+
+      {/* Count */}
+      <p className="text-xs text-slate-400 tabular-nums">
+        <span className="font-semibold text-slate-600">{loaded}</span>
+        {" of "}
+        <span className="font-semibold text-slate-600">{total}</span>
+        {" rooms"}
+      </p>
+
+      {/* State label */}
+      <AnimatePresence mode="wait">
+        {loadingMore ? (
+          <motion.div
+            key="loading"
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            className="flex items-center gap-2 text-xs text-red-500 font-medium"
+          >
+            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            Loading more…
+          </motion.div>
+        ) : !hasMore ? (
+          <motion.div
+            key="done"
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="flex flex-col items-center gap-1.5"
+          >
+            <div className="flex items-center gap-1.5 text-xs text-slate-400">
+              <Sparkles className="w-3.5 h-3.5 text-red-300" />
+              <span className="tracking-wide">You've seen it all</span>
+              <Sparkles className="w-3.5 h-3.5 text-red-300" />
+            </div>
+          </motion.div>
+        ) : (
+          <motion.div
+            key="more"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="flex items-center gap-1.5"
+          >
+            {[0, 1, 2].map((i) => (
+              <motion.div
+                key={i}
+                className="w-1.5 h-1.5 rounded-full bg-red-300"
+                animate={{ y: [0, -5, 0], opacity: [0.5, 1, 0.5] }}
+                transition={{
+                  duration: 0.8,
+                  repeat: Infinity,
+                  delay: i * 0.15,
+                  ease: "easeInOut",
+                }}
+              />
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -227,7 +331,7 @@ function FilterPanel({ filters, onChange, onReset, total }: FilterPanelProps) {
       <div>
         <p className="text-sm font-semibold text-slate-700 mb-3">
           Price Range
-          <span className="font-normal text-slate-500 ml-2">
+          <span className="font-normal text-slate-500 ml-2 text-xs">
             रू {filters.minPrice.toLocaleString()} – रू{" "}
             {filters.maxPrice.toLocaleString()}
           </span>
@@ -242,7 +346,7 @@ function FilterPanel({ filters, onChange, onReset, total }: FilterPanelProps) {
           }
           className="w-full"
         />
-        <div className="flex justify-between text-xs text-slate-400 mt-1">
+        <div className="flex justify-between text-xs text-slate-400 mt-2">
           <span>रू ०</span>
           <span>रू ५०,०००+</span>
         </div>
@@ -263,8 +367,8 @@ function FilterPanel({ filters, onChange, onReset, total }: FilterPanelProps) {
               className={cn(
                 "px-3 py-1.5 rounded-lg text-xs font-medium border transition-all cursor-pointer",
                 filters.allowsWomen === value
-                  ? "bg-red-500 text-white border-red-500"
-                  : "bg-white text-slate-600 border-slate-200 hover:border-red-300",
+                  ? "bg-red-500 text-white border-red-500 shadow-sm shadow-red-200"
+                  : "bg-white text-slate-600 border-slate-200 hover:border-red-300 hover:text-red-600",
               )}
             >
               {label}
@@ -287,24 +391,25 @@ function FilterPanel({ filters, onChange, onReset, total }: FilterPanelProps) {
             value={[filters.radius]}
             onValueChange={([r]) => onChange({ radius: r })}
           />
-          <div className="flex justify-between text-xs text-slate-400 mt-1">
+          <div className="flex justify-between text-xs text-slate-400 mt-2">
             <span>1 km</span>
             <span>25 km</span>
           </div>
         </div>
       )}
 
-      <div className="flex gap-2 pt-2">
+      <div className="flex gap-2 pt-1">
         <Button
           variant="outline"
           size="sm"
           onClick={onReset}
-          className="flex-1 cursor-pointer"
+          className="flex-1 cursor-pointer hover:border-red-300 hover:text-red-600 transition-colors"
         >
           Reset
         </Button>
         <div className="flex-1 flex items-center justify-center text-xs text-slate-500">
-          {total} rooms
+          <span className="font-semibold text-slate-700">{total}</span>
+          &nbsp;rooms
         </div>
       </div>
     </div>
@@ -327,18 +432,48 @@ function ScrollToTopFAB() {
       {visible && (
         <motion.button
           key="fab"
-          initial={{ opacity: 0, scale: 0.6, y: 20 }}
+          initial={{ opacity: 0, scale: 0.5, y: 24 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.6, y: 20 }}
-          transition={{ type: "spring", stiffness: 400, damping: 28 }}
+          exit={{ opacity: 0, scale: 0.5, y: 24 }}
+          transition={{ type: "spring", stiffness: 500, damping: 30 }}
+          whileHover={{ scale: 1.08 }}
+          whileTap={{ scale: 0.93 }}
           onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-          className="fixed bottom-8 right-6 z-50 w-11 h-11 rounded-2xl bg-red-600 text-white shadow-lg shadow-red-200 flex items-center justify-center hover:bg-red-700 hover:shadow-xl hover:shadow-red-300 transition-all active:scale-95 cursor-pointer"
+          className="fixed bottom-8 right-6 z-50 w-12 h-12 rounded-2xl bg-gradient-to-br from-red-500 to-rose-600 text-white shadow-lg shadow-red-300/50 flex items-center justify-center"
           aria-label="Scroll to top"
         >
           <ArrowUp className="w-4 h-4" />
         </motion.button>
       )}
     </AnimatePresence>
+  );
+}
+
+// ─── Animated room card wrapper ───────────────────────────────────────────────
+
+function AnimatedCard({
+  room,
+  index,
+  isNew,
+}: {
+  room: Room;
+  index: number;
+  isNew: boolean;
+}) {
+  return (
+    <motion.div
+      key={room.id}
+      layout
+      initial={isNew ? { opacity: 0, y: 40, scale: 0.95 } : false}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{
+        duration: 0.45,
+        delay: isNew ? Math.min(index % PAGE_SIZE, 8) * 0.06 : 0,
+        ease: [0.22, 1, 0.36, 1],
+      }}
+    >
+      <PropertyCard room={room} index={index} />
+    </motion.div>
   );
 }
 
@@ -363,6 +498,7 @@ function RoomsContent() {
 
   // ── Infinite scroll state ─────────────────────────────────────────────────
   const [rooms, setRooms] = useState<Room[]>([]);
+  const [newRoomIds, setNewRoomIds] = useState<Set<string>>(new Set());
   const allPoolRef = useRef<Room[]>([]);
   const [total, setTotal] = useState(0);
   const [offset, setOffset] = useState(0);
@@ -371,8 +507,6 @@ function RoomsContent() {
   const [hasMore, setHasMore] = useState(true);
 
   // ── Refs that shadow state — these are what loadMore reads ────────────────
-  // This is the core fix: loadMore reads from refs (always current) instead of
-  // stale closure values captured at the time the callback was memoised.
   const offsetRef = useRef(0);
   const hasMoreRef = useRef(true);
   const totalRef = useRef(0);
@@ -534,8 +668,8 @@ function RoomsContent() {
     async (f: FilterState) => {
       setInitialLoading(true);
       setRooms([]);
+      setNewRoomIds(new Set());
 
-      // Reset both state AND refs atomically
       setOffset(0);
       offsetRef.current = 0;
       setHasMore(true);
@@ -543,8 +677,6 @@ function RoomsContent() {
       setTotal(0);
       totalRef.current = 0;
       allPoolRef.current = [];
-
-      // Also reset the loadingMore guard so it can fire again after filter change
       loadingMoreRef.current = false;
 
       try {
@@ -554,9 +686,11 @@ function RoomsContent() {
         const locationActive = f.lat !== null && f.lng !== null;
 
         if (locationActive) {
-          // Geo mode: entire pool is in memory, slice client-side
           allPoolRef.current = pool;
           const first = pool.slice(0, PAGE_SIZE);
+
+          const ids = new Set(first.map((r) => r.id));
+          setNewRoomIds(ids);
           setRooms(first);
 
           const newOffset = PAGE_SIZE;
@@ -570,8 +704,10 @@ function RoomsContent() {
           setHasMore(more);
           hasMoreRef.current = more;
         } else {
-          // Server-paginated mode: first page already fetched
           allPoolRef.current = pool;
+
+          const ids = new Set(pool.map((r) => r.id));
+          setNewRoomIds(ids);
           setRooms(pool);
 
           const newOffset = pool.length;
@@ -595,9 +731,6 @@ function RoomsContent() {
   );
 
   // ── Load next batch (sentinel triggered) ──────────────────────────────────
-  // KEY FIX: reads offsetRef / hasMoreRef / totalRef / filtersRef instead of
-  // stale closure values. The callback itself has NO dependencies on state that
-  // changes between renders — only stable refs and stable callbacks.
   const loadMore = useCallback(async () => {
     if (loadingMoreRef.current || !hasMoreRef.current) return;
     loadingMoreRef.current = true;
@@ -610,11 +743,12 @@ function RoomsContent() {
         currentFilters.lat !== null && currentFilters.lng !== null;
 
       if (locationActive) {
-        // Geo mode: slice next chunk from in-memory pool
         const pool = allPoolRef.current;
         const nextChunk = pool.slice(currentOffset, currentOffset + PAGE_SIZE);
         if (!mountedRef.current) return;
 
+        const newIds = new Set(nextChunk.map((r) => r.id));
+        setNewRoomIds(newIds);
         setRooms((prev) => [...prev, ...nextChunk]);
 
         const newOffset = currentOffset + nextChunk.length;
@@ -625,13 +759,14 @@ function RoomsContent() {
         setHasMore(more);
         hasMoreRef.current = more;
       } else {
-        // Server mode: fetch next server page
         const nextRooms = await fetchNextServerPage(
           currentFilters,
           currentOffset,
         );
         if (!mountedRef.current) return;
 
+        const newIds = new Set(nextRooms.map((r) => r.id));
+        setNewRoomIds(newIds);
         setRooms((prev) => [...prev, ...nextRooms]);
 
         const newOffset = currentOffset + nextRooms.length;
@@ -651,14 +786,11 @@ function RoomsContent() {
       }
     }
   }, [fetchNextServerPage]);
-  // NOTE: fetchNextServerPage is stable (empty deps). loadMore intentionally
-  // does NOT depend on filters/offset/hasMore/total — it reads them from refs.
 
   // ── Re-init on filter change ──────────────────────────────────────────────
   useEffect(() => {
     initLoad(filters);
 
-    // Sync URL
     const params = new URLSearchParams();
     filters.categories.forEach((c) => params.append("cat", c));
     if (filters.search) params.set("q", filters.search);
@@ -670,12 +802,7 @@ function RoomsContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [JSON.stringify(filters)]);
 
-  // ── IntersectionObserver for sentinel ────────────────────────────────────
-  // KEY FIX: the observer is set up ONCE and never torn down/re-created on
-  // every loadMore change. loadMore is now stable (no state deps), so this
-  // effect only runs once on mount. The sentinel element is always in the DOM
-  // (rendered unconditionally outside the grid), so the observer always has
-  // a target.
+  // ── IntersectionObserver — set up ONCE, never torn down ──────────────────
   useEffect(() => {
     const sentinel = sentinelRef.current;
     if (!sentinel) return;
@@ -686,12 +813,11 @@ function RoomsContent() {
           loadMore();
         }
       },
-      { rootMargin: "400px" },
+      { rootMargin: "500px" },
     );
 
     observer.observe(sentinel);
     return () => observer.disconnect();
-    // loadMore is stable — this runs exactly once
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -769,51 +895,76 @@ function RoomsContent() {
   return (
     <>
       <NavBar />
+      <ScrollProgressBar />
       <ScrollToTopFAB />
 
-      <div className="min-h-screen bg-slate-50">
+      <div className="min-h-screen bg-[#f8f8fa]">
         {/* ── Header / Search ── */}
         <header className="bg-white border-b border-slate-100 pt-24 pb-6 shadow-sm">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <motion.div
-              initial={{ opacity: 0, y: 16 }}
+              initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
               className="max-w-2xl mx-auto text-center mb-6"
             >
-              <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">
-                Find Your <span className="text-red-600">Perfect Room</span>
+              <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
+                Find Your{" "}
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-red-500 to-rose-600">
+                  Perfect Room
+                </span>
               </h1>
-              <p className="text-slate-500 text-sm mt-1">
+              <motion.p
+                className="text-slate-500 text-sm mt-1.5"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.2 }}
+              >
                 {total > 0
-                  ? `${total} verified ${locationActive ? `properties within ${filters.radius} km` : "properties available"}`
+                  ? `${total.toLocaleString()} verified ${locationActive ? `properties within ${filters.radius} km` : "properties available"}`
                   : "Browse verified listings across Nepal"}
-              </p>
+              </motion.p>
             </motion.div>
 
-            <div className="max-w-2xl mx-auto flex gap-2">
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{
+                delay: 0.1,
+                duration: 0.45,
+                ease: [0.22, 1, 0.36, 1],
+              }}
+              className="max-w-2xl mx-auto flex gap-2"
+            >
               {/* Search input */}
-              <div className="relative flex-1">
-                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+              <div className="relative flex-1 group">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none transition-colors group-focus-within:text-red-400" />
                 <Input
                   type="search"
                   placeholder="Search by location or property name…"
                   value={searchInput}
                   onChange={(e) => handleSearch(e.target.value)}
-                  className="pl-10 pr-9 h-11 rounded-xl border-slate-200 focus:border-red-400 focus:ring-red-100 bg-white"
+                  className="pl-10 pr-9 h-11 rounded-xl border-slate-200 focus:border-red-400 focus:ring-2 focus:ring-red-100 bg-white transition-all"
                 />
-                {searchInput && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSearchInput("");
-                      updateFilters({ search: "" });
-                    }}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
-                    aria-label="Clear search"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                )}
+                <AnimatePresence>
+                  {searchInput && (
+                    <motion.button
+                      type="button"
+                      initial={{ opacity: 0, scale: 0.7 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.7 }}
+                      transition={{ duration: 0.15 }}
+                      onClick={() => {
+                        setSearchInput("");
+                        updateFilters({ search: "" });
+                      }}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 cursor-pointer"
+                      aria-label="Clear search"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </motion.button>
+                  )}
+                </AnimatePresence>
               </div>
 
               {/* Location button — ONLY trigger for geolocation (DO NOT TOUCH) */}
@@ -834,9 +985,10 @@ function RoomsContent() {
                     : "Search near my location"
                 }
                 className={cn(
-                  "h-11 w-11 rounded-xl border-slate-200 shrink-0 transition-colors cursor-pointer",
-                  locationActive &&
-                    "bg-red-50 border-red-300 text-red-600 hover:bg-red-100",
+                  "h-11 w-11 rounded-xl border-slate-200 shrink-0 transition-all cursor-pointer",
+                  locationActive
+                    ? "bg-red-50 border-red-300 text-red-600 hover:bg-red-100 shadow-sm shadow-red-100"
+                    : "hover:border-red-300 hover:text-red-600",
                 )}
               >
                 {locLoading ? (
@@ -847,16 +999,17 @@ function RoomsContent() {
                   <Navigation className="w-4 h-4" />
                 )}
               </Button>
-            </div>
+            </motion.div>
 
             {/* Location banner (DO NOT TOUCH) */}
             <AnimatePresence>
               {locationActive && (
                 <motion.p
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: "auto" }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className="text-center text-xs text-red-600 mt-2 flex items-center justify-center gap-1"
+                  initial={{ opacity: 0, height: 0, marginTop: 0 }}
+                  animate={{ opacity: 1, height: "auto", marginTop: 8 }}
+                  exit={{ opacity: 0, height: 0, marginTop: 0 }}
+                  transition={{ duration: 0.25 }}
+                  className="text-center text-xs text-red-600 flex items-center justify-center gap-1"
                 >
                   <MapPin className="w-3 h-3" />
                   Showing {total} rooms within{" "}
@@ -878,7 +1031,7 @@ function RoomsContent() {
                 className={cn(
                   "flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-semibold whitespace-nowrap border transition-all shrink-0 cursor-pointer",
                   filters.categories.length === 0
-                    ? "bg-red-600 text-white border-red-600 shadow-md shadow-red-100"
+                    ? "bg-gradient-to-r from-red-500 to-rose-600 text-white border-transparent shadow-md shadow-red-200/60"
                     : "bg-white text-slate-600 border-slate-200 hover:border-red-400 hover:text-red-600",
                 )}
               >
@@ -896,13 +1049,24 @@ function RoomsContent() {
                     className={cn(
                       "flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-semibold whitespace-nowrap border transition-all shrink-0 cursor-pointer",
                       active
-                        ? "bg-red-600 text-white border-red-600 shadow-md shadow-red-100"
+                        ? "bg-gradient-to-r from-red-500 to-rose-600 text-white border-transparent shadow-md shadow-red-200/60"
                         : "bg-white text-slate-600 border-slate-200 hover:border-red-400 hover:text-red-600",
                     )}
                   >
                     <span>{cat.emoji}</span>
                     <span>{cat.label}</span>
-                    {active && <Check className="w-3 h-3" />}
+                    <AnimatePresence>
+                      {active && (
+                        <motion.span
+                          initial={{ opacity: 0, scale: 0.5, width: 0 }}
+                          animate={{ opacity: 1, scale: 1, width: "auto" }}
+                          exit={{ opacity: 0, scale: 0.5, width: 0 }}
+                          transition={{ duration: 0.18 }}
+                        >
+                          <Check className="w-3 h-3" />
+                        </motion.span>
+                      )}
+                    </AnimatePresence>
                   </button>
                 );
               })}
@@ -935,87 +1099,109 @@ function RoomsContent() {
               <div className="flex items-center justify-between gap-3 mb-4">
                 <div>
                   <p className="text-sm text-slate-500" aria-live="polite">
-                    {initialLoading
-                      ? "Searching…"
-                      : `${total} room${total !== 1 ? "s" : ""} found`}
+                    {initialLoading ? (
+                      <span className="inline-flex items-center gap-1.5">
+                        <Loader2 className="w-3.5 h-3.5 animate-spin text-red-400" />
+                        Searching…
+                      </span>
+                    ) : (
+                      <motion.span
+                        key={total}
+                        initial={{ opacity: 0, y: -6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.25 }}
+                      >
+                        {total.toLocaleString()} room{total !== 1 ? "s" : ""}{" "}
+                        found
+                      </motion.span>
+                    )}
                   </p>
 
-                  {hasActiveFilters && !initialLoading && (
-                    <div className="flex flex-wrap gap-1.5 mt-2">
-                      {filters.categories.map((cat) => (
-                        <Badge
-                          key={cat}
-                          variant="secondary"
-                          className="gap-1 text-xs pr-1 bg-red-50 text-red-700 border-red-200"
-                        >
-                          {CATEGORIES.find((c) => c.value === cat)?.label ??
-                            cat}
-                          <button
-                            onClick={() => toggleCategory(cat)}
-                            className="ml-0.5 hover:text-red-900 cursor-pointer"
-                            aria-label={`Remove ${cat} filter`}
-                          >
-                            <X className="w-2.5 h-2.5" />
-                          </button>
-                        </Badge>
-                      ))}
-                      {(filters.minPrice > 0 || filters.maxPrice < 50000) && (
-                        <Badge
-                          variant="secondary"
-                          className="gap-1 text-xs pr-1 bg-red-50 text-red-700 border-red-200"
-                        >
-                          रू {filters.minPrice.toLocaleString()}–
-                          {filters.maxPrice.toLocaleString()}
-                          <button
-                            onClick={() =>
-                              updateFilters({ minPrice: 0, maxPrice: 50000 })
-                            }
-                            className="cursor-pointer"
-                            aria-label="Remove price filter"
-                          >
-                            <X className="w-2.5 h-2.5" />
-                          </button>
-                        </Badge>
-                      )}
-                      {filters.allowsWomen && (
-                        <Badge
-                          variant="secondary"
-                          className="gap-1 text-xs pr-1 bg-pink-50 text-pink-700 border-pink-200"
-                        >
-                          ♀ Women OK
-                          <button
-                            onClick={() => updateFilters({ allowsWomen: null })}
-                            className="cursor-pointer"
-                            aria-label="Remove women filter"
-                          >
-                            <X className="w-2.5 h-2.5" />
-                          </button>
-                        </Badge>
-                      )}
-                      {locationActive && (
-                        <Badge
-                          variant="secondary"
-                          className="gap-1 text-xs pr-1 bg-blue-50 text-blue-700 border-blue-200"
-                        >
-                          <MapPin className="w-2.5 h-2.5" />
-                          Near me ({filters.radius} km)
-                          <button
-                            onClick={clearLocation}
-                            className="cursor-pointer"
-                            aria-label="Remove location filter"
-                          >
-                            <X className="w-2.5 h-2.5" />
-                          </button>
-                        </Badge>
-                      )}
-                      <button
-                        onClick={resetFilters}
-                        className="text-xs text-slate-400 hover:text-slate-700 underline underline-offset-2 cursor-pointer"
+                  <AnimatePresence>
+                    {hasActiveFilters && !initialLoading && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="flex flex-wrap gap-1.5 mt-2 overflow-hidden"
                       >
-                        Clear all
-                      </button>
-                    </div>
-                  )}
+                        {filters.categories.map((cat) => (
+                          <Badge
+                            key={cat}
+                            variant="secondary"
+                            className="gap-1 text-xs pr-1 bg-red-50 text-red-700 border border-red-200"
+                          >
+                            {CATEGORIES.find((c) => c.value === cat)?.label ??
+                              cat}
+                            <button
+                              onClick={() => toggleCategory(cat)}
+                              className="ml-0.5 hover:text-red-900 cursor-pointer"
+                              aria-label={`Remove ${cat} filter`}
+                            >
+                              <X className="w-2.5 h-2.5" />
+                            </button>
+                          </Badge>
+                        ))}
+                        {(filters.minPrice > 0 || filters.maxPrice < 50000) && (
+                          <Badge
+                            variant="secondary"
+                            className="gap-1 text-xs pr-1 bg-red-50 text-red-700 border border-red-200"
+                          >
+                            रू {filters.minPrice.toLocaleString()}–
+                            {filters.maxPrice.toLocaleString()}
+                            <button
+                              onClick={() =>
+                                updateFilters({ minPrice: 0, maxPrice: 50000 })
+                              }
+                              className="cursor-pointer"
+                              aria-label="Remove price filter"
+                            >
+                              <X className="w-2.5 h-2.5" />
+                            </button>
+                          </Badge>
+                        )}
+                        {filters.allowsWomen && (
+                          <Badge
+                            variant="secondary"
+                            className="gap-1 text-xs pr-1 bg-pink-50 text-pink-700 border border-pink-200"
+                          >
+                            ♀ Women OK
+                            <button
+                              onClick={() =>
+                                updateFilters({ allowsWomen: null })
+                              }
+                              className="cursor-pointer"
+                              aria-label="Remove women filter"
+                            >
+                              <X className="w-2.5 h-2.5" />
+                            </button>
+                          </Badge>
+                        )}
+                        {locationActive && (
+                          <Badge
+                            variant="secondary"
+                            className="gap-1 text-xs pr-1 bg-blue-50 text-blue-700 border border-blue-200"
+                          >
+                            <MapPin className="w-2.5 h-2.5" />
+                            Near me ({filters.radius} km)
+                            <button
+                              onClick={clearLocation}
+                              className="cursor-pointer"
+                              aria-label="Remove location filter"
+                            >
+                              <X className="w-2.5 h-2.5" />
+                            </button>
+                          </Badge>
+                        )}
+                        <button
+                          onClick={resetFilters}
+                          className="text-xs text-slate-400 hover:text-slate-700 underline underline-offset-2 cursor-pointer transition-colors"
+                        >
+                          Clear all
+                        </button>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
 
                 <div className="flex items-center gap-2 shrink-0">
@@ -1056,11 +1242,18 @@ function RoomsContent() {
                       >
                         <SlidersHorizontal className="w-3.5 h-3.5" />
                         Filter
-                        {activeFilterCount > 0 && (
-                          <span className="w-4 h-4 rounded-full bg-red-500 text-white text-[10px] flex items-center justify-center">
-                            {activeFilterCount}
-                          </span>
-                        )}
+                        <AnimatePresence>
+                          {activeFilterCount > 0 && (
+                            <motion.span
+                              initial={{ scale: 0 }}
+                              animate={{ scale: 1 }}
+                              exit={{ scale: 0 }}
+                              className="w-4 h-4 rounded-full bg-red-500 text-white text-[10px] flex items-center justify-center"
+                            >
+                              {activeFilterCount}
+                            </motion.span>
+                          )}
+                        </AnimatePresence>
                       </Button>
                     </SheetTrigger>
                     <SheetContent side="right" className="w-[300px]">
@@ -1088,7 +1281,7 @@ function RoomsContent() {
                     key="skeleton"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
+                    exit={{ opacity: 0, transition: { duration: 0.2 } }}
                     className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5"
                   >
                     {Array.from({ length: PAGE_SIZE }).map((_, i) => (
@@ -1099,11 +1292,13 @@ function RoomsContent() {
                   /* Empty state */
                   <motion.div
                     key="empty"
-                    initial={{ opacity: 0, y: 16 }}
-                    animate={{ opacity: 1, y: 0 }}
+                    initial={{ opacity: 0, y: 20, scale: 0.97 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
                     className="bg-white rounded-2xl border border-slate-100 shadow-sm py-20 px-8 text-center"
                   >
-                    <div className="w-16 h-16 rounded-2xl bg-red-50 flex items-center justify-center mx-auto mb-4">
+                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-red-50 to-rose-100 flex items-center justify-center mx-auto mb-4 shadow-inner">
                       <Home className="w-8 h-8 text-red-300" />
                     </div>
                     <h3 className="text-lg font-semibold text-slate-900 mb-1">
@@ -1118,13 +1313,13 @@ function RoomsContent() {
                       variant="outline"
                       size="sm"
                       onClick={resetFilters}
-                      className="cursor-pointer"
+                      className="cursor-pointer hover:border-red-300 hover:text-red-600"
                     >
                       Clear All Filters
                     </Button>
                   </motion.div>
                 ) : (
-                  /* Infinite grid */
+                  /* ── Infinite grid — key stays constant so the grid persists ── */
                   <motion.div
                     key="grid"
                     initial={{ opacity: 0 }}
@@ -1132,53 +1327,31 @@ function RoomsContent() {
                     transition={{ duration: 0.2 }}
                   >
                     <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
+                      {/* Existing cards — no re-animation */}
                       {rooms.map((room, i) => (
-                        <motion.div
+                        <AnimatedCard
                           key={room.id}
-                          initial={{ opacity: 0, y: 28, scale: 0.97 }}
-                          animate={{ opacity: 1, y: 0, scale: 1 }}
-                          transition={{
-                            duration: 0.38,
-                            delay: Math.min(i % PAGE_SIZE, 8) * 0.055,
-                            ease: [0.22, 1, 0.36, 1],
-                          }}
-                        >
-                          <PropertyCard room={room} index={i} />
-                        </motion.div>
+                          room={room}
+                          index={i}
+                          isNew={newRoomIds.has(room.id)}
+                        />
                       ))}
+
+                      {/* Inline skeleton placeholders while loading next batch */}
+                      {loadingMore && (
+                        <InlineSkeletonRow
+                          count={Math.min(PAGE_SIZE, total - rooms.length)}
+                        />
+                      )}
                     </div>
 
-                    {/* Progress indicator + sentinel */}
-                    {rooms.length > 0 && !initialLoading && (
-                      <div className="mt-6">
-                        {/* Slim progress bar */}
-                        <div className="relative h-[3px] bg-slate-100 rounded-full overflow-hidden max-w-xs mx-auto mb-4">
-                          <motion.div
-                            className="absolute inset-y-0 left-0 bg-gradient-to-r from-red-400 to-red-600 rounded-full"
-                            initial={false}
-                            animate={{
-                              width: `${Math.min((rooms.length / total) * 100, 100)}%`,
-                            }}
-                            transition={{ duration: 0.5, ease: "easeOut" }}
-                          />
-                        </div>
-
-                        {/* Count chip */}
-                        <p className="text-center text-xs text-slate-400">
-                          <span className="font-semibold text-slate-600">
-                            {rooms.length}
-                          </span>{" "}
-                          of{" "}
-                          <span className="font-semibold text-slate-600">
-                            {total}
-                          </span>{" "}
-                          rooms
-                        </p>
-
-                        {/* Animated dots or end state */}
-                        <LoadMoreIndicator hasMore={loadingMore || hasMore} />
-                      </div>
-                    )}
+                    {/* Footer: progress + indicator */}
+                    <LoadMoreIndicator
+                      hasMore={hasMore}
+                      loadingMore={loadingMore}
+                      loaded={rooms.length}
+                      total={total}
+                    />
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -1186,8 +1359,6 @@ function RoomsContent() {
               {/*
                * SENTINEL — lives OUTSIDE AnimatePresence so it is ALWAYS in the DOM.
                * The IntersectionObserver (set up once on mount) always has a target.
-               * When initialLoading is true we still observe it but loadMore() returns
-               * early because loadingMoreRef.current is true (set in initLoad reset).
                */}
               <div
                 ref={sentinelRef}
@@ -1209,7 +1380,7 @@ function PageSkeleton() {
   return (
     <>
       <NavBar />
-      <div className="min-h-screen bg-slate-50 pt-24">
+      <div className="min-h-screen bg-[#f8f8fa] pt-24">
         <div className="max-w-7xl mx-auto px-4 py-8 space-y-6">
           <div className="h-10 bg-slate-200 rounded-xl animate-pulse max-w-lg mx-auto" />
           <div className="h-10 bg-slate-200 rounded-full animate-pulse max-w-2xl mx-auto" />
