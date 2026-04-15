@@ -1255,7 +1255,6 @@ function RoomsContent() {
   );
 }
 
-// Page skeleton for Suspense fallback
 function PageSkeleton() {
   return (
     <>
@@ -1279,7 +1278,6 @@ function PageSkeleton() {
   );
 }
 
-// Main export
 export default function RoomsPage() {
   return (
     <Suspense fallback={<PageSkeleton />}>

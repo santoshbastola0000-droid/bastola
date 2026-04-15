@@ -177,11 +177,12 @@
   }
 }
 
-/* Hide scrollbars on category chip row */
+/* Hide scrollbar for category chips */
 .scrollbar-hide {
-  scrollbar-width: none;
   -ms-overflow-style: none;
+  scrollbar-width: none;
 }
+
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
