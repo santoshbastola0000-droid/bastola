@@ -4,7 +4,6 @@ import "./globals.css";
 import { QueryClientProviderWrapper } from "@/app/providers";
 import { Toaster } from "sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { ThemeProvider } from "@/components/theme-provider";
 import { SessionChecker } from "@/components/SessionChecker";
 
 const geistSans = Geist({
@@ -18,8 +17,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Rental Service",
-  description: "Rental service app",
+  title: "Rental Servise",
+  description: "Rental servise app",
 };
 
 export default function RootLayout({
@@ -33,12 +32,10 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <SessionChecker />
-        <ThemeProvider>
-          <QueryClientProviderWrapper>
-            <TooltipProvider>{children}</TooltipProvider>
-            <Toaster />
-          </QueryClientProviderWrapper>
-        </ThemeProvider>
+        <QueryClientProviderWrapper>
+          <TooltipProvider>{children}</TooltipProvider>
+          <Toaster />
+        </QueryClientProviderWrapper>
       </body>
     </html>
   );

@@ -20,7 +20,6 @@ import {
   XCircle,
   IndianRupee,
   Loader2,
-  RefreshCw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -151,11 +150,6 @@ export default function UserDashboard() {
     queryKey: ["dashboard-activity"],
     queryFn: () => dashboardService.getRecentActivity(),
   });
-
-  const handleRefresh = () => {
-    refetchStats();
-    refetchEarnings();
-  };
 
   if (!mounted) return null;
 

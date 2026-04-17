@@ -9,6 +9,7 @@ import { useUserRole } from "@/stores/user-store";
 import { UserHeader } from "@/components/user/Header";
 import { Loader2 } from "lucide-react";
 import { UserSidebar } from "@/components/user/Sidebar";
+import { ThemeProvider } from "@/components/theme-provider";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -73,58 +74,60 @@ export default function UserLayout({
   const desktopSidebarWidth = isSidebarCollapsed ? "72px" : "256px";
 
   return (
-    <div className={cn("min-h-screen bg-background", inter.className)}>
-      {/* ── Desktop sidebar (sticky, fixed width) ── */}
-      <aside
-        className={cn(
-          "hidden md:flex flex-col fixed inset-y-0 left-0 z-40 transition-all duration-300",
-          isSidebarCollapsed ? "w-[72px]" : "w-64",
-        )}
-      >
-        <UserSidebar
-          isCollapsed={isSidebarCollapsed}
-          setIsCollapsed={setIsSidebarCollapsed}
-        />
-      </aside>
+    <ThemeProvider>
+      <div className={cn("min-h-screen bg-background", inter.className)}>
+        {/* ── Desktop sidebar (sticky, fixed width) ── */}
+        <aside
+          className={cn(
+            "hidden md:flex flex-col fixed inset-y-0 left-0 z-40 transition-all duration-300",
+            isSidebarCollapsed ? "w-[72px]" : "w-64",
+          )}
+        >
+          <UserSidebar
+            isCollapsed={isSidebarCollapsed}
+            setIsCollapsed={setIsSidebarCollapsed}
+          />
+        </aside>
 
-      {/* ── Mobile sidebar drawer ── */}
-      {/* Backdrop */}
-      {isMobileOpen && (
+        {/* ── Mobile sidebar drawer ── */}
+        {/* Backdrop */}
+        {isMobileOpen && (
+          <div
+            className="fixed inset-0 bg-black/60 z-40 md:hidden"
+            onClick={() => setIsMobileOpen(false)}
+          />
+        )}
+        {/* Drawer */}
+        <aside
+          className={cn(
+            "fixed inset-y-0 left-0 z-50 w-72 md:hidden transition-transform duration-300 ease-in-out",
+            isMobileOpen ? "translate-x-0" : "-translate-x-full",
+          )}
+        >
+          <UserSidebar
+            isCollapsed={false}
+            setIsCollapsed={() => {}}
+            isMobile
+            onClose={() => setIsMobileOpen(false)}
+          />
+        </aside>
+
+        {/* ── Main content ── */}
         <div
-          className="fixed inset-0 bg-black/60 z-40 md:hidden"
-          onClick={() => setIsMobileOpen(false)}
-        />
-      )}
-      {/* Drawer */}
-      <aside
-        className={cn(
-          "fixed inset-y-0 left-0 z-50 w-72 md:hidden transition-transform duration-300 ease-in-out",
-          isMobileOpen ? "translate-x-0" : "-translate-x-full",
-        )}
-      >
-        <UserSidebar
-          isCollapsed={false}
-          setIsCollapsed={() => {}}
-          isMobile
-          onClose={() => setIsMobileOpen(false)}
-        />
-      </aside>
-
-      {/* ── Main content ── */}
-      <div
-        className="flex flex-col min-h-screen transition-all duration-300"
-        style={{ marginLeft: isMobile ? 0 : desktopSidebarWidth }}
-      >
-        <UserHeader
-          isSidebarCollapsed={isSidebarCollapsed}
-          onMenuClick={() => setIsMobileOpen((v) => !v)}
-        />
-        <main className="flex-1 bg-gradient-to-br from-gray-50 via-white to-gray-50">
-          <div className="p-3 sm:p-4 md:p-6 lg:p-8">
-            <div className="max-w-7xl mx-auto">{children}</div>
-          </div>
-        </main>
+          className="flex flex-col min-h-screen transition-all duration-300"
+          style={{ marginLeft: isMobile ? 0 : desktopSidebarWidth }}
+        >
+          <UserHeader
+            isSidebarCollapsed={isSidebarCollapsed}
+            onMenuClick={() => setIsMobileOpen((v) => !v)}
+          />
+          <main className="flex-1 bg-gradient-to-br from-gray-50 via-white to-gray-50">
+            <div className="p-3 sm:p-4 md:p-6 lg:p-8">
+              <div className="max-w-7xl mx-auto">{children}</div>
+            </div>
+          </main>
+        </div>
       </div>
-    </div>
+    </ThemeProvider>
   );
 }

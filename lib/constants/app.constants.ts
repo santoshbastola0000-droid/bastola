@@ -56,6 +56,8 @@ import { TenantType, GenderPreference, RoomCategory } from "@/types/room.types";
 export const DEFAULT_LAT = 27.7172;
 export const DEFAULT_LNG = 85.324;
 
+export const PAGE_SIZE = 9;
+
 export const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "";
 
 export const TABS = [

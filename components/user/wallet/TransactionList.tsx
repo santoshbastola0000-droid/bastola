@@ -1,18 +1,12 @@
 import { formatCurrency, formatDate } from "@/lib/utils";
-import {
-  ArrowDownLeft,
-  ArrowUpRight,
-  CheckCircle,
-  XCircle,
-  Clock,
-  IndianRupee,
-} from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, IndianRupee } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
   Transaction,
   TransactionStatus,
   TransactionType,
 } from "@/types/wallet.types";
+import { log } from "console";
 
 interface Props {
   transactions: Transaction[];
@@ -54,8 +48,6 @@ export function TransactionList({ transactions, limit, showAll }: Props) {
       </div>
     );
   }
-
-  console.log("Transactions", transactions);
 
   return (
     <div className="space-y-4">
@@ -101,13 +93,14 @@ export function TransactionList({ transactions, limit, showAll }: Props) {
           <div className="text-right">
             <p
               className={`font-semibold ${
-                transaction.type === TransactionType.COMMISSION
+                transaction.type === TransactionType.COMMISSION ||
+                transaction.type === TransactionType.TOP_UP
                   ? "text-green-600"
                   : "text-red-600"
               }`}
             >
               {transaction.type === TransactionType.COMMISSION ||
-              transaction.type === TransactionType.ADJUSTMENT
+              transaction.type === TransactionType.TOP_UP
                 ? "+"
                 : "-"}
               Rs. {formatCurrency(transaction.netAmount)}
