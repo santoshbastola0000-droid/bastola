@@ -36,6 +36,7 @@ import {
   Shirt,
   Sun as SunIcon,
   Edit3,
+  Upload,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -250,6 +251,8 @@ export default function CreateRoomPage() {
   const [ownerCommunityCustom, setOwnerCommunityCustom] = useState("");
   const [showOwnerCommunityInput, setShowOwnerCommunityInput] = useState(false);
   const [gateClosingTimeDisplay, setGateClosingTimeDisplay] = useState("");
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const tabsRef = useRef<HTMLDivElement>(null);
   const { user } = useUserRole();
   const isAdmin = user?.role === UserRole.ADMIN;
@@ -320,7 +323,6 @@ export default function CreateRoomPage() {
   const ownerLivesInHouse = form.watch("ownerLivesInHouse");
   const gateClosingTimeRaw = form.watch("gateClosingTime");
 
-  // Update display when gateClosingTime changes
   useEffect(() => {
     if (gateClosingTimeRaw) {
       setGateClosingTimeDisplay(formatTimeForDisplay(gateClosingTimeRaw));
@@ -453,49 +455,72 @@ export default function CreateRoomPage() {
     });
   };
 
-  const handleImageUploadWithCategory = (files: File[], category: string) => {
+  // ── Simplified image upload: single input, up to 10 total ─────────────────
+  const processImageFiles = (files: File[]) => {
     const invalid = files.filter((f) => !f.type.startsWith("image/"));
     if (invalid.length > 0) {
-      toast.error("Please upload images only (JPEG, PNG, WEBP)");
+      toast.error("Only image files are allowed (JPEG, PNG, WEBP)");
       return;
     }
 
     const valid = files.filter((f) => f.size <= 10 * 1024 * 1024);
     const oversized = files.filter((f) => f.size > 10 * 1024 * 1024);
-    if (oversized.length > 0)
-      toast.warning(`${oversized.length} file(s) exceed 10MB and were skipped`);
-
-    // Check category limits
-    const currentCategoryCount = images.filter(
-      (img) => img.category === category,
-    ).length;
-    const maxAllowed = category === "Room" ? 4 : category === "Outside" ? 2 : 1;
-
-    if (currentCategoryCount + valid.length > maxAllowed) {
-      toast.error(
-        `Maximum ${maxAllowed} photo(s) allowed for ${category} category`,
+    if (oversized.length > 0) {
+      toast.warning(
+        `${oversized.length} file(s) skipped — each must be under 10 MB`,
       );
+    }
+
+    const remaining = 10 - images.length;
+    if (remaining <= 0) {
+      toast.error("Maximum 10 photos allowed. Remove some to add more.");
       return;
     }
 
-    if (images.length + valid.length > 10) {
-      toast.error("Maximum 10 photos allowed in total");
-      return;
+    const toAdd = valid.slice(0, remaining);
+    if (valid.length > remaining) {
+      toast.warning(
+        `Only ${remaining} more photo(s) can be added (max 10 total). ${valid.length - remaining} skipped.`,
+      );
     }
 
-    const newImages = valid.map((file) => ({
+    const newImages: ImageWithCategory[] = toAdd.map((file) => ({
       id: `${Date.now()}-${Math.random()}`,
       file,
       preview: URL.createObjectURL(file),
-      category,
+      category: "Room",
     }));
 
     setImages((prev) => [...prev, ...newImages]);
-
-    toast.success(`${valid.length} ${category} photo(s) added!`);
+    if (toAdd.length > 0) {
+      toast.success(
+        `${toAdd.length} photo(s) added! (${images.length + toAdd.length}/10)`,
+      );
+    }
   };
 
-  const removeImageWithCategory = (id: string) => {
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length > 0) processImageFiles(files);
+    // Reset input so same files can be re-selected if removed
+    e.target.value = "";
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const files = Array.from(e.dataTransfer.files);
+    processImageFiles(files);
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = () => setIsDragging(false);
+
+  const removeImage = (id: string) => {
     setImages((prev) => prev.filter((img) => img.id !== id));
   };
 
@@ -503,7 +528,6 @@ export default function CreateRoomPage() {
     const idx = TABS.findIndex((t) => t.value === activeTab);
     if (direction === "next") {
       if (idx < TABS.length - 1) {
-        // When moving next, validate current section if it's required
         if (TABS[idx].required && !getTabStatus(activeTab)) {
           toast.warning(
             `Please complete the ${TABS[idx].label} section first`,
@@ -520,17 +544,50 @@ export default function CreateRoomPage() {
   };
 
   const onSubmit = async (values: CreateRoomFormValues) => {
-    // Validate all required fields before submission
+    // Validate all required fields and show friendly toasts for each missing section
     const missingTabs = getMissingRequiredTabs();
     if (missingTabs.length > 0) {
       const firstMissing = missingTabs[0];
+      const tab = TABS.find((t) => t.value === firstMissing);
+
+      // Show a toast for EACH missing required section
+      missingTabs.forEach((tabValue, i) => {
+        const t = TABS.find((x) => x.value === tabValue);
+        if (!t) return;
+        let description = "";
+        switch (tabValue) {
+          case "basic":
+            description = "Title, description, and price are required.";
+            break;
+          case "location":
+            description = "Please pin your room on the map.";
+            break;
+          case "details":
+            description = "Room area (m²) is required.";
+            break;
+          case "amenities":
+            description = "Select at least one amenity.";
+            break;
+          case "photos":
+            description = "Upload at least one photo.";
+            break;
+          case "contact":
+            description = "Owner name and phone number are required.";
+            break;
+        }
+        setTimeout(() => {
+          toast.error(`⚠️ ${t.label} incomplete`, {
+            description,
+            duration: 5000,
+            action: {
+              label: "Go there",
+              onClick: () => setActiveTab(tabValue),
+            },
+          });
+        }, i * 400);
+      });
+
       setActiveTab(firstMissing);
-      toast.error(
-        `Please complete the ${TABS.find((t) => t.value === firstMissing)?.label} section`,
-        {
-          duration: 4000,
-        },
-      );
       return;
     }
 
@@ -1059,7 +1116,6 @@ export default function CreateRoomPage() {
                         Address Details / ठेगानाको विवरण
                       </p>
 
-                      {/* Editable Full Address Field */}
                       <FormField
                         control={form.control}
                         name="location.formattedAddress"
@@ -1341,23 +1397,45 @@ export default function CreateRoomPage() {
                                   inputMode="decimal"
                                   min="1"
                                   step="0.5"
-                                  placeholder="e.g. 30 m²"
+                                  placeholder="e.g. 30"
                                   className={cn(
-                                    "h-11 pl-10 text-base rounded-xl border-slate-200 focus:border-primary px-4",
+                                    "h-11 pr-14 text-base rounded-xl border-slate-200 focus:border-primary px-4",
                                     formErrors.roomArea && "border-red-400",
                                   )}
                                   value={field.value ?? ""}
-                                  onChange={(e) =>
-                                    field.onChange(
-                                      e.target.value === ""
-                                        ? undefined
-                                        : Number(e.target.value),
-                                    )
-                                  }
+                                  onChange={(e) => {
+                                    const raw = e.target.value;
+                                    if (raw === "") {
+                                      field.onChange(undefined);
+                                    } else {
+                                      const parsed = parseFloat(raw);
+                                      if (!isNaN(parsed)) {
+                                        field.onChange(parsed);
+                                      }
+                                    }
+                                  }}
                                 />
+                                <span
+                                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400 pointer-events-none select-none"
+                                  aria-hidden
+                                >
+                                  m²
+                                </span>
                               </div>
                             </FormControl>
-                            <FormMessage />
+                            {formErrors.roomArea && (
+                              <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
+                                <AlertCircle className="w-3 h-3" />
+                                Please enter the room size in square metres
+                                (e.g. 25)
+                              </p>
+                            )}
+                            {!formErrors.roomArea && (
+                              <FormDescription className="text-xs">
+                                Enter the floor area in square metres — वर्ग
+                                मिटरमा क्षेत्रफल लेख्नुहोस्
+                              </FormDescription>
+                            )}
                           </FormItem>
                         )}
                       />
@@ -1611,6 +1689,10 @@ export default function CreateRoomPage() {
                           Select at least one amenity / कम्तीमा एउटा सुविधा चयन
                           गर्नुहोस्
                         </AlertTitle>
+                        <AlertDescription className="text-xs mt-1">
+                          Listings with amenities get significantly more views.
+                          Don't skip this!
+                        </AlertDescription>
                       </Alert>
                     )}
 
@@ -1683,7 +1765,6 @@ export default function CreateRoomPage() {
                       subtitle="Optional — सबै खाली छोड्न मिल्छ"
                     />
 
-                    {/* Who is the ideal tenant */}
                     <section className="space-y-3">
                       <div>
                         <p className="text-sm font-bold text-slate-800">
@@ -1730,7 +1811,6 @@ export default function CreateRoomPage() {
 
                     <Separator />
 
-                    {/* Gender Preference */}
                     <section className="space-y-3">
                       <p className="text-sm font-bold text-slate-800">
                         Gender Preference / लिङ्ग प्राथमिकता
@@ -1793,7 +1873,6 @@ export default function CreateRoomPage() {
 
                     <Separator />
 
-                    {/* Lifestyle Rules */}
                     <section className="space-y-3">
                       <div>
                         <p className="text-sm font-bold text-slate-800">
@@ -1899,7 +1978,6 @@ export default function CreateRoomPage() {
 
                     <Separator />
 
-                    {/* Gate Closing Time - User Friendly AM/PM */}
                     <section className="space-y-3">
                       <div>
                         <p className="text-sm font-bold text-slate-800">
@@ -1922,7 +2000,7 @@ export default function CreateRoomPage() {
                                 />
                                 <Input
                                   type="time"
-                                  className="h-11 pl-10 rounded-xl border-slate-200 focus:border-primary"
+                                  className="h-11 pl-10 rounded-xl border-slate-200 focus:border-primary cursor-pointer"
                                   value={
                                     field.value
                                       ? formatTimeForInput(field.value)
@@ -1952,7 +2030,6 @@ export default function CreateRoomPage() {
 
                     <Separator />
 
-                    {/* Sunlight & Drying */}
                     <section className="space-y-3">
                       <p className="text-sm font-bold text-slate-800">
                         Sunlight & Facilities / घाम र सुविधाहरू
@@ -1987,7 +2064,6 @@ export default function CreateRoomPage() {
 
                     <Separator />
 
-                    {/* Existing Problems */}
                     <section className="space-y-3">
                       <div>
                         <p className="text-sm font-bold text-slate-800">
@@ -2018,7 +2094,6 @@ export default function CreateRoomPage() {
 
                     <Separator />
 
-                    {/* Other Rules */}
                     <section className="space-y-3">
                       <p className="text-sm font-bold text-slate-800">
                         Other Rules / अन्य नियमहरू
@@ -2043,7 +2118,6 @@ export default function CreateRoomPage() {
 
                     <Separator />
 
-                    {/* Owner Community */}
                     <section className="space-y-3">
                       <div>
                         <p className="text-sm font-bold text-slate-800">
@@ -2117,7 +2191,6 @@ export default function CreateRoomPage() {
 
                     <Separator />
 
-                    {/* Community welcome */}
                     <section className="space-y-3">
                       <div>
                         <p className="text-sm font-bold text-slate-800">
@@ -2196,466 +2269,188 @@ export default function CreateRoomPage() {
                       subtitle="Good photos attract 3x more tenants · राम्रो फोटोले ३ गुणा बढी भाडाटारु ल्याउँछ"
                     />
 
-                    {/* Photo Requirements Summary */}
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                      {[
-                        {
-                          type: "Room",
-                          required: 4,
-                          emoji: "🛏️",
-                          labelEn: "Room Photos",
-                          labelNp: "कोठाका तस्बिरहरू",
-                        },
-                        {
-                          type: "Toilet",
-                          required: 1,
-                          emoji: "🚽",
-                          labelEn: "Toilet Photo",
-                          labelNp: "शौचालयको तस्बिर",
-                        },
-                        {
-                          type: "Bathroom",
-                          required: 1,
-                          emoji: "🚿",
-                          labelEn: "Bathroom Photo",
-                          labelNp: "नुहाउने कोठाको तस्बिर",
-                        },
-                        {
-                          type: "Outside",
-                          required: 2,
-                          emoji: "🏘️",
-                          labelEn: "Outside/Background",
-                          labelNp: "बाहिरी/पृष्ठभूमि तस्बिरहरू",
-                        },
-                      ].map(({ type, required, emoji, labelEn, labelNp }) => {
-                        const currentCount = images.filter(
-                          (img) => img.category === type,
-                        ).length;
-                        const isComplete = currentCount >= required;
-                        return (
-                          <div
-                            key={type}
-                            className={cn(
-                              "flex flex-col items-center gap-1 p-3 rounded-xl border-2 text-center transition-all",
-                              isComplete
-                                ? "bg-green-50 border-green-300"
-                                : "bg-amber-50 border-amber-200",
-                            )}
-                          >
-                            <span className="text-2xl" aria-hidden>
-                              {emoji}
-                            </span>
-                            <p className="text-xs font-bold text-slate-700">
-                              {labelEn}
-                            </p>
-                            <p className="text-[10px] text-slate-500">
-                              {labelNp}
-                            </p>
-                            <div className="flex items-center gap-1 mt-1">
-                              <Badge
-                                variant={isComplete ? "default" : "secondary"}
-                                className={cn(
-                                  "text-[10px] px-2 py-0",
-                                  isComplete
-                                    ? "bg-green-600 text-white"
-                                    : "bg-amber-100 text-amber-700",
-                                )}
-                              >
-                                {currentCount}/{required}
-                              </Badge>
-                              {isComplete && (
-                                <CheckCircle2
-                                  className="w-3 h-3 text-green-600"
-                                  aria-hidden
-                                />
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })}
+                    {/* What photos to include guidance */}
+                    <div className="p-4 bg-blue-50 rounded-xl border border-blue-200 space-y-2">
+                      <p className="text-sm font-semibold text-blue-800 flex items-center gap-2">
+                        <ImageIcon className="w-4 h-4" aria-hidden />
+                        Please upload photos of the following:
+                      </p>
+                      <ul className="text-xs text-blue-700 space-y-1 ml-1">
+                        <li className="flex items-center gap-2">
+                          <span aria-hidden>🛏️</span> Room interior (multiple
+                          angles recommended)
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <span aria-hidden>🚽</span> Toilet
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <span aria-hidden>🚿</span> Bathroom / shower area
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <span aria-hidden>🏘️</span> Outside / building
+                          exterior
+                        </li>
+                      </ul>
+                      <p className="text-xs text-blue-600 mt-1">
+                        Up to 10 photos total · प्रत्येक फोटो अधिकतम 10MB · JPEG
+                        / PNG / WEBP
+                      </p>
                     </div>
 
                     {images.length === 0 && (
                       <Alert variant="destructive" className="rounded-xl">
                         <AlertCircle className="h-4 w-4" />
                         <AlertTitle>
-                          Photos required / फोटोहरू आवश्यक छन्
+                          At least one photo required / कम्तीमा एउटा फोटो आवश्यक
                         </AlertTitle>
-                        <AlertDescription>
-                          Please upload: 4 room photos, 1 toilet, 1 bathroom,
-                          and 2 outside photos
-                          <br />
-                          कृपया अपलोड गर्नुहोस्: ४ कोठाका, १ शौचालय, १ नुहाउने
-                          कोठा, र २ बाहिरी तस्बिरहरू
+                        <AlertDescription className="text-xs mt-1">
+                          Rooms with photos get 3x more inquiries. Please upload
+                          at least one.
                         </AlertDescription>
                       </Alert>
                     )}
 
-                    {/* Upload Tips */}
-                    <div className="grid grid-cols-3 gap-2">
-                      {[
-                        {
-                          tip: "Natural light / प्राकृतिक उज्यालो",
-                          emoji: "☀️",
-                        },
-                        {
-                          tip: "Max 10MB each / प्रति फोटो अधिकतम १०MB",
-                          emoji: "📦",
-                        },
-                        { tip: "JPEG / PNG / WEBP", emoji: "🖼️" },
-                      ].map(({ tip, emoji }) => (
+                    {/* ── Single unified upload zone ── */}
+                    <div>
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        multiple
+                        className="sr-only"
+                        aria-label="Upload room photos"
+                        onChange={handleFileInputChange}
+                      />
+                      <div
+                        role="button"
+                        tabIndex={0}
+                        aria-label={`Upload photos. ${images.length} of 10 uploaded.`}
+                        onClick={() => fileInputRef.current?.click()}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            fileInputRef.current?.click();
+                          }
+                        }}
+                        onDrop={handleDrop}
+                        onDragOver={handleDragOver}
+                        onDragLeave={handleDragLeave}
+                        className={cn(
+                          "flex flex-col items-center justify-center gap-3 p-8 rounded-2xl border-2 border-dashed transition-all cursor-pointer select-none",
+                          isDragging
+                            ? "border-primary bg-primary/5 scale-[1.01]"
+                            : images.length >= 10
+                              ? "border-slate-200 bg-slate-50 opacity-50 cursor-not-allowed"
+                              : "border-slate-300 bg-white hover:border-primary hover:bg-primary/3",
+                        )}
+                      >
                         <div
-                          key={tip}
-                          className="flex flex-col items-center gap-1 p-2.5 bg-blue-50 rounded-xl border border-blue-100 text-center"
+                          className={cn(
+                            "w-14 h-14 rounded-2xl flex items-center justify-center transition-colors",
+                            isDragging ? "bg-primary/20" : "bg-slate-100",
+                          )}
                         >
-                          <span className="text-xl" aria-hidden>
-                            {emoji}
-                          </span>
-                          <p className="text-[10px] text-blue-700 font-semibold text-center">
-                            {tip}
+                          <Upload
+                            className={cn(
+                              "w-7 h-7",
+                              isDragging ? "text-primary" : "text-slate-400",
+                            )}
+                            aria-hidden
+                          />
+                        </div>
+                        <div className="text-center">
+                          <p className="text-sm font-semibold text-slate-700">
+                            {images.length >= 10
+                              ? "Maximum photos reached (10/10)"
+                              : isDragging
+                                ? "Drop photos here!"
+                                : "Click to upload or drag & drop"}
+                          </p>
+                          <p className="text-xs text-slate-400 mt-1">
+                            {images.length}/10 photos · Select multiple at once
                           </p>
                         </div>
-                      ))}
-                    </div>
-
-                    {/* Category Selection when uploading */}
-                    <div className="space-y-3">
-                      <p className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-                        <Plus className="w-4 h-4 text-primary" aria-hidden />
-                        Add Photos / तस्बिरहरू थप्नुहोस्
-                      </p>
-
-                      {/* Category Buttons */}
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                        {[
-                          {
-                            category: "Room",
-                            emoji: "🛏️",
-                            labelEn: "Room Photos",
-                            labelNp: "कोठाका तस्बिरहरू",
-                            maxCount: 4,
-                            currentCount: images.filter(
-                              (img) => img.category === "Room",
-                            ).length,
-                          },
-                          {
-                            category: "Toilet",
-                            emoji: "🚽",
-                            labelEn: "Toilet",
-                            labelNp: "शौचालय",
-                            maxCount: 1,
-                            currentCount: images.filter(
-                              (img) => img.category === "Toilet",
-                            ).length,
-                          },
-                          {
-                            category: "Bathroom",
-                            emoji: "🚿",
-                            labelEn: "Bathroom",
-                            labelNp: "नुहाउने कोठा",
-                            maxCount: 1,
-                            currentCount: images.filter(
-                              (img) => img.category === "Bathroom",
-                            ).length,
-                          },
-                          {
-                            category: "Outside",
-                            emoji: "🏘️",
-                            labelEn: "Outside",
-                            labelNp: "बाहिरी",
-                            maxCount: 2,
-                            currentCount: images.filter(
-                              (img) => img.category === "Outside",
-                            ).length,
-                          },
-                        ].map(
-                          ({
-                            category,
-                            emoji,
-                            labelEn,
-                            labelNp,
-                            maxCount,
-                            currentCount,
-                          }) => {
-                            const isReachedMax = currentCount >= maxCount;
-                            return (
-                              <button
-                                key={category}
-                                type="button"
-                                onClick={() => {
-                                  if (!isReachedMax) {
-                                    // Store the category temporarily
-                                    const input =
-                                      document.createElement("input");
-                                    input.type = "file";
-                                    input.accept =
-                                      "image/jpeg,image/png,image/webp";
-                                    input.multiple = false;
-                                    input.onchange = (e) => {
-                                      const files = Array.from(
-                                        (e.target as HTMLInputElement).files ||
-                                          [],
-                                      );
-                                      if (files.length > 0) {
-                                        handleImageUploadWithCategory(
-                                          files,
-                                          category,
-                                        );
-                                      }
-                                    };
-                                    input.click();
-                                  } else {
-                                    toast.warning(
-                                      `Maximum ${maxCount} ${labelEn} already added / अधिकतम ${maxCount} ${labelNp} थपिसकियो`,
-                                      {
-                                        duration: 3000,
-                                      },
-                                    );
-                                  }
-                                }}
-                                disabled={isReachedMax}
-                                className={cn(
-                                  "flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all cursor-pointer",
-                                  isReachedMax
-                                    ? "bg-green-50 border-green-300 cursor-not-allowed opacity-70"
-                                    : "bg-white border-primary/30 hover:border-primary/60 hover:bg-primary/5",
-                                )}
-                                aria-label={`Add ${labelEn}`}
-                              >
-                                <span className="text-2xl" aria-hidden>
-                                  {emoji}
-                                </span>
-                                <div className="text-center">
-                                  <p className="text-xs font-semibold text-slate-700">
-                                    {labelEn}
-                                  </p>
-                                  <p className="text-[10px] text-slate-500">
-                                    {labelNp}
-                                  </p>
-                                </div>
-                                <Badge
-                                  variant={isReachedMax ? "default" : "outline"}
-                                  className={cn(
-                                    "text-[10px]",
-                                    isReachedMax
-                                      ? "bg-green-600"
-                                      : "border-primary/30 text-primary",
-                                  )}
-                                >
-                                  {currentCount}/{maxCount}
-                                </Badge>
-                              </button>
-                            );
-                          },
-                        )}
                       </div>
                     </div>
 
-                    {/* Display uploaded photos by category */}
+                    {/* ── Photo grid ── */}
                     {images.length > 0 && (
-                      <div className="space-y-4">
-                        {["Room", "Toilet", "Bathroom", "Outside"].map(
-                          (category) => {
-                            const categoryImages = images.filter(
-                              (img) => img.category === category,
-                            );
-                            if (categoryImages.length === 0) return null;
-
-                            const categoryConfig = {
-                              Room: {
-                                emoji: "🛏️",
-                                labelEn: "Room Photos",
-                                labelNp: "कोठाका तस्बिरहरू",
-                              },
-                              Toilet: {
-                                emoji: "🚽",
-                                labelEn: "Toilet Photos",
-                                labelNp: "शौचालयका तस्बिरहरू",
-                              },
-                              Bathroom: {
-                                emoji: "🚿",
-                                labelEn: "Bathroom Photos",
-                                labelNp: "नुहाउने कोठाका तस्बिरहरू",
-                              },
-                              Outside: {
-                                emoji: "🏘️",
-                                labelEn: "Outside Photos",
-                                labelNp: "बाहिरी तस्बिरहरू",
-                              },
-                            };
-
-                            const { emoji, labelEn, labelNp } =
-                              categoryConfig[
-                                category as keyof typeof categoryConfig
-                              ];
-
-                            return (
-                              <div key={category} className="space-y-2">
-                                <div className="flex items-center gap-2">
-                                  <span className="text-lg">{emoji}</span>
-                                  <h3 className="text-sm font-bold text-slate-800">
-                                    {labelEn}
-                                  </h3>
-                                  <span className="text-xs text-slate-500">
-                                    ({labelNp})
-                                  </span>
-                                  <Badge
-                                    variant="secondary"
-                                    className="text-[10px]"
-                                  >
-                                    {categoryImages.length}/
-                                    {category === "Room"
-                                      ? 4
-                                      : category === "Outside"
-                                        ? 2
-                                        : 1}
-                                  </Badge>
-                                </div>
-                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                                  {categoryImages.map((img, idx) => (
-                                    <motion.div
-                                      key={img.id}
-                                      initial={{ opacity: 0, scale: 0.9 }}
-                                      animate={{ opacity: 1, scale: 1 }}
-                                      className="relative group aspect-square"
-                                    >
-                                      <div className="w-full h-full rounded-xl overflow-hidden border-2 border-slate-200 group-hover:border-primary transition-colors">
-                                        <img
-                                          src={img.preview}
-                                          alt={`${category} photo ${idx + 1}`}
-                                          className="w-full h-full object-cover"
-                                        />
-                                      </div>
-                                      <button
-                                        type="button"
-                                        onClick={() =>
-                                          removeImageWithCategory(img.id)
-                                        }
-                                        aria-label={`Remove ${category} photo ${idx + 1}`}
-                                        className="absolute -top-2 -right-2 w-7 h-7 rounded-full bg-red-500 text-white flex items-center justify-center shadow-md opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer hover:bg-red-600"
-                                      >
-                                        <XCircle
-                                          className="w-4 h-4"
-                                          aria-hidden
-                                        />
-                                      </button>
-                                      <div className="absolute bottom-1.5 left-1.5">
-                                        <Badge className="text-[10px] px-1.5 py-0.5 bg-black/60 text-white border-0">
-                                          {idx === 0 && category === "Room"
-                                            ? "Main"
-                                            : `${category.slice(0, 1)}${idx + 1}`}
-                                        </Badge>
-                                      </div>
-                                    </motion.div>
-                                  ))}
-                                </div>
-                              </div>
-                            );
-                          },
-                        )}
-                      </div>
-                    )}
-
-                    {/* Progress Summary */}
-                    {images.length > 0 && (
-                      <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200">
-                        <div className="flex items-center justify-between mb-2">
-                          <p className="text-sm font-semibold text-slate-800">
-                            Upload Progress / अपलोड प्रगति
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <p className="text-sm font-semibold text-slate-700">
+                            Uploaded Photos / अपलोड भएका फोटोहरू
                           </p>
-                          <Badge className="bg-primary text-white">
-                            {
-                              images.filter((img) => {
-                                const required =
-                                  img.category === "Room"
-                                    ? 4
-                                    : img.category === "Outside"
-                                      ? 2
-                                      : 1;
-                                return (
-                                  images.filter(
-                                    (i) => i.category === img.category,
-                                  ).length >= required
-                                );
-                              }).length
+                          <Badge
+                            variant={
+                              images.length >= 10 ? "default" : "secondary"
                             }
-                            /4 Categories Complete
+                            className={
+                              images.length >= 10
+                                ? "bg-amber-500 text-white"
+                                : ""
+                            }
+                          >
+                            {images.length}/10
                           </Badge>
                         </div>
-                        <div className="space-y-2">
-                          {[
-                            {
-                              category: "Room",
-                              required: 4,
-                              current: images.filter(
-                                (img) => img.category === "Room",
-                              ).length,
-                              label: "Room Photos / कोठाका तस्बिरहरू",
-                            },
-                            {
-                              category: "Toilet",
-                              required: 1,
-                              current: images.filter(
-                                (img) => img.category === "Toilet",
-                              ).length,
-                              label: "Toilet Photo / शौचालयको तस्बिर",
-                            },
-                            {
-                              category: "Bathroom",
-                              required: 1,
-                              current: images.filter(
-                                (img) => img.category === "Bathroom",
-                              ).length,
-                              label: "Bathroom Photo / नुहाउने कोठाको तस्बिर",
-                            },
-                            {
-                              category: "Outside",
-                              required: 2,
-                              current: images.filter(
-                                (img) => img.category === "Outside",
-                              ).length,
-                              label: "Outside Photos / बाहिरी तस्बिरहरू",
-                            },
-                          ].map(({ category, required, current, label }) => {
-                            const percent = (current / required) * 100;
-                            return (
-                              <div key={category} className="space-y-1">
-                                <div className="flex justify-between text-xs">
-                                  <span className="text-slate-700">
-                                    {label}
-                                  </span>
-                                  <span
-                                    className={
-                                      current >= required
-                                        ? "text-green-600 font-semibold"
-                                        : "text-amber-600"
-                                    }
-                                  >
-                                    {current}/{required}
-                                  </span>
-                                </div>
-                                <Progress value={percent} className="h-1.5" />
+                        <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+                          {images.map((img, idx) => (
+                            <motion.figure
+                              key={img.id}
+                              initial={{ opacity: 0, scale: 0.9 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              className="relative group aspect-square"
+                            >
+                              <div className="w-full h-full rounded-xl overflow-hidden border-2 border-slate-200 group-hover:border-primary transition-colors">
+                                <img
+                                  src={img.preview}
+                                  alt={`Room photo ${idx + 1}`}
+                                  className="w-full h-full object-cover"
+                                />
                               </div>
-                            );
-                          })}
+                              <button
+                                type="button"
+                                onClick={() => removeImage(img.id)}
+                                aria-label={`Remove photo ${idx + 1}`}
+                                className="absolute -top-2 -right-2 w-7 h-7 rounded-full bg-red-500 text-white flex items-center justify-center shadow-md opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer hover:bg-red-600 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-red-400"
+                              >
+                                <XCircle className="w-4 h-4" aria-hidden />
+                              </button>
+                              {idx === 0 && (
+                                <div className="absolute bottom-1.5 left-1.5">
+                                  <Badge className="text-[10px] px-1.5 py-0.5 bg-primary text-white border-0">
+                                    Main
+                                  </Badge>
+                                </div>
+                              )}
+                            </motion.figure>
+                          ))}
+
+                          {/* Add more tile (if under limit) */}
+                          {images.length < 10 && (
+                            <button
+                              type="button"
+                              onClick={() => fileInputRef.current?.click()}
+                              aria-label="Add more photos"
+                              className="aspect-square rounded-xl border-2 border-dashed border-slate-300 flex flex-col items-center justify-center gap-1 text-slate-400 hover:border-primary hover:text-primary transition-all cursor-pointer bg-slate-50 hover:bg-primary/5"
+                            >
+                              <Plus className="w-6 h-6" aria-hidden />
+                              <span className="text-[10px] font-semibold">
+                                Add more
+                              </span>
+                            </button>
+                          )}
                         </div>
-                        {images.filter((img) => {
-                          const required =
-                            img.category === "Room"
-                              ? 4
-                              : img.category === "Outside"
-                                ? 2
-                                : 1;
-                          return (
-                            images.filter((i) => i.category === img.category)
-                              .length >= required
-                          );
-                        }).length === 4 && (
-                          <div className="flex items-center gap-2 mt-3 p-2 bg-green-100 rounded-lg">
-                            <CheckCircle2 className="w-4 h-4 text-green-600 flex-shrink-0" />
-                            <p className="text-xs font-semibold text-green-700">
-                              ✓ All photo requirements met! / सबै फोटो
-                              आवश्यकताहरू पूरा भए!
+
+                        {images.length > 0 && (
+                          <div className="flex items-center gap-2 p-3 bg-green-50 rounded-xl border border-green-200">
+                            <CheckCircle2
+                              className="w-4 h-4 text-green-600 flex-shrink-0"
+                              aria-hidden
+                            />
+                            <p className="text-sm font-semibold text-green-700">
+                              {images.length} photo
+                              {images.length !== 1 ? "s" : ""} ready to upload
                             </p>
                           </div>
                         )}
@@ -2732,7 +2527,7 @@ export default function CreateRoomPage() {
                                 inputMode="tel"
                                 placeholder="+977 98XXXXXXXX"
                                 className={cn(
-                                  "h-12 pl-10 text-base rounded-xl border-slate-200 focus:border-primary px-4",
+                                  "h-12 text-base rounded-xl border-slate-200 focus:border-primary px-4",
                                   formErrors.contactPhone && "border-red-400",
                                 )}
                                 {...field}

@@ -194,14 +194,6 @@ export function PhotosTab({
     onRemoveNew(index);
   };
 
-  const totalPhotosByCategory = Object.keys(CATEGORY_CONFIG).reduce(
-    (acc, cat) => {
-      acc[cat] = getTotalCount(cat);
-      return acc;
-    },
-    {} as Record<string, number>,
-  );
-
   const completedCategories = Object.keys(CATEGORY_CONFIG).filter((cat) =>
     isCategoryComplete(cat),
   ).length;
@@ -319,9 +311,6 @@ export function PhotosTab({
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               {existingInCategory.map((img, i) => {
-                const globalIndex = existingImages.findIndex(
-                  (url) => url === img,
-                );
                 return (
                   <div key={img} className="relative group aspect-square">
                     <div className="w-full h-full rounded-xl overflow-hidden border-2 border-slate-200 group-hover:border-red-300 transition-colors">
