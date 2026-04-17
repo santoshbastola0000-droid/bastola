@@ -6,16 +6,12 @@ import {
 import { formatCurrency, formatDate } from "@/lib/utils";
 import {
   IndianRupee,
-  Clock,
-  AlertCircle,
   Banknote,
   Smartphone,
   QrCode,
   Landmark,
-  Eye,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { useState } from "react";
 
 interface Props {
@@ -128,18 +124,6 @@ export function WithdrawalHistory({ withdrawals, limit, showAll }: Props) {
                   </p>
                 </div>
               )}
-
-              <div className="mt-3 flex justify-end">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setSelectedWithdrawal(withdrawal)}
-                  className="cursor-pointer"
-                >
-                  <Eye className="h-4 w-4 mr-2" />
-                  View Details
-                </Button>
-              </div>
             </div>
           </div>
         ))}

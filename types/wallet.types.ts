@@ -13,9 +13,10 @@ export enum WithdrawalStatus {
 }
 
 export enum TransactionType {
-  COMMISSION = "Commission",
-  WITHDRAWAL = "Withdrawal",
-  ADJUSTMENT = "Adjustment",
+  COMMISSION = "COMMISSION",
+  WITHDRAWAL = "WITHDRAWAL",
+  TOP_UP = "TOP_UP",
+  SERVICE_CHARGE = "SERVICE_CHARGE",
 }
 
 export enum TransactionStatus {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import {
@@ -175,31 +175,6 @@ const ImageIcon = ({ className }: { className?: string }) => (
     <polyline points="21 15 16 10 5 21" />
   </svg>
 );
-
-// ── TriState display helper ──
-const TriBadge = ({
-  value,
-  labelYes,
-  labelNo,
-  labelNull = "Not specified",
-}: {
-  value: boolean | null | undefined;
-  labelYes: string;
-  labelNo: string;
-  labelNull?: string;
-}) => {
-  if (value === null || value === undefined)
-    return <span className="text-xs text-slate-400">{labelNull}</span>;
-  return value ? (
-    <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
-      <Check className="w-3 h-3" /> {labelYes}
-    </span>
-  ) : (
-    <span className="inline-flex items-center gap-1 text-xs font-semibold text-red-600 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full">
-      <X className="w-3 h-3" /> {labelNo}
-    </span>
-  );
-};
 
 // ════════════════════════════════════════════════════
 // ── SWIPEABLE IMAGE CAROUSEL ──
@@ -1030,11 +1005,7 @@ const LockedPlaceholder = ({
               Unlock to see exact map, phone number, and owner name.
             </p>
 
-            {!isLoaded ? (
-              <div className="flex justify-center">
-                <LoadingSpinner />
-              </div>
-            ) : !isAuthenticated ? (
+            {!isAuthenticated ? (
               <Button
                 size="sm"
                 className="w-full rounded-xl bg-red-500 hover:bg-red-600 text-white font-semibold cursor-pointer"

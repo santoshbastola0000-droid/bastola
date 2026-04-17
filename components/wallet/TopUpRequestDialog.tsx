@@ -536,7 +536,7 @@ export const TopUpRequestDialog: React.FC<TopUpRequestDialogProps> = ({
                 <p className="text-slate-500 text-sm mb-2 leading-relaxed">
                   Your top-up request for{" "}
                   <span className="font-semibold text-slate-700">
-                    रू {formatPriceNPR(Number(amount))}
+                    {formatPriceNPR(Number(amount))}
                   </span>{" "}
                   has been submitted.
                 </p>

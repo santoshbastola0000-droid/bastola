@@ -44,8 +44,7 @@ import {
   ElegantLoader,
   InfiniteScrollLoader,
 } from "@/components/common/elegant-loader";
-
-const PAGE_SIZE = 9;
+import { PAGE_SIZE } from "@/lib/constants/app.constants";
 
 interface CatConfig {
   label: string;
@@ -363,7 +362,7 @@ function AnimatedCard({
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{
         duration: 0.45,
-        delay: isNew ? Math.min(index % PAGE_SIZE, 8) * 0.06 : 0,
+        delay: isNew ? Math.min(index % PAGE_SIZE) * 0.06 : 0,
         ease: [0.22, 1, 0.36, 1],
       }}
     >
