@@ -11,6 +11,10 @@ import {
   ChevronLeft,
   ChevronRight,
   Save,
+  Upload,
+  XCircle,
+  CheckCircle2,
+  Image as ImageIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -20,6 +24,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
+import { motion as m } from "framer-motion";
 import { RoomCategory, TenantType, GenderPreference } from "@/types/room.types";
 import { cn } from "@/lib/utils";
 import { roomService } from "@/http/services/room.service";
@@ -27,13 +32,13 @@ import { createRoomSchema, CreateRoomFormValues } from "@/schema/room";
 import { UserRole } from "@/types/user.types";
 import { useUserRole } from "@/stores/user-store";
 import {
+  API_BASE_URL,
   COMMUNITY_OPTIONS,
   DEFAULT_LAT,
   DEFAULT_LNG,
   TABS,
 } from "@/lib/constants/app.constants";
 import { detectWaterType } from "@/lib/room-utils";
-import { PhotosTab } from "./tabs/PhotosTab";
 import { PreferencesTab } from "./tabs/PreferencesTab";
 import { ContactTab } from "./tabs/ContactTab";
 import { AmenitiesTab } from "./tabs/Amenitiestab";
@@ -49,10 +54,12 @@ export default function EditRoomPage() {
   const { user } = useUserRole();
   const isAdmin = user?.role === UserRole.ADMIN;
   const tabsRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [activeTab, setActiveTab] = useState("basic");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isFormReady, setIsFormReady] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
 
   const [selectedAmenities, setSelectedAmenities] = useState<string[]>([]);
   const [selectedTenantTypes, setSelectedTenantTypes] = useState<TenantType[]>(
@@ -66,11 +73,6 @@ export default function EditRoomPage() {
   const [removedImages, setRemovedImages] = useState<string[]>([]);
   const [newImageFiles, setNewImageFiles] = useState<File[]>([]);
   const [newImagePreviews, setNewImagePreviews] = useState<string[]>([]);
-  const [uploadProgress, setUploadProgress] = useState(0);
-
-  const [imageCategories, setImageCategories] = useState<
-    Record<string, string>
-  >({});
 
   const { data, isLoading } = useQuery({
     queryKey: ["room", id],
@@ -138,47 +140,8 @@ export default function EditRoomPage() {
     mode: "onChange",
   });
 
-  const getImageCategoriesFromUrls = (
-    images: string[],
-  ): Record<string, string> => {
-    const categories: Record<string, string> = {};
-
-    images.forEach((url, index) => {
-      const urlLower = url.toLowerCase();
-
-      // Check for keywords in URL
-      if (
-        urlLower.includes("toilet") ||
-        urlLower.includes("wc") ||
-        urlLower.includes("bathroom")
-      ) {
-        categories[url] = "Bathroom";
-      } else if (
-        urlLower.includes("kitchen") ||
-        urlLower.includes("outside") ||
-        urlLower.includes("balcony")
-      ) {
-        categories[url] = "Outside";
-      } else {
-        // Default: assume first 4 are room, then toilet, bathroom, outside
-        if (index < 4) categories[url] = "Room";
-        else if (index === 4) categories[url] = "Toilet";
-        else if (index === 5) categories[url] = "Bathroom";
-        else if (index >= 6 && index < 8) categories[url] = "Outside";
-        else categories[url] = "Room";
-      }
-    });
-
-    return categories;
-  };
-
-  // ── Pre-fill form when room data loads ───────────────────────────────────
   useEffect(() => {
     if (!room) return;
-
-    if (room?.images) {
-      setImageCategories(getImageCategoriesFromUrls(room.images));
-    }
 
     const detectedType = detectWaterType(room.waterSupplyTimings);
     setWaterSupplyType(detectedType);
@@ -303,6 +266,7 @@ export default function EditRoomPage() {
 
   // ── Derived ───────────────────────────────────────────────────────────────
   const currentTabIdx = TABS.findIndex((t) => t.value === activeTab);
+  const totalPhotos = existingImages.length + newImageFiles.length;
 
   const navigateTab = (direction: "next" | "prev") => {
     if (direction === "next" && currentTabIdx < TABS.length - 1)
@@ -345,26 +309,39 @@ export default function EditRoomPage() {
     setRemovedImages((prev) => [...prev, url]);
   };
 
-  // In EditRoomPage.tsx, replace the addNewImages function with:
-  const addNewImages = (files: File[], category: string) => {
-    if (files.length === 0) return;
+  const processNewImages = (files: File[]) => {
+    const invalid = files.filter((f) => !f.type.startsWith("image/"));
+    if (invalid.length > 0) {
+      toast.error("Only image files are allowed (JPEG, PNG, WEBP)");
+      return;
+    }
 
-    setUploadProgress(0);
-    const interval = setInterval(
-      () =>
-        setUploadProgress((p) => {
-          if (p >= 100) {
-            clearInterval(interval);
-            return 100;
-          }
-          return p + 10;
-        }),
-      80,
-    );
+    const valid = files.filter((f) => f.size <= 10 * 1024 * 1024);
+    const oversized = files.filter((f) => f.size > 10 * 1024 * 1024);
+    if (oversized.length > 0) {
+      toast.warning(
+        `${oversized.length} file(s) skipped — each must be under 10 MB`,
+      );
+    }
 
-    setNewImageFiles((prev) => [...prev, ...files]);
+    const remaining = 10 - totalPhotos;
+    if (remaining <= 0) {
+      toast.error("Maximum 10 photos allowed. Remove some to add more.");
+      return;
+    }
 
-    files.forEach((file) => {
+    const toAdd = valid.slice(0, remaining);
+    if (valid.length > remaining) {
+      toast.warning(
+        `Only ${remaining} more photo(s) can be added. ${valid.length - remaining} skipped.`,
+      );
+    }
+
+    if (toAdd.length === 0) return;
+
+    setNewImageFiles((prev) => [...prev, ...toAdd]);
+
+    toAdd.forEach((file) => {
       const reader = new FileReader();
       reader.onloadend = () => {
         setNewImagePreviews((prev) => [...prev, reader.result as string]);
@@ -372,29 +349,35 @@ export default function EditRoomPage() {
       reader.readAsDataURL(file);
     });
 
-    setTimeout(() => {
-      clearInterval(interval);
-      setUploadProgress(0);
-      const categoryNp =
-        category === "Room"
-          ? "कोठाका"
-          : category === "Toilet"
-            ? "शौचालयका"
-            : category === "Bathroom"
-              ? "नुहाउने कोठाका"
-              : "बाहिरी";
-      toast.success(
-        `${files.length} ${category} photo(s) added! / ${files.length} ${categoryNp} तस्बिरहरू थपियो!`,
-      );
-    }, 900);
+    toast.success(
+      `${toAdd.length} photo(s) added! (${totalPhotos + toAdd.length}/10)`,
+    );
   };
+
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length > 0) processNewImages(files);
+    e.target.value = "";
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(false);
+    processNewImages(Array.from(e.dataTransfer.files));
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = () => setIsDragging(false);
 
   const removeNewImage = (index: number) => {
     setNewImageFiles((prev) => prev.filter((_, i) => i !== index));
     setNewImagePreviews((prev) => prev.filter((_, i) => i !== index));
   };
 
-  // ── Submit ────────────────────────────────────────────────────────────────
   const onSubmit = async (values: CreateRoomFormValues) => {
     setIsSubmitting(true);
 
@@ -555,7 +538,7 @@ export default function EditRoomPage() {
                 >
                   <Link
                     href={isAdmin ? "/admin/dashboard" : "/user/dashboard"}
-                    className="hover:text-primary transition-colors"
+                    className="hover:text-primary transition-colors cursor-pointer"
                   >
                     Dashboard
                   </Link>
@@ -566,7 +549,7 @@ export default function EditRoomPage() {
                         ? "/admin/dashboard/rooms"
                         : "/user/dashboard/rooms"
                     }
-                    className="hover:text-primary transition-colors"
+                    className="hover:text-primary transition-colors cursor-pointer"
                   >
                     Rooms
                   </Link>
@@ -678,16 +661,235 @@ export default function EditRoomPage() {
                   />
                 )}
 
+                {/* ══ PHOTOS TAB — simplified ══ */}
                 {activeTab === "photos" && (
-                  <PhotosTab
-                    existingImages={existingImages}
-                    newImagePreviews={newImagePreviews}
-                    removedImages={removedImages}
-                    uploadProgress={uploadProgress}
-                    onRemoveExisting={removeExistingImage}
-                    onAddNew={addNewImages}
-                    onRemoveNew={removeNewImage}
-                  />
+                  <div className="space-y-5">
+                    <div className="mb-4">
+                      <div className="flex items-center gap-3 mb-2">
+                        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                          <ImageIcon className="w-5 h-5 text-primary" />
+                        </div>
+                        <h2 className="text-xl font-bold text-slate-900">
+                          Room Photos / कोठाका फोटोहरू
+                        </h2>
+                      </div>
+                      <p className="text-sm text-slate-500 ml-13">
+                        Manage your room photos — फोटोहरू व्यवस्थापन गर्नुहोस्
+                      </p>
+                    </div>
+
+                    {/* What photos to include guidance */}
+                    <div className="p-4 bg-blue-50 rounded-xl border border-blue-200 space-y-2">
+                      <p className="text-sm font-semibold text-blue-800 flex items-center gap-2">
+                        <ImageIcon className="w-4 h-4" aria-hidden />
+                        Recommended photos to include:
+                      </p>
+                      <ul className="text-xs text-blue-700 space-y-1 ml-1">
+                        <li className="flex items-center gap-2">
+                          <span aria-hidden>🛏️</span> Room interior (multiple
+                          angles)
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <span aria-hidden>🚽</span> Toilet
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <span aria-hidden>🚿</span> Bathroom / shower area
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <span aria-hidden>🏘️</span> Outside / building
+                          exterior
+                        </li>
+                      </ul>
+                      <p className="text-xs text-blue-600">
+                        Up to 10 photos total · Max 10MB each · JPEG / PNG /
+                        WEBP
+                      </p>
+                    </div>
+
+                    {/* Existing photos */}
+                    {existingImages.length > 0 && (
+                      <section aria-label="Existing photos">
+                        <div className="flex items-center justify-between mb-3">
+                          <p className="text-sm font-semibold text-slate-700">
+                            Current Photos / हाल भएका फोटोहरू
+                          </p>
+                          <Badge variant="secondary" className="text-xs">
+                            {existingImages.length} saved
+                          </Badge>
+                        </div>
+                        <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+                          {existingImages.map((url, idx) => (
+                            <figure
+                              key={url}
+                              className="relative group aspect-square"
+                            >
+                              <div className="w-full h-full rounded-xl overflow-hidden border-2 border-slate-200 group-hover:border-red-300 transition-colors">
+                                <img
+                                  src={`${API_BASE_URL}${url}`}
+                                  alt={`Room photo ${idx + 1}`}
+                                  className="w-full h-full object-cover"
+                                />
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => removeExistingImage(url)}
+                                aria-label={`Remove photo ${idx + 1}`}
+                                className="absolute -top-2 -right-2 w-7 h-7 rounded-full bg-red-500 text-white flex items-center justify-center shadow-md opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer hover:bg-red-600 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-red-400"
+                              >
+                                <XCircle className="w-4 h-4" aria-hidden />
+                              </button>
+                              {idx === 0 && (
+                                <div className="absolute bottom-1.5 left-1.5">
+                                  <Badge className="text-[10px] px-1.5 py-0.5 bg-primary text-white border-0">
+                                    Main
+                                  </Badge>
+                                </div>
+                              )}
+                            </figure>
+                          ))}
+                        </div>
+                      </section>
+                    )}
+
+                    {removedImages.length > 0 && (
+                      <div className="flex items-center gap-2 p-3 bg-amber-50 rounded-xl border border-amber-200">
+                        <AlertCircle
+                          className="w-4 h-4 text-amber-600 flex-shrink-0"
+                          aria-hidden
+                        />
+                        <p className="text-xs text-amber-700 font-semibold">
+                          {removedImages.length} photo
+                          {removedImages.length !== 1 ? "s" : ""} will be
+                          removed when you save
+                        </p>
+                      </div>
+                    )}
+
+                    {/* New photos */}
+                    {newImagePreviews.length > 0 && (
+                      <section aria-label="New photos to upload">
+                        <div className="flex items-center justify-between mb-3">
+                          <p className="text-sm font-semibold text-slate-700">
+                            New Photos to Upload / नयाँ फोटोहरू
+                          </p>
+                          <Badge className="text-xs bg-green-600 text-white">
+                            +{newImagePreviews.length} new
+                          </Badge>
+                        </div>
+                        <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+                          {newImagePreviews.map((preview, idx) => (
+                            <motion.figure
+                              key={idx}
+                              initial={{ opacity: 0, scale: 0.9 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              className="relative group aspect-square"
+                            >
+                              <div className="w-full h-full rounded-xl overflow-hidden border-2 border-green-300 group-hover:border-red-300 transition-colors">
+                                <img
+                                  src={preview}
+                                  alt={`New photo ${idx + 1}`}
+                                  className="w-full h-full object-cover"
+                                />
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => removeNewImage(idx)}
+                                aria-label={`Remove new photo ${idx + 1}`}
+                                className="absolute -top-2 -right-2 w-7 h-7 rounded-full bg-red-500 text-white flex items-center justify-center shadow-md opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer hover:bg-red-600 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-red-400"
+                              >
+                                <XCircle className="w-4 h-4" aria-hidden />
+                              </button>
+                              <div className="absolute top-1.5 left-1.5">
+                                <Badge className="text-[10px] px-1.5 py-0.5 bg-green-600 text-white border-0">
+                                  New
+                                </Badge>
+                              </div>
+                            </motion.figure>
+                          ))}
+                        </div>
+                      </section>
+                    )}
+
+                    {/* Upload zone */}
+                    <section aria-label="Upload new photos">
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        multiple
+                        className="sr-only"
+                        aria-label="Upload room photos"
+                        onChange={handleFileInputChange}
+                      />
+                      <div
+                        role="button"
+                        tabIndex={0}
+                        aria-label={`Upload more photos. ${totalPhotos} of 10 uploaded.`}
+                        onClick={() =>
+                          totalPhotos < 10 && fileInputRef.current?.click()
+                        }
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            if (totalPhotos < 10) fileInputRef.current?.click();
+                          }
+                        }}
+                        onDrop={handleDrop}
+                        onDragOver={handleDragOver}
+                        onDragLeave={handleDragLeave}
+                        className={cn(
+                          "flex flex-col items-center justify-center gap-3 p-8 rounded-2xl border-2 border-dashed transition-all select-none",
+                          isDragging
+                            ? "border-primary bg-primary/5 scale-[1.01] cursor-copy"
+                            : totalPhotos >= 10
+                              ? "border-slate-200 bg-slate-50 opacity-50 cursor-not-allowed"
+                              : "border-slate-300 bg-white hover:border-primary hover:bg-primary/3 cursor-pointer",
+                        )}
+                      >
+                        <div
+                          className={cn(
+                            "w-14 h-14 rounded-2xl flex items-center justify-center transition-colors",
+                            isDragging ? "bg-primary/20" : "bg-slate-100",
+                          )}
+                        >
+                          <Upload
+                            className={cn(
+                              "w-7 h-7",
+                              isDragging ? "text-primary" : "text-slate-400",
+                            )}
+                            aria-hidden
+                          />
+                        </div>
+                        <div className="text-center">
+                          <p className="text-sm font-semibold text-slate-700">
+                            {totalPhotos >= 10
+                              ? "Maximum photos reached (10/10)"
+                              : isDragging
+                                ? "Drop photos here!"
+                                : "Click to add more photos or drag & drop"}
+                          </p>
+                          <p className="text-xs text-slate-400 mt-1">
+                            {totalPhotos}/10 photos total · Select multiple at
+                            once
+                          </p>
+                        </div>
+                      </div>
+                    </section>
+
+                    {/* Summary */}
+                    {totalPhotos > 0 && (
+                      <div className="flex items-center gap-2 p-3 bg-green-50 rounded-xl border border-green-200">
+                        <CheckCircle2
+                          className="w-4 h-4 text-green-600 flex-shrink-0"
+                          aria-hidden
+                        />
+                        <p className="text-sm font-semibold text-green-700">
+                          {existingImages.length} saved + {newImageFiles.length}{" "}
+                          new · {totalPhotos}/10 total
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 )}
 
                 {activeTab === "contact" && (
