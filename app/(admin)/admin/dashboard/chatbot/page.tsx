@@ -268,10 +268,7 @@ export default function AdminChatbotTrainingPage() {
       return;
     }
 
-    if (
-      lessonForm.actionHref.trim() &&
-      lessonForm.actionHref.trim().startsWith("/") === false
-    ) {
+    if (lessonForm.actionHref.trim() && !lessonForm.actionHref.trim().startsWith("/")) {
       toast.error("Action link must start with /");
       return;
     }

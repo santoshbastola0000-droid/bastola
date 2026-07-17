@@ -134,7 +134,7 @@ const DEFAULT_RULES: ChatbotTrainingRule[] = [
   {
     id: "approval",
     title: "Room approval",
-    triggers: ["approv", "pending", "review", "status", "room status"],
+    triggers: ["approval", "approv", "pending", "review", "status", "room status"],
     reply:
       "After submitting a room, it goes to **Pending** status and an admin reviews it within 24-48 hours. You can track it under **Pending Approvals** in the sidebar.",
     actionLabel: "View Pending",
@@ -143,7 +143,7 @@ const DEFAULT_RULES: ChatbotTrainingRule[] = [
   {
     id: "verification",
     title: "Verification",
-    triggers: ["verif", "badge", "verified"],
+    triggers: ["verification", "verif", "badge", "verified"],
     reply:
       "Your account is verified automatically when you confirm your email during signup. The blue ✓ badge appears on your profile once verified.",
     actionLabel: "View Profile",

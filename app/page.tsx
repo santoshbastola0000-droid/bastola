@@ -36,6 +36,13 @@ const HOME_CATEGORIES: RoomCategory[] = [
   RoomCategory.HOUSE,
 ];
 
+const BROWSE_HIGHLIGHTS = [
+  "Monthly rent shown early on every room card",
+  "Women-friendly and tenant preference badges surface faster",
+  "Room chatbot can now answer room-related questions too",
+  "Admin panel can teach the chatbot extra room answers",
+];
+
 export default function Home() {
   const router = useRouter();
   const [searchInput, setSearchInput] = useState("");
@@ -234,12 +241,7 @@ export default function Home() {
                   Open rooms with the details people care about first
                 </h3>
                 <div className="space-y-4 mt-6">
-                  {[
-                    "Monthly rent shown early on every room card",
-                    "Women-friendly and tenant preference badges surface faster",
-                    "Room chatbot can now answer room-related questions too",
-                    "Admin panel can teach the chatbot extra room answers",
-                  ].map((item) => (
+                  {BROWSE_HIGHLIGHTS.map((item) => (
                     <div
                       key={item}
                       className="rounded-2xl border border-slate-100 bg-slate-50 p-4 text-slate-700"
