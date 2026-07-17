@@ -15,6 +15,7 @@ import {
   Wallet,
   Percent,
   BarChart,
+  Bot,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -90,6 +91,11 @@ const navItems: NavItem[] = [
     title: "Records",
     href: "/admin/dashboard/records",
     icon: BarChart,
+  },
+  {
+    title: "Chatbot Training",
+    href: "/admin/dashboard/chatbot",
+    icon: Bot,
   },
 ];
 
