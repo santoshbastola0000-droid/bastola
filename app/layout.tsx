@@ -5,6 +5,7 @@ import { QueryClientProviderWrapper } from "@/app/providers";
 import { Toaster } from "sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { SessionChecker } from "@/components/SessionChecker";
+import { GlobalChatbot } from "@/components/GlobalChatbot";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -33,7 +34,10 @@ export default function RootLayout({
       >
         <SessionChecker />
         <QueryClientProviderWrapper>
-          <TooltipProvider>{children}</TooltipProvider>
+          <TooltipProvider>
+            {children}
+            <GlobalChatbot />
+          </TooltipProvider>
           <Toaster />
         </QueryClientProviderWrapper>
       </body>

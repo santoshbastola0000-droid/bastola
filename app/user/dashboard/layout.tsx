@@ -10,7 +10,6 @@ import { UserHeader } from "@/components/user/Header";
 import { Loader2 } from "lucide-react";
 import { UserSidebar } from "@/components/user/Sidebar";
 import { ThemeProvider } from "@/components/theme-provider";
-import { Chatbot } from "@/components/user/Chatbot";
 import { RoomFAB } from "@/components/user/RoomFAB";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -131,7 +130,6 @@ export default function UserLayout({
         </div>
         {/* Floating widgets */}
         <RoomFAB />
-        <Chatbot />
       </div>
     </ThemeProvider>
   );
