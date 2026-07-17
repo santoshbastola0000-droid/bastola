@@ -1,5 +1,9 @@
 import { privateApi } from "@/http/api/privateApi";
-import { PaginatedUserResponse, UserRole } from "@/types/user.types";
+import {
+  PaginatedUserResponse,
+  UserRole,
+  type UserLocation,
+} from "@/types/user.types";
 
 export interface UserFilters {
   page?: number;
@@ -29,5 +33,13 @@ export const userService = {
 
   deleteUser: async (id: string): Promise<void> => {
     await privateApi.delete(`/user/${id}`);
+  },
+
+  updateLocation: async (location: Omit<UserLocation, "updatedAt">): Promise<void> => {
+    await privateApi.post("/user/location", location);
+  },
+
+  heartbeat: async (): Promise<void> => {
+    await privateApi.post("/user/heartbeat");
   },
 };
