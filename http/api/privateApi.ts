@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { useUserStore } from "@/stores/user-store";
 
 export const privateApi = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_BACKEND_URL,
+  baseURL: process.env.NEXT_PUBLIC_BACKEND_URL || "https://api.roomkhoj.com",
 });
 
 // Flag to prevent multiple redirects

@@ -30,7 +30,8 @@ export const sizeConstants = {
 
 export const GOOGLE_MAPS_URL = "https://maps.app.goo.gl/JLAQ5KnQBGMoSNa19";
 
-export const BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL!;
+export const BASE_URL =
+  process.env.NEXT_PUBLIC_BACKEND_URL || "https://api.roomkhoj.com";
 
 export type Step = "info" | "amount" | "payment" | "success";
 
@@ -58,7 +59,8 @@ export const DEFAULT_LNG = 85.324;
 
 export const PAGE_SIZE = 9;
 
-export const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "";
+export const API_BASE_URL =
+  process.env.NEXT_PUBLIC_BACKEND_URL || "https://api.roomkhoj.com";
 
 export const TABS = [
   { value: "basic", label: "Basic", labelNp: "आधारभूत", icon: Home },
