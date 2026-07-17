@@ -35,6 +35,7 @@ interface UserHeaderProps {
 // Map pathname segments → human-readable titles
 const PAGE_TITLES: Record<string, string> = {
   dashboard: "Dashboard",
+  profile: "My Profile",
   rooms: "My Rooms",
   create: "Add New Room",
   pending: "Pending Approvals",

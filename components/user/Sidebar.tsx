@@ -16,6 +16,7 @@ import {
   CheckCircle,
   X,
   Globe,
+  UserCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -30,6 +31,7 @@ import { LogoutConfirmDialog } from "@/components/LogoutConfirmDialog";
 
 const navItems = [
   { title: "Dashboard", href: "/user/dashboard", icon: Home },
+  { title: "Profile", href: "/user/dashboard/profile", icon: UserCircle },
   { title: "My Rooms", href: "/user/dashboard/rooms", icon: Building2 },
   {
     title: "Add New Room",
