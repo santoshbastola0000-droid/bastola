@@ -81,6 +81,7 @@ import { TopUpRequestDialog } from "@/components/wallet/TopUpRequestDialog";
 import { unlockService } from "@/http/services/unlock.service";
 import { useUserStore } from "@/stores/user-store";
 import { MapComponent } from "@/components/common/MapComponent";
+import { useBehaviorTracking } from "@/hooks/use-behavior-tracking";
 import type {
   CommissionSettings,
   UnlockResult,
@@ -1106,6 +1107,7 @@ export default function PropertyDetailsPage() {
 
   const [room, setRoom] = useState<Room | null>(null);
   const [loading, setLoading] = useState(true);
+  const { trackRoomView } = useBehaviorTracking();
   const [showAllAmenities, setShowAllAmenities] = useState(false);
   const [unlockStatus, setUnlockStatus] = useState<UnlockStatus | null>(null);
   const [unlockedData, setUnlockedData] = useState<UnlockResult | null>(null);
@@ -1120,14 +1122,23 @@ export default function PropertyDetailsPage() {
       try {
         const res = await fetch(`${api.defaults.baseURL}/rooms/${id}`);
         const data = await res.json();
-        setRoom(data.data || data);
+        const loadedRoom = data.data || data;
+        setRoom(loadedRoom);
+        if (loadedRoom) {
+          trackRoomView(
+            String(id),
+            loadedRoom.title,
+            loadedRoom.location?.city || loadedRoom.address,
+            Number(loadedRoom.price),
+          );
+        }
       } catch {
         toast.error("Failed to load property");
       } finally {
         setLoading(false);
       }
     })();
-  }, [id]);
+  }, [id, trackRoomView]);
 
   useEffect(() => {
     if (!isLoaded || !isAuthenticated || !id) return;
