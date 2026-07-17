@@ -210,10 +210,13 @@ export function Chatbot() {
             <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
               {messages.map((msg) => {
                 if (msg.text.startsWith("__action__")) {
-                  const action = JSON.parse(msg.text.replace("__action__", "")) as {
-                    label: string;
-                    href: string;
-                  };
+                  let action: { label: string; href: string } | null = null;
+                  try {
+                    action = JSON.parse(msg.text.replace("__action__", ""));
+                  } catch {
+                    return null;
+                  }
+                  if (!action) return null;
                   return (
                     <div key={msg.id} className="flex justify-start">
                       <button

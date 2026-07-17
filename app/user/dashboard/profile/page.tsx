@@ -37,6 +37,7 @@ export default function ProfilePage() {
   const initials = user?.name
     ? user.name
         .split(" ")
+        .filter((n) => n.length > 0)
         .map((n) => n[0])
         .join("")
         .toUpperCase()
@@ -59,11 +60,15 @@ export default function ProfilePage() {
     }
     setIsSaving(true);
     try {
-      await privateApi.patch("/user/profile", {
+      const response = await privateApi.patch("/user/profile", {
         name: form.name.trim(),
         phone: form.phone.trim(),
       });
-      updateUser({ name: form.name.trim(), phone: form.phone.trim() });
+      const updated = response.data?.data;
+      updateUser({
+        name: updated?.name ?? form.name.trim(),
+        phone: updated?.phone ?? form.phone.trim(),
+      });
       toast.success("Profile updated!", {
         description: "Your changes have been saved.",
       });

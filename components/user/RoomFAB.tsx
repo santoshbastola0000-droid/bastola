@@ -16,7 +16,7 @@ export function RoomFAB() {
       type="button"
       onClick={() => router.push("/user/dashboard/rooms/create")}
       className={cn(
-        "fixed bottom-24 right-24 z-50 w-12 h-12 rounded-full shadow-lg",
+        "fixed bottom-6 right-6 sm:bottom-24 sm:right-24 z-50 w-12 h-12 rounded-full shadow-lg",
         "bg-white dark:bg-gray-800 border-2 border-red-500 text-red-600",
         "flex items-center justify-center hover:bg-red-50 dark:hover:bg-red-950",
         "hover:scale-110 transition-all duration-200 cursor-pointer",
