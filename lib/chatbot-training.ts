@@ -197,6 +197,14 @@ const DEFAULT_QUICK_REPLIES = [
   "Room approval process",
 ];
 
+export function createChatbotRuleId() {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+
+  return `rule-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
 function normalize(value: string) {
   return value.toLowerCase().trim();
 }
@@ -220,7 +228,7 @@ function sanitizeRule(rule: unknown): ChatbotTrainingRule | null {
     id:
       typeof candidate.id === "string" && candidate.id.trim()
         ? candidate.id.trim()
-        : `rule-${Date.now()}`,
+        : createChatbotRuleId(),
     title,
     triggers,
     reply,

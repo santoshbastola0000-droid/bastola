@@ -109,7 +109,7 @@ export default function Home() {
               {[
                 {
                   icon: Compass,
-                  title: `${pagination?.total ?? rawRooms.length}+ rooms`,
+                  title: `${pagination?.total ?? rawRooms.length} rooms`,
                   text: "Fresh listings ready to browse",
                 },
                 {

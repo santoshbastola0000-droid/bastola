@@ -35,6 +35,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  createChatbotRuleId,
   getDefaultChatbotRules,
   getStoredChatbotRules,
   saveStoredChatbotRules,
@@ -236,7 +237,7 @@ export default function AdminChatbotTrainingPage() {
       .filter((item) => item.score > 0)
       .sort((a, b) => b.score - a.score || Number(a.room.price) - Number(b.room.price))
       .slice(0, 6);
-  }, [rooms, selectedUser, suggestionForm]);
+  }, [rooms, suggestionForm]);
 
   const handleLessonChange = (key: keyof LessonFormState, value: string) => {
     setLessonForm((prev) => ({ ...prev, [key]: value }));
@@ -276,7 +277,7 @@ export default function AdminChatbotTrainingPage() {
     }
 
     const nextRule: ChatbotTrainingRule = {
-      id: `custom-${Date.now()}`,
+      id: createChatbotRuleId(),
       title: lessonForm.title.trim(),
       triggers,
       reply: lessonForm.reply.trim(),
@@ -713,7 +714,7 @@ export default function AdminChatbotTrainingPage() {
                               {room.title}
                             </h3>
                             <Badge className="bg-red-50 text-red-700 border-red-200">
-                              Match score {score.toFixed(1)}
+                              Match score {Math.round(score)}
                             </Badge>
                             {room.allowsWomen && (
                               <Badge
