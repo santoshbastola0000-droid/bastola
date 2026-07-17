@@ -17,6 +17,10 @@ import {
   Loader2,
   ChevronLeft,
   ChevronRight,
+  MapPin,
+  Wallet,
+  Radio,
+  Clock,
 } from "lucide-react";
 
 import {
@@ -76,6 +80,7 @@ import {
   getRoleOptions,
 } from "@/lib/user-utils";
 import { UsersListSkeleton } from "@/components/user/UsersListSkeleton";
+import { formatPriceNPR, timeAgo } from "@/lib/utils";
 
 export default function UsersList() {
   const queryClient = useQueryClient();
@@ -177,6 +182,52 @@ export default function UsersList() {
     }
   };
 
+  const getOnlineBadge = (isOnline?: boolean, lastActiveAt?: string) => {
+    if (isOnline) {
+      return (
+        <Badge
+          variant="outline"
+          className="bg-emerald-50 text-emerald-700 border-emerald-200 text-xs"
+        >
+          <Radio className="h-3 w-3 mr-1 fill-emerald-500 text-emerald-500" />
+          Online
+        </Badge>
+      );
+    }
+    if (lastActiveAt) {
+      return (
+        <Badge
+          variant="outline"
+          className="bg-slate-50 text-slate-600 border-slate-200 text-xs"
+        >
+          <Clock className="h-3 w-3 mr-1" />
+          {timeAgo(lastActiveAt)}
+        </Badge>
+      );
+    }
+    return (
+      <Badge
+        variant="outline"
+        className="bg-slate-50 text-slate-500 border-slate-200 text-xs"
+      >
+        Offline
+      </Badge>
+    );
+  };
+
+  const getLocationText = (user: any) => {
+    const loc = user.location;
+    if (!loc) return null;
+    return (
+      <span className="inline-flex items-center gap-1 text-xs text-slate-500">
+        <MapPin className="h-3 w-3 flex-shrink-0" />
+        <span className="truncate">
+          {loc.city || `${loc.latitude.toFixed(4)}, ${loc.longitude.toFixed(4)}`}
+        </span>
+      </span>
+    );
+  };
+
   const MobileUserCard = ({ user }: { user: any }) => (
     <div className="bg-white rounded-lg border p-4 space-y-3">
       <div className="flex items-start justify-between">
@@ -229,6 +280,14 @@ export default function UsersList() {
           <span className="truncate">{user.phone || "Not provided"}</span>
         </div>
         <div className="flex justify-end">{getRoleBadge(user.role)}</div>
+        <div className="col-span-2 flex items-center justify-between gap-2">
+          {getLocationText(user)}
+          {getOnlineBadge(user.isOnline, user.lastActiveAt)}
+        </div>
+        <div className="flex items-center gap-2">
+          <Wallet className="h-3 w-3 text-primary" />
+          <span>{formatPriceNPR(user.balance ?? 0)}</span>
+        </div>
         <div className="col-span-2 flex justify-between items-center pt-2 border-t">
           <div>{getVerificationBadge(user.isVerified)}</div>
           {user.role !== UserRole.ADMIN && (
@@ -423,8 +482,10 @@ export default function UsersList() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[300px]">User Details</TableHead>
-                  <TableHead className="w-[200px]">Contact</TableHead>
+                  <TableHead className="w-[260px]">User Details</TableHead>
+                  <TableHead className="w-[180px]">Contact</TableHead>
+                  <TableHead className="w-[140px]">Balance</TableHead>
+                  <TableHead className="w-[160px]">Location</TableHead>
                   <TableHead className="w-[120px]">Role</TableHead>
                   <TableHead className="w-[120px]">Status</TableHead>
                   <TableHead className="text-right w-[100px]">
@@ -440,7 +501,7 @@ export default function UsersList() {
                       className="hover:bg-accent/50 transition-colors"
                     >
                       <TableCell>
-                        <div className="flex items-start gap-3 min-w-[250px]">
+                        <div className="flex items-start gap-3 min-w-[220px]">
                           <div className="flex items-center justify-center h-10 w-10 rounded-full bg-primary/10 flex-shrink-0">
                             <User className="h-5 w-5 text-primary" />
                           </div>
@@ -450,7 +511,7 @@ export default function UsersList() {
                             </h3>
                             <div className="flex items-center gap-1 text-sm text-muted-foreground">
                               <Mail className="h-3 w-3 flex-shrink-0" />
-                              <span className="truncate max-w-[200px]">
+                              <span className="truncate max-w-[180px]">
                                 {user.email}
                               </span>
                             </div>
@@ -458,11 +519,41 @@ export default function UsersList() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-2 text-sm min-w-[150px]">
-                          <Phone className="h-3 w-3 text-primary flex-shrink-0" />
-                          <span className="truncate">
-                            {user.phone || "Not provided"}
+                        <div className="flex flex-col gap-1 text-sm min-w-[150px]">
+                          <div className="flex items-center gap-2">
+                            <Phone className="h-3 w-3 text-primary flex-shrink-0" />
+                            <span className="truncate">
+                              {user.phone || "Not provided"}
+                            </span>
+                          </div>
+                          {getOnlineBadge(user.isOnline, user.lastActiveAt)}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2 text-sm min-w-[100px]">
+                          <Wallet className="h-3.5 w-3.5 text-primary flex-shrink-0" />
+                          <span className="font-medium">
+                            {formatPriceNPR(user.balance ?? 0)}
                           </span>
+                        </div>
+                        {user.pendingBalance ? (
+                          <p className="text-[10px] text-slate-500 ml-5">
+                            Pending {formatPriceNPR(user.pendingBalance)}
+                          </p>
+                        ) : null}
+                      </TableCell>
+                      <TableCell>
+                        <div className="min-w-[120px]">
+                          {getLocationText(user) ?? (
+                            <span className="text-xs text-slate-400">
+                              Not shared
+                            </span>
+                          )}
+                          {user.location?.updatedAt && (
+                            <p className="text-[10px] text-slate-400 mt-0.5">
+                              {timeAgo(user.location.updatedAt)}
+                            </p>
+                          )}
                         </div>
                       </TableCell>
                       <TableCell>
@@ -492,7 +583,7 @@ export default function UsersList() {
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={5} className="h-32 text-center">
+                    <TableCell colSpan={7} className="h-32 text-center">
                       <div className="flex flex-col items-center justify-center gap-3">
                         <UsersIcon className="h-12 w-12 text-muted-foreground opacity-50" />
                         <div>
