@@ -10,9 +10,15 @@ import {
   User,
   ChevronDown,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
+import {
+  CHATBOT_RULES_UPDATED_EVENT,
+  findChatbotReply,
+  getChatbotQuickReplies,
+  getStoredChatbotRules,
+  type ChatbotTrainingRule,
+} from "@/lib/chatbot-training";
 
 interface Message {
   id: number;
@@ -20,90 +26,33 @@ interface Message {
   text: string;
 }
 
-const QUICK_REPLIES = [
-  "How do I add a room?",
-  "What is my wallet balance?",
-  "How to get verified?",
-  "Room approval process",
-];
-
-type BotReply = {
-  text: string;
-  action?: { label: string; href: string };
-};
-
-function getBotReply(input: string): BotReply {
-  const q = input.toLowerCase();
-
-  if (q.includes("add room") || q.includes("create room") || q.includes("list") || q.includes("new room")) {
-    return {
-      text: "To add a new room, click **Add New Room** in the sidebar or tap the ＋ button. Fill in the details like title, price, address, and photos, then submit for approval.",
-      action: { label: "Add Room Now", href: "/user/dashboard/rooms/create" },
-    };
-  }
-  if (q.includes("wallet") || q.includes("balance") || q.includes("money")) {
-    return {
-      text: "Your wallet shows your earnings and transaction history. You can top it up or withdraw from the Wallet section in the sidebar.",
-      action: { label: "Go to Wallet", href: "/user/dashboard/wallet" },
-    };
-  }
-  if (q.includes("approv") || q.includes("pending") || q.includes("review")) {
-    return {
-      text: "After submitting a room, it goes to **Pending** status and an admin reviews it within 24-48 hours. You can track it under **Pending Approvals** in the sidebar.",
-      action: { label: "View Pending", href: "/user/dashboard/rooms/pending" },
-    };
-  }
-  if (q.includes("verif") || q.includes("badge")) {
-    return {
-      text: "Your account is verified automatically when you confirm your email during signup. The blue ✓ badge appears on your profile once verified.",
-      action: { label: "View Profile", href: "/user/dashboard/profile" },
-    };
-  }
-  if (q.includes("profile") || q.includes("edit") || q.includes("name") || q.includes("phone")) {
-    return {
-      text: "You can update your name and phone number from your Profile page. Click **Edit Profile** to make changes.",
-      action: { label: "Go to Profile", href: "/user/dashboard/profile" },
-    };
-  }
-  if (q.includes("room") && (q.includes("my") || q.includes("see") || q.includes("view"))) {
-    return {
-      text: "All your listed rooms are available under **My Rooms** in the sidebar.",
-      action: { label: "My Rooms", href: "/user/dashboard/rooms" },
-    };
-  }
-  if (q.includes("reject") || q.includes("denied")) {
-    return {
-      text: "If your room was rejected, an admin would have provided a reason. You can edit and resubmit the listing from the Rejected Rooms section.",
-    };
-  }
-  if (q.includes("hello") || q.includes("hi") || q.includes("hey")) {
-    return {
-      text: "Hello! 👋 I'm your RoomKhoj assistant. I can help you with adding rooms, checking wallet balance, approval status, and more. What would you like to know?",
-    };
-  }
-  if (q.includes("help") || q.includes("what can you")) {
-    return {
-      text: "I can help you with:\n• Adding or managing rooms\n• Wallet & earnings\n• Approval & pending status\n• Profile settings\n• Verification\n\nJust ask me anything!",
-    };
-  }
-  return {
-    text: "I'm not sure about that yet. Try asking about adding rooms, your wallet, approval process, or profile settings. Or type **help** for all topics.",
-  };
-}
-
 export function Chatbot() {
   const [isOpen, setIsOpen] = useState(false);
+  const [customRules, setCustomRules] = useState<ChatbotTrainingRule[]>([]);
   const [messages, setMessages] = useState<Message[]>([
     {
       id: 0,
       role: "bot",
-      text: "Hi! 👋 I'm your RoomKhoj assistant. How can I help you today?",
+      text: "Hi! 👋 I'm your RoomKhoj assistant. I can help you find rooms, understand listings, and manage your account. How can I help you today?",
     },
   ]);
   const [input, setInput] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
+
+  useEffect(() => {
+    const syncRules = () => setCustomRules(getStoredChatbotRules());
+
+    syncRules();
+    window.addEventListener(CHATBOT_RULES_UPDATED_EVENT, syncRules);
+    window.addEventListener("storage", syncRules);
+
+    return () => {
+      window.removeEventListener(CHATBOT_RULES_UPDATED_EVENT, syncRules);
+      window.removeEventListener("storage", syncRules);
+    };
+  }, []);
 
   useEffect(() => {
     if (isOpen) {
@@ -125,7 +74,7 @@ export function Chatbot() {
     setInput("");
 
     setTimeout(() => {
-      const reply = getBotReply(trimmed);
+      const reply = findChatbotReply(trimmed, customRules);
       const botMsg: Message = {
         id: Date.now() + 1,
         role: "bot",
@@ -195,7 +144,9 @@ export function Chatbot() {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold leading-none">RoomKhoj Bot</p>
-                <p className="text-[10px] text-white/70 mt-0.5">Always here to help</p>
+                <p className="text-[10px] text-white/70 mt-0.5">
+                  Room help, listing help, and quick answers
+                </p>
               </div>
               <button
                 type="button"
@@ -273,7 +224,7 @@ export function Chatbot() {
 
             {/* Quick replies */}
             <div className="px-4 pb-2 flex gap-1.5 flex-wrap shrink-0">
-              {QUICK_REPLIES.map((q) => (
+              {getChatbotQuickReplies(customRules).map((q) => (
                 <button
                   key={q}
                   type="button"
