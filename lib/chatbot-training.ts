@@ -17,6 +17,16 @@ export type ChatbotTrainingRule = {
   actionHref?: string;
 };
 
+export type UserPreferenceProfile = {
+  city?: string;
+  maxBudget?: number;
+  womenOnly?: boolean;
+  tenantType?: string;
+  amenities?: string[];
+  latitude?: number;
+  longitude?: number;
+};
+
 export const CHATBOT_STORAGE_KEY = "roomkhoj.chatbot.training";
 export const CHATBOT_RULES_UPDATED_EVENT = "roomkhoj-chatbot-training-updated";
 
@@ -191,11 +201,13 @@ const DEFAULT_RULES: ChatbotTrainingRule[] = [
 ];
 
 const DEFAULT_QUICK_REPLIES = [
-  "How do I find rooms?",
+  "Find rooms near me",
   "Show women-friendly rooms",
   "How do I add a room?",
   "Room approval process",
 ];
+
+const PREFERENCE_STORAGE_KEY = "roomkhoj.user.preferences";
 
 export function createChatbotRuleId() {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
@@ -323,3 +335,50 @@ export function findChatbotReply(
       "I'm not sure about that yet. Try asking about finding rooms, women-friendly rooms, amenities, owner unlock info, approval process, or profile settings.",
   };
 }
+
+function isRoomDiscoveryQuery(input: string): boolean {
+  const discoveryPhrases = [
+    "find room",
+    "search room",
+    "room khoj",
+    "kotha khoj",
+    "room near",
+    "nearby room",
+    "room kata xa",
+    "kotha kata xa",
+    "kata xa room",
+    "suggest room",
+    "recommend room",
+    "room dinos",
+    "room deu",
+  ];
+  return discoveryPhrases.some((phrase) => input.includes(phrase));
+}
+
+export function saveUserPreferences(preferences: UserPreferenceProfile) {
+  if (typeof window === "undefined") return;
+  const existing = getUserPreferences();
+  const next: UserPreferenceProfile = { ...existing, ...preferences };
+  window.localStorage.setItem(
+    PREFERENCE_STORAGE_KEY,
+    JSON.stringify(next),
+  );
+}
+
+export function getUserPreferences(): UserPreferenceProfile {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = window.localStorage.getItem(PREFERENCE_STORAGE_KEY);
+    if (!raw) return {};
+    return JSON.parse(raw) as UserPreferenceProfile;
+  } catch {
+    return {};
+  }
+}
+
+export function clearUserPreferences() {
+  if (typeof window === "undefined") return;
+  window.localStorage.removeItem(PREFERENCE_STORAGE_KEY);
+}
+
+export { isRoomDiscoveryQuery };

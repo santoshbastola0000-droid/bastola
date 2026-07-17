@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   MessageCircle,
@@ -9,6 +9,7 @@ import {
   Bot,
   User,
   ChevronDown,
+  MapPin,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
@@ -17,13 +18,49 @@ import {
   findChatbotReply,
   getChatbotQuickReplies,
   getStoredChatbotRules,
+  isRoomDiscoveryQuery,
+  saveUserPreferences,
+  getUserPreferences,
+  clearUserPreferences,
   type ChatbotTrainingRule,
+  type UserPreferenceProfile,
 } from "@/lib/chatbot-training";
+import { useChatbotSuggestions } from "@/hooks/use-chatbot-suggestions";
+import { formatPriceNPR } from "@/lib/utils";
+import { getStoredUserLocation } from "@/hooks/use-user-location";
+import type { Recommendation } from "@/hooks/use-room-recommendations";
+import type { Room } from "@/types/room.types";
 
 interface Message {
   id: number;
   role: "bot" | "user";
   text: string;
+}
+
+type SuggestionStep =
+  | "idle"
+  | "ask-city"
+  | "ask-budget"
+  | "ask-women"
+  | "ask-tenant"
+  | "ask-amenities"
+  | "confirm-location"
+  | "searching"
+  | "results";
+
+interface SuggestionState {
+  step: SuggestionStep;
+  preferences: UserPreferenceProfile;
+}
+
+function buildPreferenceSummary(prefs: UserPreferenceProfile): string {
+  const parts: string[] = [];
+  if (prefs.city) parts.push(`area: ${prefs.city}`);
+  if (prefs.maxBudget) parts.push(`budget up to ${formatPriceNPR(prefs.maxBudget)}`);
+  if (prefs.womenOnly) parts.push("women-friendly");
+  if (prefs.tenantType) parts.push(`tenant type: ${prefs.tenantType}`);
+  if (prefs.amenities?.length) parts.push(`amenities: ${prefs.amenities.join(", ")}`);
+  return parts.length ? parts.join(" • ") : "any room";
 }
 
 export function Chatbot() {
@@ -40,6 +77,14 @@ export function Chatbot() {
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
+
+  const [suggestionState, setSuggestionState] = useState<SuggestionState>({
+    step: "idle",
+    preferences: getUserPreferences(),
+  });
+
+  const { fetch: fetchSuggestions, recommendations, loading: suggestionsLoading } =
+    useChatbotSuggestions();
 
   useEffect(() => {
     const syncRules = () => setCustomRules(getStoredChatbotRules());
@@ -95,6 +140,288 @@ export function Chatbot() {
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") sendMessage(input);
+  };
+
+  const appendBotMessage = useCallback((text: string) => {
+    setMessages((m) => [...m, { id: Date.now(), role: "bot", text }]);
+  }, []);
+
+  const appendActionButton = useCallback(
+    (label: string, href: string) => {
+      setMessages((m) => [
+        ...m,
+        {
+          id: Date.now(),
+          role: "bot",
+          text: `__action__${JSON.stringify({ label, href })}`,
+        },
+      ]);
+    },
+    [],
+  );
+
+  const startRoomDiscovery = useCallback(() => {
+    const stored = getStoredUserLocation();
+    const prefs = getUserPreferences();
+    setSuggestionState({ step: "ask-city", preferences: prefs });
+
+    if (stored) {
+      setSuggestionState((prev) => ({
+        step: "ask-city",
+        preferences: {
+          ...prev.preferences,
+          latitude: stored.latitude,
+          longitude: stored.longitude,
+        },
+      }));
+    }
+
+    appendBotMessage(
+      "Great! Let me find rooms for you. First, which city or area are you looking in? (e.g., Pokhara, Lakeside, Kathmandu)",
+    );
+  }, [appendBotMessage]);
+
+  const parseBudget = (text: string): number | undefined => {
+    const match = text.replace(/,/g, "").match(/\d+/);
+    if (!match) return undefined;
+    const value = Number(match[0]);
+    return value > 0 ? value : undefined;
+  };
+
+  const parseAmenities = (text: string): string[] => {
+    return text
+      .split(/[,\/\s]+/)
+      .map((t) => t.trim().toLowerCase())
+      .filter(Boolean);
+  };
+
+  const detectYesNo = (text: string): boolean | undefined => {
+    const t = text.toLowerCase().trim();
+    if (["yes", "ya", "yep", "ho", "chaiyo", "chahiyo"].some((w) => t.includes(w)))
+      return true;
+    if (["no", "na", "nope", "hoina", "chaina", "chahidaina"].some((w) => t.includes(w)))
+      return false;
+    return undefined;
+  };
+
+  const detectWomenFriendly = (text: string): boolean | undefined => {
+    const t = text.toLowerCase();
+    if (
+      ["women", "female", "ladies", "girl", "mahila"].some((w) => t.includes(w))
+    )
+      return true;
+    return detectYesNo(text);
+  };
+
+  const runSearch = useCallback(
+    async (prefs: UserPreferenceProfile) => {
+      appendBotMessage(`Searching for rooms matching: ${buildPreferenceSummary(prefs)}…`);
+      setSuggestionState((prev) => ({ ...prev, step: "searching" }));
+      saveUserPreferences(prefs);
+
+      await fetchSuggestions(prefs);
+      setSuggestionState((prev) => ({ ...prev, step: "results" }));
+    },
+    [appendBotMessage, fetchSuggestions],
+  );
+
+  const handleSuggestionStep = useCallback(
+    async (text: string) => {
+      const { step, preferences } = suggestionState;
+
+      if (step === "ask-city") {
+        const next: UserPreferenceProfile = { ...preferences, city: text };
+        setSuggestionState({ step: "ask-budget", preferences: next });
+        appendBotMessage(
+          `Got it — ${text}. What's your maximum monthly budget? (e.g., 15000)`,
+        );
+        return;
+      }
+
+      if (step === "ask-budget") {
+        const budget = parseBudget(text);
+        const next: UserPreferenceProfile = { ...preferences, maxBudget: budget };
+        setSuggestionState({ step: "ask-women", preferences: next });
+        appendBotMessage(
+          budget
+            ? `Budget: ${formatPriceNPR(budget)}. Do you need a women-friendly room?`
+            : "No problem. Do you need a women-friendly room?",
+        );
+        return;
+      }
+
+      if (step === "ask-women") {
+        const womenOnly = detectWomenFriendly(text) ?? false;
+        const next: UserPreferenceProfile = { ...preferences, womenOnly };
+        setSuggestionState({ step: "ask-tenant", preferences: next });
+        appendBotMessage(
+          "Who will be staying? (Student, Working Professional, Family, Single Person, Couple, Any)",
+        );
+        return;
+      }
+
+      if (step === "ask-tenant") {
+        const tenantType = text;
+        const next: UserPreferenceProfile = { ...preferences, tenantType };
+        setSuggestionState({ step: "ask-amenities", preferences: next });
+        appendBotMessage(
+          "Any must-have amenities? (e.g., wifi, parking, kitchen, attached bathroom). Say 'none' to skip.",
+        );
+        return;
+      }
+
+      if (step === "ask-amenities") {
+        const amenities =
+          text.toLowerCase().includes("none") ||
+          text.toLowerCase().includes("skip")
+            ? []
+            : parseAmenities(text);
+        const next: UserPreferenceProfile = { ...preferences, amenities };
+        setSuggestionState({ step: "confirm-location", preferences: next });
+
+        if (preferences.latitude && preferences.longitude) {
+          appendBotMessage(
+            "I can also use your saved location to find nearby rooms. Should I include nearby results?",
+          );
+        } else {
+          appendBotMessage(
+            "Would you like to share your current location so I can find nearby rooms? (yes/no)",
+          );
+        }
+        return;
+      }
+
+      if (step === "confirm-location") {
+        const wantsNearby = detectYesNo(text) ?? true;
+        const next: UserPreferenceProfile = { ...preferences };
+
+        if (wantsNearby) {
+          const stored = getStoredUserLocation();
+          if (stored) {
+            next.latitude = stored.latitude;
+            next.longitude = stored.longitude;
+          } else if (typeof navigator !== "undefined" && navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+              async (pos) => {
+                const prefsWithLoc: UserPreferenceProfile = {
+                  ...preferences,
+                  latitude: pos.coords.latitude,
+                  longitude: pos.coords.longitude,
+                };
+                setSuggestionState({ step: "searching", preferences: prefsWithLoc });
+                await runSearch(prefsWithLoc);
+              },
+              async () => {
+                appendBotMessage(
+                  "Location access wasn't available. Searching by the area you entered instead.",
+                );
+                await runSearch(preferences);
+              },
+              { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 },
+            );
+            return;
+          }
+        }
+
+        await runSearch(next);
+        return;
+      }
+
+      if (step === "results") {
+        appendBotMessage(
+          "I've already shown matching rooms. You can open any room above or tap Browse Rooms to see more.",
+        );
+        appendActionButton("Browse Rooms", "/rooms");
+      }
+    },
+    [appendBotMessage, runSearch, suggestionState],
+  );
+
+  const sendMessage = (text: string) => {
+    const trimmed = text.trim();
+    if (!trimmed) return;
+
+    const userMsg: Message = { id: Date.now(), role: "user", text: trimmed };
+    setMessages((m) => [...m, userMsg]);
+    setInput("");
+
+    if (suggestionState.step !== "idle" && suggestionState.step !== "results") {
+      handleSuggestionStep(trimmed);
+      return;
+    }
+
+    setTimeout(() => {
+      const normalized = trimmed.toLowerCase();
+
+      if (isRoomDiscoveryQuery(normalized)) {
+        startRoomDiscovery();
+        return;
+      }
+
+      const reply = findChatbotReply(trimmed, customRules);
+      const botMsg: Message = {
+        id: Date.now() + 1,
+        role: "bot",
+        text: reply.text,
+      };
+      setMessages((m) => [...m, botMsg]);
+
+      if (reply.action) {
+        appendActionButton(reply.action.label, reply.action.href);
+      }
+    }, 500);
+  };
+
+  const openRoom = (roomId: string) => {
+    setIsOpen(false);
+    router.push(`/property/${roomId}`);
+  };
+
+  const renderRecommendation = (rec: Recommendation) => {
+    const room = rec.room;
+    return (
+      <div
+        key={room.id}
+        className="rounded-xl border border-slate-200 bg-white dark:bg-gray-800 p-3 text-sm"
+      >
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <p className="font-semibold text-slate-900 dark:text-slate-100 truncate">
+              {room.title}
+            </p>
+            <p className="text-xs text-slate-500 mt-0.5">
+              <MapPin className="inline h-3 w-3 mr-0.5" />
+              {room.location?.city || room.address}
+            </p>
+          </div>
+          <span className="text-red-600 font-semibold text-xs shrink-0">
+            {formatPriceNPR(Number(room.price))}
+          </span>
+        </div>
+        <div className="flex flex-wrap gap-1 mt-2">
+          {rec.reasons.slice(0, 3).map((reason) => (
+            <span
+              key={reason}
+              className="text-[10px] px-2 py-0.5 rounded-full bg-red-50 text-red-700 border border-red-100"
+            >
+              {reason}
+            </span>
+          ))}
+          {rec.distanceKm !== undefined && (
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
+              {rec.distanceKm.toFixed(1)} km
+            </span>
+          )}
+        </div>
+        <button
+          type="button"
+          onClick={() => openRoom(room.id)}
+          className="mt-2 w-full text-center text-xs bg-red-600 hover:bg-red-700 text-white rounded-full py-1.5 transition-colors cursor-pointer"
+        >
+          View Room →
+        </button>
+      </div>
+    );
   };
 
   const renderText = (text: string) => {
@@ -219,6 +546,34 @@ export function Chatbot() {
                   </div>
                 );
               })}
+
+              {suggestionsLoading && (
+                <div className="flex items-center gap-2 text-xs text-slate-500">
+                  <Bot className="w-4 h-4" />
+                  <span>Finding best rooms for you…</span>
+                </div>
+              )}
+
+              {!suggestionsLoading &&
+                suggestionState.step === "results" &&
+                recommendations.length > 0 && (
+                  <div className="space-y-2 pt-1">
+                    <p className="text-xs font-medium text-slate-600">
+                      Top matches for you:
+                    </p>
+                    {recommendations.map(renderRecommendation)}
+                  </div>
+                )}
+
+              {!suggestionsLoading &&
+                suggestionState.step === "results" &&
+                recommendations.length === 0 && (
+                  <div className="text-sm text-slate-600 bg-slate-50 rounded-xl p-3">
+                    No exact matches found. Try changing your area, budget, or
+                    amenities.
+                  </div>
+                )}
+
               <div ref={bottomRef} />
             </div>
 
