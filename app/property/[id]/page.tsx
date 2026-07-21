@@ -89,6 +89,7 @@ import type {
 } from "@/types/unlock.types";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { RoomActionCenter } from "@/components/rooms/RoomActionCenter";
 
 // ── Amenity icon map ──
 const amenityIcons: Record<string, any> = {
@@ -1557,6 +1558,24 @@ export default function PropertyDetailsPage() {
                     isLoaded={isLoaded}
                   />
                 )}
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+              >
+                <RoomActionCenter
+                  roomId={room.id}
+                  ownerId={room.userId}
+                  roomTitle={room.title}
+                  isAuthenticated={isAuthenticated}
+                  ownerPhone={
+                    unlockedData?.room?.user?.phoneNumber ??
+                    unlockedData?.room?.contactPhone ??
+                    null
+                  }
+                />
               </motion.div>
             </div>
 
