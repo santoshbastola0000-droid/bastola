@@ -17,6 +17,9 @@ import {
   X,
   Globe,
   UserCircle,
+  Bell,
+  MessageSquare,
+  ShieldAlert,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -32,6 +35,21 @@ import { LogoutConfirmDialog } from "@/components/LogoutConfirmDialog";
 const navItems = [
   { title: "Dashboard", href: "/user/dashboard", icon: Home },
   { title: "Profile", href: "/user/dashboard/profile", icon: UserCircle },
+  {
+    title: "Alert Preferences",
+    href: "/user/dashboard/preferences",
+    icon: Bell,
+  },
+  {
+    title: "Room Requests",
+    href: "/user/dashboard/room-requests",
+    icon: MessageSquare,
+  },
+  {
+    title: "Safety Reports",
+    href: "/user/dashboard/reports",
+    icon: ShieldAlert,
+  },
   { title: "My Rooms", href: "/user/dashboard/rooms", icon: Building2 },
   {
     title: "Add New Room",
