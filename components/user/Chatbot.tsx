@@ -326,14 +326,22 @@ export function Chatbot() {
         }),
       });
 
+      if (!res.ok) {
+        throw new Error(`Chat API request failed with status ${res.status}`);
+      }
+
       const data: { reply?: string } = await res.json();
       const replyText =
         typeof data.reply === "string" && data.reply.trim().length > 0
           ? data.reply
           : "Sorry, I couldn't generate a reply right now.";
 
-      setMessages((m) => [...m, { id: Date.now() + 1, role: "bot", text: replyText }]);
-    } catch {
+      setMessages((m) => [
+        ...m,
+        { id: Date.now() + Math.floor(Math.random() * 1000), role: "bot", text: replyText },
+      ]);
+    } catch (error) {
+      console.error("Chatbot API error:", error);
       appendBotMessage("Sorry, I couldn't generate a reply right now.");
     }
   };
