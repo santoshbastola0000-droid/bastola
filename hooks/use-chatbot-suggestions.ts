@@ -4,13 +4,14 @@ import { useState, useCallback } from "react";
 import { chatbotService } from "@/http/services/chatbot.service";
 import type { Room } from "@/types/room.types";
 import type { UserPreferenceProfile } from "@/lib/chatbot-training";
-import { useRoomRecommendations } from "./use-room-recommendations";
+import { useRoomRecommendations, type Recommendation } from "./use-room-recommendations";
 
 interface UseChatbotSuggestionsReturn {
   loading: boolean;
   rooms: Room[];
   error: string | null;
   fetch: (preferences: UserPreferenceProfile) => Promise<void>;
+  recommendations: Recommendation[];
 }
 
 export function useChatbotSuggestions(): UseChatbotSuggestionsReturn {
@@ -46,7 +47,5 @@ export function useChatbotSuggestions(): UseChatbotSuggestionsReturn {
     error,
     fetch,
     recommendations,
-  } as UseChatbotSuggestionsReturn & {
-    recommendations: ReturnType<typeof useRoomRecommendations>;
   };
 }
