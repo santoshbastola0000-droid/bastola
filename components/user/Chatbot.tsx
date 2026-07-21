@@ -313,8 +313,6 @@ export function Chatbot() {
       return;
     }
 
-    const chatResponseDelayMs = 500;
-    await new Promise((resolve) => setTimeout(resolve, chatResponseDelayMs));
     const fallbackReply = "Sorry, I couldn't generate a reply right now.";
 
     try {
@@ -339,10 +337,15 @@ export function Chatbot() {
         typeof data.reply === "string" && data.reply.trim().length > 0
           ? data.reply
           : fallbackReply;
+      const randomPart =
+        typeof crypto !== "undefined" && crypto.getRandomValues
+          ? crypto.getRandomValues(new Uint32Array(1))[0]
+          : Math.floor(Math.random() * 1_000_000);
+      const botMessageId = Date.now() + randomPart;
 
       setMessages((m) => [
         ...m,
-        { id: Date.now(), role: "bot", text: replyText },
+        { id: botMessageId, role: "bot", text: replyText },
       ]);
     } catch (error) {
       console.error("Chatbot API error:", error);
