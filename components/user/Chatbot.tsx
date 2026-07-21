@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   MessageCircle,
@@ -19,7 +19,7 @@ import {
   History,
   Trash2,
 } from "lucide-react";
-import { cn, formatPriceNPR } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 
 interface ChatMessage {
   id: string;
@@ -115,7 +115,7 @@ export function AdvancedChatbot() {
 
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     const recognition = new SpeechRecognition();
-    recognition.lang = "ne-NP"; // Default to Nepali, can be changed to en-US
+    recognition.lang = "ne-NP"; // Default to Nepali
     recognition.interimResults = false;
 
     recognition.onstart = () => setIsRecording(true);
@@ -323,7 +323,6 @@ export function AdvancedChatbot() {
                             : "bg-red-600 text-white rounded-br-sm"
                         )}
                       >
-                        {/* Media Preview inside chat (Photo/Video small format) */}
                         {msg.mediaUrl && (
                           <div className="mb-2 rounded-lg overflow-hidden border border-white/20 max-w-[200px]">
                             {msg.mediaType === "image" ? (
@@ -354,7 +353,7 @@ export function AdvancedChatbot() {
                       {selectedFile.type === "image" ? <ImageIcon className="w-4 h-4 text-red-500" /> : <Video className="w-4 h-4 text-red-500" />}
                       <span className="truncate text-slate-700 dark:text-slate-300">Attached media ready</span>
                     </div>
-                    <button onClick={() => setSelectedFile(null)} className="text-slate-400 hover:text-red-500">
+                    <button onClick={() => setSelectedFile(null)} className="text-slate-400 hover:text-red-500 cursor-pointer">
                       <X className="w-4 h-4" />
                     </button>
                   </div>
@@ -363,7 +362,6 @@ export function AdvancedChatbot() {
                 {/* Input Footer */}
                 <div className="p-3 border-t border-slate-200 dark:border-gray-800 shrink-0 bg-white dark:bg-gray-900">
                   <div className="flex items-center gap-1.5">
-                    {/* Hidden File Input for room photos/videos */}
                     <input
                       type="file"
                       ref={fileInputRef}
