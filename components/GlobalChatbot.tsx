@@ -26,5 +26,4 @@ export function GlobalChatbot() {
   }
 
   // Only show chatbot widget on user-facing pages
-  return <Chatbot />;
-}
+  return <import { Chatbot } from "@/components/user/Chatbot";
