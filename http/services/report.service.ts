@@ -9,18 +9,20 @@ import type {
   ReportStatus,
 } from "@/types/report.types";
 
+const getReportQuery = (filters: ReportFilters = {}) =>
+  toQueryString({
+    page: filters.page,
+    take: filters.take,
+    status: filters.status,
+  });
+
 export const reportService = {
   getMyReports: async (
     filters: ReportFilters = {},
   ): Promise<ReportsResponse> => {
+    const query = getReportQuery(filters);
     const response = await privateApi.get<ReportsResponse>(
-      `${apiV1Path("/reports/me")}${
-        toQueryString({
-          page: filters.page,
-          take: filters.take,
-          status: filters.status,
-        })
-      }`,
+      `${apiV1Path("/reports/me")}${query}`,
     );
     return response.data;
   },

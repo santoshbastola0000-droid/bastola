@@ -74,7 +74,7 @@ function RequestCard({
             <p className="text-sm font-semibold text-slate-900">
               {request.room?.title || "Room request"}
             </p>
-            <p className="text-xs text-muted-foreground">{request.room?.address || "Room details will appear once connected."}</p>
+            <p className="text-xs text-muted-foreground">{request.room?.address || "Address not available yet."}</p>
           </div>
           <Badge className={STATUS_STYLES[request.status]}>{STATUS_LABELS[request.status]}</Badge>
         </div>

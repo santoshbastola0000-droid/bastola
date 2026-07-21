@@ -9,20 +9,22 @@ import type {
   RoomRequestStatus,
 } from "@/types/room-request.types";
 
+const getRequestQuery = (filters: RoomRequestFilters = {}) =>
+  toQueryString({
+    page: filters.page,
+    take: filters.take,
+    roomId: filters.roomId,
+    status: filters.status,
+    direction: filters.direction,
+  });
+
 export const roomRequestService = {
   getMyRequests: async (
     filters: RoomRequestFilters = {},
   ): Promise<RoomRequestsResponse> => {
+    const query = getRequestQuery(filters);
     const response = await privateApi.get<RoomRequestsResponse>(
-      `${apiV1Path("/room-requests/me")}${
-        toQueryString({
-          page: filters.page,
-          take: filters.take,
-          roomId: filters.roomId,
-          status: filters.status,
-          direction: filters.direction,
-        })
-      }`,
+      `${apiV1Path("/room-requests/me")}${query}`,
     );
     return response.data;
   },
@@ -30,16 +32,9 @@ export const roomRequestService = {
   getReceivedRequests: async (
     filters: RoomRequestFilters = {},
   ): Promise<RoomRequestsResponse> => {
+    const query = getRequestQuery(filters);
     const response = await privateApi.get<RoomRequestsResponse>(
-      `${apiV1Path("/room-requests/incoming")}${
-        toQueryString({
-          page: filters.page,
-          take: filters.take,
-          roomId: filters.roomId,
-          status: filters.status,
-          direction: filters.direction,
-        })
-      }`,
+      `${apiV1Path("/room-requests/incoming")}${query}`,
     );
     return response.data;
   },
