@@ -11,7 +11,7 @@ import {
   ChevronDown,
   MapPin,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, formatPriceNPR } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import {
   CHATBOT_RULES_UPDATED_EVENT,
@@ -21,15 +21,12 @@ import {
   isRoomDiscoveryQuery,
   saveUserPreferences,
   getUserPreferences,
-  clearUserPreferences,
   type ChatbotTrainingRule,
   type UserPreferenceProfile,
 } from "@/lib/chatbot-training";
 import { useChatbotSuggestions } from "@/hooks/use-chatbot-suggestions";
-import { formatPriceNPR } from "@/lib/utils";
 import { getStoredUserLocation } from "@/hooks/use-user-location";
 import type { Recommendation } from "@/hooks/use-room-recommendations";
-import type { Room } from "@/types/room.types";
 
 interface Message {
   id: number;
@@ -110,27 +107,20 @@ export function Chatbot() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") sendMessage(input);
-  };
-
   const appendBotMessage = useCallback((text: string) => {
     setMessages((m) => [...m, { id: Date.now(), role: "bot", text }]);
   }, []);
 
-  const appendActionButton = useCallback(
-    (label: string, href: string) => {
-      setMessages((m) => [
-        ...m,
-        {
-          id: Date.now(),
-          role: "bot",
-          text: `__action__${JSON.stringify({ label, href })}`,
-        },
-      ]);
-    },
-    [],
-  );
+  const appendActionButton = useCallback((label: string, href: string) => {
+    setMessages((m) => [
+      ...m,
+      {
+        id: Date.now(),
+        role: "bot",
+        text: `__action__${JSON.stringify({ label, href })}`,
+      },
+    ]);
+  }, []);
 
   const startRoomDiscovery = useCallback(() => {
     const stored = getStoredUserLocation();
@@ -160,12 +150,11 @@ export function Chatbot() {
     return value > 0 ? value : undefined;
   };
 
-  const parseAmenities = (text: string): string[] => {
-    return text
-      .split(/[,\/\s]+/)
+  const parseAmenities = (text: string): string[] =>
+    text
+      .split(/[,/\s]+/)
       .map((t) => t.trim().toLowerCase())
       .filter(Boolean);
-  };
 
   const detectYesNo = (text: string): boolean | undefined => {
     const t = text.toLowerCase().trim();
@@ -178,9 +167,7 @@ export function Chatbot() {
 
   const detectWomenFriendly = (text: string): boolean | undefined => {
     const t = text.toLowerCase();
-    if (
-      ["women", "female", "ladies", "girl", "mahila"].some((w) => t.includes(w))
-    )
+    if (["women", "female", "ladies", "girl", "mahila"].some((w) => t.includes(w)))
       return true;
     return detectYesNo(text);
   };
@@ -204,9 +191,7 @@ export function Chatbot() {
       if (step === "ask-city") {
         const next: UserPreferenceProfile = { ...preferences, city: text };
         setSuggestionState({ step: "ask-budget", preferences: next });
-        appendBotMessage(
-          `Got it — ${text}. What's your maximum monthly budget? (e.g., 15000)`,
-        );
+        appendBotMessage(`Got it — ${text}. What's your maximum monthly budget? (e.g., 15000)`);
         return;
       }
 
@@ -244,8 +229,7 @@ export function Chatbot() {
 
       if (step === "ask-amenities") {
         const amenities =
-          text.toLowerCase().includes("none") ||
-          text.toLowerCase().includes("skip")
+          text.toLowerCase().includes("none") || text.toLowerCase().includes("skip")
             ? []
             : parseAmenities(text);
         const next: UserPreferenceProfile = { ...preferences, amenities };
@@ -306,7 +290,7 @@ export function Chatbot() {
         appendActionButton("Browse Rooms", "/rooms");
       }
     },
-    [appendBotMessage, runSearch, suggestionState],
+    [appendActionButton, appendBotMessage, runSearch, suggestionState],
   );
 
   const sendMessage = (text: string) => {
@@ -318,7 +302,7 @@ export function Chatbot() {
     setInput("");
 
     if (suggestionState.step !== "idle" && suggestionState.step !== "results") {
-      handleSuggestionStep(trimmed);
+      void handleSuggestionStep(trimmed);
       return;
     }
 
@@ -344,6 +328,10 @@ export function Chatbot() {
     }, 500);
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") sendMessage(input);
+  };
+
   const openRoom = (roomId: string) => {
     setIsOpen(false);
     router.push(`/property/${roomId}`);
@@ -358,9 +346,7 @@ export function Chatbot() {
       >
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
-            <p className="font-semibold text-slate-900 dark:text-slate-100 truncate">
-              {room.title}
-            </p>
+            <p className="font-semibold text-slate-900 dark:text-slate-100 truncate">{room.title}</p>
             <p className="text-xs text-slate-500 mt-0.5">
               <MapPin className="inline h-3 w-3 mr-0.5" />
               {room.location?.city || room.address}
@@ -396,17 +382,13 @@ export function Chatbot() {
     );
   };
 
-  const renderText = (text: string) => {
-    return text
+  const renderText = (text: string) =>
+    text
       .split("**")
-      .map((part, i) =>
-        i % 2 === 1 ? <strong key={i}>{part}</strong> : <span key={i}>{part}</span>,
-      );
-  };
+      .map((part, i) => (i % 2 === 1 ? <strong key={i}>{part}</strong> : <span key={i}>{part}</span>));
 
   return (
     <>
-      {/* FAB toggle */}
       <button
         type="button"
         onClick={() => setIsOpen((v) => !v)}
@@ -418,14 +400,9 @@ export function Chatbot() {
         )}
         aria-label="Toggle chatbot"
       >
-        {isOpen ? (
-          <ChevronDown className="w-6 h-6" />
-        ) : (
-          <MessageCircle className="w-6 h-6" />
-        )}
+        {isOpen ? <ChevronDown className="w-6 h-6" /> : <MessageCircle className="w-6 h-6" />}
       </button>
 
-      {/* Chat window */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
@@ -436,7 +413,6 @@ export function Chatbot() {
             className="fixed bottom-24 right-6 z-50 w-80 sm:w-96 flex flex-col rounded-3xl shadow-2xl overflow-hidden border border-border bg-white dark:bg-gray-900"
             style={{ maxHeight: "520px" }}
           >
-            {/* Header */}
             <div className="flex items-center gap-3 px-4 py-3 bg-gradient-to-r from-red-600 to-rose-500 text-white shrink-0">
               <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
                 <Bot className="w-4 h-4" />
@@ -456,7 +432,6 @@ export function Chatbot() {
               </button>
             </div>
 
-            {/* Messages */}
             <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
               {messages.map((msg) => {
                 if (msg.text.startsWith("__action__")) {
@@ -467,6 +442,7 @@ export function Chatbot() {
                     return null;
                   }
                   if (!action) return null;
+
                   return (
                     <div key={msg.id} className="flex justify-start">
                       <button
@@ -496,6 +472,7 @@ export function Chatbot() {
                         <Bot className="w-3.5 h-3.5 text-red-600" />
                       </div>
                     )}
+
                     <div
                       className={cn(
                         "max-w-[85%] px-3 py-2 rounded-2xl text-sm leading-relaxed",
@@ -510,6 +487,7 @@ export function Chatbot() {
                         </p>
                       ))}
                     </div>
+
                     {msg.role === "user" && (
                       <div className="w-6 h-6 rounded-full bg-red-600 flex items-center justify-center flex-shrink-0 mb-0.5">
                         <User className="w-3.5 h-3.5 text-white" />
@@ -530,9 +508,7 @@ export function Chatbot() {
                 suggestionState.step === "results" &&
                 recommendations.length > 0 && (
                   <div className="space-y-2 pt-1">
-                    <p className="text-xs font-medium text-slate-600">
-                      Top matches for you:
-                    </p>
+                    <p className="text-xs font-medium text-slate-600">Top matches for you:</p>
                     {recommendations.map(renderRecommendation)}
                   </div>
                 )}
@@ -541,15 +517,13 @@ export function Chatbot() {
                 suggestionState.step === "results" &&
                 recommendations.length === 0 && (
                   <div className="text-sm text-slate-600 bg-slate-50 rounded-xl p-3">
-                    No exact matches found. Try changing your area, budget, or
-                    amenities.
+                    No exact matches found. Try changing your area, budget, or amenities.
                   </div>
                 )}
 
               <div ref={bottomRef} />
             </div>
 
-            {/* Quick replies */}
             <div className="px-4 pb-2 flex gap-1.5 flex-wrap shrink-0">
               {getChatbotQuickReplies(customRules).map((q) => (
                 <button
@@ -563,7 +537,6 @@ export function Chatbot() {
               ))}
             </div>
 
-            {/* Input */}
             <div className="px-3 pb-3 flex items-center gap-2 shrink-0 border-t border-border pt-2">
               <input
                 ref={inputRef}
