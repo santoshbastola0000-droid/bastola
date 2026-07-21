@@ -187,18 +187,41 @@ export function AdvancedChatbot() {
     setInput("");
     setSelectedFile(null);
 
-    // Simulate AI response
-    setTimeout(() => {
+    try {
+      // OpenAI API Route कल गरिएको (जसले वास्तविक AI उत्तर दिन्छ)
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          messages: updatedMessages.map(m => ({ 
+            role: m.role === "bot" ? "assistant" : "user", 
+            content: m.text 
+          })) 
+        }),
+      });
+      
+      const data = await res.json();
+      
       const botReply: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: "bot",
-        text: `I received your message! ${newUserMsg.mediaType ? `(Attached a ${newUserMsg.mediaType})` : ""} Let me find the best room matches for you.`,
+        text: data.reply || "Sorry, I couldn't process that.",
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
+      
       const finalMsgs = [...updatedMessages, botReply];
       setMessages(finalMsgs);
       saveCurrentSession(finalMsgs);
-    }, 1000);
+    } catch (error) {
+      console.error("API Error:", error);
+      const fallbackReply: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        role: "bot",
+        text: "Network error. Please check your connection or API configuration.",
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      };
+      setMessages([...updatedMessages, fallbackReply]);
+    }
   };
 
   return (
@@ -423,5 +446,4 @@ export function AdvancedChatbot() {
   );
 }
 
-// यो लाइनले GlobalChatbot.tsx मा आउने 'Chatbot export not found' एररलाई सदाको लागि हटाउँछ
 export { AdvancedChatbot as Chatbot };
