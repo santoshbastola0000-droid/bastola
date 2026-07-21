@@ -314,6 +314,7 @@ export function Chatbot() {
     }
 
     await new Promise((resolve) => setTimeout(resolve, 500));
+    const fallbackReply = "Sorry, I couldn't generate a reply right now.";
 
     try {
       const res = await fetch("https://api.roomkhoj.com/ai/chat", {
@@ -327,22 +328,22 @@ export function Chatbot() {
       });
 
       if (!res.ok) {
-        throw new Error(`Chat API request failed with status ${res.status}`);
+        throw new Error(`Failed to send chat message: API returned status ${res.status}`);
       }
 
       const data: { reply?: string } = await res.json();
       const replyText =
         typeof data.reply === "string" && data.reply.trim().length > 0
           ? data.reply
-          : "Sorry, I couldn't generate a reply right now.";
+          : fallbackReply;
 
       setMessages((m) => [
         ...m,
-        { id: Date.now() + Math.floor(Math.random() * 1000), role: "bot", text: replyText },
+        { id: (m[m.length - 1]?.id ?? 0) + 1, role: "bot", text: replyText },
       ]);
     } catch (error) {
       console.error("Chatbot API error:", error);
-      appendBotMessage("Sorry, I couldn't generate a reply right now.");
+      appendBotMessage(fallbackReply);
     }
   };
 
