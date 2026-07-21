@@ -293,7 +293,7 @@ export function Chatbot() {
     [appendActionButton, appendBotMessage, runSearch, suggestionState],
   );
 
-  const sendMessage = (text: string) => {
+  const sendMessage = async (text: string) => {
     const trimmed = text.trim();
     if (!trimmed) return;
 
@@ -306,34 +306,51 @@ export function Chatbot() {
       return;
     }
 
-    setTimeout(() => {
-      const normalized = trimmed.toLowerCase();
+    const normalized = trimmed.toLowerCase();
 
-      if (isRoomDiscoveryQuery(normalized)) {
-        startRoomDiscovery();
-        const res = await fetch("https://api.roomkhoj.com/ai/chat", {
-  method: "POST",
-  headers: {
-    "Content-Type": "application/json",
-  },
-  body: JSON.stringify({
-    message: trimmed,
-  }),
-});
+    if (isRoomDiscoveryQuery(normalized)) {
+      startRoomDiscovery();
+      return;
+    }
 
-const data = await res.json();
+    const fallbackReply = "Sorry, I couldn't generate a reply right now.";
 
-const botMsg: Message = {
-  id: Date.now() + 1,
-  role: "bot",
-  text: data.reply,
-};
-      setMessages((m) => [...m, botMsg]);
+    try {
+      const res = await fetch("https://api.roomkhoj.com/ai/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          message: trimmed,
+        }),
+      });
 
-      if (reply.action) {
-        appendActionButton(reply.action.label, reply.action.href);
+      if (!res.ok) {
+        throw new Error(
+          `Failed to send chat message: API returned status ${res.status} ${res.statusText}`,
+        );
       }
-    }, 500);
+
+      const data: { reply?: string } = await res.json();
+      const replyText =
+        typeof data.reply === "string" && data.reply.trim().length > 0
+          ? data.reply
+          : fallbackReply;
+      const randomPart =
+        typeof crypto !== "undefined" && crypto.getRandomValues
+          ? crypto.getRandomValues(new Uint32Array(1))[0]
+          : Math.floor(Math.random() * 1_000_000);
+      const botMessageId = Date.now() + randomPart;
+
+      setMessages((m) => [
+        ...m,
+        { id: botMessageId, role: "bot", text: replyText },
+      ]);
+    } catch (error) {
+      console.error("Chatbot API error:", error);
+      appendBotMessage(fallbackReply);
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
