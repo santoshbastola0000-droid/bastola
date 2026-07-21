@@ -6,6 +6,7 @@ export interface UserPreference {
   preferredArea?: string | null;
   budget?: number | null;
   roomType?: RoomCategory | null;
+  /** Amenity IDs from `AMENITIES_LIST` (for example: wifi, parking, modular-kitchen). */
   facilities: string[];
   instantAlertsEnabled?: boolean;
   createdAt?: string;
@@ -17,6 +18,7 @@ export interface UpsertUserPreferenceDTO {
   preferredArea?: string;
   budget?: number | null;
   roomType?: RoomCategory | null;
+  /** Amenity IDs from `AMENITIES_LIST` (for example: wifi, parking, modular-kitchen). */
   facilities: string[];
   instantAlertsEnabled?: boolean;
 }

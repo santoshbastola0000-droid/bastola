@@ -109,7 +109,7 @@ export function ReportsDashboard() {
                 <SelectItem value="ALL">All statuses</SelectItem>
                 {Object.values(ReportStatus).map((status) => (
                   <SelectItem key={status} value={status}>
-                    {status.replaceAll("_", " ")}
+                    {status.replace(/_/g, " ")}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -139,7 +139,7 @@ export function ReportsDashboard() {
                     <p className="text-xs text-muted-foreground">Submitted {formatDate(report.createdAt)}</p>
                   </div>
                   <Badge className={REPORT_STATUS_STYLES[report.status]}>
-                    {report.status.replaceAll("_", " ")}
+                    {report.status.replace(/_/g, " ")}
                   </Badge>
                 </div>
                 <div className="grid gap-3 md:grid-cols-2">

@@ -1,5 +1,6 @@
 import { privateApi } from "@/http/api/privateApi";
 import { apiV1Path } from "@/http/api/versioned-path";
+import { toQueryString } from "@/http/services/query-string";
 import type {
   CreateRoomRequestDTO,
   RoomRequestFilters,
@@ -8,25 +9,20 @@ import type {
   RoomRequestStatus,
 } from "@/types/room-request.types";
 
-const toQueryString = (filters: RoomRequestFilters = {}) => {
-  const params = new URLSearchParams();
-
-  if (filters.page !== undefined) params.append("page", String(filters.page));
-  if (filters.take !== undefined) params.append("take", String(filters.take));
-  if (filters.roomId) params.append("roomId", filters.roomId);
-  if (filters.status) params.append("status", filters.status);
-  if (filters.direction) params.append("direction", filters.direction);
-
-  const query = params.toString();
-  return query ? `?${query}` : "";
-};
-
 export const roomRequestService = {
   getMyRequests: async (
     filters: RoomRequestFilters = {},
   ): Promise<RoomRequestsResponse> => {
     const response = await privateApi.get<RoomRequestsResponse>(
-      `${apiV1Path("/room-requests/me")}${toQueryString(filters)}`,
+      `${apiV1Path("/room-requests/me")}${
+        toQueryString({
+          page: filters.page,
+          take: filters.take,
+          roomId: filters.roomId,
+          status: filters.status,
+          direction: filters.direction,
+        })
+      }`,
     );
     return response.data;
   },
@@ -35,7 +31,15 @@ export const roomRequestService = {
     filters: RoomRequestFilters = {},
   ): Promise<RoomRequestsResponse> => {
     const response = await privateApi.get<RoomRequestsResponse>(
-      `${apiV1Path("/room-requests/incoming")}${toQueryString(filters)}`,
+      `${apiV1Path("/room-requests/incoming")}${
+        toQueryString({
+          page: filters.page,
+          take: filters.take,
+          roomId: filters.roomId,
+          status: filters.status,
+          direction: filters.direction,
+        })
+      }`,
     );
     return response.data;
   },
