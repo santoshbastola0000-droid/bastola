@@ -313,7 +313,8 @@ export function Chatbot() {
       return;
     }
 
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    const chatResponseDelayMs = 500;
+    await new Promise((resolve) => setTimeout(resolve, chatResponseDelayMs));
     const fallbackReply = "Sorry, I couldn't generate a reply right now.";
 
     try {
@@ -328,7 +329,9 @@ export function Chatbot() {
       });
 
       if (!res.ok) {
-        throw new Error(`Failed to send chat message: API returned status ${res.status}`);
+        throw new Error(
+          `Failed to send chat message: API returned status ${res.status} ${res.statusText}`,
+        );
       }
 
       const data: { reply?: string } = await res.json();
@@ -339,7 +342,7 @@ export function Chatbot() {
 
       setMessages((m) => [
         ...m,
-        { id: (m[m.length - 1]?.id ?? 0) + 1, role: "bot", text: replyText },
+        { id: Date.now(), role: "bot", text: replyText },
       ]);
     } catch (error) {
       console.error("Chatbot API error:", error);
