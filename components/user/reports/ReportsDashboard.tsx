@@ -57,6 +57,12 @@ const formatDate = (value: string) =>
     timeStyle: "short",
   });
 
+const REPORT_FORM_DEFAULT_VALUES: CreateReportValues = {
+  targetId: "",
+  type: ReportType.WRONG_INFORMATION,
+  description: "",
+};
+
 export function ReportsDashboard() {
   const [statusFilter, setStatusFilter] = useState<"ALL" | ReportStatus>("ALL");
   const [open, setOpen] = useState(false);
@@ -69,21 +75,13 @@ export function ReportsDashboard() {
 
   const form = useForm<CreateReportValues>({
     resolver: zodResolver(createReportSchema),
-    defaultValues: {
-      targetId: "",
-      type: ReportType.WRONG_INFORMATION,
-      description: "",
-    },
+    defaultValues: REPORT_FORM_DEFAULT_VALUES,
   });
 
   const onSubmit = (values: CreateReportValues) => {
     createReport(values, {
       onSuccess: () => {
-        form.reset({
-          targetId: "",
-          type: ReportType.WRONG_INFORMATION,
-          description: "",
-        });
+        form.reset(REPORT_FORM_DEFAULT_VALUES);
         setOpen(false);
       },
     });

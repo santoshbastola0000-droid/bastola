@@ -69,6 +69,12 @@ const REQUEST_PLACEHOLDERS: Record<RoomRequestIntent, string> = {
   [RoomRequestIntent.BOOKING_INTEREST]: "Hi, I am interested in booking this room. Please share the next steps.",
 };
 
+const getReportFormDefaults = (roomId: string): CreateReportValues => ({
+  targetId: roomId,
+  type: ReportType.WRONG_INFORMATION,
+  description: "",
+});
+
 export function RoomActionCenter({
   roomId,
   ownerId,
@@ -105,11 +111,7 @@ export function RoomActionCenter({
 
   const reportForm = useForm<CreateReportValues>({
     resolver: zodResolver(createReportSchema),
-    defaultValues: {
-      targetId: roomId,
-      type: ReportType.WRONG_INFORMATION,
-      description: "",
-    },
+    defaultValues: getReportFormDefaults(roomId),
   });
 
   useEffect(() => {
@@ -160,11 +162,7 @@ export function RoomActionCenter({
   const onSubmitReport = (values: CreateReportValues) => {
     createReport(values, {
       onSuccess: () => {
-        reportForm.reset({
-          targetId: roomId,
-          type: ReportType.WRONG_INFORMATION,
-          description: "",
-        });
+        reportForm.reset(getReportFormDefaults(roomId));
         setReportDialogOpen(false);
       },
     });

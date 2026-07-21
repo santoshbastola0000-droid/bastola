@@ -43,7 +43,7 @@ const REQUEST_TYPE_LABELS: Record<RoomRequestIntent, string> = {
 
 const getRequestTypeLabel = (requestType?: RoomRequestIntent | null) => {
   if (!requestType) {
-    return "Contact owner";
+    return REQUEST_TYPE_LABELS[RoomRequestIntent.CONTACT_OWNER];
   }
 
   return REQUEST_TYPE_LABELS[requestType];
