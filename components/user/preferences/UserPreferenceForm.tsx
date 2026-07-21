@@ -63,9 +63,12 @@ export function UserPreferenceForm() {
   }, [data, form]);
 
   const onSubmit = (values: UserPreferenceValues) => {
+    const preferredCity = values.preferredCity?.trim();
+    const preferredArea = values.preferredArea?.trim();
+
     savePreference({
-      preferredCity: values.preferredCity?.trim(),
-      preferredArea: values.preferredArea?.trim(),
+      preferredCity: preferredCity || undefined,
+      preferredArea: preferredArea || undefined,
       budget: values.budget ?? null,
       roomType: values.roomType ?? null,
       facilities: values.facilities,

@@ -15,6 +15,7 @@ const toQueryString = (filters: RoomRequestFilters = {}) => {
   if (filters.take !== undefined) params.append("take", String(filters.take));
   if (filters.roomId) params.append("roomId", filters.roomId);
   if (filters.status) params.append("status", filters.status);
+  if (filters.direction) params.append("direction", filters.direction);
 
   const query = params.toString();
   return query ? `?${query}` : "";

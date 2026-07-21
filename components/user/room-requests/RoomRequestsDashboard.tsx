@@ -41,6 +41,14 @@ const REQUEST_TYPE_LABELS: Record<RoomRequestIntent, string> = {
   [RoomRequestIntent.BOOKING_INTEREST]: "Booking interest",
 };
 
+const getRequestTypeLabel = (requestType?: RoomRequestIntent | null) => {
+  if (!requestType) {
+    return "Contact owner";
+  }
+
+  return REQUEST_TYPE_LABELS[requestType];
+};
+
 const formatDate = (value: string) =>
   new Date(value).toLocaleString("en-US", {
     dateStyle: "medium",
@@ -75,7 +83,7 @@ function RequestCard({
           <div>
             <p className="text-xs uppercase tracking-wide text-muted-foreground">Intent</p>
             <p className="text-sm font-medium text-slate-900">
-              {REQUEST_TYPE_LABELS[request.requestType ?? RoomRequestIntent.CONTACT_OWNER]}
+              {getRequestTypeLabel(request.requestType)}
             </p>
           </div>
           <div>

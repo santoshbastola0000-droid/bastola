@@ -113,13 +113,9 @@ export function RoomActionCenter({
   });
 
   useEffect(() => {
-    requestForm.reset({
-      roomId,
-      ownerId,
-      requestType,
-      message: REQUEST_PLACEHOLDERS[requestType],
-    });
-  }, [ownerId, requestForm, requestType, roomId]);
+    requestForm.setValue("roomId", roomId);
+    requestForm.setValue("ownerId", ownerId);
+  }, [ownerId, requestForm, roomId]);
 
   useEffect(() => {
     reportForm.setValue("targetId", roomId);
@@ -137,7 +133,14 @@ export function RoomActionCenter({
 
   const openRequestDialog = (intent: RoomRequestIntent) => {
     if (!ensureAuthenticated()) return;
+
     setRequestType(intent);
+    requestForm.reset({
+      roomId,
+      ownerId,
+      requestType: intent,
+      message: REQUEST_PLACEHOLDERS[intent],
+    });
     setRequestDialogOpen(true);
   };
 
@@ -249,8 +252,20 @@ export function RoomActionCenter({
                       value={field.value}
                       onValueChange={(value) => {
                         const nextValue = value as RoomRequestIntent;
+                        const previousValue = requestForm.getValues("requestType");
+                        const currentMessage = requestForm.getValues("message");
+
                         field.onChange(nextValue);
                         setRequestType(nextValue);
+
+                        if (
+                          !currentMessage.trim() ||
+                          currentMessage === REQUEST_PLACEHOLDERS[previousValue]
+                        ) {
+                          requestForm.setValue("message", REQUEST_PLACEHOLDERS[nextValue], {
+                            shouldValidate: true,
+                          });
+                        }
                       }}
                     >
                       <FormControl>
