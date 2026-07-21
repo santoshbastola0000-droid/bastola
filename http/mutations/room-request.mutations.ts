@@ -7,6 +7,13 @@ import type {
   RoomRequestStatus,
 } from "@/types/room-request.types";
 
+const ROOM_REQUEST_STATUS_LABELS: Record<RoomRequestStatus, string> = {
+  PENDING: "Pending",
+  ACCEPTED: "Accepted",
+  REJECTED: "Rejected",
+  COMPLETED: "Completed",
+};
+
 export const useCreateRoomRequestMutation = () => {
   const queryClient = useQueryClient();
 
@@ -45,7 +52,7 @@ export const useUpdateRoomRequestStatusMutation = () => {
     },
     onSuccess: (_, variables) => {
       toast.success("Request updated", {
-        description: `Status changed to ${variables.status.toLowerCase()}.`,
+        description: `Status changed to ${ROOM_REQUEST_STATUS_LABELS[variables.status]}.`,
       });
       queryClient.invalidateQueries({
         queryKey: [ROOM_REQUEST_QUERY_KEYS.LIST_SENT],

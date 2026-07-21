@@ -4,6 +4,13 @@ import { REPORT_QUERY_KEYS } from "@/hooks/use-report-queries";
 import { reportService } from "@/http/services/report.service";
 import type { CreateReportDTO, ReportStatus } from "@/types/report.types";
 
+const REPORT_STATUS_LABELS: Record<ReportStatus, string> = {
+  PENDING: "Pending",
+  UNDER_REVIEW: "Under review",
+  RESOLVED: "Resolved",
+  REJECTED: "Rejected",
+};
+
 export const useCreateReportMutation = () => {
   const queryClient = useQueryClient();
 
@@ -39,7 +46,7 @@ export const useUpdateReportStatusMutation = () => {
     },
     onSuccess: (_, variables) => {
       toast.success("Report updated", {
-        description: `Status changed to ${variables.status.toLowerCase()}.`,
+        description: `Status changed to ${REPORT_STATUS_LABELS[variables.status]}.`,
       });
       queryClient.invalidateQueries({
         queryKey: [REPORT_QUERY_KEYS.LIST_ME],

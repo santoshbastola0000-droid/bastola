@@ -44,6 +44,13 @@ const REPORT_TYPE_LABELS: Record<ReportType, string> = {
   [ReportType.SPAM]: "Spam",
 };
 
+const REPORT_STATUS_LABELS: Record<ReportStatus, string> = {
+  [ReportStatus.PENDING]: "Pending",
+  [ReportStatus.UNDER_REVIEW]: "Under review",
+  [ReportStatus.RESOLVED]: "Resolved",
+  [ReportStatus.REJECTED]: "Rejected",
+};
+
 const REPORT_STATUS_STYLES: Record<ReportStatus, string> = {
   [ReportStatus.PENDING]: "bg-amber-100 text-amber-700 border-amber-200",
   [ReportStatus.UNDER_REVIEW]: "bg-blue-100 text-blue-700 border-blue-200",
@@ -109,7 +116,7 @@ export function ReportsDashboard() {
                 <SelectItem value="ALL">All statuses</SelectItem>
                 {Object.values(ReportStatus).map((status) => (
                   <SelectItem key={status} value={status}>
-                    {status.replace(/_/g, " ")}
+                    {REPORT_STATUS_LABELS[status]}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -139,7 +146,7 @@ export function ReportsDashboard() {
                     <p className="text-xs text-muted-foreground">Submitted {formatDate(report.createdAt)}</p>
                   </div>
                   <Badge className={REPORT_STATUS_STYLES[report.status]}>
-                    {report.status.replace(/_/g, " ")}
+                    {REPORT_STATUS_LABELS[report.status]}
                   </Badge>
                 </div>
                 <div className="grid gap-3 md:grid-cols-2">
