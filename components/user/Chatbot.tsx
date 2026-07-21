@@ -43,7 +43,7 @@ export function AdvancedChatbot() {
     {
       id: "1",
       role: "bot",
-      text: "Namaste! 🙏 I am your RoomKhoj AI assistant. You can search rooms, upload photos/videos, use voice search, or share location right here!",
+      text: "Namaste! 🙏 I am RoomKhoj AI assistant. You can search rooms, upload photos/videos, use voice search, or share location right here!",
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     },
   ]);
