@@ -422,3 +422,6 @@ export function AdvancedChatbot() {
     </>
   );
 }
+
+// यो लाइनले GlobalChatbot.tsx मा आउने 'Chatbot export not found' एररलाई सदाको लागि हटाउँछ
+export { AdvancedChatbot as Chatbot };
