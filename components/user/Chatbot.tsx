@@ -110,34 +110,6 @@ export function Chatbot() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const sendMessage = (text: string) => {
-    const trimmed = text.trim();
-    if (!trimmed) return;
-
-    const userMsg: Message = { id: Date.now(), role: "user", text: trimmed };
-    setMessages((m) => [...m, userMsg]);
-    setInput("");
-
-    setTimeout(() => {
-      const reply = findChatbotReply(trimmed, customRules);
-      const botMsg: Message = {
-        id: Date.now() + 1,
-        role: "bot",
-        text: reply.text,
-      };
-      setMessages((m) => [...m, botMsg]);
-
-      if (reply.action) {
-        const actionMsg: Message = {
-          id: Date.now() + 2,
-          role: "bot",
-          text: `__action__${JSON.stringify(reply.action)}`,
-        };
-        setMessages((m) => [...m, actionMsg]);
-      }
-    }, 500);
-  };
-
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") sendMessage(input);
   };
