@@ -311,15 +311,23 @@ export function Chatbot() {
 
       if (isRoomDiscoveryQuery(normalized)) {
         startRoomDiscovery();
-        return;
-      }
+        const res = await fetch("https://api.roomkhoj.com/ai/chat", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    message: trimmed,
+  }),
+});
 
-      const reply = findChatbotReply(trimmed, customRules);
-      const botMsg: Message = {
-        id: Date.now() + 1,
-        role: "bot",
-        text: reply.text,
-      };
+const data = await res.json();
+
+const botMsg: Message = {
+  id: Date.now() + 1,
+  role: "bot",
+  text: data.reply,
+};
       setMessages((m) => [...m, botMsg]);
 
       if (reply.action) {
