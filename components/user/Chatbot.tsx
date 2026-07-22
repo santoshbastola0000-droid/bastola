@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useUserRole } from "@/stores/user-store";
 import {
   MessageCircle,
   X,
