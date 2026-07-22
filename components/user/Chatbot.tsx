@@ -38,7 +38,7 @@ interface ChatSession {
 
 export function AdvancedChatbot() {
   const [isOpen, setIsOpen] = useState(false);
-  const [balance, setBalance] = useState<number>(50); // Sample balance in NPR
+  const [balance, setBalance] = useState<number>(50); // Balance in NPR
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: "1",
@@ -49,7 +49,7 @@ export function AdvancedChatbot() {
   ]);
   const [input, setInput] = useState("");
   const [isRecording, setIsRecording] = useState(false);
-  const [selectedFile, setSelectedFile] = useState<{ url: string; type: "image" | "video" | "file" } | null>(null);
+  const [selectedFile, setSelectedFile] = useState<{ url: string; type: "image" | "video" | "file"; rawFile: File } | null>(null);
   const [showHistory, setShowHistory] = useState(false);
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [locationRequested, setLocationRequested] = useState(false);
@@ -57,6 +57,7 @@ export function AdvancedChatbot() {
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const recognitionRef = useRef<any>(null);
 
   // Load history from localStorage on mount
   useEffect(() => {
@@ -94,28 +95,32 @@ export function AdvancedChatbot() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Balance & Token deduction logic (e.g., Rs 1 per 5 words)
+  // Balance & Token deduction logic (1 NPR per 5 words)
   const deductBalanceForText = (text: string) => {
-    const wordCount = text.trim().split(/\s+/).length;
-    const cost = Math.ceil(wordCount / 5); // 1 rupee per 5 words
+    const wordCount = text.trim().split(/\s+/).filter(Boolean).length;
+    const cost = Math.max(1, Math.ceil(wordCount / 5)); // Minimum 1 Rs cost
     setBalance((prev) => Math.max(0, prev - cost));
   };
 
   // Voice Search (Speech Recognition) Integration
   const toggleVoiceRecording = () => {
-    if (!("webkitSpeechRecognition" in window || "SpeechRecognition" in window)) {
+    if (typeof window === "undefined") return;
+
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
       alert("Speech recognition is not supported in this browser.");
       return;
     }
 
     if (isRecording) {
+      recognitionRef.current?.stop();
       setIsRecording(false);
       return;
     }
 
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     const recognition = new SpeechRecognition();
-    recognition.lang = "ne-NP"; // Default to Nepali
+    recognition.lang = "ne-NP"; // Nepali Language Support
     recognition.interimResults = false;
 
     recognition.onstart = () => setIsRecording(true);
@@ -127,6 +132,7 @@ export function AdvancedChatbot() {
     recognition.onerror = () => setIsRecording(false);
     recognition.onend = () => setIsRecording(false);
 
+    recognitionRef.current = recognition;
     recognition.start();
   };
 
@@ -142,7 +148,7 @@ export function AdvancedChatbot() {
       (position) => {
         const { latitude, longitude } = position.coords;
         setLocationRequested(false);
-        sendMessage(`📍 My Current Location Shared: Lat ${latitude.toFixed(2)}, Lng ${longitude.toFixed(2)}`);
+        sendMessage(`📍 My Current Location Shared: Lat ${latitude.toFixed(4)}, Lng ${longitude.toFixed(4)}`);
       },
       () => {
         setLocationRequested(false);
@@ -157,9 +163,21 @@ export function AdvancedChatbot() {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // Clear old URL to avoid memory leaks
+    if (selectedFile?.url) {
+      URL.revokeObjectURL(selectedFile.url);
+    }
+
     const fileUrl = URL.createObjectURL(file);
     const type = file.type.startsWith("image/") ? "image" : file.type.startsWith("video/") ? "video" : "file";
-    setSelectedFile({ url: fileUrl, type });
+    setSelectedFile({ url: fileUrl, type, rawFile: file });
+  };
+
+  const removeSelectedFile = () => {
+    if (selectedFile?.url) {
+      URL.revokeObjectURL(selectedFile.url);
+    }
+    setSelectedFile(null);
   };
 
   const sendMessage = async (customText?: string) => {
@@ -187,28 +205,35 @@ export function AdvancedChatbot() {
     setInput("");
     setSelectedFile(null);
 
+    // Fetch userId from LocalStorage or Auth State (Fallback to guest_user)
+    const currentUserId = typeof window !== "undefined" 
+      ? localStorage.getItem("userId") || "guest_user" 
+      : "guest_user";
+
     try {
       // Backend AI API call
-const res = await fetch("https://api.roomkhoj.com/ai/chat", {
-  method: "POST",
-  headers: {
-    "Content-Type": "application/json",
-  },
-  body: JSON.stringify({
-    message: textToSend,
-  }),
-});
- 
-      
+      const res = await fetch("https://api.roomkhoj.com/ai/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          userId: currentUserId, // Fixed: Sending userId to backend
+          message: textToSend,
+          hasMedia: Boolean(newUserMsg.mediaUrl),
+          mediaType: newUserMsg.mediaType,
+        }),
+      });
+
       const data = await res.json();
-      
+
       const botReply: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: "bot",
         text: data.reply || "Sorry, I couldn't process that.",
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
-      
+
       const finalMsgs = [...updatedMessages, botReply];
       setMessages(finalMsgs);
       saveCurrentSession(finalMsgs);
@@ -288,7 +313,13 @@ const res = await fetch("https://api.roomkhoj.com/ai/chat", {
               <div className="flex-1 overflow-y-auto p-4 bg-slate-50 dark:bg-gray-800">
                 <div className="flex justify-between items-center mb-3">
                   <h3 className="text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">Recent Chats</h3>
-                  <button onClick={() => { setSessions([]); localStorage.removeItem("roomkhoj_chat_history"); }} className="text-xs text-red-500 flex items-center gap-1 cursor-pointer">
+                  <button
+                    onClick={() => {
+                      setSessions([]);
+                      localStorage.removeItem("roomkhoj_chat_history");
+                    }}
+                    className="text-xs text-red-500 flex items-center gap-1 cursor-pointer"
+                  >
                     <Trash2 className="w-3 h-3" /> Clear
                   </button>
                 </div>
@@ -299,7 +330,10 @@ const res = await fetch("https://api.roomkhoj.com/ai/chat", {
                     {sessions.map((sess) => (
                       <div
                         key={sess.id}
-                        onClick={() => { setMessages(sess.messages); setShowHistory(false); }}
+                        onClick={() => {
+                          setMessages(sess.messages);
+                          setShowHistory(false);
+                        }}
                         className="p-2.5 rounded-xl bg-white dark:bg-gray-700 border border-slate-200 dark:border-gray-600 cursor-pointer hover:border-red-400 text-xs shadow-xs truncate"
                       >
                         <p className="font-semibold text-slate-900 dark:text-white truncate">{sess.title}</p>
@@ -334,7 +368,7 @@ const res = await fetch("https://api.roomkhoj.com/ai/chat", {
                     >
                       {msg.role === "bot" && (
                         <div className="w-6 h-6 rounded-full bg-red-100 dark:bg-red-900 flex items-center justify-center shrink-0 mb-0.5">
-                          <Bot className="w-3.5 h-3.5 text-red-600" />
+                          <Bot className="w-3.5 h-3.5 text-red-600 dark:text-red-300" />
                         </div>
                       )}
 
@@ -371,12 +405,12 @@ const res = await fetch("https://api.roomkhoj.com/ai/chat", {
 
                 {/* Selected File Preview Box */}
                 {selectedFile && (
-                  <div className="px-3 py-1.5 bg-slate-100 dark:bg-gray-800 flex items-center justify-between border-t border-slate-200">
+                  <div className="px-3 py-1.5 bg-slate-100 dark:bg-gray-800 flex items-center justify-between border-t border-slate-200 dark:border-gray-700">
                     <div className="flex items-center gap-2 text-xs truncate">
                       {selectedFile.type === "image" ? <ImageIcon className="w-4 h-4 text-red-500" /> : <Video className="w-4 h-4 text-red-500" />}
                       <span className="truncate text-slate-700 dark:text-slate-300">Attached media ready</span>
                     </div>
-                    <button onClick={() => setSelectedFile(null)} className="text-slate-400 hover:text-red-500 cursor-pointer">
+                    <button onClick={removeSelectedFile} className="text-slate-400 hover:text-red-500 cursor-pointer">
                       <X className="w-4 h-4" />
                     </button>
                   </div>
