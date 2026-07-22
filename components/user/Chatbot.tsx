@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useUserRole } from "@/stores/user-store";
@@ -39,6 +37,16 @@ interface ChatSession {
 }
 
 export function AdvancedChatbot() {
+  // 👇 Use your auth store (shape-safe fallback)
+  const userStore = useUserRole() as any;
+  const loggedInUserId =
+    userStore?.user?.id ||
+    userStore?.user?._id ||
+    userStore?.id ||
+    userStore?.profile?.id ||
+    userStore?.profile?._id ||
+    null;
+
   const [isOpen, setIsOpen] = useState(false);
   const [balance, setBalance] = useState<number>(50); // Balance in NPR
   const [isTyping, setIsTyping] = useState(false);
@@ -109,7 +117,7 @@ export function AdvancedChatbot() {
   // Save current active conversation session
   const saveCurrentSession = useCallback((currentMsgs: ChatMessage[]) => {
     if (currentMsgs.length <= 1) return;
-    
+
     const newSession: ChatSession = {
       id: Date.now().toString(),
       title: currentMsgs[1]?.text.slice(0, 30) + "..." || "Chat session",
@@ -177,9 +185,7 @@ export function AdvancedChatbot() {
       (position) => {
         const { latitude, longitude } = position.coords;
         setLocationRequested(false);
-        sendMessage(
-          `📍 Shared Location: Lat ${latitude.toFixed(4)}, Lng ${longitude.toFixed(4)}`
-        );
+        sendMessage(`📍 Shared Location: Lat ${latitude.toFixed(4)}, Lng ${longitude.toFixed(4)}`);
       },
       () => {
         setLocationRequested(false);
@@ -204,7 +210,7 @@ export function AdvancedChatbot() {
       : file.type.startsWith("video/")
       ? "video"
       : "file";
-      
+
     setSelectedFile({ url: fileUrl, type, rawFile: file });
   };
 
@@ -244,10 +250,15 @@ export function AdvancedChatbot() {
     setSelectedFile(null);
     setIsTyping(true);
 
+    // ✅ Prefer logged-in user from store, then localStorage, then guest
     const currentUserId =
-      typeof window !== "undefined"
-        ? localStorage.getItem("userId") || "guest_user"
-        : "guest_user";
+      loggedInUserId ||
+      (typeof window !== "undefined"
+        ? localStorage.getItem("userId") ||
+          localStorage.getItem("user_id") ||
+          localStorage.getItem("id")
+        : null) ||
+      "guest_user";
 
     try {
       const res = await fetch("https://api.roomkhoj.com/ai/chat", {
@@ -256,7 +267,7 @@ export function AdvancedChatbot() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          userId: currentUserId,
+          userId: String(currentUserId),
           message: textToSend,
           hasMedia: Boolean(newUserMsg.mediaUrl),
           mediaType: newUserMsg.mediaType,
@@ -552,11 +563,9 @@ export function AdvancedChatbot() {
                       {isTyping ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                     </button>
                   </div>
-                  
+
                   <div className="flex justify-between items-center mt-1.5 px-1">
-                    <span className="text-[10px] text-slate-400 dark:text-slate-500">
-                      Rate: Rs 1 / 5 words
-                    </span>
+                    <span className="text-[10px] text-slate-400 dark:text-slate-500">Rate: Rs 1 / 5 words</span>
                     <a
                       href="/pricing"
                       className="text-[10px] text-red-600 dark:text-red-400 font-semibold hover:underline"
