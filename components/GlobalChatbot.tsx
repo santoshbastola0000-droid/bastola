@@ -1,4 +1,4 @@
-"use client";
+use client";
 
 import { usePathname } from "next/navigation";
 import { Chatbot } from "@/components/user/Chatbot";
@@ -27,4 +27,3 @@ export function GlobalChatbot() {
 
   // Only show chatbot widget on user-facing pages
 import { AdvancedChatbot as Chatbot } from "@/components/user/Chatbot";
-
