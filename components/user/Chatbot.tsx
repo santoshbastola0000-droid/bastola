@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   MessageCircle,
@@ -18,6 +18,7 @@ import {
   Coins,
   History,
   Trash2,
+  Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -39,17 +40,22 @@ interface ChatSession {
 export function AdvancedChatbot() {
   const [isOpen, setIsOpen] = useState(false);
   const [balance, setBalance] = useState<number>(50); // Balance in NPR
+  const [isTyping, setIsTyping] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: "1",
       role: "bot",
       text: "Namaste! 🙏 I am RoomKhoj AI assistant. You can search rooms, upload photos/videos, use voice search, or share location right here!",
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
     },
   ]);
   const [input, setInput] = useState("");
   const [isRecording, setIsRecording] = useState(false);
-  const [selectedFile, setSelectedFile] = useState<{ url: string; type: "image" | "video" | "file"; rawFile: File } | null>(null);
+  const [selectedFile, setSelectedFile] = useState<{
+    url: string;
+    type: "image" | "video" | "file";
+    rawFile: File;
+  } | null>(null);
   const [showHistory, setShowHistory] = useState(false);
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [locationRequested, setLocationRequested] = useState(false);
@@ -66,39 +72,60 @@ export function AdvancedChatbot() {
       try {
         setSessions(JSON.parse(saved));
       } catch (e) {
-        console.error(e);
+        console.error("Failed to parse chat history:", e);
       }
     }
   }, []);
 
-  // Save messages to history
-  const saveCurrentSession = (currentMsgs: ChatMessage[]) => {
+  // Cleanup object URLs to avoid memory leaks
+  useEffect(() => {
+    return () => {
+      if (selectedFile?.url) {
+        URL.revokeObjectURL(selectedFile.url);
+      }
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+    };
+  }, [selectedFile]);
+
+  // Scroll to bottom on new message or modal open
+  const scrollToBottom = useCallback(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, []);
+
+  useEffect(() => {
+    if (isOpen) {
+      setTimeout(() => inputRef.current?.focus(), 200);
+      scrollToBottom();
+    }
+  }, [isOpen, scrollToBottom]);
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, isTyping, scrollToBottom]);
+
+  // Save current active conversation session
+  const saveCurrentSession = useCallback((currentMsgs: ChatMessage[]) => {
     if (currentMsgs.length <= 1) return;
+    
     const newSession: ChatSession = {
       id: Date.now().toString(),
       title: currentMsgs[1]?.text.slice(0, 30) + "..." || "Chat session",
       messages: currentMsgs,
     };
-    const updated = [newSession, ...sessions.slice(0, 4)]; // Keep last 5 sessions
-    setSessions(updated);
-    localStorage.setItem("roomkhoj_chat_history", JSON.stringify(updated));
-  };
 
-  useEffect(() => {
-    if (isOpen) {
-      setTimeout(() => inputRef.current?.focus(), 300);
-      bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-    }
-  }, [isOpen]);
+    setSessions((prev) => {
+      const updated = [newSession, ...prev.filter((s) => s.id !== newSession.id)].slice(0, 5);
+      localStorage.setItem("roomkhoj_chat_history", JSON.stringify(updated));
+      return updated;
+    });
+  }, []);
 
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
-
-  // Balance & Token deduction logic (1 NPR per 5 words)
+  // Token deduction logic (1 NPR per 5 words)
   const deductBalanceForText = (text: string) => {
     const wordCount = text.trim().split(/\s+/).filter(Boolean).length;
-    const cost = Math.max(1, Math.ceil(wordCount / 5)); // Minimum 1 Rs cost
+    const cost = Math.max(1, Math.ceil(wordCount / 5));
     setBalance((prev) => Math.max(0, prev - cost));
   };
 
@@ -106,7 +133,8 @@ export function AdvancedChatbot() {
   const toggleVoiceRecording = () => {
     if (typeof window === "undefined") return;
 
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    const SpeechRecognition =
+      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
 
     if (!SpeechRecognition) {
       alert("Speech recognition is not supported in this browser.");
@@ -120,13 +148,13 @@ export function AdvancedChatbot() {
     }
 
     const recognition = new SpeechRecognition();
-    recognition.lang = "ne-NP"; // Nepali Language Support
+    recognition.lang = "ne-NP"; // Nepali language support
     recognition.interimResults = false;
 
     recognition.onstart = () => setIsRecording(true);
     recognition.onresult = (event: any) => {
       const transcript = event.results[0][0].transcript;
-      setInput((prev) => (prev ? prev + " " + transcript : transcript));
+      setInput((prev) => (prev ? `${prev} ${transcript}` : transcript));
       setIsRecording(false);
     };
     recognition.onerror = () => setIsRecording(false);
@@ -136,7 +164,7 @@ export function AdvancedChatbot() {
     recognition.start();
   };
 
-  // Location Request inside Chat Box
+  // Location Sharing Handler
   const requestUserLocation = () => {
     if (!navigator.geolocation) {
       alert("Geolocation is not supported by your browser");
@@ -148,28 +176,34 @@ export function AdvancedChatbot() {
       (position) => {
         const { latitude, longitude } = position.coords;
         setLocationRequested(false);
-        sendMessage(`📍 My Current Location Shared: Lat ${latitude.toFixed(4)}, Lng ${longitude.toFixed(4)}`);
+        sendMessage(
+          `📍 Shared Location: Lat ${latitude.toFixed(4)}, Lng ${longitude.toFixed(4)}`
+        );
       },
       () => {
         setLocationRequested(false);
-        alert("Unable to retrieve your location. Please check permissions.");
+        alert("Unable to retrieve your location. Please check browser permissions.");
       },
       { enableHighAccuracy: true }
     );
   };
 
-  // File / Media Upload handler
+  // File Upload Handler
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Clear old URL to avoid memory leaks
     if (selectedFile?.url) {
       URL.revokeObjectURL(selectedFile.url);
     }
 
     const fileUrl = URL.createObjectURL(file);
-    const type = file.type.startsWith("image/") ? "image" : file.type.startsWith("video/") ? "video" : "file";
+    const type = file.type.startsWith("image/")
+      ? "image"
+      : file.type.startsWith("video/")
+      ? "video"
+      : "file";
+      
     setSelectedFile({ url: fileUrl, type, rawFile: file });
   };
 
@@ -178,14 +212,17 @@ export function AdvancedChatbot() {
       URL.revokeObjectURL(selectedFile.url);
     }
     setSelectedFile(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
   };
 
   const sendMessage = async (customText?: string) => {
     const textToSend = customText || input;
-    if (!textToSend.trim() && !selectedFile) return;
+    if ((!textToSend.trim() && !selectedFile) || isTyping) return;
 
     if (balance <= 0) {
-      alert("Your balance is finished! Please upgrade or top-up to continue chatting.");
+      alert("Your balance is finished! Please top-up to continue chatting.");
       return;
     }
 
@@ -197,28 +234,28 @@ export function AdvancedChatbot() {
       text: textToSend,
       mediaUrl: selectedFile?.url,
       mediaType: selectedFile?.type,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
     };
 
     const updatedMessages = [...messages, newUserMsg];
     setMessages(updatedMessages);
     setInput("");
     setSelectedFile(null);
+    setIsTyping(true);
 
-    // Fetch userId from LocalStorage or Auth State (Fallback to guest_user)
-    const currentUserId = typeof window !== "undefined" 
-      ? localStorage.getItem("userId") || "guest_user" 
-      : "guest_user";
+    const currentUserId =
+      typeof window !== "undefined"
+        ? localStorage.getItem("userId") || "guest_user"
+        : "guest_user";
 
     try {
-      // Backend AI API call
       const res = await fetch("https://api.roomkhoj.com/ai/chat", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          userId: currentUserId, // Fixed: Sending userId to backend
+          userId: currentUserId,
           message: textToSend,
           hasMedia: Boolean(newUserMsg.mediaUrl),
           mediaType: newUserMsg.mediaType,
@@ -231,7 +268,7 @@ export function AdvancedChatbot() {
         id: (Date.now() + 1).toString(),
         role: "bot",
         text: data.reply || "Sorry, I couldn't process that.",
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
       };
 
       const finalMsgs = [...updatedMessages, botReply];
@@ -242,42 +279,46 @@ export function AdvancedChatbot() {
       const fallbackReply: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: "bot",
-        text: "Network error. Please check your connection or API configuration.",
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        text: "Network connection error. Please try again shortly.",
+        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
       };
       setMessages([...updatedMessages, fallbackReply]);
+    } finally {
+      setIsTyping(false);
     }
   };
 
   return (
     <>
-      {/* Floating Toggle Button */}
+      {/* Floating Action Button */}
       <button
         type="button"
         onClick={() => setIsOpen((v) => !v)}
         className={cn(
           "fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full shadow-2xl flex items-center justify-center transition-all duration-300 cursor-pointer",
-          isOpen ? "bg-slate-800 text-white" : "bg-gradient-to-br from-red-500 to-rose-600 text-white hover:scale-105"
+          isOpen
+            ? "bg-slate-800 text-white hover:bg-slate-900"
+            : "bg-gradient-to-br from-red-500 to-rose-600 text-white hover:scale-105 active:scale-95"
         )}
-        aria-label="Toggle AI Chatbot"
+        aria-label="Toggle RoomKhoj AI Chatbot"
       >
         {isOpen ? <ChevronDown className="w-6 h-6" /> : <MessageCircle className="w-6 h-6" />}
       </button>
 
+      {/* Main Chat Drawer */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+            exit={{ opacity: 0, scale: 0.95, y: 20 }}
             transition={{ duration: 0.2 }}
-            className="fixed bottom-24 right-6 z-50 w-85 sm:w-96 flex flex-col rounded-3xl shadow-2xl overflow-hidden border border-slate-200 bg-white dark:bg-gray-900"
-            style={{ height: "580px" }}
+            className="fixed bottom-24 right-4 sm:right-6 z-50 w-[340px] sm:w-[380px] flex flex-col rounded-3xl shadow-2xl overflow-hidden border border-slate-200 dark:border-gray-800 bg-white dark:bg-gray-900 h-[580px]"
           >
-            {/* Header with Balance & History Toggle */}
+            {/* Header */}
             <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-red-600 to-rose-500 text-white shrink-0">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-sm">
                   <Bot className="w-4 h-4" />
                 </div>
                 <div>
@@ -302,6 +343,7 @@ export function AdvancedChatbot() {
                   type="button"
                   onClick={() => setIsOpen(false)}
                   className="p-1.5 rounded-full hover:bg-white/20 transition-colors cursor-pointer"
+                  aria-label="Close chat"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -312,39 +354,46 @@ export function AdvancedChatbot() {
             {showHistory ? (
               <div className="flex-1 overflow-y-auto p-4 bg-slate-50 dark:bg-gray-800">
                 <div className="flex justify-between items-center mb-3">
-                  <h3 className="text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">Recent Chats</h3>
+                  <h3 className="text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">
+                    Recent Chats
+                  </h3>
                   <button
                     onClick={() => {
                       setSessions([]);
                       localStorage.removeItem("roomkhoj_chat_history");
                     }}
-                    className="text-xs text-red-500 flex items-center gap-1 cursor-pointer"
+                    className="text-xs text-red-500 flex items-center gap-1 cursor-pointer hover:underline"
                   >
                     <Trash2 className="w-3 h-3" /> Clear
                   </button>
                 </div>
                 {sessions.length === 0 ? (
-                  <p className="text-xs text-slate-500 text-center mt-10">No past chat history found.</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 text-center mt-10">
+                    No past chat history found.
+                  </p>
                 ) : (
                   <div className="space-y-2">
                     {sessions.map((sess) => (
-                      <div
+                      <button
                         key={sess.id}
+                        type="button"
                         onClick={() => {
                           setMessages(sess.messages);
                           setShowHistory(false);
                         }}
-                        className="p-2.5 rounded-xl bg-white dark:bg-gray-700 border border-slate-200 dark:border-gray-600 cursor-pointer hover:border-red-400 text-xs shadow-xs truncate"
+                        className="w-full text-left p-2.5 rounded-xl bg-white dark:bg-gray-700 border border-slate-200 dark:border-gray-600 cursor-pointer hover:border-red-400 dark:hover:border-red-400 text-xs shadow-xs truncate transition"
                       >
-                        <p className="font-semibold text-slate-900 dark:text-white truncate">{sess.title}</p>
-                      </div>
+                        <p className="font-semibold text-slate-900 dark:text-white truncate">
+                          {sess.title}
+                        </p>
+                      </button>
                     ))}
                   </div>
                 )}
               </div>
             ) : (
               <>
-                {/* Location Prompt Banner inside Chat */}
+                {/* Location Banner */}
                 <div className="bg-red-50 dark:bg-red-950/40 px-3 py-2 border-b border-red-100 dark:border-red-900 flex items-center justify-between text-xs text-red-700 dark:text-red-300">
                   <span className="flex items-center gap-1">
                     <MapPin className="w-3.5 h-3.5 shrink-0" /> Find rooms near you?
@@ -364,10 +413,13 @@ export function AdvancedChatbot() {
                   {messages.map((msg) => (
                     <div
                       key={msg.id}
-                      className={cn("flex items-end gap-2", msg.role === "user" ? "justify-end" : "justify-start")}
+                      className={cn(
+                        "flex items-end gap-2",
+                        msg.role === "user" ? "justify-end" : "justify-start"
+                      )}
                     >
                       {msg.role === "bot" && (
-                        <div className="w-6 h-6 rounded-full bg-red-100 dark:bg-red-900 flex items-center justify-center shrink-0 mb-0.5">
+                        <div className="w-6 h-6 rounded-full bg-red-100 dark:bg-red-900/60 flex items-center justify-center shrink-0 mb-0.5">
                           <Bot className="w-3.5 h-3.5 text-red-600 dark:text-red-300" />
                         </div>
                       )}
@@ -376,21 +428,27 @@ export function AdvancedChatbot() {
                         className={cn(
                           "max-w-[80%] px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed",
                           msg.role === "bot"
-                            ? "bg-slate-100 dark:bg-gray-800 text-slate-900 dark:text-slate-100 rounded-bl-sm"
-                            : "bg-red-600 text-white rounded-br-sm"
+                            ? "bg-slate-100 dark:bg-gray-800 text-slate-900 dark:text-slate-100 rounded-bl-xs"
+                            : "bg-red-600 text-white rounded-br-xs"
                         )}
                       >
                         {msg.mediaUrl && (
                           <div className="mb-2 rounded-lg overflow-hidden border border-white/20 max-w-[200px]">
                             {msg.mediaType === "image" ? (
-                              <img src={msg.mediaUrl} alt="Uploaded preview" className="w-full h-32 object-cover" />
+                              <img
+                                src={msg.mediaUrl}
+                                alt="Uploaded attachment"
+                                className="w-full h-32 object-cover"
+                              />
                             ) : msg.mediaType === "video" ? (
                               <video src={msg.mediaUrl} controls className="w-full h-32 object-cover" />
                             ) : null}
                           </div>
                         )}
-                        <p>{msg.text}</p>
-                        <span className="block text-[9px] text-right mt-1 opacity-70">{msg.timestamp}</span>
+                        <p className="whitespace-pre-wrap break-words">{msg.text}</p>
+                        <span className="block text-[9px] text-right mt-1 opacity-70">
+                          {msg.timestamp}
+                        </span>
                       </div>
 
                       {msg.role === "user" && (
@@ -400,17 +458,42 @@ export function AdvancedChatbot() {
                       )}
                     </div>
                   ))}
+
+                  {/* AI Typing Indicator */}
+                  {isTyping && (
+                    <div className="flex items-center gap-2">
+                      <div className="w-6 h-6 rounded-full bg-red-100 dark:bg-red-900/60 flex items-center justify-center shrink-0">
+                        <Bot className="w-3.5 h-3.5 text-red-600 dark:text-red-300" />
+                      </div>
+                      <div className="bg-slate-100 dark:bg-gray-800 px-3.5 py-2 rounded-2xl rounded-bl-xs flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce [animation-delay:-0.3s]" />
+                        <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce [animation-delay:-0.15s]" />
+                        <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" />
+                      </div>
+                    </div>
+                  )}
+
                   <div ref={bottomRef} />
                 </div>
 
-                {/* Selected File Preview Box */}
+                {/* Selected File Preview */}
                 {selectedFile && (
                   <div className="px-3 py-1.5 bg-slate-100 dark:bg-gray-800 flex items-center justify-between border-t border-slate-200 dark:border-gray-700">
                     <div className="flex items-center gap-2 text-xs truncate">
-                      {selectedFile.type === "image" ? <ImageIcon className="w-4 h-4 text-red-500" /> : <Video className="w-4 h-4 text-red-500" />}
-                      <span className="truncate text-slate-700 dark:text-slate-300">Attached media ready</span>
+                      {selectedFile.type === "image" ? (
+                        <ImageIcon className="w-4 h-4 text-red-500" />
+                      ) : (
+                        <Video className="w-4 h-4 text-red-500" />
+                      )}
+                      <span className="truncate text-slate-700 dark:text-slate-300">
+                        {selectedFile.rawFile.name}
+                      </span>
                     </div>
-                    <button onClick={removeSelectedFile} className="text-slate-400 hover:text-red-500 cursor-pointer">
+                    <button
+                      type="button"
+                      onClick={removeSelectedFile}
+                      className="text-slate-400 hover:text-red-500 cursor-pointer"
+                    >
                       <X className="w-4 h-4" />
                     </button>
                   </div>
@@ -430,7 +513,7 @@ export function AdvancedChatbot() {
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
                       className="p-2 text-slate-500 hover:text-red-600 hover:bg-slate-100 dark:hover:bg-gray-800 rounded-full transition cursor-pointer"
-                      title="Upload Room Photo/Video"
+                      title="Upload Photo or Video"
                     >
                       <Paperclip className="w-4 h-4" />
                     </button>
@@ -440,7 +523,9 @@ export function AdvancedChatbot() {
                       onClick={toggleVoiceRecording}
                       className={cn(
                         "p-2 rounded-full transition cursor-pointer",
-                        isRecording ? "bg-red-600 text-white animate-pulse" : "text-slate-500 hover:text-red-600 hover:bg-slate-100 dark:hover:bg-gray-800"
+                        isRecording
+                          ? "bg-red-600 text-white animate-pulse"
+                          : "text-slate-500 hover:text-red-600 hover:bg-slate-100 dark:hover:bg-gray-800"
                       )}
                       title="Voice Search"
                     >
@@ -452,23 +537,31 @@ export function AdvancedChatbot() {
                       type="text"
                       value={input}
                       onChange={(e) => setInput(e.target.value)}
-                      onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+                      onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && sendMessage()}
                       placeholder={isRecording ? "Listening..." : "Ask room details..."}
-                      className="flex-1 text-sm px-3 py-2 rounded-full border border-slate-200 dark:border-gray-700 bg-slate-50 dark:bg-gray-800 outline-none focus:ring-2 focus:ring-red-400 transition"
+                      className="flex-1 text-sm px-3 py-2 rounded-full border border-slate-200 dark:border-gray-700 bg-slate-50 dark:bg-gray-800 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-red-400 transition"
                     />
 
                     <button
                       type="button"
                       onClick={() => sendMessage()}
-                      disabled={!input.trim() && !selectedFile}
-                      className="w-9 h-9 rounded-full bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white flex items-center justify-center transition cursor-pointer shrink-0 shadow-sm"
+                      disabled={(!input.trim() && !selectedFile) || isTyping}
+                      className="w-9 h-9 rounded-full bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white flex items-center justify-center transition cursor-pointer shrink-0 shadow-xs"
                     >
-                      <Send className="w-4 h-4" />
+                      {isTyping ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                     </button>
                   </div>
+                  
                   <div className="flex justify-between items-center mt-1.5 px-1">
-                    <span className="text-[10px] text-slate-400">Rate: Rs 1 / 5 words</span>
-                    <a href="/pricing" className="text-[10px] text-red-600 font-semibold hover:underline">Top-up Balance ⚡</a>
+                    <span className="text-[10px] text-slate-400 dark:text-slate-500">
+                      Rate: Rs 1 / 5 words
+                    </span>
+                    <a
+                      href="/pricing"
+                      className="text-[10px] text-red-600 dark:text-red-400 font-semibold hover:underline"
+                    >
+                      Top-up Balance ⚡
+                    </a>
                   </div>
                 </div>
               </>
