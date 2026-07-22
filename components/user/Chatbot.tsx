@@ -188,17 +188,17 @@ export function AdvancedChatbot() {
     setSelectedFile(null);
 
     try {
-      // OpenAI API Route कल गरिएको (जसले वास्तविक AI उत्तर दिन्छ)
-      const res = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          messages: updatedMessages.map(m => ({ 
-            role: m.role === "bot" ? "assistant" : "user", 
-            content: m.text 
-          })) 
-        }),
-      });
+      // Backend AI API call
+const res = await fetch("https://api.roomkhoj.com/ai/chat", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    message: textToSend,
+  }),
+});
+ 
       
       const data = await res.json();
       
