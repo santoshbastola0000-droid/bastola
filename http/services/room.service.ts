@@ -23,7 +23,7 @@ function getRoomsArray(payload: unknown): Room[] {
   for (const candidate of candidates) {
     if (Array.isArray(candidate)) {
       return candidate.filter((room) =>
-        isRoomLike(room, { requireNumericPrice: true }),
+        isRoomLike(room, { requireNumericPrice: false }),
       );
     }
   }

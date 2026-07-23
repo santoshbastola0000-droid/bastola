@@ -475,14 +475,32 @@ function RoomsContent() {
 
         const withDistance = allRooms
           .filter((room) => {
-            const rLat = Number((room as any).latitude ?? (room as any).lat);
-            const rLng = Number((room as any).longitude ?? (room as any).lng);
+            const rLat = Number(
+  (room as any).latitude ??
+  (room as any).lat ??
+  (room as any).location?.latitude
+);
+
+const rLng = Number(
+  (room as any).longitude ??
+  (room as any).lng ??
+  (room as any).location?.longitude
+);
             if (!rLat || !rLng || isNaN(rLat) || isNaN(rLng)) return false;
             return haversineKm(userLat, userLng, rLat, rLng) <= radiusKm;
           })
           .map((room) => {
-            const rLat = Number((room as any).latitude ?? (room as any).lat);
-            const rLng = Number((room as any).longitude ?? (room as any).lng);
+            const rLat = Number(
+  (room as any).latitude ??
+  (room as any).lat ??
+  (room as any).location?.latitude
+);
+
+const rLng = Number(
+  (room as any).longitude ??
+  (room as any).lng ??
+  (room as any).location?.longitude
+);
             return {
               ...room,
               _distanceKm: haversineKm(userLat, userLng, rLat, rLng),

@@ -319,12 +319,20 @@ export function AdvancedChatbot() {
         throw new Error(data?.message || `API failed with status ${res.status}`);
       }
 
-      const botReply: ChatMessage = {
-        id: (Date.now() + 1).toString(),
-        role: "bot",
-        text: data?.reply || "Sorry, I couldn't process that.",
-        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-      };
+      const replyText =
+  typeof data?.reply === "object"
+    ? data.reply.reply
+    : data?.reply;
+
+const botReply: ChatMessage = {
+  id: (Date.now() + 1).toString(),
+  role: "bot",
+  text:
+  typeof data?.reply === "object"
+    ? data.reply.reply
+    : String(data?.reply || "Sorry, I couldn't process that."),
+  timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+};
 
       const finalMsgs = [...updatedMessages, botReply];
       setMessages(finalMsgs);
