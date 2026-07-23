@@ -8,15 +8,10 @@ import {
   RoomStatus,
 } from "@/types/room.types";
 import { api } from "../api/api";
-
-type UnknownRecord = Record<string, unknown>;
-
-function isRecord(value: unknown): value is UnknownRecord {
-  return typeof value === "object" && value !== null;
-}
+import { isObjectRecord, isRoomLike } from "@/lib/room-guards";
 
 function getRoomsArray(payload: unknown): Room[] {
-  if (!isRecord(payload)) return [];
+  if (!isObjectRecord(payload)) return [];
 
   const candidates = [
     payload.data,
@@ -27,7 +22,9 @@ function getRoomsArray(payload: unknown): Room[] {
 
   for (const candidate of candidates) {
     if (Array.isArray(candidate)) {
-      return candidate as Room[];
+      return candidate.filter((room) =>
+        isRoomLike(room, { requireNumericPrice: true }),
+      );
     }
   }
 
@@ -44,22 +41,24 @@ function toNullableNumber(value: unknown): number | null {
 
 function normalizeRoomsResponse(payload: unknown): RoomsResponse {
   const data = getRoomsArray(payload);
-  const count = data.length;
+  const roomsCount = data.length;
 
-  const paginationSource =
-    isRecord(payload) && isRecord(payload.pagination)
-      ? payload.pagination
-      : isRecord(payload) && isRecord(payload.meta)
-        ? payload.meta
-        : null;
+  let paginationSource: Record<string, unknown> | null = null;
+  if (isObjectRecord(payload)) {
+    if (isObjectRecord(payload.pagination)) {
+      paginationSource = payload.pagination;
+    } else if (isObjectRecord(payload.meta)) {
+      paginationSource = payload.meta;
+    }
+  }
 
   return {
     data,
     pagination: {
       page: toNumber(paginationSource?.page, 1),
-      take: toNumber(paginationSource?.take, count),
-      total: toNumber(paginationSource?.total, count),
-      count: toNumber(paginationSource?.count, count),
+      take: toNumber(paginationSource?.take, roomsCount),
+      total: toNumber(paginationSource?.total, roomsCount),
+      count: toNumber(paginationSource?.count, roomsCount),
       previousPage: toNullableNumber(paginationSource?.previousPage),
       nextPage: toNullableNumber(paginationSource?.nextPage),
     },

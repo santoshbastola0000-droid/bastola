@@ -88,6 +88,7 @@ import type {
   UnlockStatus,
 } from "@/types/unlock.types";
 import { cn } from "@/lib/utils";
+import { isObjectRecord, isRoomLike } from "@/lib/room-guards";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { RoomActionCenter } from "@/components/rooms/RoomActionCenter";
 
@@ -1101,17 +1102,18 @@ const LockedPlaceholder = ({
 };
 
 function getRoomFromApiResponse(payload: unknown): Room | null {
-  if (typeof payload !== "object" || payload === null) return null;
+  if (!isObjectRecord(payload)) return null;
 
-  const data = (payload as { data?: unknown }).data;
-  if (typeof data === "object" && data !== null) return data as Room;
+  const data = payload.data;
+  if (isRoomLike(data)) return data;
+  if (isRoomLike(payload)) return payload;
 
-  return payload as Room;
+  return null;
 }
 
 export default function PropertyDetailsPage() {
-  const { id } = useParams<{ id: string | string[] }>();
-  const roomId = Array.isArray(id) ? id[0] : id;
+  const { id } = useParams<{ id: string }>();
+  const roomId = id;
   const user = useUserStore((state) => state.user);
   const isLoaded = useUserStore((state) => state.isLoaded);
   const isAuthenticated = isLoaded && !!user;
@@ -1136,15 +1138,19 @@ export default function PropertyDetailsPage() {
         );
         const data = await res.json();
         const loadedRoom = getRoomFromApiResponse(data);
-        setRoom(loadedRoom);
-        if (loadedRoom) {
-          trackRoomView(
-            roomId,
-            loadedRoom.title,
-            loadedRoom.location?.city || loadedRoom.address,
-            Number(loadedRoom.price),
-          );
+        if (!loadedRoom) {
+          setRoom(null);
+          toast.error("Property data is unavailable right now.");
+          return;
         }
+
+        setRoom(loadedRoom);
+        trackRoomView(
+          roomId,
+          loadedRoom.title,
+          loadedRoom.location?.city || loadedRoom.address,
+          Number(loadedRoom.price),
+        );
       } catch {
         toast.error("Failed to load property");
       } finally {
@@ -1833,7 +1839,7 @@ export default function PropertyDetailsPage() {
       <RoomUnlockDialog
         open={showUnlockDialog}
         onOpenChange={setShowUnlockDialog}
-        roomId={room.id}
+        roomId={roomId}
         roomTitle={room.title}
         unlockStatus={unlockStatus}
         isAuthenticated={isAuthenticated}
