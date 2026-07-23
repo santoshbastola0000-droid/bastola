@@ -74,9 +74,11 @@ export function AdvancedChatbot() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const recognitionRef = useRef<any>(null);
 
-  // Load history from localStorage on mount
+  // Load history from localStorage on mount (safe for SSR/Next.js)
   useEffect(() => {
-    const saved = localStorage.getItem("roomkhoj_chat_history");
+    if (typeof window === "undefined") return;
+
+    const saved = window.localStorage.getItem("roomkhoj_chat_history");
     if (saved) {
       try {
         setSessions(JSON.parse(saved));
@@ -126,7 +128,9 @@ export function AdvancedChatbot() {
 
     setSessions((prev) => {
       const updated = [newSession, ...prev.filter((s) => s.id !== newSession.id)].slice(0, 5);
-      localStorage.setItem("roomkhoj_chat_history", JSON.stringify(updated));
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem("roomkhoj_chat_history", JSON.stringify(updated));
+      }
       return updated;
     });
   }, []);
@@ -162,8 +166,10 @@ export function AdvancedChatbot() {
 
     recognition.onstart = () => setIsRecording(true);
     recognition.onresult = (event: any) => {
-      const transcript = event.results[0][0].transcript;
-      setInput((prev) => (prev ? `${prev} ${transcript}` : transcript));
+      const transcript = event?.results?.[0]?.[0]?.transcript ?? "";
+      if (transcript) {
+        setInput((prev) => (prev ? `${prev} ${transcript}` : transcript));
+      }
       setIsRecording(false);
     };
     recognition.onerror = () => setIsRecording(false);
@@ -175,7 +181,7 @@ export function AdvancedChatbot() {
 
   // Location Sharing Handler
   const requestUserLocation = () => {
-    if (!navigator.geolocation) {
+    if (typeof window === "undefined" || !navigator.geolocation) {
       alert("Geolocation is not supported by your browser");
       return;
     }
@@ -254,9 +260,9 @@ export function AdvancedChatbot() {
     const currentUserId =
       loggedInUserId ||
       (typeof window !== "undefined"
-        ? localStorage.getItem("userId") ||
-          localStorage.getItem("user_id") ||
-          localStorage.getItem("id")
+        ? window.localStorage.getItem("userId") ||
+          window.localStorage.getItem("user_id") ||
+          window.localStorage.getItem("id")
         : null) ||
       "guest_user";
 
@@ -274,12 +280,25 @@ export function AdvancedChatbot() {
         }),
       });
 
-      const data = await res.json();
+      // ✅ Handle non-JSON or failed responses safely
+      let data: any = null;
+      const contentType = res.headers.get("content-type") || "";
+
+      if (contentType.includes("application/json")) {
+        data = await res.json();
+      } else {
+        const rawText = await res.text();
+        data = { reply: rawText };
+      }
+
+      if (!res.ok) {
+        throw new Error(data?.message || `API failed with status ${res.status}`);
+      }
 
       const botReply: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: "bot",
-        text: data.reply || "Sorry, I couldn't process that.",
+        text: data?.reply || "Sorry, I couldn't process that.",
         timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
       };
 
@@ -372,7 +391,9 @@ export function AdvancedChatbot() {
                   <button
                     onClick={() => {
                       setSessions([]);
-                      localStorage.removeItem("roomkhoj_chat_history");
+                      if (typeof window !== "undefined") {
+                        window.localStorage.removeItem("roomkhoj_chat_history");
+                      }
                     }}
                     className="text-xs text-red-500 flex items-center gap-1 cursor-pointer hover:underline"
                   >
