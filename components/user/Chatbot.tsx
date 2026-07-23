@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useUserRole } from "@/stores/user-store";
@@ -37,7 +39,6 @@ interface ChatSession {
 }
 
 export function AdvancedChatbot() {
-  // 👇 Use your auth store (shape-safe fallback)
   const userStore = useUserRole() as any;
   const loggedInUserId =
     userStore?.user?.id ||
@@ -48,16 +49,9 @@ export function AdvancedChatbot() {
     null;
 
   const [isOpen, setIsOpen] = useState(false);
-  const [balance, setBalance] = useState<number>(50); // Balance in NPR
+  const [balance, setBalance] = useState<number>(50);
   const [isTyping, setIsTyping] = useState(false);
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      id: "1",
-      role: "bot",
-      text: "Namaste! 🙏 I am RoomKhoj AI assistant. You can search rooms, upload photos/videos, use voice search, or share location right here!",
-      timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-    },
-  ]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [isRecording, setIsRecording] = useState(false);
   const [selectedFile, setSelectedFile] = useState<{
@@ -74,7 +68,19 @@ export function AdvancedChatbot() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const recognitionRef = useRef<any>(null);
 
-  // Load history from localStorage on mount (safe for SSR/Next.js)
+  // Client-side initialization to prevent hydration mismatch
+  useEffect(() => {
+    setMessages([
+      {
+        id: "1",
+        role: "bot",
+        text: "Namaste! 🙏 I am RoomKhoj AI assistant. You can search rooms, upload photos/videos, use voice search, or share location right here!",
+        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      },
+    ]);
+  }, []);
+
+  // Load chat history from localStorage
   useEffect(() => {
     if (typeof window === "undefined") return;
 
@@ -88,19 +94,22 @@ export function AdvancedChatbot() {
     }
   }, []);
 
-  // Cleanup object URLs to avoid memory leaks
+  // Cleanup object URLs and speech recognition on unmount
   useEffect(() => {
     return () => {
       if (selectedFile?.url) {
         URL.revokeObjectURL(selectedFile.url);
       }
       if (recognitionRef.current) {
-        recognitionRef.current.stop();
+        try {
+          recognitionRef.current.stop();
+        } catch (e) {
+          // ignore
+        }
       }
     };
   }, [selectedFile]);
 
-  // Scroll to bottom on new message or modal open
   const scrollToBottom = useCallback(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, []);
@@ -116,13 +125,12 @@ export function AdvancedChatbot() {
     scrollToBottom();
   }, [messages, isTyping, scrollToBottom]);
 
-  // Save current active conversation session
   const saveCurrentSession = useCallback((currentMsgs: ChatMessage[]) => {
     if (currentMsgs.length <= 1) return;
 
     const newSession: ChatSession = {
       id: Date.now().toString(),
-      title: currentMsgs[1]?.text.slice(0, 30) + "..." || "Chat session",
+      title: currentMsgs[1]?.text?.slice(0, 30) + "..." || "Chat session",
       messages: currentMsgs,
     };
 
@@ -135,14 +143,13 @@ export function AdvancedChatbot() {
     });
   }, []);
 
-  // Token deduction logic (1 NPR per 5 words)
   const deductBalanceForText = (text: string) => {
+    if (!text) return;
     const wordCount = text.trim().split(/\s+/).filter(Boolean).length;
     const cost = Math.max(1, Math.ceil(wordCount / 5));
     setBalance((prev) => Math.max(0, prev - cost));
   };
 
-  // Voice Search (Speech Recognition) Integration
   const toggleVoiceRecording = () => {
     if (typeof window === "undefined") return;
 
@@ -160,26 +167,30 @@ export function AdvancedChatbot() {
       return;
     }
 
-    const recognition = new SpeechRecognition();
-    recognition.lang = "ne-NP"; // Nepali language support
-    recognition.interimResults = false;
+    try {
+      const recognition = new SpeechRecognition();
+      recognition.lang = "ne-NP";
+      recognition.interimResults = false;
 
-    recognition.onstart = () => setIsRecording(true);
-    recognition.onresult = (event: any) => {
-      const transcript = event?.results?.[0]?.[0]?.transcript ?? "";
-      if (transcript) {
-        setInput((prev) => (prev ? `${prev} ${transcript}` : transcript));
-      }
+      recognition.onstart = () => setIsRecording(true);
+      recognition.onresult = (event: any) => {
+        const transcript = event?.results?.[0]?.[0]?.transcript ?? "";
+        if (transcript) {
+          setInput((prev) => (prev ? `${prev} ${transcript}` : transcript));
+        }
+        setIsRecording(false);
+      };
+      recognition.onerror = () => setIsRecording(false);
+      recognition.onend = () => setIsRecording(false);
+
+      recognitionRef.current = recognition;
+      recognition.start();
+    } catch (err) {
+      console.error(err);
       setIsRecording(false);
-    };
-    recognition.onerror = () => setIsRecording(false);
-    recognition.onend = () => setIsRecording(false);
-
-    recognitionRef.current = recognition;
-    recognition.start();
+    }
   };
 
-  // Location Sharing Handler
   const requestUserLocation = () => {
     if (typeof window === "undefined" || !navigator.geolocation) {
       alert("Geolocation is not supported by your browser");
@@ -201,7 +212,6 @@ export function AdvancedChatbot() {
     );
   };
 
-  // File Upload Handler
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -256,7 +266,6 @@ export function AdvancedChatbot() {
     setSelectedFile(null);
     setIsTyping(true);
 
-    // ✅ Prefer logged-in user from store, then localStorage, then guest
     const currentUserId =
       loggedInUserId ||
       (typeof window !== "undefined"
@@ -280,7 +289,6 @@ export function AdvancedChatbot() {
         }),
       });
 
-      // ✅ Handle non-JSON or failed responses safely
       let data: any = null;
       const contentType = res.headers.get("content-type") || "";
 
@@ -321,7 +329,6 @@ export function AdvancedChatbot() {
 
   return (
     <>
-      {/* Floating Action Button */}
       <button
         type="button"
         onClick={() => setIsOpen((v) => !v)}
@@ -336,7 +343,6 @@ export function AdvancedChatbot() {
         {isOpen ? <ChevronDown className="w-6 h-6" /> : <MessageCircle className="w-6 h-6" />}
       </button>
 
-      {/* Main Chat Drawer */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
@@ -346,7 +352,6 @@ export function AdvancedChatbot() {
             transition={{ duration: 0.2 }}
             className="fixed bottom-24 right-4 sm:right-6 z-50 w-[340px] sm:w-[380px] flex flex-col rounded-3xl shadow-2xl overflow-hidden border border-slate-200 dark:border-gray-800 bg-white dark:bg-gray-900 h-[580px]"
           >
-            {/* Header */}
             <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-red-600 to-rose-500 text-white shrink-0">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-sm">
@@ -381,7 +386,6 @@ export function AdvancedChatbot() {
               </div>
             </div>
 
-            {/* History Overlay Drawer */}
             {showHistory ? (
               <div className="flex-1 overflow-y-auto p-4 bg-slate-50 dark:bg-gray-800">
                 <div className="flex justify-between items-center mb-3">
@@ -426,7 +430,6 @@ export function AdvancedChatbot() {
               </div>
             ) : (
               <>
-                {/* Location Banner */}
                 <div className="bg-red-50 dark:bg-red-950/40 px-3 py-2 border-b border-red-100 dark:border-red-900 flex items-center justify-between text-xs text-red-700 dark:text-red-300">
                   <span className="flex items-center gap-1">
                     <MapPin className="w-3.5 h-3.5 shrink-0" /> Find rooms near you?
@@ -441,7 +444,6 @@ export function AdvancedChatbot() {
                   </button>
                 </div>
 
-                {/* Messages Body */}
                 <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
                   {messages.map((msg) => (
                     <div
@@ -492,7 +494,6 @@ export function AdvancedChatbot() {
                     </div>
                   ))}
 
-                  {/* AI Typing Indicator */}
                   {isTyping && (
                     <div className="flex items-center gap-2">
                       <div className="w-6 h-6 rounded-full bg-red-100 dark:bg-red-900/60 flex items-center justify-center shrink-0">
@@ -509,7 +510,6 @@ export function AdvancedChatbot() {
                   <div ref={bottomRef} />
                 </div>
 
-                {/* Selected File Preview */}
                 {selectedFile && (
                   <div className="px-3 py-1.5 bg-slate-100 dark:bg-gray-800 flex items-center justify-between border-t border-slate-200 dark:border-gray-700">
                     <div className="flex items-center gap-2 text-xs truncate">
@@ -532,7 +532,6 @@ export function AdvancedChatbot() {
                   </div>
                 )}
 
-                {/* Input Footer */}
                 <div className="p-3 border-t border-slate-200 dark:border-gray-800 shrink-0 bg-white dark:bg-gray-900">
                   <div className="flex items-center gap-1.5">
                     <input
