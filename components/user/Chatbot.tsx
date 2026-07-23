@@ -38,6 +38,16 @@ interface ChatSession {
   messages: ChatMessage[];
 }
 
+function isChatSession(value: unknown): value is ChatSession {
+  if (typeof value !== "object" || value === null) return false;
+  const session = value as Partial<ChatSession>;
+  return (
+    typeof session.id === "string" &&
+    typeof session.title === "string" &&
+    Array.isArray(session.messages)
+  );
+}
+
 export function AdvancedChatbot() {
   const userStore = useUserRole() as any;
   const loggedInUserId =
@@ -87,9 +97,15 @@ export function AdvancedChatbot() {
     const saved = window.localStorage.getItem("roomkhoj_chat_history");
     if (saved) {
       try {
-        setSessions(JSON.parse(saved));
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          setSessions(parsed.filter(isChatSession));
+        } else {
+          window.localStorage.removeItem("roomkhoj_chat_history");
+        }
       } catch (e) {
         console.error("Failed to parse chat history:", e);
+        window.localStorage.removeItem("roomkhoj_chat_history");
       }
     }
   }, []);

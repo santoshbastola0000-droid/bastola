@@ -8,16 +8,72 @@ import {
   RoomStatus,
 } from "@/types/room.types";
 import { api } from "../api/api";
+import { isObjectRecord, isRoomLike } from "@/lib/room-guards";
+
+function getRoomsArray(payload: unknown): Room[] {
+  if (!isObjectRecord(payload)) return [];
+
+  const candidates = [
+    payload.data,
+    payload.rooms,
+    payload.items,
+    payload.results,
+  ];
+
+  for (const candidate of candidates) {
+    if (Array.isArray(candidate)) {
+      return candidate.filter((room) =>
+        isRoomLike(room, { requireNumericPrice: true }),
+      );
+    }
+  }
+
+  return [];
+}
+
+function toNumber(value: unknown, fallback: number): number {
+  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+}
+
+function toNullableNumber(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function normalizeRoomsResponse(payload: unknown): RoomsResponse {
+  const data = getRoomsArray(payload);
+  const roomsCount = data.length;
+
+  let paginationSource: Record<string, unknown> | null = null;
+  if (isObjectRecord(payload)) {
+    if (isObjectRecord(payload.pagination)) {
+      paginationSource = payload.pagination;
+    } else if (isObjectRecord(payload.meta)) {
+      paginationSource = payload.meta;
+    }
+  }
+
+  return {
+    data,
+    pagination: {
+      page: toNumber(paginationSource?.page, 1),
+      take: toNumber(paginationSource?.take, roomsCount),
+      total: toNumber(paginationSource?.total, roomsCount),
+      count: toNumber(paginationSource?.count, roomsCount),
+      previousPage: toNullableNumber(paginationSource?.previousPage),
+      nextPage: toNullableNumber(paginationSource?.nextPage),
+    },
+  };
+}
 
 export const roomService = {
   getRooms: async (params: RoomFilters = {}): Promise<RoomsResponse> => {
     const response = await privateApi.get("/rooms", { params });
-    return response.data;
+    return normalizeRoomsResponse(response.data);
   },
 
   getPublicRooms: async (params: RoomFilters = {}): Promise<RoomsResponse> => {
     const response = await api.get("/rooms/public", { params });
-    return response.data;
+    return normalizeRoomsResponse(response.data);
   },
 
   getMyRooms: async (filters?: RoomFilters): Promise<RoomsResponse> => {
@@ -42,14 +98,14 @@ export const roomService = {
     const response = await privateApi.get(
       `/rooms/my-rooms?${params.toString()}`,
     );
-    return response.data;
+    return normalizeRoomsResponse(response.data);
   },
 
   getPendingRooms: async (params: RoomFilters = {}): Promise<RoomsResponse> => {
     const response = await privateApi.get("/rooms/pending", {
       params: { ...params, approvalStatus: RoomStatus.PENDING },
     });
-    return response.data;
+    return normalizeRoomsResponse(response.data);
   },
 
   getRoomStats: async (): Promise<{ data: RoomStats }> => {
