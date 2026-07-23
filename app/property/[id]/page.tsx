@@ -646,7 +646,7 @@ const TenantPreferencesSection = ({ room }: { room: Room }) => {
             Ideal Tenant / आदर्श भाडाटारु
           </p>
           <div className="flex flex-wrap gap-2">
-            {room.tenantTypes!.map((t) => (
+            {(room.tenantTypes ?? []).map((t) => (
               <span
                 key={t}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-50 border border-red-200 rounded-full text-xs font-semibold text-red-700"
@@ -1100,8 +1100,18 @@ const LockedPlaceholder = ({
   );
 };
 
+function getRoomFromApiResponse(payload: unknown): Room | null {
+  if (typeof payload !== "object" || payload === null) return null;
+
+  const data = (payload as { data?: unknown }).data;
+  if (typeof data === "object" && data !== null) return data as Room;
+
+  return payload as Room;
+}
+
 export default function PropertyDetailsPage() {
-  const { id } = useParams();
+  const { id } = useParams<{ id: string | string[] }>();
+  const roomId = Array.isArray(id) ? id[0] : id;
   const user = useUserStore((state) => state.user);
   const isLoaded = useUserStore((state) => state.isLoaded);
   const isAuthenticated = isLoaded && !!user;
@@ -1118,16 +1128,18 @@ export default function PropertyDetailsPage() {
   const [showTopUpDialog, setShowTopUpDialog] = useState(false);
 
   useEffect(() => {
-    if (!id) return;
+    if (!roomId) return;
     (async () => {
       try {
-        const res = await fetch(`${api.defaults.baseURL}/rooms/${id}`);
+        const res = await fetch(
+          `${api.defaults.baseURL}/rooms/${encodeURIComponent(roomId)}`,
+        );
         const data = await res.json();
-        const loadedRoom = data.data || data;
+        const loadedRoom = getRoomFromApiResponse(data);
         setRoom(loadedRoom);
         if (loadedRoom) {
           trackRoomView(
-            String(id),
+            roomId,
             loadedRoom.title,
             loadedRoom.location?.city || loadedRoom.address,
             Number(loadedRoom.price),
@@ -1139,27 +1151,27 @@ export default function PropertyDetailsPage() {
         setLoading(false);
       }
     })();
-  }, [id, trackRoomView]);
+  }, [roomId, trackRoomView]);
 
   useEffect(() => {
-    if (!isLoaded || !isAuthenticated || !id) return;
+    if (!isLoaded || !isAuthenticated || !roomId) return;
     (async () => {
       try {
         const [status, settings] = await Promise.all([
-          unlockService.getRoomUnlockStatus(String(id)),
+          unlockService.getRoomUnlockStatus(roomId),
           unlockService.getSettings(),
         ]);
         setUnlockStatus(status);
         setCommissionSettings(settings);
         if (status.isUnlocked) {
-          const result = await unlockService.unlockRoom(String(id));
+          const result = await unlockService.unlockRoom(roomId);
           setUnlockedData(result);
         }
       } catch (err) {
         console.error("Unlock status error:", err);
       }
     })();
-  }, [id, isLoaded, isAuthenticated]);
+  }, [roomId, isLoaded, isAuthenticated]);
 
   useEffect(() => {
     if (!isLoaded || isAuthenticated) return;
@@ -1821,7 +1833,7 @@ export default function PropertyDetailsPage() {
       <RoomUnlockDialog
         open={showUnlockDialog}
         onOpenChange={setShowUnlockDialog}
-        roomId={String(id)}
+        roomId={room.id}
         roomTitle={room.title}
         unlockStatus={unlockStatus}
         isAuthenticated={isAuthenticated}

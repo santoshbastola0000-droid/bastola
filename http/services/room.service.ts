@@ -9,15 +9,72 @@ import {
 } from "@/types/room.types";
 import { api } from "../api/api";
 
+type UnknownRecord = Record<string, unknown>;
+
+function isRecord(value: unknown): value is UnknownRecord {
+  return typeof value === "object" && value !== null;
+}
+
+function getRoomsArray(payload: unknown): Room[] {
+  if (!isRecord(payload)) return [];
+
+  const candidates = [
+    payload.data,
+    payload.rooms,
+    payload.items,
+    payload.results,
+  ];
+
+  for (const candidate of candidates) {
+    if (Array.isArray(candidate)) {
+      return candidate as Room[];
+    }
+  }
+
+  return [];
+}
+
+function toNumber(value: unknown, fallback: number): number {
+  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+}
+
+function toNullableNumber(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function normalizeRoomsResponse(payload: unknown): RoomsResponse {
+  const data = getRoomsArray(payload);
+  const count = data.length;
+
+  const paginationSource =
+    isRecord(payload) && isRecord(payload.pagination)
+      ? payload.pagination
+      : isRecord(payload) && isRecord(payload.meta)
+        ? payload.meta
+        : null;
+
+  return {
+    data,
+    pagination: {
+      page: toNumber(paginationSource?.page, 1),
+      take: toNumber(paginationSource?.take, count),
+      total: toNumber(paginationSource?.total, count),
+      count: toNumber(paginationSource?.count, count),
+      previousPage: toNullableNumber(paginationSource?.previousPage),
+      nextPage: toNullableNumber(paginationSource?.nextPage),
+    },
+  };
+}
+
 export const roomService = {
   getRooms: async (params: RoomFilters = {}): Promise<RoomsResponse> => {
     const response = await privateApi.get("/rooms", { params });
-    return response.data;
+    return normalizeRoomsResponse(response.data);
   },
 
   getPublicRooms: async (params: RoomFilters = {}): Promise<RoomsResponse> => {
     const response = await api.get("/rooms/public", { params });
-    return response.data;
+    return normalizeRoomsResponse(response.data);
   },
 
   getMyRooms: async (filters?: RoomFilters): Promise<RoomsResponse> => {
@@ -42,14 +99,14 @@ export const roomService = {
     const response = await privateApi.get(
       `/rooms/my-rooms?${params.toString()}`,
     );
-    return response.data;
+    return normalizeRoomsResponse(response.data);
   },
 
   getPendingRooms: async (params: RoomFilters = {}): Promise<RoomsResponse> => {
     const response = await privateApi.get("/rooms/pending", {
       params: { ...params, approvalStatus: RoomStatus.PENDING },
     });
-    return response.data;
+    return normalizeRoomsResponse(response.data);
   },
 
   getRoomStats: async (): Promise<{ data: RoomStats }> => {
