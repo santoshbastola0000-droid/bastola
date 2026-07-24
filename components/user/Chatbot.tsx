@@ -71,6 +71,9 @@ export function AdvancedChatbot() {
   } | null>(null);
   const [showHistory, setShowHistory] = useState(false);
   const [sessions, setSessions] = useState<ChatSession[]>([]);
+
+
+  const CHAT_KEY = `roomkhoj_chat_history_${loggedInUserId || "guest"}`;
   const [locationRequested, setLocationRequested] = useState(false);
 
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -96,10 +99,11 @@ export function AdvancedChatbot() {
 
 
 
-const CHAT_KEY = `roomkhoj_chat_history_${loggedInUserId || "guest"}`;
     const saved = window.localStorage.getItem(CHAT_KEY);
     if (saved) {
       try {
+
+
 
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed)) {
