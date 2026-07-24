@@ -88,25 +88,36 @@ export function AdvancedChatbot() {
         timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
       },
     ]);
-  }, []);
+  },  [loggedInUserId]);
 
   // Load chat history from localStorage
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    const saved = window.localStorage.getItem("roomkhoj_chat_history");
+
+
+const CHAT_KEY = `roomkhoj_chat_history_${loggedInUserId || "guest"}`;
+    const saved = window.localStorage.getItem(CHAT_KEY);
     if (saved) {
       try {
+
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed)) {
           setSessions(parsed.filter(isChatSession));
         } else {
-          window.localStorage.removeItem("roomkhoj_chat_history");
+          window.localStorage.removeItem(CHAT_KEY);
         }
-      } catch (e) {
-        console.error("Failed to parse chat history:", e);
-        window.localStorage.removeItem("roomkhoj_chat_history");
-      }
+      
+
+
+
+
+} catch (e) {
+  console.error("Failed to parse chat history:", e);
+  window.localStorage.removeItem(CHAT_KEY);
+}
+
+
     }
   }, []);
 
@@ -153,11 +164,12 @@ export function AdvancedChatbot() {
     setSessions((prev) => {
       const updated = [newSession, ...prev.filter((s) => s.id !== newSession.id)].slice(0, 5);
       if (typeof window !== "undefined") {
-        window.localStorage.setItem("roomkhoj_chat_history", JSON.stringify(updated));
+       
+window.localStorage.setItem(CHAT_KEY, JSON.stringify(updated));
       }
       return updated;
     });
-  }, []);
+  },    [CHAT_KEY]);
 
   const deductBalanceForText = (text: string) => {
     if (!text) return;
@@ -420,7 +432,8 @@ const botReply: ChatMessage = {
                     onClick={() => {
                       setSessions([]);
                       if (typeof window !== "undefined") {
-                        window.localStorage.removeItem("roomkhoj_chat_history");
+              
+                      window.localStorage.removeItem(CHAT_KEY);
                       }
                     }}
                     className="text-xs text-red-500 flex items-center gap-1 cursor-pointer hover:underline"
