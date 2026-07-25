@@ -392,7 +392,7 @@ export function AdvancedChatbot() {
         {isOpen ? <ChevronDown className="w-6 h-6" /> : <MessageCircle className="w-6 h-6" />}
       </button>
 
-      {/* Main Container - Desktop Fixed Position Fix */}
+      {/* Main Container - Fixed Layout */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
@@ -400,136 +400,136 @@ export function AdvancedChatbot() {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: 15 }}
             transition={{ duration: 0.18 }}
-            className="fixed bottom-20 right-4 sm:right-6 z-50 w-[92vw] sm:w-[400px] h-[550px] max-h-[80vh] flex rounded-2xl shadow-2xl overflow-hidden border border-slate-200 dark:border-gray-800 bg-white dark:bg-gray-950 font-sans"
+            className="fixed bottom-20 right-4 sm:right-6 z-50 w-[92vw] sm:w-[400px] h-[550px] max-h-[80vh] flex flex-col rounded-2xl shadow-2xl overflow-hidden border border-slate-200 dark:border-gray-800 bg-white dark:bg-gray-950 font-sans"
           >
-            {/* Gemini Style Sidebar Drawer (History) */}
-            <div
-              className={cn(
-                "absolute inset-y-0 left-0 z-20 w-64 bg-slate-900 text-white flex flex-col transition-transform duration-300 border-r border-slate-800",
-                showHistorySidebar ? "translate-x-0" : "-translate-x-full"
-              )}
-            >
-              <div className="p-3 border-b border-slate-800 flex items-center justify-between">
+            {/* WhatsApp/Gemini Style Top Header (Fixed, won't scroll) */}
+            <div className="px-3 py-2.5 bg-slate-900 text-white flex items-center justify-between shrink-0 shadow-xs border-b border-slate-800 z-30">
+              <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={startNewChat}
-                  className="flex items-center gap-2 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-medium rounded-lg transition cursor-pointer w-full justify-center"
+                  onClick={() => setShowHistorySidebar((v) => !v)}
+                  className="p-1.5 text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition cursor-pointer"
+                  title="Toggle History Sidebar"
                 >
-                  <Plus className="w-4 h-4" /> New Chat
+                  <PanelLeft className="w-4 h-4" />
                 </button>
+
+                <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-red-600 to-rose-500 flex items-center justify-center shadow-xs">
+                  <Bot className="w-4 h-4 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-xs font-semibold leading-none">RoomKhoj Assistant</h2>
+                  <span className="text-[10px] text-emerald-400 flex items-center gap-1 mt-0.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />{" "}
+                    Online
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1 text-[11px] bg-slate-800/80 px-2 py-0.5 rounded-full text-amber-300 font-medium border border-slate-700">
+                  <Coins className="w-3 h-3" /> Rs.{balance}
+                </div>
                 <button
                   type="button"
-                  onClick={() => setShowHistorySidebar(false)}
-                  className="p-1 text-slate-400 hover:text-white ml-2"
+                  onClick={() => setIsOpen(false)}
+                  className="p-1 text-slate-400 hover:text-white rounded-lg cursor-pointer"
                 >
                   <X className="w-4 h-4" />
                 </button>
               </div>
-
-              <div className="flex-1 overflow-y-auto p-2 space-y-1">
-                <p className="text-[10px] uppercase font-semibold text-slate-400 px-2 py-1">
-                  Recent Chats
-                </p>
-                {sessions.length === 0 ? (
-                  <p className="text-xs text-slate-500 text-center py-8">No history saved yet.</p>
-                ) : (
-                  sessions.map((sess) => (
-                    <button
-                      key={sess.id}
-                      type="button"
-                      onClick={() => {
-                        setCurrentSessionId(sess.id);
-                        setMessages(sess.messages);
-                        setShowHistorySidebar(false);
-                      }}
-                      className={cn(
-                        "w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-left text-xs transition cursor-pointer truncate",
-                        currentSessionId === sess.id
-                          ? "bg-slate-800 text-white font-medium"
-                          : "text-slate-300 hover:bg-slate-800/60"
-                      )}
-                    >
-                      <MessageSquare className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                      <span className="truncate">{sess.title}</span>
-                    </button>
-                  ))
-                )}
-              </div>
-
-              {sessions.length > 0 && (
-                <div className="p-2 border-t border-slate-800">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSessions([]);
-                      if (typeof window !== "undefined") {
-                        window.localStorage.removeItem(CHAT_KEY);
-                      }
-                    }}
-                    className="w-full text-xs text-red-400 hover:text-red-300 flex items-center justify-center gap-1.5 py-1.5 hover:bg-slate-800/50 rounded-lg cursor-pointer transition"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" /> Clear History
-                  </button>
-                </div>
-              )}
             </div>
 
-            {/* Chat Body Wrapper */}
-            <div className="flex-1 flex flex-col h-full w-full relative">
-              {/* WhatsApp/Gemini Style Top Header */}
-              <div className="px-3 py-2.5 bg-slate-900 text-white flex items-center justify-between shrink-0 shadow-xs border-b border-slate-800">
-                <div className="flex items-center gap-2">
+            {/* Location Prompt Banner */}
+            <div className="bg-red-50 dark:bg-red-950/30 px-3 py-1.5 border-b border-red-100 dark:border-red-900/40 flex items-center justify-between text-[11px] text-red-700 dark:text-red-300 shrink-0 z-20">
+              <span className="flex items-center gap-1 truncate">
+                <MapPin className="w-3 h-3 text-red-500 shrink-0" /> Find rooms near your location
+              </span>
+              <button
+                type="button"
+                onClick={requestUserLocation}
+                disabled={locationRequested}
+                className="px-2 py-0.5 bg-red-600 hover:bg-red-700 text-white rounded font-medium transition cursor-pointer text-[10px] shrink-0 ml-2"
+              >
+                {locationRequested ? "Detecting..." : "Detect Location"}
+              </button>
+            </div>
+
+            {/* Chat Body Wrapper with Relative Position for Sidebar Drawer */}
+            <div className="flex-1 flex flex-col h-full relative overflow-hidden">
+              {/* Gemini Style Sidebar Drawer (History) */}
+              <div
+                className={cn(
+                  "absolute inset-y-0 left-0 z-40 w-64 bg-slate-900 text-white flex flex-col transition-transform duration-300 border-r border-slate-800 shadow-xl",
+                  showHistorySidebar ? "translate-x-0" : "-translate-x-full"
+                )}
+              >
+                <div className="p-3 border-b border-slate-800 flex items-center justify-between">
                   <button
                     type="button"
-                    onClick={() => setShowHistorySidebar((v) => !v)}
-                    className="p-1.5 text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition cursor-pointer"
-                    title="Toggle History Sidebar"
+                    onClick={startNewChat}
+                    className="flex items-center gap-2 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-medium rounded-lg transition cursor-pointer w-full justify-center"
                   >
-                    <PanelLeft className="w-4 h-4" />
+                    <Plus className="w-4 h-4" /> New Chat
                   </button>
-
-                  <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-red-600 to-rose-500 flex items-center justify-center shadow-xs">
-                    <Bot className="w-4 h-4 text-white" />
-                  </div>
-                  <div>
-                    <h2 className="text-xs font-semibold leading-none">RoomKhoj Assistant</h2>
-                    <span className="text-[10px] text-emerald-400 flex items-center gap-1 mt-0.5">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />{" "}
-                      Online
-                    </span>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <div className="flex items-center gap-1 text-[11px] bg-slate-800/80 px-2 py-0.5 rounded-full text-amber-300 font-medium border border-slate-700">
-                    <Coins className="w-3 h-3" /> Rs.{balance}
-                  </div>
                   <button
                     type="button"
-                    onClick={() => setIsOpen(false)}
-                    className="p-1 text-slate-400 hover:text-white rounded-lg cursor-pointer"
+                    onClick={() => setShowHistorySidebar(false)}
+                    className="p-1 text-slate-400 hover:text-white ml-2"
                   >
                     <X className="w-4 h-4" />
                   </button>
                 </div>
+
+                <div className="flex-1 overflow-y-auto p-2 space-y-1">
+                  <p className="text-[10px] uppercase font-semibold text-slate-400 px-2 py-1">
+                    Recent Chats
+                  </p>
+                  {sessions.length === 0 ? (
+                    <p className="text-xs text-slate-500 text-center py-8">No history saved yet.</p>
+                  ) : (
+                    sessions.map((sess) => (
+                      <button
+                        key={sess.id}
+                        type="button"
+                        onClick={() => {
+                          setCurrentSessionId(sess.id);
+                          setMessages(sess.messages);
+                          setShowHistorySidebar(false);
+                        }}
+                        className={cn(
+                          "w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-left text-xs transition cursor-pointer truncate",
+                          currentSessionId === sess.id
+                            ? "bg-slate-800 text-white font-medium"
+                            : "text-slate-300 hover:bg-slate-800/60"
+                        )}
+                      >
+                        <MessageSquare className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                        <span className="truncate">{sess.title}</span>
+                      </button>
+                    ))
+                  )}
+                </div>
+
+                {sessions.length > 0 && (
+                  <div className="p-2 border-t border-slate-800">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSessions([]);
+                        if (typeof window !== "undefined") {
+                          window.localStorage.removeItem(CHAT_KEY);
+                        }
+                      }}
+                      className="w-full text-xs text-red-400 hover:text-red-300 flex items-center justify-center gap-1.5 py-1.5 hover:bg-slate-800/50 rounded-lg cursor-pointer transition"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" /> Clear History
+                    </button>
+                  </div>
+                )}
               </div>
 
-              {/* Location Prompt Banner */}
-              <div className="bg-red-50 dark:bg-red-950/30 px-3 py-1.5 border-b border-red-100 dark:border-red-900/40 flex items-center justify-between text-[11px] text-red-700 dark:text-red-300 shrink-0">
-                <span className="flex items-center gap-1 truncate">
-                  <MapPin className="w-3 h-3 text-red-500 shrink-0" /> Find rooms near your location
-                </span>
-                <button
-                  type="button"
-                  onClick={requestUserLocation}
-                  disabled={locationRequested}
-                  className="px-2 py-0.5 bg-red-600 hover:bg-red-700 text-white rounded font-medium transition cursor-pointer text-[10px] shrink-0 ml-2"
-                >
-                  {locationRequested ? "Detecting..." : "Detect Location"}
-                </button>
-              </div>
-
-              {/* Messages Area */}
+              {/* Messages Scrollable Area */}
               <div className="flex-1 overflow-y-auto px-3 py-3 space-y-3 bg-slate-50 dark:bg-gray-900">
                 {messages.map((msg) => (
                   <div
@@ -554,15 +554,15 @@ export function AdvancedChatbot() {
                       )}
                     >
                       {msg.mediaUrl && (
-                        <div className="mb-2 rounded-md overflow-hidden border border-white/20 max-w-[180px]">
+                        <div className="mb-2 rounded-lg overflow-hidden border border-black/10 dark:border-white/15 bg-black/5 max-w-[200px]">
                           {msg.mediaType === "image" ? (
                             <img
                               src={msg.mediaUrl}
                               alt="Uploaded media"
-                              className="w-full h-28 object-cover"
+                              className="w-full h-32 object-cover rounded-md"
                             />
                           ) : (
-                            <video src={msg.mediaUrl} controls className="w-full h-28 object-cover" />
+                            <video src={msg.mediaUrl} controls className="w-full h-32 object-cover rounded-md" />
                           )}
                         </div>
                       )}
@@ -616,28 +616,33 @@ export function AdvancedChatbot() {
                 <div ref={bottomRef} />
               </div>
 
-              {/* File Selected Badge */}
+              {/* File Selected Badge Preview (WhatsApp Style) */}
               {selectedFile && (
-                <div className="px-3 py-1 bg-slate-100 dark:bg-gray-800 flex items-center justify-between border-t border-slate-200 dark:border-gray-700 shrink-0">
-                  <div className="flex items-center gap-1.5 text-[11px] truncate text-slate-700 dark:text-slate-300">
-                    {selectedFile.type === "image" ? (
-                      <ImageIcon className="w-3.5 h-3.5 text-red-500" />
-                    ) : (
-                      <Video className="w-3.5 h-3.5 text-red-500" />
-                    )}
-                    <span className="truncate">{selectedFile.rawFile.name}</span>
+                <div className="px-3 py-2 bg-slate-100 dark:bg-gray-800 flex items-center justify-between border-t border-slate-200 dark:border-gray-700 shrink-0">
+                  <div className="flex items-center gap-2 truncate text-slate-700 dark:text-slate-300">
+                    <div className="w-10 h-10 rounded-md overflow-hidden bg-black/10 shrink-0 border border-slate-300 dark:border-gray-600 flex items-center justify-center">
+                      {selectedFile.type === "image" ? (
+                        <img src={selectedFile.url} alt="Preview" className="w-full h-full object-cover" />
+                      ) : (
+                        <Video className="w-5 h-5 text-red-500" />
+                      )}
+                    </div>
+                    <div className="flex flex-col truncate">
+                      <span className="text-[11px] font-medium truncate">{selectedFile.rawFile.name}</span>
+                      <span className="text-[9px] text-slate-400 uppercase">{selectedFile.type} attached</span>
+                    </div>
                   </div>
                   <button
                     type="button"
                     onClick={removeSelectedFile}
-                    className="text-slate-400 hover:text-red-500 cursor-pointer"
+                    className="w-6 h-6 rounded-full bg-slate-200 dark:bg-gray-700 flex items-center justify-center text-slate-500 dark:text-slate-300 hover:text-red-500 cursor-pointer"
                   >
                     <X className="w-3.5 h-3.5" />
                   </button>
                 </div>
               )}
 
-              {/* Gemini / WhatsApp Style Small Compact Input Area */}
+              {/* Input Area */}
               <div className="p-2 border-t border-slate-200 dark:border-gray-800 bg-white dark:bg-gray-950 shrink-0">
                 <div className="flex items-center gap-1 bg-slate-100 dark:bg-gray-800/80 rounded-full px-2 py-1 border border-slate-200/80 dark:border-gray-700 focus-within:ring-1 focus-within:ring-red-500 transition">
                   <input
@@ -690,7 +695,7 @@ export function AdvancedChatbot() {
                     {isTyping ? (
                       <Loader2 className="w-3.5 h-3.5 animate-spin" />
                     ) : (
-                      <Send className="w-3 h-3" />
+                      <Send className="w-3.5 h-3.5" />
                     )}
                   </button>
                 </div>
