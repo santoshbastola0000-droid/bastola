@@ -23,6 +23,9 @@ import {
   PanelLeft,
   Plus,
   MessageSquare,
+  ExternalLink,
+  Phone,
+  Home,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -33,6 +36,13 @@ interface ChatMessage {
   mediaUrl?: string;
   mediaType?: "image" | "video" | "file";
   timestamp: string;
+  roomDetails?: {
+    title?: string;
+    price?: string;
+    location?: string;
+    contact?: string;
+    link?: string;
+  };
 }
 
 interface ChatSession {
@@ -346,15 +356,33 @@ export function AdvancedChatbot() {
         throw new Error(data?.message || `API error (${res.status})`);
       }
 
-      const botReplyText =
-        typeof data?.reply === "object"
-          ? data.reply.reply
-          : String(data?.reply || "Sorry, I couldn't process that request.");
+      // Handle both structured object response or plain text response from API
+      let botReplyText = "";
+      let roomDetails = undefined;
+      let mediaUrl = undefined;
+      let mediaType = undefined;
+
+      if (typeof data?.reply === "object" && data.reply !== null) {
+        botReplyText = data.reply.reply || data.reply.text || "";
+        roomDetails = data.reply.roomDetails || data.reply.details;
+        mediaUrl = data.reply.mediaUrl || data.reply.image;
+        mediaType = mediaUrl ? "image" : undefined;
+      } else if (typeof data === "object" && data !== null && data.roomDetails) {
+        botReplyText = data.reply || "";
+        roomDetails = data.roomDetails;
+        mediaUrl = data.mediaUrl || data.image;
+        mediaType = mediaUrl ? "image" : undefined;
+      } else {
+        botReplyText = String(data?.reply || data || "Sorry, I couldn't process that request.");
+      }
 
       const botReply: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: "bot",
         text: botReplyText,
+        mediaUrl,
+        mediaType,
+        roomDetails,
         timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
       };
 
@@ -392,7 +420,7 @@ export function AdvancedChatbot() {
         {isOpen ? <ChevronDown className="w-6 h-6" /> : <MessageCircle className="w-6 h-6" />}
       </button>
 
-      {/* Main Container - Fixed Layout */}
+      {/* Main Container */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
@@ -402,7 +430,7 @@ export function AdvancedChatbot() {
             transition={{ duration: 0.18 }}
             className="fixed bottom-20 right-4 sm:right-6 z-50 w-[92vw] sm:w-[400px] h-[550px] max-h-[80vh] flex flex-col rounded-2xl shadow-2xl overflow-hidden border border-slate-200 dark:border-gray-800 bg-white dark:bg-gray-950 font-sans"
           >
-            {/* WhatsApp/Gemini Style Top Header (Fixed, won't scroll) */}
+            {/* Top Header (Fixed) */}
             <div className="px-3 py-2.5 bg-slate-900 text-white flex items-center justify-between shrink-0 shadow-xs border-b border-slate-800 z-30">
               <div className="flex items-center gap-2">
                 <button
@@ -455,9 +483,9 @@ export function AdvancedChatbot() {
               </button>
             </div>
 
-            {/* Chat Body Wrapper with Relative Position for Sidebar Drawer */}
+            {/* Chat Body Wrapper */}
             <div className="flex-1 flex flex-col h-full relative overflow-hidden">
-              {/* Gemini Style Sidebar Drawer (History) */}
+              {/* Sidebar Drawer */}
               <div
                 className={cn(
                   "absolute inset-y-0 left-0 z-40 w-64 bg-slate-900 text-white flex flex-col transition-transform duration-300 border-r border-slate-800 shadow-xl",
@@ -547,26 +575,69 @@ export function AdvancedChatbot() {
 
                     <div
                       className={cn(
-                        "max-w-[82%] px-3 py-2 rounded-2xl text-xs leading-relaxed shadow-2xs",
+                        "max-w-[85%] px-3 py-2 rounded-2xl text-xs leading-relaxed shadow-2xs",
                         msg.role === "bot"
                           ? "bg-white dark:bg-gray-800 text-slate-800 dark:text-slate-100 rounded-bl-xs border border-slate-100 dark:border-gray-700"
                           : "bg-red-600 text-white rounded-br-xs"
                       )}
                     >
+                      {/* Photo/Media First (Subbbhandi Mathi Photo) */}
                       {msg.mediaUrl && (
-                        <div className="mb-2 rounded-lg overflow-hidden border border-black/10 dark:border-white/15 bg-black/5 max-w-[200px]">
+                        <div className="mb-2 rounded-lg overflow-hidden border border-black/10 dark:border-white/15 bg-black/5 w-full">
                           {msg.mediaType === "image" ? (
                             <img
                               src={msg.mediaUrl}
-                              alt="Uploaded media"
-                              className="w-full h-32 object-cover rounded-md"
+                              alt="Room media"
+                              className="w-full h-36 object-cover rounded-md"
                             />
                           ) : (
-                            <video src={msg.mediaUrl} controls className="w-full h-32 object-cover rounded-md" />
+                            <video src={msg.mediaUrl} controls className="w-full h-36 object-cover rounded-md" />
                           )}
                         </div>
                       )}
+
+                      {/* Room Structured Details Card (Tala Details) */}
+                      {msg.roomDetails && (
+                        <div className="mb-2 p-2.5 rounded-xl bg-slate-50 dark:bg-gray-900/80 border border-slate-200 dark:border-gray-700 space-y-1.5">
+                          {msg.roomDetails.title && (
+                            <h4 className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                              <Home className="w-3.5 h-3.5 text-red-600 shrink-0" />
+                              {msg.roomDetails.title}
+                            </h4>
+                          )}
+                          <div className="grid grid-cols-2 gap-1 text-[11px] text-slate-600 dark:text-slate-300">
+                            {msg.roomDetails.price && (
+                              <div className="flex items-center gap-1 font-semibold text-emerald-600 dark:text-emerald-400">
+                                <Coins className="w-3 h-3" /> {msg.roomDetails.price}
+                              </div>
+                            )}
+                            {msg.roomDetails.location && (
+                              <div className="flex items-center gap-1 truncate">
+                                <MapPin className="w-3 h-3 text-red-500 shrink-0" /> <span className="truncate">{msg.roomDetails.location}</span>
+                              </div>
+                            )}
+                          </div>
+                          {msg.roomDetails.contact && (
+                            <div className="flex items-center gap-1 text-[11px] text-slate-700 dark:text-slate-200 pt-0.5">
+                              <Phone className="w-3 h-3 text-blue-500 shrink-0" /> {msg.roomDetails.contact}
+                            </div>
+                          )}
+                          {msg.roomDetails.link && (
+                            <a
+                              href={msg.roomDetails.link}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="mt-1 flex items-center justify-center gap-1.5 w-full py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium text-[11px] transition cursor-pointer"
+                            >
+                              View Room Details <ExternalLink className="w-3 h-3" />
+                            </a>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Text Message */}
                       <p className="whitespace-pre-wrap break-words">{msg.text}</p>
+                      
                       <span className="block text-[8px] text-right mt-0.5 opacity-60">
                         {msg.timestamp}
                       </span>
@@ -594,7 +665,7 @@ export function AdvancedChatbot() {
                   </div>
                 )}
 
-                {/* Quick Suggestion Chips */}
+                {/* Quick Suggestions */}
                 {messages.length <= 1 && !isTyping && (
                   <div className="pt-2 flex flex-col gap-1.5">
                     <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1">
@@ -616,7 +687,7 @@ export function AdvancedChatbot() {
                 <div ref={bottomRef} />
               </div>
 
-              {/* File Selected Badge Preview (WhatsApp Style) */}
+              {/* File Preview Badge */}
               {selectedFile && (
                 <div className="px-3 py-2 bg-slate-100 dark:bg-gray-800 flex items-center justify-between border-t border-slate-200 dark:border-gray-700 shrink-0">
                   <div className="flex items-center gap-2 truncate text-slate-700 dark:text-slate-300">
