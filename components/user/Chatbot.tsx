@@ -104,7 +104,6 @@ export function AdvancedChatbot() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const recognitionRef = useRef<any>(null);
 
-  // Initialize Default Welcome Message
   const initDefaultMessages = useCallback(() => {
     return [
       {
@@ -120,7 +119,6 @@ export function AdvancedChatbot() {
     setMessages(initDefaultMessages());
   }, [loggedInUserId, initDefaultMessages]);
 
-  // Load History from localStorage
   useEffect(() => {
     if (typeof window === "undefined") return;
 
@@ -140,7 +138,6 @@ export function AdvancedChatbot() {
     }
   }, [CHAT_KEY]);
 
-  // Clean object URLs
   useEffect(() => {
     return () => {
       if (selectedFile?.url) {
@@ -304,10 +301,8 @@ export function AdvancedChatbot() {
     }
   };
 
-  // Helper to ensure links use roomkhoj.com
   const sanitizeLink = (linkStr?: string) => {
     if (!linkStr) return "#";
-    // Replace old roomservise domains with roomkhoj if present
     const cleaned = linkStr.replace(/roomservise\.com/gi, "roomkhoj.com");
     if (cleaned.startsWith("http://") || cleaned.startsWith("https://")) {
       return cleaned;
@@ -383,6 +378,9 @@ export function AdvancedChatbot() {
         roomsList = data.reply.roomsList || data.reply.rooms;
         mediaUrl = data.reply.mediaUrl || data.reply.image;
         mediaType = mediaUrl ? "image" : undefined;
+      } else if (typeof data === "object" && data !== null && data.roomDetails) {
+        botReplyText = data.reply || "";
+        roomDetails = data.roomDetails;
       } else if (typeof data === "object" && data !== null) {
         botReplyText = data.reply || data.text || "";
         roomDetails = data.roomDetails || data.details;
@@ -423,7 +421,6 @@ export function AdvancedChatbot() {
 
   return (
     <>
-      {/* Floating Toggle Button */}
       <button
         type="button"
         onClick={() => setIsOpen((v) => !v)}
@@ -438,7 +435,6 @@ export function AdvancedChatbot() {
         {isOpen ? <ChevronDown className="w-6 h-6" /> : <MessageCircle className="w-6 h-6" />}
       </button>
 
-      {/* Main Container */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
@@ -448,7 +444,6 @@ export function AdvancedChatbot() {
             transition={{ duration: 0.18 }}
             className="fixed bottom-20 right-4 sm:right-6 z-50 w-[92vw] sm:w-[400px] h-[550px] max-h-[80vh] flex flex-col rounded-2xl shadow-2xl overflow-hidden border border-slate-200 dark:border-gray-800 bg-white dark:bg-gray-950 font-sans"
           >
-            {/* Top Header (Fixed) */}
             <div className="px-3 py-2.5 bg-slate-900 text-white flex items-center justify-between shrink-0 shadow-xs border-b border-slate-800 z-30">
               <div className="flex items-center gap-2">
                 <button
@@ -486,7 +481,6 @@ export function AdvancedChatbot() {
               </div>
             </div>
 
-            {/* Location Prompt Banner */}
             <div className="bg-red-50 dark:bg-red-950/30 px-3 py-1.5 border-b border-red-100 dark:border-red-900/40 flex items-center justify-between text-[11px] text-red-700 dark:text-red-300 shrink-0 z-20">
               <span className="flex items-center gap-1 truncate">
                 <MapPin className="w-3 h-3 text-red-500 shrink-0" /> Find rooms near your location
@@ -501,9 +495,7 @@ export function AdvancedChatbot() {
               </button>
             </div>
 
-            {/* Chat Body Wrapper */}
             <div className="flex-1 flex flex-col h-full relative overflow-hidden">
-              {/* Sidebar Drawer */}
               <div
                 className={cn(
                   "absolute inset-y-0 left-0 z-40 w-64 bg-slate-900 text-white flex flex-col transition-transform duration-300 border-r border-slate-800 shadow-xl",
@@ -575,7 +567,6 @@ export function AdvancedChatbot() {
                 )}
               </div>
 
-              {/* Messages Scrollable Area */}
               <div className="flex-1 overflow-y-auto px-3 py-3 space-y-3 bg-slate-50 dark:bg-gray-900">
                 {messages.map((msg) => (
                   <div
@@ -599,7 +590,6 @@ export function AdvancedChatbot() {
                           : "bg-red-600 text-white rounded-br-xs"
                       )}
                     >
-                      {/* Main Message Media (If single media) */}
                       {msg.mediaUrl && (
                         <div className="mb-2 rounded-lg overflow-hidden border border-black/10 dark:border-white/15 bg-black/5 w-full">
                           {msg.mediaType === "image" ? (
@@ -614,7 +604,6 @@ export function AdvancedChatbot() {
                         </div>
                       )}
 
-                      {/* Single Room Details Card */}
                       {msg.roomDetails && (
                         <div className="mb-2 p-2.5 rounded-xl bg-slate-50 dark:bg-gray-900/80 border border-slate-200 dark:border-gray-700 space-y-1.5">
                           {msg.roomDetails.mediaUrl && (
@@ -662,7 +651,6 @@ export function AdvancedChatbot() {
                         </div>
                       )}
 
-                      {/* Multiple Rooms List Card (Photo Top + Details Bottom) */}
                       {msg.roomsList && Array.isArray(msg.roomsList) && msg.roomsList.length > 0 && (
                         <div className="mb-2 space-y-2.5">
                           {msg.roomsList.map((room, rIdx) => (
@@ -670,7 +658,6 @@ export function AdvancedChatbot() {
                               key={rIdx}
                               className="p-2.5 rounded-xl bg-slate-50 dark:bg-gray-900/80 border border-slate-200 dark:border-gray-700 space-y-1.5"
                             >
-                              {/* Photo on Top */}
                               {room.mediaUrl && (
                                 <div className="rounded-md overflow-hidden h-32 w-full border border-slate-200 dark:border-gray-700 bg-black/5">
                                   <img
@@ -681,7 +668,6 @@ export function AdvancedChatbot() {
                                 </div>
                               )}
 
-                              {/* Details Below Photo */}
                               {room.title && (
                                 <h4 className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
                                   <Home className="w-3.5 h-3.5 text-red-600 shrink-0" />
@@ -723,7 +709,6 @@ export function AdvancedChatbot() {
                         </div>
                       )}
 
-                      {/* Text Message */}
                       <p className="whitespace-pre-wrap break-words">{msg.text}</p>
                       
                       <span className="block text-[8px] text-right mt-0.5 opacity-60">
@@ -739,7 +724,6 @@ export function AdvancedChatbot() {
                   </div>
                 ))}
 
-                {/* Typing Indicator */}
                 {isTyping && (
                   <div className="flex items-center gap-1.5">
                     <div className="w-5 h-5 rounded-full bg-red-100 dark:bg-red-950 flex items-center justify-center shrink-0">
@@ -753,7 +737,6 @@ export function AdvancedChatbot() {
                   </div>
                 )}
 
-                {/* Quick Suggestions */}
                 {messages.length <= 1 && !isTyping && (
                   <div className="pt-2 flex flex-col gap-1.5">
                     <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1">
@@ -775,7 +758,6 @@ export function AdvancedChatbot() {
                 <div ref={bottomRef} />
               </div>
 
-              {/* File Preview Badge */}
               {selectedFile && (
                 <div className="px-3 py-2 bg-slate-100 dark:bg-gray-800 flex items-center justify-between border-t border-slate-200 dark:border-gray-700 shrink-0">
                   <div className="flex items-center gap-2 truncate text-slate-700 dark:text-slate-300">
@@ -801,7 +783,6 @@ export function AdvancedChatbot() {
                 </div>
               )}
 
-              {/* Input Area */}
               <div className="p-2 border-t border-slate-200 dark:border-gray-800 bg-white dark:bg-gray-950 shrink-0">
                 <div className="flex items-center gap-1 bg-slate-100 dark:bg-gray-800/80 rounded-full px-2 py-1 border border-slate-200/80 dark:border-gray-700 focus-within:ring-1 focus-within:ring-red-500 transition">
                   <input
