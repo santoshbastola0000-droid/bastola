@@ -14,7 +14,6 @@ import {
   Mic,
   MicOff,
   Paperclip,
-  Image as ImageIcon,
   Video,
   Coins,
   Trash2,
@@ -29,6 +28,16 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+interface RoomItem {
+  id?: string;
+  title?: string;
+  price?: string;
+  location?: string;
+  contact?: string;
+  link?: string;
+  mediaUrl?: string;
+}
+
 interface ChatMessage {
   id: string;
   role: "bot" | "user";
@@ -36,13 +45,8 @@ interface ChatMessage {
   mediaUrl?: string;
   mediaType?: "image" | "video" | "file";
   timestamp: string;
-  roomDetails?: {
-    title?: string;
-    price?: string;
-    location?: string;
-    contact?: string;
-    link?: string;
-  };
+  roomDetails?: RoomItem;
+  roomsList?: RoomItem[];
 }
 
 interface ChatSession {
@@ -106,7 +110,7 @@ export function AdvancedChatbot() {
       {
         id: "1",
         role: "bot" as const,
-        text: "Namaste! 🙏 How can I help you find your room today?",
+        text: "Namaste! 🙏 How can I help you find your room today on RoomKhoj?",
         timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
       },
     ];
@@ -300,6 +304,17 @@ export function AdvancedChatbot() {
     }
   };
 
+  // Helper to ensure links use roomkhoj.com
+  const sanitizeLink = (linkStr?: string) => {
+    if (!linkStr) return "#";
+    // Replace old roomservise domains with roomkhoj if present
+    const cleaned = linkStr.replace(/roomservise\.com/gi, "roomkhoj.com");
+    if (cleaned.startsWith("http://") || cleaned.startsWith("https://")) {
+      return cleaned;
+    }
+    return `https://roomkhoj.com${cleaned.startsWith("/") ? "" : "/"}${cleaned}`;
+  };
+
   const sendMessage = async (customText?: string) => {
     const textToSend = customText || input;
     if ((!textToSend.trim() && !selectedFile) || isTyping) return;
@@ -356,20 +371,22 @@ export function AdvancedChatbot() {
         throw new Error(data?.message || `API error (${res.status})`);
       }
 
-      // Handle both structured object response or plain text response from API
       let botReplyText = "";
       let roomDetails = undefined;
+      let roomsList = undefined;
       let mediaUrl = undefined;
       let mediaType = undefined;
 
       if (typeof data?.reply === "object" && data.reply !== null) {
         botReplyText = data.reply.reply || data.reply.text || "";
         roomDetails = data.reply.roomDetails || data.reply.details;
+        roomsList = data.reply.roomsList || data.reply.rooms;
         mediaUrl = data.reply.mediaUrl || data.reply.image;
         mediaType = mediaUrl ? "image" : undefined;
-      } else if (typeof data === "object" && data !== null && data.roomDetails) {
-        botReplyText = data.reply || "";
-        roomDetails = data.roomDetails;
+      } else if (typeof data === "object" && data !== null) {
+        botReplyText = data.reply || data.text || "";
+        roomDetails = data.roomDetails || data.details;
+        roomsList = data.roomsList || data.rooms;
         mediaUrl = data.mediaUrl || data.image;
         mediaType = mediaUrl ? "image" : undefined;
       } else {
@@ -383,6 +400,7 @@ export function AdvancedChatbot() {
         mediaUrl,
         mediaType,
         roomDetails,
+        roomsList,
         timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
       };
 
@@ -575,13 +593,13 @@ export function AdvancedChatbot() {
 
                     <div
                       className={cn(
-                        "max-w-[85%] px-3 py-2 rounded-2xl text-xs leading-relaxed shadow-2xs",
+                        "max-w-[88%] px-3 py-2 rounded-2xl text-xs leading-relaxed shadow-2xs",
                         msg.role === "bot"
                           ? "bg-white dark:bg-gray-800 text-slate-800 dark:text-slate-100 rounded-bl-xs border border-slate-100 dark:border-gray-700"
                           : "bg-red-600 text-white rounded-br-xs"
                       )}
                     >
-                      {/* Photo/Media First (Subbbhandi Mathi Photo) */}
+                      {/* Main Message Media (If single media) */}
                       {msg.mediaUrl && (
                         <div className="mb-2 rounded-lg overflow-hidden border border-black/10 dark:border-white/15 bg-black/5 w-full">
                           {msg.mediaType === "image" ? (
@@ -596,9 +614,18 @@ export function AdvancedChatbot() {
                         </div>
                       )}
 
-                      {/* Room Structured Details Card (Tala Details) */}
+                      {/* Single Room Details Card */}
                       {msg.roomDetails && (
                         <div className="mb-2 p-2.5 rounded-xl bg-slate-50 dark:bg-gray-900/80 border border-slate-200 dark:border-gray-700 space-y-1.5">
+                          {msg.roomDetails.mediaUrl && (
+                            <div className="rounded-md overflow-hidden h-32 w-full mb-1.5 border border-slate-200 dark:border-gray-700">
+                              <img
+                                src={msg.roomDetails.mediaUrl}
+                                alt="Room photo"
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                          )}
                           {msg.roomDetails.title && (
                             <h4 className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
                               <Home className="w-3.5 h-3.5 text-red-600 shrink-0" />
@@ -624,7 +651,7 @@ export function AdvancedChatbot() {
                           )}
                           {msg.roomDetails.link && (
                             <a
-                              href={msg.roomDetails.link}
+                              href={sanitizeLink(msg.roomDetails.link)}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="mt-1 flex items-center justify-center gap-1.5 w-full py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium text-[11px] transition cursor-pointer"
@@ -632,6 +659,67 @@ export function AdvancedChatbot() {
                               View Room Details <ExternalLink className="w-3 h-3" />
                             </a>
                           )}
+                        </div>
+                      )}
+
+                      {/* Multiple Rooms List Card (Photo Top + Details Bottom) */}
+                      {msg.roomsList && Array.isArray(msg.roomsList) && msg.roomsList.length > 0 && (
+                        <div className="mb-2 space-y-2.5">
+                          {msg.roomsList.map((room, rIdx) => (
+                            <div
+                              key={rIdx}
+                              className="p-2.5 rounded-xl bg-slate-50 dark:bg-gray-900/80 border border-slate-200 dark:border-gray-700 space-y-1.5"
+                            >
+                              {/* Photo on Top */}
+                              {room.mediaUrl && (
+                                <div className="rounded-md overflow-hidden h-32 w-full border border-slate-200 dark:border-gray-700 bg-black/5">
+                                  <img
+                                    src={room.mediaUrl}
+                                    alt={room.title || "Room"}
+                                    className="w-full h-full object-cover"
+                                  />
+                                </div>
+                              )}
+
+                              {/* Details Below Photo */}
+                              {room.title && (
+                                <h4 className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                                  <Home className="w-3.5 h-3.5 text-red-600 shrink-0" />
+                                  {room.title}
+                                </h4>
+                              )}
+
+                              <div className="grid grid-cols-2 gap-1 text-[11px] text-slate-600 dark:text-slate-300">
+                                {room.price && (
+                                  <div className="flex items-center gap-1 font-semibold text-emerald-600 dark:text-emerald-400">
+                                    <Coins className="w-3 h-3" /> {room.price}
+                                  </div>
+                                )}
+                                {room.location && (
+                                  <div className="flex items-center gap-1 truncate">
+                                    <MapPin className="w-3 h-3 text-red-500 shrink-0" /> <span className="truncate">{room.location}</span>
+                                  </div>
+                                )}
+                              </div>
+
+                              {room.contact && (
+                                <div className="flex items-center gap-1 text-[11px] text-slate-700 dark:text-slate-200">
+                                  <Phone className="w-3 h-3 text-blue-500 shrink-0" /> {room.contact}
+                                </div>
+                              )}
+
+                              {room.link && (
+                                <a
+                                  href={sanitizeLink(room.link)}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="mt-1 flex items-center justify-center gap-1.5 w-full py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium text-[11px] transition cursor-pointer"
+                                >
+                                  View on RoomKhoj <ExternalLink className="w-3 h-3" />
+                                </a>
+                              )}
+                            </div>
+                          ))}
                         </div>
                       )}
 
@@ -739,7 +827,7 @@ export function AdvancedChatbot() {
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && sendMessage()}
-                    placeholder={isRecording ? "Listening..." : "Ask Gemini..."}
+                    placeholder={isRecording ? "Listening..." : "Ask RoomKhoj AI..."}
                     className="flex-1 bg-transparent text-xs text-slate-900 dark:text-white outline-none px-1"
                   />
 
