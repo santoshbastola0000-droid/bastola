@@ -68,14 +68,13 @@ function isChatSession(value: unknown): value is ChatSession {
 const QUICK_SUGGESTIONS = [
   "🔍 Find 1BHK rooms near me",
   "💰 Cheap rooms under Rs 10,000",
-  "📍 need room in Pokhara",
+  "📍 Rooms in Kathmandu / Pokhara",
 ];
 
-// इतिहासमा नराम्रा वा अर्थहीन टाइटल पठाउनबाट रोक्न
+// इतिहासमा नराम्रा वा अर्थहीन टाइटल सेभ हुनबाट रोक्न
 function sanitizeTitle(text: string): string {
   if (!text) return "Room Search";
   
-  // खराब शब्दहरू छाँट्ने (Basic Profanity / Abuse Filter)
   const profanityRegex = /(madarchod|bhenchod|radi|lado|mucchi|fuck|shit|bitch)/gi;
   let cleanText = text.replace(profanityRegex, "***").trim();
 
@@ -86,7 +85,7 @@ function sanitizeTitle(text: string): string {
   return cleanText.length > 22 ? cleanText.slice(0, 22) + "..." : cleanText;
 }
 
-export function AdvancedChatbot() {
+export function Chatbot() {
   const userStore = useUserRole() as any;
   const loggedInUserId =
     userStore?.user?.id ||
@@ -381,7 +380,6 @@ export function AdvancedChatbot() {
         throw new Error(data?.message || data?.error || `API Error status: ${res.status}`);
       }
 
-      // Dynamic Extraction of API Response Fields
       let responseObj = data?.reply || data?.response || data?.data || data;
       let botReplyText = "";
       let roomDetails = undefined;
