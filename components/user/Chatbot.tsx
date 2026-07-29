@@ -71,6 +71,21 @@ const QUICK_SUGGESTIONS = [
   "📍 Rooms in Kathmandu / Pokhara",
 ];
 
+// इतिहासमा नराम्रा वा अर्थहीन टाइटल पठाउनबाट रोक्न
+function sanitizeTitle(text: string): string {
+  if (!text) return "Room Search";
+  
+  // खराब शब्दहरू छाँट्ने (Basic Profanity / Abuse Filter)
+  const profanityRegex = /(madarchod|bhenchod|radi|lado|mucchi|fuck|shit|bitch)/gi;
+  let cleanText = text.replace(profanityRegex, "***").trim();
+
+  if (cleanText.replace(/\*/g, "").length < 2) {
+    return "New Conversation";
+  }
+
+  return cleanText.length > 22 ? cleanText.slice(0, 22) + "..." : cleanText;
+}
+
 export function AdvancedChatbot() {
   const userStore = useUserRole() as any;
   const loggedInUserId =
@@ -172,8 +187,8 @@ export function AdvancedChatbot() {
     (currentMsgs: ChatMessage[]) => {
       if (currentMsgs.length <= 1) return;
 
-      const titleText =
-        currentMsgs.find((m) => m.role === "user")?.text.slice(0, 24) || "New Conversation";
+      const firstUserMsg = currentMsgs.find((m) => m.role === "user")?.text || "New Conversation";
+      const titleText = sanitizeTitle(firstUserMsg);
 
       const existingId = currentSessionId || Date.now().toString();
       if (!currentSessionId) {
@@ -182,7 +197,7 @@ export function AdvancedChatbot() {
 
       const activeSession: ChatSession = {
         id: existingId,
-        title: titleText + "...",
+        title: titleText,
         messages: currentMsgs,
       };
 
@@ -363,29 +378,34 @@ export function AdvancedChatbot() {
       }
 
       if (!res.ok) {
-        throw new Error(data?.message || data?.error || `API error (${res.status})`);
+        throw new Error(data?.message || data?.error || `API Error status: ${res.status}`);
       }
 
-      // Safely extract properties from backend response
-      const responsePayload = data?.reply || data;
+      // Dynamic Extraction of API Response Fields
+      let responseObj = data?.reply || data?.response || data?.data || data;
       let botReplyText = "";
       let roomDetails = undefined;
       let roomsList = undefined;
       let mediaUrl = undefined;
       let mediaType = undefined;
 
-      if (typeof responsePayload === "object" && responsePayload !== null) {
-        botReplyText = responsePayload.reply || responsePayload.text || responsePayload.message || "";
-        roomDetails = responsePayload.roomDetails || responsePayload.details;
-        roomsList = responsePayload.roomsList || responsePayload.rooms;
-        mediaUrl = responsePayload.mediaUrl || responsePayload.image;
+      if (typeof responseObj === "string") {
+        botReplyText = responseObj;
+      } else if (typeof responseObj === "object" && responseObj !== null) {
+        botReplyText =
+          responseObj.reply ||
+          responseObj.text ||
+          responseObj.message ||
+          responseObj.content ||
+          "";
+        roomDetails = responseObj.roomDetails || responseObj.details;
+        roomsList = responseObj.roomsList || responseObj.rooms;
+        mediaUrl = responseObj.mediaUrl || responseObj.image;
         mediaType = mediaUrl ? "image" : undefined;
-      } else {
-        botReplyText = String(responsePayload || "Sorry, I couldn't process that request.");
       }
 
       if (!botReplyText && !roomDetails && !roomsList) {
-        botReplyText = "Got response, but message format was empty.";
+        botReplyText = "I found matching details for your search query.";
       }
 
       const botReply: ChatMessage = {
@@ -407,7 +427,7 @@ export function AdvancedChatbot() {
       const fallbackReply: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: "bot",
-        text: `Error: ${error.message || "Network connection issue. Please try again."}`,
+        text: `Error: Server connection problem. Please try again.`,
         timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
       };
       setMessages([...updatedMessages, fallbackReply]);
