@@ -68,7 +68,7 @@ function isChatSession(value: unknown): value is ChatSession {
 const QUICK_SUGGESTIONS = [
   "🔍 Find 1BHK rooms near me",
   "💰 Cheap rooms under Rs 10,000",
-  "📍 Rooms in Kathmandu / Pokhara",
+  "📍 need room in Pokhara",
 ];
 
 // इतिहासमा नराम्रा वा अर्थहीन टाइटल पठाउनबाट रोक्न
