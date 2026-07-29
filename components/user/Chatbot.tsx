@@ -363,32 +363,29 @@ export function AdvancedChatbot() {
       }
 
       if (!res.ok) {
-        throw new Error(data?.message || `API error (${res.status})`);
+        throw new Error(data?.message || data?.error || `API error (${res.status})`);
       }
 
+      // Safely extract properties from backend response
+      const responsePayload = data?.reply || data;
       let botReplyText = "";
       let roomDetails = undefined;
       let roomsList = undefined;
       let mediaUrl = undefined;
       let mediaType = undefined;
 
-      if (typeof data?.reply === "object" && data.reply !== null) {
-        botReplyText = data.reply.reply || data.reply.text || "";
-        roomDetails = data.reply.roomDetails || data.reply.details;
-        roomsList = data.reply.roomsList || data.reply.rooms;
-        mediaUrl = data.reply.mediaUrl || data.reply.image;
-        mediaType = mediaUrl ? "image" : undefined;
-      } else if (typeof data === "object" && data !== null && data.roomDetails) {
-        botReplyText = data.reply || "";
-        roomDetails = data.roomDetails;
-      } else if (typeof data === "object" && data !== null) {
-        botReplyText = data.reply || data.text || "";
-        roomDetails = data.roomDetails || data.details;
-        roomsList = data.roomsList || data.rooms;
-        mediaUrl = data.mediaUrl || data.image;
+      if (typeof responsePayload === "object" && responsePayload !== null) {
+        botReplyText = responsePayload.reply || responsePayload.text || responsePayload.message || "";
+        roomDetails = responsePayload.roomDetails || responsePayload.details;
+        roomsList = responsePayload.roomsList || responsePayload.rooms;
+        mediaUrl = responsePayload.mediaUrl || responsePayload.image;
         mediaType = mediaUrl ? "image" : undefined;
       } else {
-        botReplyText = String(data?.reply || data || "Sorry, I couldn't process that request.");
+        botReplyText = String(responsePayload || "Sorry, I couldn't process that request.");
+      }
+
+      if (!botReplyText && !roomDetails && !roomsList) {
+        botReplyText = "Got response, but message format was empty.";
       }
 
       const botReply: ChatMessage = {
@@ -405,12 +402,12 @@ export function AdvancedChatbot() {
       const finalMsgs = [...updatedMessages, botReply];
       setMessages(finalMsgs);
       saveCurrentSession(finalMsgs);
-    } catch (error) {
-      console.error("API Error:", error);
+    } catch (error: any) {
+      console.error("API Error details:", error);
       const fallbackReply: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: "bot",
-        text: "Network connection issue. Please try again.",
+        text: `Error: ${error.message || "Network connection issue. Please try again."}`,
         timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
       };
       setMessages([...updatedMessages, fallbackReply]);
@@ -784,7 +781,7 @@ export function AdvancedChatbot() {
               )}
 
               <div className="p-2 border-t border-slate-200 dark:border-gray-800 bg-white dark:bg-gray-950 shrink-0">
-                <div className="flex items-center gap-1 bg-slate-100 dark:bg-gray-800/80 rounded-full px-2 py-1 border border-slate-200/80 dark:border-gray-700 focus-within:ring-1 focus-within:ring-red-500 transition">
+                <div className="flex items-center gap-1 bg-slate-100 dark:bg-gray-800/80 rounded-full px-2 py-1 border border-slate-200/80 dark:border-gray-700">
                   <input
                     type="file"
                     ref={fileInputRef}
@@ -796,10 +793,22 @@ export function AdvancedChatbot() {
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="p-1.5 text-slate-500 hover:text-red-600 rounded-full transition cursor-pointer shrink-0"
-                    title="Attach File"
+                    className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-full transition cursor-pointer"
+                    title="Attach file"
                   >
-                    <Paperclip className="w-3.5 h-3.5" />
+                    <Paperclip className="w-4 h-4" />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={toggleVoiceRecording}
+                    className={cn(
+                      "p-1.5 rounded-full transition cursor-pointer",
+                      isRecording ? "text-red-600 animate-pulse bg-red-100 dark:bg-red-950" : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                    )}
+                    title={isRecording ? "Stop recording" : "Voice input"}
+                  >
+                    {isRecording ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
                   </button>
 
                   <input
@@ -807,44 +816,29 @@ export function AdvancedChatbot() {
                     type="text"
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && sendMessage()}
-                    placeholder={isRecording ? "Listening..." : "Ask RoomKhoj AI..."}
-                    className="flex-1 bg-transparent text-xs text-slate-900 dark:text-white outline-none px-1"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        sendMessage();
+                      }
+                    }}
+                    placeholder="Type a message or ask for rooms..."
+                    className="flex-1 bg-transparent border-none outline-none text-xs text-slate-800 dark:text-slate-100 px-1 py-1 placeholder:text-slate-400"
                   />
-
-                  <button
-                    type="button"
-                    onClick={toggleVoiceRecording}
-                    className={cn(
-                      "p-1.5 rounded-full transition cursor-pointer shrink-0",
-                      isRecording
-                        ? "bg-red-600 text-white animate-pulse"
-                        : "text-slate-500 hover:text-red-600"
-                    )}
-                    title="Voice Search"
-                  >
-                    {isRecording ? <MicOff className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}
-                  </button>
 
                   <button
                     type="button"
                     onClick={() => sendMessage()}
                     disabled={(!input.trim() && !selectedFile) || isTyping}
-                    className="w-7 h-7 rounded-full bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white flex items-center justify-center transition cursor-pointer shrink-0"
-                  >
-                    {isTyping ? (
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    ) : (
-                      <Send className="w-3.5 h-3.5" />
+                    className={cn(
+                      "w-7 h-7 rounded-full flex items-center justify-center text-white transition cursor-pointer",
+                      (!input.trim() && !selectedFile) || isTyping
+                        ? "bg-slate-300 dark:bg-gray-700 cursor-not-allowed"
+                        : "bg-red-600 hover:bg-red-700 shadow-xs"
                     )}
+                  >
+                    {isTyping ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
                   </button>
-                </div>
-
-                <div className="flex justify-between items-center mt-1 px-2 text-[9px] text-slate-400">
-                  <span>Rs. 1 / 5 words</span>
-                  <a href="/pricing" className="text-red-500 font-medium hover:underline">
-                    Topup
-                  </a>
                 </div>
               </div>
             </div>
@@ -854,5 +848,3 @@ export function AdvancedChatbot() {
     </>
   );
 }
-
-export { AdvancedChatbot as Chatbot };
