@@ -36,7 +36,7 @@ export default function RootLayout({
         <QueryClientProviderWrapper>
           <TooltipProvider>
             {children}
-            <GlobalChatbot />
+            {/* <GlobalChatbot /> */}
           </TooltipProvider>
           <Toaster />
         </QueryClientProviderWrapper>
