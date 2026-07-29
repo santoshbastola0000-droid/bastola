@@ -71,10 +71,9 @@ const QUICK_SUGGESTIONS = [
   "📍 Rooms in Kathmandu / Pokhara",
 ];
 
-// इतिहासमा नराम्रा वा अर्थहीन टाइटल सेभ हुनबाट रोक्न
 function sanitizeTitle(text: string): string {
   if (!text) return "Room Search";
-  
+
   const profanityRegex = /(madarchod|bhenchod|radi|lado|mucchi|fuck|shit|bitch)/gi;
   let cleanText = text.replace(profanityRegex, "***").trim();
 
@@ -296,7 +295,7 @@ export function Chatbot() {
     }
 
     const fileUrl = URL.createObjectURL(file);
-    const type = file.type.startsWith("image/")
+    const type: "image" | "video" | "file" = file.type.startsWith("image/")
       ? "image"
       : file.type.startsWith("video/")
       ? "video"
@@ -384,8 +383,8 @@ export function Chatbot() {
       let botReplyText = "";
       let roomDetails = undefined;
       let roomsList = undefined;
-      let mediaUrl = undefined;
-      let mediaType = undefined;
+      let mediaUrl: string | undefined = undefined;
+      let mediaType: "image" | "video" | "file" | undefined = undefined;
 
       if (typeof responseObj === "string") {
         botReplyText = responseObj;
