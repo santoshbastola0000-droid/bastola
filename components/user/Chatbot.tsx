@@ -352,7 +352,7 @@ export function Chatbot() {
     const currentUserId = loggedInUserId || "guest_user";
 
     try {
-      const res = await fetch("https://api.roomkhoj.com/ai/chat", {
+      const res = await fetch("https://api.roomkhoj.com/ai-v2/chat", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
