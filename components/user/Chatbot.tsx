@@ -516,7 +516,7 @@ const deductBalanceForText = (text: string) => {
         type="button"
         onClick={() => setIsOpen((v) => !v)}
         className={cn(
-          "hidden md:flex fixed bottom-6 right-6 z-[9999] w-14 h-14 rounded-2xl shadow-[0_18px_45px_-12px_rgba(220,38,38,0.55)] items-center justify-center transition-all duration-300 cursor-pointer border border-white/20 backdrop-blur-xl",
+          "hidden md:flex fixed bottom-6 right-6 z-[10000] h-12 w-12 items-center justify-center rounded-full border border-slate-200 bg-slate-900 text-white shadow-xl transition hover:bg-black hover:scale-105 active:scale-95 cursor-pointer",
           isOpen
             ? "bg-slate-800 text-white hover:bg-slate-900"
             : "bg-gradient-to-r from-red-600 to-rose-600 text-white hover:scale-105 active:scale-95"
@@ -529,128 +529,125 @@ const deductBalanceForText = (text: string) => {
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{
-              opacity: 0,
-              scale: 0.96,
-              y: 26,
-              filter: "blur(8px)",
-            }}
-            animate={{
-              opacity: 1,
-              scale: 1,
-              y: 0,
-              filter: "blur(0px)",
-            }}
-            exit={{
-              opacity: 0,
-              scale: 0.97,
-              y: 18,
-              filter: "blur(5px)",
-            }}
-            transition={{
-              type: "spring",
-              stiffness: 300,
-              damping: 28,
-              mass: 0.8,
-            }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.18 }}
             className="
               fixed
-              inset-x-0
-              top-0
-              bottom-0
-              z-[9998]
-
+              inset-0
+              z-[9999]
               flex
-              flex-col
               overflow-hidden
-
               bg-white
-              dark:bg-slate-950
-
+              text-slate-900
+              dark:bg-[#212121]
+              dark:text-white
               font-sans
-
-              sm:inset-auto
-              sm:right-6
-              sm:bottom-6
-              sm:w-[430px]
-              sm:h-[min(720px,calc(100dvh-48px))]
-              sm:rounded-[30px]
-              sm:border
-              sm:border-white/70
-              sm:dark:border-white/10
-              sm:bg-white/95
-              sm:dark:bg-slate-950/95
-              sm:backdrop-blur-2xl
-              sm:shadow-[0_30px_90px_-20px_rgba(15,23,42,0.45)]
             "
           >
+
+            {/* ROBOTIC AI BORDER GLOW */}
+            <motion.div
+              aria-hidden="true"
+              animate={{
+                rotate: 360,
+                opacity: [0.45, 0.85, 0.45],
+              }}
+              transition={{
+                rotate: {
+                  duration: 7,
+                  repeat: Infinity,
+                  ease: "linear",
+                },
+                opacity: {
+                  duration: 2.8,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                },
+              }}
+              className="
+                pointer-events-none
+                absolute
+                -inset-[55%]
+                z-0
+                bg-[conic-gradient(from_0deg,transparent_0deg,#ef4444_45deg,#a855f7_95deg,#3b82f6_150deg,#06b6d4_205deg,#22c55e_260deg,#f59e0b_315deg,transparent_360deg)]
+                blur-[18px]
+              "
+            />
+
+            {/* ROBOTIC INNER BORDER */}
+            <motion.div
+              aria-hidden="true"
+              animate={{ rotate: -360 }}
+              transition={{
+                duration: 11,
+                repeat: Infinity,
+                ease: "linear",
+              }}
+              className="
+                pointer-events-none
+                absolute
+                -inset-[35%]
+                z-0
+                opacity-35
+                bg-[conic-gradient(from_180deg,transparent_0deg,#22d3ee_70deg,transparent_125deg,#8b5cf6_195deg,transparent_250deg,#ef4444_315deg,transparent_360deg)]
+                blur-[28px]
+              "
+            />
+
+
             <div className="
-              relative
+              absolute
+              left-0
+              right-0
+              top-0
               z-30
               flex
-              shrink-0
+              h-14
               items-center
               justify-between
-              overflow-hidden
               border-b
-              border-white/10
-              bg-gradient-to-r
-              from-slate-950
-              via-slate-900
-              to-red-950
-              px-4
-              py-3.5
-              text-white
-              shadow-lg
+              border-slate-200
+              bg-white/95
+              px-3
+              backdrop-blur-xl
+              md:left-[260px]
+              dark:border-white/10
+              dark:bg-[#212121]/95
             ">
-              <div className="pointer-events-none absolute -right-12 -top-16 h-32 w-32 rounded-full bg-red-500/20 blur-3xl" />
-              <div className="pointer-events-none absolute -left-10 bottom-0 h-20 w-20 rounded-full bg-rose-500/10 blur-2xl" />
               <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => setShowHistorySidebar((v) => !v)}
-                  className="relative z-10 flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-slate-300 transition hover:bg-white/10 hover:text-white cursor-pointer"
+                  className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-600 transition hover:bg-slate-100 md:hidden dark:text-slate-300 dark:hover:bg-white/10 cursor-pointer"
                   title="Toggle History Sidebar"
                 >
                   <PanelLeft className="w-4 h-4" />
                 </button>
 
-                <motion.div
-                  animate={{
-                    boxShadow: [
-                      "0 0 0 rgba(239,68,68,0)",
-                      "0 0 24px rgba(239,68,68,.45)",
-                      "0 0 0 rgba(239,68,68,0)",
-                    ],
-                  }}
-                  transition={{
-                    duration: 2.8,
-                    repeat: Infinity,
-                    ease: "easeInOut",
-                  }}
-                  className="relative z-10 flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-red-500 via-rose-600 to-red-700 shadow-lg"
-                >
-                  <Sparkles className="h-5 w-5 text-white" />
-                </motion.div>
-                <div className="relative z-10">
-                  <h2 className="text-sm font-bold leading-none tracking-tight">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-900 dark:bg-white">
+                  <Sparkles className="h-4 w-4 text-white dark:text-slate-900" />
+                </div>
+                <div>
+                  <h2 className="text-sm font-semibold leading-none text-slate-900 dark:text-white">
                     RoomKhoj AI
                   </h2>
-                  <span className="mt-1 flex items-center gap-1.5 text-[10px] font-medium text-emerald-300">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />{" "}
+                  <span className="mt-1 flex items-center gap-1 text-[10px] text-slate-500 dark:text-slate-400">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
                     Online
                   </span>
                 </div>
               </div>
 
               <div className="flex items-center gap-2">
-                <div className="relative z-10 flex items-center gap-1.5 rounded-full border border-amber-400/20 bg-amber-400/10 px-2.5 py-1.5 text-[11px] font-semibold text-amber-200 backdrop-blur-xl">
+                <div className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-[11px] font-medium text-slate-700 dark:border-white/10 dark:bg-white/5 dark:text-slate-200">
                   <Coins className="w-3 h-3" /> Rs.{balance}
                 </div>
                 <button
                   type="button"
                   onClick={() => setIsOpen(false)}
-                  className="relative z-10 flex h-9 w-9 items-center justify-center rounded-xl bg-white/5 text-slate-300 transition hover:bg-white/10 hover:text-white cursor-pointer"
+                  className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-white/10 dark:hover:text-white cursor-pointer"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -658,27 +655,25 @@ const deductBalanceForText = (text: string) => {
             </div>
 
             <div className="
+              absolute
+              left-0
+              right-0
+              top-14
               z-20
               flex
-              shrink-0
+              h-10
               items-center
               justify-between
               border-b
-              border-red-100
-              bg-gradient-to-r
-              from-red-50
-              via-rose-50/70
-              to-white
-              px-4
-              py-2.5
+              border-slate-200
+              bg-white
+              px-3
               text-[11px]
-              font-medium
-              text-red-700
-              dark:border-red-950
-              dark:from-red-950/40
-              dark:via-slate-950
-              dark:to-slate-950
-              dark:text-red-300
+              text-slate-500
+              md:left-[260px]
+              dark:border-white/10
+              dark:bg-[#212121]
+              dark:text-slate-400
             ">
               <span className="flex items-center gap-1 truncate">
                 <MapPin className="w-3 h-3 text-red-500 shrink-0" /> Find rooms near your location
@@ -687,38 +682,41 @@ const deductBalanceForText = (text: string) => {
                 type="button"
                 onClick={requestUserLocation}
                 disabled={locationRequested}
-                className="ml-2 shrink-0 rounded-full bg-red-600 px-3 py-1.5 text-[10px] font-bold text-white shadow-sm transition hover:bg-red-700 active:scale-95 cursor-pointer disabled:opacity-60"
+                className="ml-2 shrink-0 rounded-lg bg-slate-900 px-2.5 py-1 text-[10px] font-medium text-white transition hover:bg-black cursor-pointer disabled:opacity-50 dark:bg-white dark:text-slate-900"
               >
                 {locationRequested ? "Detecting..." : "Detect Location"}
               </button>
             </div>
 
-            <div className="flex-1 flex flex-col h-full relative overflow-hidden">
+            <div className="relative flex h-full w-full overflow-hidden pt-24 md:pt-0">
               <div
                 className={cn(
-                  "absolute inset-y-0 left-0 z-40 w-[82%] max-w-[290px] bg-slate-950/98 text-white flex flex-col transition-transform duration-300 border-r border-white/10 shadow-2xl backdrop-blur-2xl",
-                  showHistorySidebar ? "translate-x-0" : "-translate-x-full"
+                  "fixed inset-y-0 left-0 z-40 w-[260px] bg-[#f9f9f9] text-slate-900 flex flex-col transition-transform duration-300 border-r border-slate-200 dark:bg-[#171717] dark:text-white dark:border-white/10 md:translate-x-0",
+                  showHistorySidebar
+                    ? "translate-x-0"
+                    : "-translate-x-full md:translate-x-0"
                 )}
               >
-                <div className="p-3 border-b border-slate-800 flex items-center justify-between">
+                <div className="flex h-14 items-center justify-between border-b border-slate-200 px-3 dark:border-white/10">
                   <button
                     type="button"
                     onClick={startNewChat}
-                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 px-3 py-2.5 text-xs font-semibold text-white shadow-lg transition hover:brightness-105 active:scale-[.98] cursor-pointer"
+                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm font-medium text-slate-800 transition hover:bg-slate-200/70 dark:text-white dark:hover:bg-white/10 cursor-pointer"
                   >
-                    <Plus className="w-4 h-4" /> New Chat
+                    <Plus className="h-4 w-4" />
+                    New chat
                   </button>
                   <button
                     type="button"
                     onClick={() => setShowHistorySidebar(false)}
-                    className="p-1 text-slate-400 hover:text-white ml-2"
+                    className="ml-2 flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-200 md:hidden dark:hover:bg-white/10"
                   >
                     <X className="w-4 h-4" />
                   </button>
                 </div>
 
                 <div className="flex-1 overflow-y-auto p-2 space-y-1">
-                  <p className="text-[10px] uppercase font-semibold text-slate-400 px-2 py-1">
+                  <p className="px-2 py-2 text-[11px] font-medium text-slate-500">
                     Recent Chats
                   </p>
                   {sessions.length === 0 ? (
@@ -734,10 +732,10 @@ const deductBalanceForText = (text: string) => {
                           setShowHistorySidebar(false);
                         }}
                         className={cn(
-                          "w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-left text-xs transition cursor-pointer truncate",
+                          "w-full flex items-center gap-2 px-3 py-2.5 rounded-lg text-left text-xs transition cursor-pointer truncate",
                           currentSessionId === sess.id
-                            ? "bg-slate-800 text-white font-medium"
-                            : "text-slate-300 hover:bg-slate-800/60"
+                            ? "bg-slate-200 text-slate-900 font-medium dark:bg-white/10 dark:text-white"
+                            : "text-slate-600 hover:bg-slate-200/60 dark:text-slate-300 dark:hover:bg-white/5"
                         )}
                       >
                         <MessageSquare className="w-3.5 h-3.5 text-slate-400 shrink-0" />
@@ -766,42 +764,38 @@ const deductBalanceForText = (text: string) => {
               </div>
 
               <div className="
+                ml-0
                 flex-1
-                space-y-4
                 overflow-y-auto
                 overscroll-contain
-                bg-gradient-to-b
-                from-slate-50
-                via-white
-                to-slate-50
-                px-3
-                py-4
-                sm:px-4
-                dark:from-slate-950
-                dark:via-slate-950
-                dark:to-slate-900
-                [scrollbar-width:thin]
+                bg-white
+                pb-36
+                pt-5
+                dark:bg-[#212121]
+                md:ml-[260px]
+                md:pt-24
               ">
+                <div className="mx-auto flex w-full max-w-[760px] flex-col gap-6 px-4 sm:px-6">
                 {messages.map((msg) => (
                   <div
                     key={msg.id}
                     className={cn(
-                      "flex items-end gap-2",
+                      "flex items-start gap-3",
                       msg.role === "user" ? "justify-end" : "justify-start"
                     )}
                   >
                     {msg.role === "bot" && (
-                      <div className="mb-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-xl border border-red-100 bg-gradient-to-br from-red-50 to-rose-100 shadow-sm dark:border-red-950 dark:from-red-950 dark:to-slate-900">
-                        <Sparkles className="h-3.5 w-3.5 text-red-600 dark:text-red-400" />
+                      <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-900 dark:bg-white">
+                        <Sparkles className="h-3.5 w-3.5 text-white dark:text-slate-900" />
                       </div>
                     )}
 
                     <div
                       className={cn(
-                        "max-w-[86%] px-3.5 py-2.5 sm:px-4 sm:py-3 rounded-[20px] text-[13px] leading-relaxed shadow-sm",
+                        "max-w-[85%] text-[14px] leading-6",
                         msg.role === "bot"
-                          ? "border border-slate-200/70 bg-white text-slate-800 rounded-bl-md shadow-[0_8px_24px_-14px_rgba(15,23,42,.35)] dark:border-white/10 dark:bg-slate-900 dark:text-slate-100"
-                          : "bg-gradient-to-br from-red-600 via-rose-600 to-red-700 text-white rounded-br-md shadow-[0_10px_26px_-14px_rgba(220,38,38,.7)]"
+                          ? "text-slate-800 dark:text-slate-100"
+                          : "rounded-[18px] bg-[#f4f4f4] px-4 py-2.5 text-slate-900 dark:bg-[#2f2f2f] dark:text-white"
                       )}
                     >
                       {msg.mediaUrl && (
@@ -931,7 +925,7 @@ const deductBalanceForText = (text: string) => {
                     </div>
 
                     {msg.role === "user" && (
-                      <div className="w-5 h-5 rounded-full bg-slate-700 flex items-center justify-center shrink-0 mb-0.5">
+                      <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-700">
                         <User className="w-3 h-3 text-white" />
                       </div>
                     )}
@@ -943,10 +937,10 @@ const deductBalanceForText = (text: string) => {
                     <div className="w-5 h-5 rounded-full bg-red-100 dark:bg-red-950 flex items-center justify-center shrink-0">
                       <Bot className="w-3 h-3 text-red-600 dark:text-red-400" />
                     </div>
-                    <div className="flex items-center gap-1.5 rounded-2xl rounded-bl-md border border-slate-200/70 bg-white px-4 py-3 shadow-sm dark:border-white/10 dark:bg-slate-900">
-                      <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-bounce [animation-delay:-0.3s]" />
-                      <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-bounce [animation-delay:-0.15s]" />
-                      <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-bounce" />
+                    <div className="flex items-center gap-1.5 py-2">
+                      <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce [animation-delay:-0.3s]" />
+                      <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce [animation-delay:-0.15s]" />
+                      <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" />
                     </div>
                   </div>
                 )}
@@ -961,7 +955,7 @@ const deductBalanceForText = (text: string) => {
                         key={idx}
                         type="button"
                         onClick={() => sendMessage(sugg)}
-                        className="group text-left text-[11px] bg-white/90 dark:bg-slate-900 hover:bg-red-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200/80 dark:border-white/10 px-3 py-2.5 rounded-2xl shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md cursor-pointer truncate"
+                        className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-left text-xs text-slate-700 transition hover:bg-slate-50 dark:border-white/10 dark:bg-[#2f2f2f] dark:text-slate-200 dark:hover:bg-[#3a3a3a] cursor-pointer"
                       >
                         {sugg}
                       </button>
@@ -970,10 +964,11 @@ const deductBalanceForText = (text: string) => {
                 )}
 
                 <div ref={bottomRef} />
+                </div>
               </div>
 
               {selectedFile && (
-                <div className="shrink-0 border-t border-slate-200/70 bg-white/95 px-3 py-2.5 backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/95">
+                <div className="fixed bottom-[88px] left-0 right-0 z-30 mx-auto flex max-w-[760px] items-center justify-between border border-slate-200 bg-white px-3 py-2 shadow-lg md:left-[260px] dark:border-white/10 dark:bg-[#2f2f2f]">
                   <div className="flex items-center gap-2 truncate text-slate-700 dark:text-slate-300">
                     <div className="w-10 h-10 rounded-md overflow-hidden bg-black/10 shrink-0 border border-slate-300 dark:border-gray-600 flex items-center justify-center">
                       {selectedFile.type === "image" ? (
@@ -998,37 +993,40 @@ const deductBalanceForText = (text: string) => {
               )}
 
               <div className="
-                shrink-0
-                border-t
-                border-slate-200/70
-                bg-white/95
+                fixed
+                bottom-0
+                left-0
+                right-0
+                z-30
+                bg-gradient-to-t
+                from-white
+                via-white
+                to-white/0
                 px-3
-                pt-2.5
-                pb-[max(.75rem,env(safe-area-inset-bottom))]
-                backdrop-blur-2xl
-                dark:border-white/10
-                dark:bg-slate-950/95
+                pb-[max(12px,env(safe-area-inset-bottom))]
+                pt-6
+                md:left-[260px]
+                dark:from-[#212121]
+                dark:via-[#212121]
+                dark:to-transparent
               ">
+                <div className="mx-auto w-full max-w-[760px]">
                 <div className="
                   flex
-                  min-h-[52px]
+                  min-h-[56px]
                   items-center
                   gap-1
-                  rounded-[22px]
+                  rounded-[28px]
                   border
                   border-slate-200
-                  bg-slate-50
+                  bg-[#f4f4f4]
                   px-2
                   py-1.5
-                  shadow-inner
+                  shadow-sm
                   transition
-                  focus-within:border-red-300
-                  focus-within:bg-white
-                  focus-within:ring-4
-                  focus-within:ring-red-100/70
+                  focus-within:border-slate-300
                   dark:border-white/10
-                  dark:bg-slate-900
-                  dark:focus-within:ring-red-950/40
+                  dark:bg-[#2f2f2f]
                 ">
                   <input
                     type="file"
@@ -1070,8 +1068,8 @@ const deductBalanceForText = (text: string) => {
                         sendMessage();
                       }
                     }}
-                    placeholder="Type a message or ask for rooms..."
-                    className="min-w-0 flex-1 bg-transparent border-none outline-none text-base sm:text-sm text-slate-800 dark:text-slate-100 px-2 py-2 placeholder:text-slate-400"
+                    placeholder="Message RoomKhoj AI"
+                    className="min-w-0 flex-1 bg-transparent px-2 py-2 text-base text-slate-900 outline-none placeholder:text-slate-500 sm:text-sm dark:text-white dark:placeholder:text-slate-400"
                   />
 
                   <button
@@ -1079,14 +1077,19 @@ const deductBalanceForText = (text: string) => {
                     onClick={() => sendMessage()}
                     disabled={(!input.trim() && !selectedFile) || isTyping}
                     className={cn(
-                      "w-10 h-10 shrink-0 rounded-2xl flex items-center justify-center text-white transition-all cursor-pointer",
+                      "flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-white transition cursor-pointer",
                       (!input.trim() && !selectedFile) || isTyping
-                        ? "bg-slate-300 dark:bg-slate-700 cursor-not-allowed"
-                        : "bg-gradient-to-br from-red-500 via-rose-600 to-red-700 hover:scale-105 active:scale-95 shadow-lg shadow-red-500/20"
+                        ? "bg-slate-300 dark:bg-slate-600 cursor-not-allowed"
+                        : "bg-slate-900 hover:bg-black dark:bg-white dark:text-slate-900"
                     )}
                   >
                     {isTyping ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
                   </button>
+                </div>
+
+                <p className="mt-2 text-center text-[10px] text-slate-400">
+                  RoomKhoj AI can make mistakes. Check important information.
+                </p>
                 </div>
               </div>
             </div>
