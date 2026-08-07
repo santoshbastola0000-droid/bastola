@@ -159,7 +159,7 @@ export function AdminSidebar({
                 <Home className="h-5 w-5 text-white" />
               </div>
               <div>
-                <h2 className="font-bold text-lg">RentalService</h2>
+                <h2 className="font-bold text-lg">RoomKhoj</h2>
                 <p className="text-xs text-gray-400">Admin Panel</p>
               </div>
             </div>

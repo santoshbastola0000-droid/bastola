@@ -158,7 +158,7 @@ function SidebarBody({
           {!collapsed && (
             <div className="min-w-0">
               <p className="font-bold text-sm text-white leading-none truncate">
-                RentalService
+                RoomKhoj
               </p>
               <p className="text-[10px] text-gray-400 mt-0.5">User Dashboard</p>
             </div>

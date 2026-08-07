@@ -82,7 +82,7 @@ export default function ContactPage() {
       icon: MapPin,
       title: "Visit Our Office",
       details: [
-        "Rental Servise Pokhara",
+        "RoomKhoj Pokhara",
         "4th Floor, Pokhara Trade Mall Pokhara 33800, Gandaki Province Nepal",
         "Nepal",
       ],

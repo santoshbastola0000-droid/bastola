@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { RoomList } from "@/components/admin/RoomList";
 
 export const metadata: Metadata = {
-    title: "Rooms Management | Rental Service",
+    title: "Rooms Management | RoomKhoj",
     description: "Manage rooms and listings",
 };
 

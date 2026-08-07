@@ -1393,7 +1393,7 @@ export default function PropertyDetailsPage() {
                   {unlockedData ? (
                     <p className="font-bold text-slate-900">
                       {isAdminHost
-                        ? "Rental Service"
+                        ? "RoomKhoj"
                         : room.user?.name ||
                           room.contactPerson ||
                           "Property Owner"}

@@ -5,7 +5,7 @@ import Link from "next/link";
 import VerifyOTPForm from "@/components/auth/VerifyOTPForm";
 
 export const metadata: Metadata = {
-  title: "Verify OTP | Rental Servise",
+  title: "Verify OTP | RoomKhoj",
   description: "Verify your OTP",
 };
 

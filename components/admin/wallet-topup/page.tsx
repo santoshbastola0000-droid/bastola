@@ -236,7 +236,7 @@ export function SettingsTab() {
             id="adminLabel"
             value={adminLabel}
             onChange={(e) => setAdminLabel(e.target.value)}
-            placeholder="e.g., eSewa: 9876543210 | Khalti: RentalService"
+            placeholder="e.g., eSewa: 9876543210 | Khalti: RoomKhoj"
             className="max-w-md"
           />
           <p className="text-xs text-muted-foreground">

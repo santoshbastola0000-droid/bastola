@@ -4,7 +4,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 
 export const metadata: Metadata = {
-  title: "Rental Service",
+  title: "RoomKhoj",
   description: "Rental service app",
 };
 
