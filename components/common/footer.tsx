@@ -33,8 +33,8 @@ const quickLinks = [
   { href: "/", label: "Home", icon: Home },
   { href: "/rooms", label: "Browse Rooms", icon: Building2 },
   {
-    href: "/jobs/pokhara",
-    label: "Jobs in Pokhara",
+    href: "/jobs",
+    label: "Jobs in Nepal",
     icon: BriefcaseBusiness,
   },
   { href: "/host", label: "Become a Host", icon: Key },

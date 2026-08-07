@@ -46,7 +46,7 @@ export function NavLinks({
   const publicLinks = [
     { href: "/", label: "Home", icon: Home },
     { href: "/rooms", label: "Browse Rooms", icon: Compass },
-{ href: "/jobs/pokhara", label: "Jobs in Pokhara", icon: BriefcaseBusiness },
+{ href: "/jobs", label: "Find Jobs", icon: BriefcaseBusiness },
     { href: "/about", label: "About", icon: Sparkles },
     { href: "/contact", label: "Contact", icon: Hotel },
   ];
