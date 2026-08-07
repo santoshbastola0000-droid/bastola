@@ -786,30 +786,92 @@ const rLng = Number(
     (filters.allowsWomen ? 1 : 0) +
     (locationActive ? 1 : 0);
 
+  const premiumRooms = [...rooms].sort((a, b) => {
+    const scoreRoom = (room: Room) => {
+      let score = 0;
+
+      // Photo-rich listings get priority.
+      // Actual image resolution is not currently available in Room data,
+      // so number of photos is used as a quality signal.
+      score += Math.min(room.images?.length ?? 0, 8) * 12;
+
+      // Verified listings
+      if (room.user?.isVerified) {
+        score += 25;
+      }
+
+      // Complete descriptions
+      const descriptionLength = room.description?.trim().length ?? 0;
+
+      if (descriptionLength >= 150) {
+        score += 15;
+      } else if (descriptionLength >= 70) {
+        score += 8;
+      }
+
+      // Complete amenities
+      score += Math.min(room.amenities?.length ?? 0, 6) * 3;
+
+      // Useful listing details
+      if (Number(room.roomArea) > 0) score += 5;
+      if (Number(room.roomCapacity) > 0) score += 4;
+      if (Number(room.bathroomCapacity) > 0) score += 4;
+
+      if (
+        room.location?.formattedAddress ||
+        room.location?.city ||
+        room.address
+      ) {
+        score += 6;
+      }
+
+      // Recent listings get a small boost
+      const created = new Date(room.createdAt).getTime();
+
+      if (!Number.isNaN(created)) {
+        const ageDays =
+          (Date.now() - created) /
+          (1000 * 60 * 60 * 24);
+
+        if (ageDays <= 3) {
+          score += 12;
+        } else if (ageDays <= 7) {
+          score += 8;
+        } else if (ageDays <= 30) {
+          score += 4;
+        }
+      }
+
+      return score;
+    };
+
+    return scoreRoom(b) - scoreRoom(a);
+  });
+
   return (
     <>
       <NavBar />
       <ScrollProgressBar />
       <ScrollToTopFAB />
 
-      <div className="min-h-screen bg-[#f8f8fa]">
+      <div className="min-h-screen bg-gradient-to-b from-white via-[#fafafa] to-[#f5f5f7] pb-24 md:pb-0">
         {/* Header */}
-        <header className="bg-white border-b border-slate-100 pt-24 pb-6 shadow-sm">
+        <header className="relative overflow-hidden border-b border-slate-200/70 bg-gradient-to-br from-white via-red-50/40 to-white pt-24 pb-8 shadow-sm">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-              className="max-w-2xl mx-auto text-center mb-6"
+              className="relative z-10 max-w-3xl mx-auto text-center mb-7"
             >
-              <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
+              <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-950 tracking-tight">
                 Find Your{" "}
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-red-500 to-rose-600">
                   Perfect Room
                 </span>
               </h1>
               <motion.p
-                className="text-slate-500 text-sm mt-1.5"
+                className="text-slate-500 text-sm sm:text-base mt-2 max-w-xl mx-auto"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.2 }}
@@ -828,7 +890,7 @@ const rLng = Number(
                 duration: 0.45,
                 ease: [0.22, 1, 0.36, 1],
               }}
-              className="max-w-2xl mx-auto flex gap-2"
+              className="relative z-10 max-w-2xl mx-auto flex gap-2 rounded-2xl bg-white/80 backdrop-blur-xl p-2 shadow-lg shadow-slate-200/50 border border-white"
             >
               <div className="relative flex-1 group">
                 <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none transition-colors group-focus-within:text-red-400" />
@@ -837,7 +899,7 @@ const rLng = Number(
                   placeholder="Search by location or property name…"
                   value={searchInput}
                   onChange={(e) => handleSearch(e.target.value)}
-                  className="pl-10 pr-9 h-11 rounded-xl border-slate-200 focus:border-red-400 focus:ring-2 focus:ring-red-100 bg-white transition-all"
+                  className="pl-10 pr-9 h-12 rounded-xl border-slate-200 bg-white shadow-sm focus:border-red-400 focus:ring-2 focus:ring-red-100 transition-all"
                 />
                 <AnimatePresence>
                   {searchInput && (
@@ -913,7 +975,7 @@ const rLng = Number(
         </header>
 
         {/* Category chips */}
-        <div className="bg-white border-b border-slate-100 sticky top-0 z-20 shadow-sm">
+        <div className="sticky top-0 z-20 border-b border-slate-200/80 bg-white/90 backdrop-blur-xl shadow-sm">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center gap-2 py-3 overflow-x-auto scrollbar-hide">
               <button
@@ -966,11 +1028,11 @@ const rLng = Number(
         </div>
 
         {/* Main content */}
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-6 sm:py-8">
           <div className="flex flex-col lg:flex-row gap-6">
             {/* Sidebar */}
             <aside className="hidden lg:block w-64 shrink-0">
-              <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 sticky top-28">
+              <div className="bg-white/95 backdrop-blur-xl rounded-3xl border border-slate-200/80 shadow-lg shadow-slate-200/30 p-5 sticky top-28">
                 <h2 className="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
                   <SlidersHorizontal className="w-4 h-4 text-red-500" />
                   Filters
@@ -1190,7 +1252,7 @@ const rLng = Number(
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0 }}
                     transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-                    className="bg-white rounded-2xl border border-slate-100 shadow-sm py-20 px-8 text-center"
+                    className="bg-white rounded-3xl border border-slate-200/70 shadow-xl shadow-slate-200/30 py-20 px-8 text-center"
                   >
                     <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-red-50 to-rose-100 flex items-center justify-center mx-auto mb-4 shadow-inner">
                       <Home className="w-8 h-8 text-red-300" />
@@ -1219,8 +1281,8 @@ const rLng = Number(
                     animate={{ opacity: 1 }}
                     transition={{ duration: 0.2 }}
                   >
-                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
-                      {rooms.map((room, i) => (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
+                      {premiumRooms.map((room, i) => (
                         <AnimatedCard
                           key={room.id}
                           room={room}

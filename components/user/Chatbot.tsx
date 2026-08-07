@@ -29,6 +29,8 @@ import {
   Building2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { walletService } from "@/http/services/wallet.service";
 
 interface RoomItem {
   id?: string;
@@ -114,7 +116,16 @@ export function Chatbot() {
   const CHAT_KEY = `roomkhoj_chat_history_${loggedInUserId || "guest"}`;
 
   const [isOpen, setIsOpen] = useState(false);
-  const [balance, setBalance] = useState<number>(50);
+const queryClient = useQueryClient();
+
+const { data: walletBalanceData } = useQuery({
+  queryKey: ["wallet-balance"],
+  queryFn: () => walletService.getBalance(),
+  enabled: !!loggedInUserId,
+  staleTime: 30_000,
+});
+
+const balance = Number(walletBalanceData?.balance ?? 0);
   const [isTyping, setIsTyping] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
@@ -247,13 +258,21 @@ useEffect(() => {
     setShowHistorySidebar(false);
   };
 
-  const deductBalanceForText = (text: string) => {
-    if (!text) return;
-    const wordCount = text.trim().split(/\s+/).filter(Boolean).length;
-    const cost = Math.max(1, Math.ceil(wordCount / 5));
-    setBalance((prev) => Math.max(0, prev - cost));
-  };
+const deductBalanceForText = (text: string) => {
+  if (!text) return;
 
+  const wordCount = text.trim().split(/\s+/).filter(Boolean).length;
+  const cost = Math.max(1, Math.ceil(wordCount / 5));
+
+  queryClient.setQueryData(["wallet-balance"], (old: any) => {
+    if (!old) return old;
+
+    return {
+      ...old,
+      balance: Math.max(0, Number(old.balance ?? 0) - cost),
+    };
+  });
+};
   const toggleVoiceRecording = () => {
     if (typeof window === "undefined") return;
 
