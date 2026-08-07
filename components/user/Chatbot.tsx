@@ -213,7 +213,6 @@ useEffect(() => {
 
   useEffect(() => {
     if (isOpen) {
-      setTimeout(() => inputRef.current?.focus(), 200);
       scrollToBottom();
     }
   }, [isOpen, scrollToBottom]);
@@ -517,7 +516,7 @@ const deductBalanceForText = (text: string) => {
         type="button"
         onClick={() => setIsOpen((v) => !v)}
         className={cn(
-          "fixed bottom-5 right-5 z-50 w-13 h-13 rounded-full shadow-xl flex items-center justify-center transition-all duration-300 cursor-pointer",
+          "hidden md:flex fixed bottom-6 right-6 z-[9999] w-14 h-14 rounded-2xl shadow-[0_18px_45px_-12px_rgba(220,38,38,0.55)] items-center justify-center transition-all duration-300 cursor-pointer border border-white/20 backdrop-blur-xl",
           isOpen
             ? "bg-slate-800 text-white hover:bg-slate-900"
             : "bg-gradient-to-r from-red-600 to-rose-600 text-white hover:scale-105 active:scale-95"
@@ -530,29 +529,114 @@ const deductBalanceForText = (text: string) => {
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.96, y: 15 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.96, y: 15 }}
-            transition={{ duration: 0.18 }}
-            className="fixed bottom-20 right-4 sm:right-6 z-50 w-[92vw] sm:w-[400px] h-[550px] max-h-[80vh] flex flex-col rounded-2xl shadow-2xl overflow-hidden border border-slate-200 dark:border-gray-800 bg-white dark:bg-gray-950 font-sans"
+            initial={{
+              opacity: 0,
+              scale: 0.96,
+              y: 26,
+              filter: "blur(8px)",
+            }}
+            animate={{
+              opacity: 1,
+              scale: 1,
+              y: 0,
+              filter: "blur(0px)",
+            }}
+            exit={{
+              opacity: 0,
+              scale: 0.97,
+              y: 18,
+              filter: "blur(5px)",
+            }}
+            transition={{
+              type: "spring",
+              stiffness: 300,
+              damping: 28,
+              mass: 0.8,
+            }}
+            className="
+              fixed
+              inset-x-0
+              top-0
+              bottom-0
+              z-[9998]
+
+              flex
+              flex-col
+              overflow-hidden
+
+              bg-white
+              dark:bg-slate-950
+
+              font-sans
+
+              sm:inset-auto
+              sm:right-6
+              sm:bottom-6
+              sm:w-[430px]
+              sm:h-[min(720px,calc(100dvh-48px))]
+              sm:rounded-[30px]
+              sm:border
+              sm:border-white/70
+              sm:dark:border-white/10
+              sm:bg-white/95
+              sm:dark:bg-slate-950/95
+              sm:backdrop-blur-2xl
+              sm:shadow-[0_30px_90px_-20px_rgba(15,23,42,0.45)]
+            "
           >
-            <div className="px-3 py-2.5 bg-slate-900 text-white flex items-center justify-between shrink-0 shadow-xs border-b border-slate-800 z-30">
+            <div className="
+              relative
+              z-30
+              flex
+              shrink-0
+              items-center
+              justify-between
+              overflow-hidden
+              border-b
+              border-white/10
+              bg-gradient-to-r
+              from-slate-950
+              via-slate-900
+              to-red-950
+              px-4
+              py-3.5
+              text-white
+              shadow-lg
+            ">
+              <div className="pointer-events-none absolute -right-12 -top-16 h-32 w-32 rounded-full bg-red-500/20 blur-3xl" />
+              <div className="pointer-events-none absolute -left-10 bottom-0 h-20 w-20 rounded-full bg-rose-500/10 blur-2xl" />
               <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => setShowHistorySidebar((v) => !v)}
-                  className="p-1.5 text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition cursor-pointer"
+                  className="relative z-10 flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-slate-300 transition hover:bg-white/10 hover:text-white cursor-pointer"
                   title="Toggle History Sidebar"
                 >
                   <PanelLeft className="w-4 h-4" />
                 </button>
 
-                <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-red-600 to-rose-500 flex items-center justify-center shadow-xs">
-                  <Bot className="w-4 h-4 text-white" />
-                </div>
-                <div>
-                  <h2 className="text-xs font-semibold leading-none">RoomKhoj Assistant</h2>
-                  <span className="text-[10px] text-emerald-400 flex items-center gap-1 mt-0.5">
+                <motion.div
+                  animate={{
+                    boxShadow: [
+                      "0 0 0 rgba(239,68,68,0)",
+                      "0 0 24px rgba(239,68,68,.45)",
+                      "0 0 0 rgba(239,68,68,0)",
+                    ],
+                  }}
+                  transition={{
+                    duration: 2.8,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                  }}
+                  className="relative z-10 flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-red-500 via-rose-600 to-red-700 shadow-lg"
+                >
+                  <Sparkles className="h-5 w-5 text-white" />
+                </motion.div>
+                <div className="relative z-10">
+                  <h2 className="text-sm font-bold leading-none tracking-tight">
+                    RoomKhoj AI
+                  </h2>
+                  <span className="mt-1 flex items-center gap-1.5 text-[10px] font-medium text-emerald-300">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />{" "}
                     Online
                   </span>
@@ -560,20 +644,42 @@ const deductBalanceForText = (text: string) => {
               </div>
 
               <div className="flex items-center gap-2">
-                <div className="flex items-center gap-1 text-[11px] bg-slate-800/80 px-2 py-0.5 rounded-full text-amber-300 font-medium border border-slate-700">
+                <div className="relative z-10 flex items-center gap-1.5 rounded-full border border-amber-400/20 bg-amber-400/10 px-2.5 py-1.5 text-[11px] font-semibold text-amber-200 backdrop-blur-xl">
                   <Coins className="w-3 h-3" /> Rs.{balance}
                 </div>
                 <button
                   type="button"
                   onClick={() => setIsOpen(false)}
-                  className="p-1 text-slate-400 hover:text-white rounded-lg cursor-pointer"
+                  className="relative z-10 flex h-9 w-9 items-center justify-center rounded-xl bg-white/5 text-slate-300 transition hover:bg-white/10 hover:text-white cursor-pointer"
                 >
                   <X className="w-4 h-4" />
                 </button>
               </div>
             </div>
 
-            <div className="bg-red-50 dark:bg-red-950/30 px-3 py-1.5 border-b border-red-100 dark:border-red-900/40 flex items-center justify-between text-[11px] text-red-700 dark:text-red-300 shrink-0 z-20">
+            <div className="
+              z-20
+              flex
+              shrink-0
+              items-center
+              justify-between
+              border-b
+              border-red-100
+              bg-gradient-to-r
+              from-red-50
+              via-rose-50/70
+              to-white
+              px-4
+              py-2.5
+              text-[11px]
+              font-medium
+              text-red-700
+              dark:border-red-950
+              dark:from-red-950/40
+              dark:via-slate-950
+              dark:to-slate-950
+              dark:text-red-300
+            ">
               <span className="flex items-center gap-1 truncate">
                 <MapPin className="w-3 h-3 text-red-500 shrink-0" /> Find rooms near your location
               </span>
@@ -581,7 +687,7 @@ const deductBalanceForText = (text: string) => {
                 type="button"
                 onClick={requestUserLocation}
                 disabled={locationRequested}
-                className="px-2 py-0.5 bg-red-600 hover:bg-red-700 text-white rounded font-medium transition cursor-pointer text-[10px] shrink-0 ml-2"
+                className="ml-2 shrink-0 rounded-full bg-red-600 px-3 py-1.5 text-[10px] font-bold text-white shadow-sm transition hover:bg-red-700 active:scale-95 cursor-pointer disabled:opacity-60"
               >
                 {locationRequested ? "Detecting..." : "Detect Location"}
               </button>
@@ -590,7 +696,7 @@ const deductBalanceForText = (text: string) => {
             <div className="flex-1 flex flex-col h-full relative overflow-hidden">
               <div
                 className={cn(
-                  "absolute inset-y-0 left-0 z-40 w-64 bg-slate-900 text-white flex flex-col transition-transform duration-300 border-r border-slate-800 shadow-xl",
+                  "absolute inset-y-0 left-0 z-40 w-[82%] max-w-[290px] bg-slate-950/98 text-white flex flex-col transition-transform duration-300 border-r border-white/10 shadow-2xl backdrop-blur-2xl",
                   showHistorySidebar ? "translate-x-0" : "-translate-x-full"
                 )}
               >
@@ -598,7 +704,7 @@ const deductBalanceForText = (text: string) => {
                   <button
                     type="button"
                     onClick={startNewChat}
-                    className="flex items-center gap-2 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-medium rounded-lg transition cursor-pointer w-full justify-center"
+                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 px-3 py-2.5 text-xs font-semibold text-white shadow-lg transition hover:brightness-105 active:scale-[.98] cursor-pointer"
                   >
                     <Plus className="w-4 h-4" /> New Chat
                   </button>
@@ -659,27 +765,43 @@ const deductBalanceForText = (text: string) => {
                 )}
               </div>
 
-              <div className="flex-1 overflow-y-auto px-3 py-3 space-y-3 bg-slate-50 dark:bg-gray-900">
+              <div className="
+                flex-1
+                space-y-4
+                overflow-y-auto
+                overscroll-contain
+                bg-gradient-to-b
+                from-slate-50
+                via-white
+                to-slate-50
+                px-3
+                py-4
+                sm:px-4
+                dark:from-slate-950
+                dark:via-slate-950
+                dark:to-slate-900
+                [scrollbar-width:thin]
+              ">
                 {messages.map((msg) => (
                   <div
                     key={msg.id}
                     className={cn(
-                      "flex items-end gap-1.5",
+                      "flex items-end gap-2",
                       msg.role === "user" ? "justify-end" : "justify-start"
                     )}
                   >
                     {msg.role === "bot" && (
-                      <div className="w-5 h-5 rounded-full bg-red-100 dark:bg-red-950 flex items-center justify-center shrink-0 mb-0.5">
-                        <Bot className="w-3 h-3 text-red-600 dark:text-red-400" />
+                      <div className="mb-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-xl border border-red-100 bg-gradient-to-br from-red-50 to-rose-100 shadow-sm dark:border-red-950 dark:from-red-950 dark:to-slate-900">
+                        <Sparkles className="h-3.5 w-3.5 text-red-600 dark:text-red-400" />
                       </div>
                     )}
 
                     <div
                       className={cn(
-                        "max-w-[88%] px-3 py-2 rounded-2xl text-xs leading-relaxed shadow-2xs",
+                        "max-w-[86%] px-3.5 py-2.5 sm:px-4 sm:py-3 rounded-[20px] text-[13px] leading-relaxed shadow-sm",
                         msg.role === "bot"
-                          ? "bg-white dark:bg-gray-800 text-slate-800 dark:text-slate-100 rounded-bl-xs border border-slate-100 dark:border-gray-700"
-                          : "bg-red-600 text-white rounded-br-xs"
+                          ? "border border-slate-200/70 bg-white text-slate-800 rounded-bl-md shadow-[0_8px_24px_-14px_rgba(15,23,42,.35)] dark:border-white/10 dark:bg-slate-900 dark:text-slate-100"
+                          : "bg-gradient-to-br from-red-600 via-rose-600 to-red-700 text-white rounded-br-md shadow-[0_10px_26px_-14px_rgba(220,38,38,.7)]"
                       )}
                     >
                       {msg.mediaUrl && (
@@ -821,7 +943,7 @@ const deductBalanceForText = (text: string) => {
                     <div className="w-5 h-5 rounded-full bg-red-100 dark:bg-red-950 flex items-center justify-center shrink-0">
                       <Bot className="w-3 h-3 text-red-600 dark:text-red-400" />
                     </div>
-                    <div className="bg-white dark:bg-gray-800 px-3 py-2 rounded-2xl rounded-bl-xs border border-slate-100 dark:border-gray-700 flex items-center gap-1">
+                    <div className="flex items-center gap-1.5 rounded-2xl rounded-bl-md border border-slate-200/70 bg-white px-4 py-3 shadow-sm dark:border-white/10 dark:bg-slate-900">
                       <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-bounce [animation-delay:-0.3s]" />
                       <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-bounce [animation-delay:-0.15s]" />
                       <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-bounce" />
@@ -839,7 +961,7 @@ const deductBalanceForText = (text: string) => {
                         key={idx}
                         type="button"
                         onClick={() => sendMessage(sugg)}
-                        className="text-left text-[11px] bg-white dark:bg-gray-800 hover:bg-red-50 dark:hover:bg-gray-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-gray-700 px-2.5 py-1.5 rounded-xl transition cursor-pointer truncate"
+                        className="group text-left text-[11px] bg-white/90 dark:bg-slate-900 hover:bg-red-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200/80 dark:border-white/10 px-3 py-2.5 rounded-2xl shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md cursor-pointer truncate"
                       >
                         {sugg}
                       </button>
@@ -851,7 +973,7 @@ const deductBalanceForText = (text: string) => {
               </div>
 
               {selectedFile && (
-                <div className="px-3 py-2 bg-slate-100 dark:bg-gray-800 flex items-center justify-between border-t border-slate-200 dark:border-gray-700 shrink-0">
+                <div className="shrink-0 border-t border-slate-200/70 bg-white/95 px-3 py-2.5 backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/95">
                   <div className="flex items-center gap-2 truncate text-slate-700 dark:text-slate-300">
                     <div className="w-10 h-10 rounded-md overflow-hidden bg-black/10 shrink-0 border border-slate-300 dark:border-gray-600 flex items-center justify-center">
                       {selectedFile.type === "image" ? (
@@ -875,8 +997,39 @@ const deductBalanceForText = (text: string) => {
                 </div>
               )}
 
-              <div className="p-2 border-t border-slate-200 dark:border-gray-800 bg-white dark:bg-gray-950 shrink-0">
-                <div className="flex items-center gap-1 bg-slate-100 dark:bg-gray-800/80 rounded-full px-2 py-1 border border-slate-200/80 dark:border-gray-700">
+              <div className="
+                shrink-0
+                border-t
+                border-slate-200/70
+                bg-white/95
+                px-3
+                pt-2.5
+                pb-[max(.75rem,env(safe-area-inset-bottom))]
+                backdrop-blur-2xl
+                dark:border-white/10
+                dark:bg-slate-950/95
+              ">
+                <div className="
+                  flex
+                  min-h-[52px]
+                  items-center
+                  gap-1
+                  rounded-[22px]
+                  border
+                  border-slate-200
+                  bg-slate-50
+                  px-2
+                  py-1.5
+                  shadow-inner
+                  transition
+                  focus-within:border-red-300
+                  focus-within:bg-white
+                  focus-within:ring-4
+                  focus-within:ring-red-100/70
+                  dark:border-white/10
+                  dark:bg-slate-900
+                  dark:focus-within:ring-red-950/40
+                ">
                   <input
                     type="file"
                     ref={fileInputRef}
@@ -918,7 +1071,7 @@ const deductBalanceForText = (text: string) => {
                       }
                     }}
                     placeholder="Type a message or ask for rooms..."
-                    className="flex-1 bg-transparent border-none outline-none text-xs text-slate-800 dark:text-slate-100 px-1 py-1 placeholder:text-slate-400"
+                    className="min-w-0 flex-1 bg-transparent border-none outline-none text-base sm:text-sm text-slate-800 dark:text-slate-100 px-2 py-2 placeholder:text-slate-400"
                   />
 
                   <button
@@ -926,10 +1079,10 @@ const deductBalanceForText = (text: string) => {
                     onClick={() => sendMessage()}
                     disabled={(!input.trim() && !selectedFile) || isTyping}
                     className={cn(
-                      "w-7 h-7 rounded-full flex items-center justify-center text-white transition cursor-pointer",
+                      "w-10 h-10 shrink-0 rounded-2xl flex items-center justify-center text-white transition-all cursor-pointer",
                       (!input.trim() && !selectedFile) || isTyping
-                        ? "bg-slate-300 dark:bg-gray-700 cursor-not-allowed"
-                        : "bg-red-600 hover:bg-red-700 shadow-xs"
+                        ? "bg-slate-300 dark:bg-slate-700 cursor-not-allowed"
+                        : "bg-gradient-to-br from-red-500 via-rose-600 to-red-700 hover:scale-105 active:scale-95 shadow-lg shadow-red-500/20"
                     )}
                   >
                     {isTyping ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}

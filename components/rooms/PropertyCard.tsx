@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
   MapPin,
@@ -15,7 +15,9 @@ import {
   Bookmark,
   Share2,
   ShieldCheck,
+  ArrowUpRight,
 } from "lucide-react";
+
 import type { Room } from "@/types/room.types";
 import { formatPriceNPR, resolveImageUrl } from "@/lib/utils";
 import { amenityIcons, categoryConfig } from "@/lib/room-utils";
@@ -25,7 +27,12 @@ interface PropertyCardProps {
   index?: number;
 }
 
-export function PropertyCard({ room, index = 0 }: PropertyCardProps) {
+export function PropertyCard({
+  room,
+  index = 0,
+}: PropertyCardProps) {
+  const router = useRouter();
+
   const [imgError, setImgError] = useState(false);
   const [imgLoaded, setImgLoaded] = useState(false);
   const [liked, setLiked] = useState(false);
@@ -63,6 +70,10 @@ export function PropertyCard({ room, index = 0 }: PropertyCardProps) {
   const ownerInitial =
     ownerName.trim().charAt(0).toUpperCase() || "R";
 
+  const openRoom = () => {
+    router.push(`/property/${room.id}`);
+  };
+
   const handleShare = async () => {
     const url = `${window.location.origin}/property/${room.id}`;
 
@@ -70,7 +81,9 @@ export function PropertyCard({ room, index = 0 }: PropertyCardProps) {
       if (navigator.share) {
         await navigator.share({
           title: room.title,
-          text: `${room.title} - ${formatPriceNPR(Number(room.price))}`,
+          text: `${room.title} - ${formatPriceNPR(
+            Number(room.price)
+          )}`,
           url,
         });
 
@@ -79,34 +92,49 @@ export function PropertyCard({ room, index = 0 }: PropertyCardProps) {
 
       await navigator.clipboard.writeText(url);
     } catch {
-      // User cancelled share or clipboard unavailable
+      // User cancelled
     }
   };
 
   return (
     <motion.article
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 18 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{
-        duration: 0.4,
-        delay: index * 0.04,
+        duration: 0.35,
+        delay: Math.min(index, 8) * 0.035,
       }}
+      onClick={openRoom}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") {
+          openRoom();
+        }
+      }}
+      role="link"
+      tabIndex={0}
       className="
         group
         relative
+        cursor-pointer
         overflow-hidden
-        bg-white
-        border border-slate-200/80
-        shadow-sm
-
         rounded-[24px]
-
-        hover:shadow-xl
+        border
+        border-slate-200/80
+        bg-white
+        shadow-[0_6px_24px_rgba(15,23,42,0.06)]
         transition-all
         duration-300
+
+        hover:-translate-y-1
+        hover:border-slate-300
+        hover:shadow-[0_20px_50px_rgba(15,23,42,0.14)]
+
+        focus:outline-none
+        focus:ring-2
+        focus:ring-red-500/30
       "
     >
-      {/* IMAGE / PREMIUM HERO */}
+      {/* IMAGE */}
       <div
         className="
           relative
@@ -115,17 +143,11 @@ export function PropertyCard({ room, index = 0 }: PropertyCardProps) {
 
           aspect-[4/5]
           sm:aspect-[4/3]
+          lg:aspect-[16/11]
         "
       >
-        <Link
-          href={`/property/${room.id}`}
-          className="absolute inset-0 z-10"
-          aria-label={room.title}
-        />
-
-        {/* Skeleton */}
         {!imgLoaded && (
-          <div className="absolute inset-0 bg-slate-200 animate-pulse" />
+          <div className="absolute inset-0 animate-pulse bg-slate-200" />
         )}
 
         {imageUrl ? (
@@ -133,46 +155,45 @@ export function PropertyCard({ room, index = 0 }: PropertyCardProps) {
           <img
             src={imageUrl}
             alt={room.title}
+            onLoad={() => setImgLoaded(true)}
+            onError={() => {
+              setImgError(true);
+              setImgLoaded(true);
+            }}
             className={`
-              w-full
               h-full
+              w-full
               object-cover
               transition-all
               duration-700
-              group-hover:scale-[1.03]
+              group-hover:scale-[1.04]
               ${
                 imgLoaded
                   ? "opacity-100"
                   : "opacity-0"
               }
             `}
-            onLoad={() => setImgLoaded(true)}
-            onError={() => {
-              setImgError(true);
-              setImgLoaded(true);
-            }}
           />
         ) : (
           <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-red-50 via-white to-rose-100">
-            <Home className="w-20 h-20 text-red-200" />
+            <Home className="h-20 w-20 text-red-200" />
           </div>
         )}
 
-        {/* Premium overlays */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/5 to-black/25" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/5 to-black/20" />
 
-        {/* TOP LEFT BADGES */}
-        <div className="absolute top-3 left-3 z-20 flex flex-wrap gap-2">
+        {/* BADGES */}
+        <div className="absolute left-3 top-3 z-20 flex gap-2">
           <span
             className="
               rounded-full
               bg-white/95
-              backdrop-blur-md
               px-3
               py-1.5
               text-[11px]
               font-bold
-              shadow-sm
+              shadow
+              backdrop-blur-lg
             "
             style={{
               color: catCfg.color,
@@ -182,76 +203,55 @@ export function PropertyCard({ room, index = 0 }: PropertyCardProps) {
           </span>
 
           {room.user?.isVerified && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-black/60 backdrop-blur-md px-2.5 py-1.5 text-[10px] font-semibold text-white">
-              <ShieldCheck className="w-3.5 h-3.5" />
+            <span className="flex items-center gap-1 rounded-full bg-black/55 px-2.5 py-1.5 text-[10px] font-semibold text-white backdrop-blur-lg">
+              <ShieldCheck className="h-3.5 w-3.5" />
               Verified
             </span>
           )}
         </div>
 
-        {/* WOMEN BADGE */}
         {room.allowsWomen && (
-          <div className="absolute top-3 right-3 z-20">
-            <span className="rounded-full bg-pink-500/90 backdrop-blur-md px-2.5 py-1.5 text-[10px] font-bold text-white shadow-sm">
-              Women OK
-            </span>
-          </div>
+          <span className="absolute right-3 top-3 z-20 rounded-full bg-pink-500 px-2.5 py-1.5 text-[10px] font-bold text-white shadow">
+            Women OK
+          </span>
         )}
 
-        {/* RIGHT SOCIAL ACTIONS */}
+        {/* MOBILE SOCIAL ACTIONS */}
         <div
           className="
             absolute
-            right-3
             bottom-[96px]
+            right-3
             z-30
             flex
             flex-col
             items-center
-            gap-4
+            gap-3
+            sm:hidden
           "
+          onClick={(e) => e.stopPropagation()}
         >
-          {/* PROFILE */}
           <div className="relative">
-            <div
-              className="
-                flex
-                h-12
-                w-12
-                items-center
-                justify-center
-                rounded-full
-                border-2
-                border-white
-                bg-red-600
-                text-sm
-                font-bold
-                text-white
-                shadow-lg
-              "
-            >
+            <div className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-white bg-red-600 text-sm font-bold text-white shadow-lg">
               {ownerInitial}
             </div>
 
             {room.user?.isVerified && (
-              <div className="absolute -right-1 -bottom-1 flex h-5 w-5 items-center justify-center rounded-full border-2 border-white bg-blue-500">
+              <div className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full border-2 border-white bg-blue-500">
                 <CheckCircle className="h-3 w-3 text-white" />
               </div>
             )}
           </div>
 
-          {/* LIKE */}
           <button
             type="button"
             onClick={(e) => {
-              e.preventDefault();
               e.stopPropagation();
-              setLiked((v) => !v);
+              setLiked((value) => !value);
             }}
             className="flex flex-col items-center gap-1 text-white"
-            aria-label="Like room"
           >
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-black/35 backdrop-blur-md">
+            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-black/35 backdrop-blur-md">
               <Heart
                 className={`h-6 w-6 ${
                   liked
@@ -259,40 +259,39 @@ export function PropertyCard({ room, index = 0 }: PropertyCardProps) {
                     : "text-white"
                 }`}
               />
-            </div>
+            </span>
 
-            <span className="text-[10px] font-medium drop-shadow">
+            <span className="text-[10px] font-medium">
               Like
             </span>
           </button>
 
-          {/* COMMENT */}
-          <Link
-            href={`/property/${room.id}#comments`}
-            onClick={(e) => e.stopPropagation()}
-            className="flex flex-col items-center gap-1 text-white"
-          >
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-black/35 backdrop-blur-md">
-              <MessageCircle className="h-6 w-6" />
-            </div>
-
-            <span className="text-[10px] font-medium drop-shadow">
-              Comment
-            </span>
-          </Link>
-
-          {/* SAVE */}
           <button
             type="button"
             onClick={(e) => {
-              e.preventDefault();
               e.stopPropagation();
-              setSaved((v) => !v);
+              router.push(`/property/${room.id}#comments`);
             }}
             className="flex flex-col items-center gap-1 text-white"
-            aria-label="Save room"
           >
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-black/35 backdrop-blur-md">
+            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-black/35 backdrop-blur-md">
+              <MessageCircle className="h-6 w-6" />
+            </span>
+
+            <span className="text-[10px] font-medium">
+              Comment
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setSaved((value) => !value);
+            }}
+            className="flex flex-col items-center gap-1 text-white"
+          >
+            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-black/35 backdrop-blur-md">
               <Bookmark
                 className={`h-6 w-6 ${
                   saved
@@ -300,48 +299,148 @@ export function PropertyCard({ room, index = 0 }: PropertyCardProps) {
                     : "text-white"
                 }`}
               />
-            </div>
+            </span>
 
-            <span className="text-[10px] font-medium drop-shadow">
+            <span className="text-[10px] font-medium">
               Save
             </span>
           </button>
 
-          {/* SHARE */}
           <button
             type="button"
             onClick={(e) => {
-              e.preventDefault();
               e.stopPropagation();
               void handleShare();
             }}
             className="flex flex-col items-center gap-1 text-white"
-            aria-label="Share room"
           >
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-black/35 backdrop-blur-md">
+            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-black/35 backdrop-blur-md">
               <Share2 className="h-6 w-6" />
-            </div>
+            </span>
 
-            <span className="text-[10px] font-medium drop-shadow">
+            <span className="text-[10px] font-medium">
               Share
             </span>
           </button>
         </div>
 
-        {/* BOTTOM INFORMATION */}
+        {/* DESKTOP ACTIONS */}
+        <div
+          className="
+            absolute
+            bottom-3
+            right-3
+            z-30
+            hidden
+            items-center
+            gap-2
+            sm:flex
+          "
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setLiked((value) => !value);
+            }}
+            aria-label="Like"
+            className="
+              flex
+              h-9
+              w-9
+              items-center
+              justify-center
+              rounded-full
+              bg-white/95
+              text-slate-700
+              shadow-lg
+              backdrop-blur-md
+              transition
+              hover:scale-105
+            "
+          >
+            <Heart
+              className={`h-4.5 w-4.5 ${
+                liked
+                  ? "fill-red-500 text-red-500"
+                  : ""
+              }`}
+            />
+          </button>
+
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setSaved((value) => !value);
+            }}
+            aria-label="Save"
+            className="
+              flex
+              h-9
+              w-9
+              items-center
+              justify-center
+              rounded-full
+              bg-white/95
+              text-slate-700
+              shadow-lg
+              backdrop-blur-md
+              transition
+              hover:scale-105
+            "
+          >
+            <Bookmark
+              className={`h-4.5 w-4.5 ${
+                saved
+                  ? "fill-yellow-400 text-yellow-500"
+                  : ""
+              }`}
+            />
+          </button>
+
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              void handleShare();
+            }}
+            aria-label="Share"
+            className="
+              flex
+              h-9
+              w-9
+              items-center
+              justify-center
+              rounded-full
+              bg-white/95
+              text-slate-700
+              shadow-lg
+              backdrop-blur-md
+              transition
+              hover:scale-105
+            "
+          >
+            <Share2 className="h-4.5 w-4.5" />
+          </button>
+        </div>
+
+        {/* IMAGE BOTTOM TEXT */}
         <div
           className="
             absolute
             bottom-0
             left-0
-            right-[64px]
             z-20
             p-4
+            pr-16
             text-white
+
+            sm:right-[130px]
           "
         >
-          {/* OWNER */}
-          <div className="mb-2 flex items-center gap-1.5">
+          <div className="mb-1.5 flex items-center gap-1.5">
             <span className="text-xs font-semibold">
               {ownerName}
             </span>
@@ -351,18 +450,11 @@ export function PropertyCard({ room, index = 0 }: PropertyCardProps) {
             )}
           </div>
 
-          {/* TITLE */}
-          <Link
-            href={`/property/${room.id}`}
-            className="block"
-          >
-            <h3 className="mb-1 line-clamp-2 text-[17px] font-bold leading-snug">
-              {room.title}
-            </h3>
-          </Link>
+          <h3 className="line-clamp-2 text-[17px] font-bold leading-snug sm:text-lg">
+            {room.title}
+          </h3>
 
-          {/* LOCATION */}
-          <div className="mb-2 flex items-center gap-1 text-white/85">
+          <div className="mt-1.5 flex items-center gap-1 text-white/85">
             <MapPin className="h-3.5 w-3.5 shrink-0" />
 
             <span className="truncate text-xs">
@@ -370,61 +462,52 @@ export function PropertyCard({ room, index = 0 }: PropertyCardProps) {
             </span>
           </div>
 
-          {/* PRICE */}
-          <div className="flex items-end gap-1">
-            <span className="text-xl font-extrabold">
+          <div className="mt-2 flex items-end gap-1">
+            <span className="text-xl font-extrabold sm:text-2xl">
               {formatPriceNPR(Number(room.price))}
             </span>
 
-            <span className="pb-0.5 text-[11px] text-white/70">
+            <span className="pb-1 text-[10px] text-white/70">
               / month
             </span>
           </div>
         </div>
       </div>
 
-      {/* LOWER PREMIUM DETAILS */}
-      <div className="p-4">
-        {/* QUICK STATS */}
-        <div className="grid grid-cols-3 overflow-hidden rounded-2xl border border-slate-100 bg-slate-50">
-          <div className="flex flex-col items-center justify-center gap-1 px-2 py-3">
+      {/* DETAILS */}
+      <div className="p-4 sm:p-5">
+        <div className="grid grid-cols-3 overflow-hidden rounded-2xl border border-slate-100 bg-slate-50/80">
+          <div className="flex flex-col items-center gap-1 py-3">
             <Users className="h-4 w-4 text-red-500" />
-
             <span className="text-sm font-bold text-slate-900">
               {room.roomCapacity}
             </span>
-
             <span className="text-[10px] text-slate-500">
               People
             </span>
           </div>
 
-          <div className="flex flex-col items-center justify-center gap-1 border-x border-slate-200 px-2 py-3">
+          <div className="flex flex-col items-center gap-1 border-x border-slate-200 py-3">
             <Bath className="h-4 w-4 text-red-500" />
-
             <span className="text-sm font-bold text-slate-900">
               {room.bathroomCapacity}
             </span>
-
             <span className="text-[10px] text-slate-500">
               Bath
             </span>
           </div>
 
-          <div className="flex flex-col items-center justify-center gap-1 px-2 py-3">
+          <div className="flex flex-col items-center gap-1 py-3">
             <Square className="h-4 w-4 text-red-500" />
-
             <span className="text-sm font-bold text-slate-900">
               {Number(room.roomArea || 0).toFixed(0)}
             </span>
-
             <span className="text-[10px] text-slate-500">
               m²
             </span>
           </div>
         </div>
 
-        {/* AMENITIES */}
         {topAmenities.length > 0 && (
           <div className="mt-3 flex flex-wrap gap-2">
             {topAmenities.map((amenity) => {
@@ -451,7 +534,6 @@ export function PropertyCard({ room, index = 0 }: PropertyCardProps) {
                   "
                 >
                   <Icon className="h-3 w-3 text-red-500" />
-
                   {amenity}
                 </span>
               );
@@ -459,16 +541,22 @@ export function PropertyCard({ room, index = 0 }: PropertyCardProps) {
           </div>
         )}
 
-        {/* STATUS */}
         <div className="mt-4 flex items-center justify-between">
-          <span className="text-xs text-slate-400">
+          <span className="inline-flex items-center gap-1 text-xs font-medium text-slate-500">
             {room.category}
           </span>
 
-          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-semibold text-emerald-700">
-            <CheckCircle className="h-3 w-3" />
-            {room.listingStatus}
-          </span>
+          <div className="flex items-center gap-3">
+            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-semibold text-emerald-700">
+              <CheckCircle className="h-3 w-3" />
+              {room.listingStatus}
+            </span>
+
+            <span className="hidden items-center gap-1 text-xs font-semibold text-red-600 sm:flex">
+              View
+              <ArrowUpRight className="h-3.5 w-3.5" />
+            </span>
+          </div>
         </div>
       </div>
     </motion.article>
