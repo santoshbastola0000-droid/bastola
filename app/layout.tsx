@@ -6,7 +6,7 @@ import { Toaster } from "sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { SessionChecker } from "@/components/SessionChecker";
 import { GlobalChatbot } from "@/components/GlobalChatbot";
-
+import { MobileBottomNav } from "@/components/MobileBottomNav";
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -100,7 +100,9 @@ export default function RootLayout({
         <QueryClientProviderWrapper>
           <TooltipProvider>
             {children}
-            <GlobalChatbot />
+
+          <MobileBottomNav />           
+          <GlobalChatbot />
           </TooltipProvider>
           <Toaster />
         </QueryClientProviderWrapper>

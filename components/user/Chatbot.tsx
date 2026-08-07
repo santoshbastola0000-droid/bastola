@@ -25,6 +25,8 @@ import {
   ExternalLink,
   Phone,
   Home,
+  Briefcase,
+  Building2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -47,8 +49,23 @@ interface ChatMessage {
   timestamp: string;
   roomDetails?: RoomItem;
   roomsList?: RoomItem[];
+  jobDetails?: JobItem;
+  jobsList?: JobItem[];
 }
-
+interface JobItem {
+  id?: string;
+  number?: number;
+  jobTitle?: string;
+  companyName?: string;
+  location?: string;
+  salary?: string | number | null;
+  experience?: string | null;
+  contactPhone?: string | null;
+  contact?: string | null;
+  description?: string | null;
+  matchPercent?: number;
+  createdAt?: string;
+}
 interface ChatSession {
   id: string;
   title: string;
@@ -107,6 +124,19 @@ export function Chatbot() {
     type: "image" | "video" | "file";
     rawFile: File;
   } | null>(null);
+useEffect(() => {
+  const openChatbot = () => {
+    setIsOpen(true);
+  };
+
+  window.addEventListener("open-roomkhoj-chatbot", openChatbot);
+
+  return () => {
+    window.removeEventListener("open-roomkhoj-chatbot", openChatbot);
+  };
+}, []);
+
+
   const [showHistorySidebar, setShowHistorySidebar] = useState(false);
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
@@ -379,10 +409,22 @@ export function Chatbot() {
         throw new Error(data?.message || data?.error || `API Error status: ${res.status}`);
       }
 
-      let responseObj = data?.reply || data?.response || data?.data || data;
+      const responseObj =
+        typeof data?.reply === "object" &&
+        data.reply !== null
+          ? data.reply
+          : typeof data?.response === "object" &&
+              data.response !== null
+            ? data.response
+            : typeof data?.data === "object" &&
+                data.data !== null
+              ? data.data
+              : data;
       let botReplyText = "";
       let roomDetails = undefined;
       let roomsList = undefined;
+      let jobDetails: JobItem | undefined = undefined;
+      let jobsList: JobItem[] | undefined = undefined;
       let mediaUrl: string | undefined = undefined;
       let mediaType: "image" | "video" | "file" | undefined = undefined;
 
@@ -397,11 +439,26 @@ export function Chatbot() {
           "";
         roomDetails = responseObj.roomDetails || responseObj.details;
         roomsList = responseObj.roomsList || responseObj.rooms;
+        jobDetails =
+          responseObj.jobDetails ||
+          data?.jobDetails;
+
+        jobsList =
+          responseObj.jobsList ||
+          responseObj.jobs ||
+          data?.jobsList ||
+          data?.jobs;
         mediaUrl = responseObj.mediaUrl || responseObj.image;
         mediaType = mediaUrl ? "image" : undefined;
       }
 
-      if (!botReplyText && !roomDetails && !roomsList) {
+      if (
+        !botReplyText &&
+        !roomDetails &&
+        !roomsList &&
+        !jobDetails &&
+        !jobsList
+      ) {
         botReplyText = "I found matching details for your search query.";
       }
 
@@ -413,6 +470,8 @@ export function Chatbot() {
         mediaType,
         roomDetails,
         roomsList,
+        jobDetails,
+        jobsList,
         timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
       };
 
