@@ -131,7 +131,7 @@ export function NavBar() {
                   {/* Mobile Footer */}
                   <div className="mt-8 pt-6 border-t">
                     <p className="text-xs text-slate-400 text-center">
-                      © 2026 RoomServise. All rights reserved.
+                      © 2026 RoomKhoj. All rights reserved.
                     </p>
                   </div>
                 </div>

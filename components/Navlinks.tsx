@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Hotel, LayoutDashboard, Sparkles, Compass } from "lucide-react";
+import { Home, Hotel, LayoutDashboard, Sparkles, Compass, BriefcaseBusiness } from "lucide-react";
 
 interface NavLinksProps {
   variant?: "desktop" | "mobile";
@@ -46,6 +46,7 @@ export function NavLinks({
   const publicLinks = [
     { href: "/", label: "Home", icon: Home },
     { href: "/rooms", label: "Browse Rooms", icon: Compass },
+{ href: "/jobs/pokhara", label: "Jobs in Pokhara", icon: BriefcaseBusiness },
     { href: "/about", label: "About", icon: Sparkles },
     { href: "/contact", label: "Contact", icon: Hotel },
   ];

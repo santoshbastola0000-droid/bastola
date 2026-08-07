@@ -18,8 +18,72 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "RoomKhoj",
-  description: "Rental servise app",
+  metadataBase: new URL("https://www.roomkhoj.com"),
+
+  title: {
+    default: "RoomKhoj | Rooms for Rent & Jobs in Nepal",
+    template: "%s | RoomKhoj",
+  },
+
+  description:
+    "Find rooms, flats, apartments and houses for rent in Nepal. Search room rentals and job opportunities in Pokhara with RoomKhoj.",
+
+  applicationName: "RoomKhoj",
+  creator: "RoomKhoj",
+  publisher: "RoomKhoj",
+
+  keywords: [
+    "RoomKhoj",
+    "rooms for rent in Nepal",
+    "room rental Pokhara",
+    "room for rent in Pokhara",
+    "jobs in Pokhara",
+    "job vacancy in Pokhara",
+    "flat for rent in Nepal",
+  ],
+
+  openGraph: {
+    title: "RoomKhoj | Rooms for Rent & Jobs in Nepal",
+    description:
+      "Find rental rooms, flats, houses and job opportunities in Nepal with RoomKhoj.",
+    url: "https://www.roomkhoj.com",
+    siteName: "RoomKhoj",
+    locale: "en_NP",
+    type: "website",
+    images: [
+      {
+        url: "/roomkhoj-logo.png",
+        width: 1254,
+        height: 1254,
+        alt: "RoomKhoj",
+      },
+    ],
+  },
+
+  twitter: {
+    card: "summary_large_image",
+    title: "RoomKhoj | Rooms for Rent & Jobs in Nepal",
+    description:
+      "Find rental rooms and job opportunities in Nepal with RoomKhoj.",
+    images: ["/roomkhoj-logo.png"],
+  },
+
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+      "max-video-preview": -1,
+    },
+  },
+
+  icons: {
+    icon: "/roomkhoj-logo.png",
+    apple: "/roomkhoj-logo.png",
+  },
 };
 
 export default function RootLayout({

@@ -28,10 +28,9 @@ export function Logo({
       />
 
       <span
-        className={`hidden text-xl font-extrabold tracking-tight sm:inline ${
-          isLight ? "text-white" : "text-slate-900"
-        }`}
-      >
+className={`text-base font-extrabold tracking-tight sm:text-xl ${
+  isLight ? "text-white" : "text-slate-900"
+}`}      >
         Room<span className="text-red-600">Khoj</span>
       </span>
     </Link>

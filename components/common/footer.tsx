@@ -19,20 +19,29 @@ import {
   CreditCard,
   Headphones,
   FileText,
-  Globe,
+BriefcaseBusiness,  
+Globe,
 } from "lucide-react";
 import { Logo } from "@/components/Logo";
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
 
-  const quickLinks = [
-    { href: "/", label: "Home", icon: Home },
-    { href: "/rooms", label: "Browse Rooms", icon: Building2 },
-    { href: "/host", label: "Become a Host", icon: Key },
-    { href: "/about", label: "About Us", icon: Users },
-    { href: "/contact", label: "Contact", icon: Headphones },
-  ];
+  
+
+const quickLinks = [
+  { href: "/", label: "Home", icon: Home },
+  { href: "/rooms", label: "Browse Rooms", icon: Building2 },
+  {
+    href: "/jobs/pokhara",
+    label: "Jobs in Pokhara",
+    icon: BriefcaseBusiness,
+  },
+  { href: "/host", label: "Become a Host", icon: Key },
+  { href: "/about", label: "About Us", icon: Users },
+  { href: "/contact", label: "Contact", icon: Headphones },
+];
+
 
   const propertyTypes = [
     { name: "Apartments", icon: Building2, count: "2.5k+" },
