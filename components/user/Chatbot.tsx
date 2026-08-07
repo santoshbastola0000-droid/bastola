@@ -1011,7 +1011,26 @@ const deductBalanceForText = (text: string) => {
                 dark:to-transparent
               ">
                 <div className="mx-auto w-full max-w-[760px]">
-                <div className="
+                <div className="relative rounded-[30px] p-[2px] overflow-hidden">
+                  <motion.div
+                    aria-hidden="true"
+                    animate={{ rotate: 360 }}
+                    transition={{
+                      duration: 5,
+                      repeat: Infinity,
+                      ease: "linear",
+                    }}
+                    className="
+                      pointer-events-none
+                      absolute
+                      -inset-[120%]
+                      bg-[conic-gradient(from_0deg,#ef4444,#a855f7,#3b82f6,#06b6d4,#22c55e,#f59e0b,#ef4444)]
+                    "
+                  />
+
+                  <div className="
+                  relative
+                  z-10
                   flex
                   min-h-[56px]
                   items-center
