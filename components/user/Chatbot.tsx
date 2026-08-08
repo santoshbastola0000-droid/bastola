@@ -964,22 +964,23 @@ const deductBalanceForText = (text: string) => {
               ">
                 <div className="mx-auto w-full max-w-[760px]">
                 <div className="
-                  flex
-                  min-h-[56px]
-                  items-center
-                  gap-1
-                  rounded-[28px]
-                  border
-                  border-slate-200
-                  bg-[#f4f4f4]
-                  px-2
-                  py-1.5
-                  shadow-sm
-                  transition
-                  focus-within:border-slate-300
-                  dark:border-white/10
-                  dark:bg-[#2f2f2f]
-                ">
+              flex
+              min-h-[58px]
+              items-end
+              gap-1.5
+              rounded-[26px]
+              border-2
+              border-fuchsia-500/80
+              bg-white
+              px-2.5
+              py-2
+              shadow-[0_0_0_1px_rgba(59,130,246,0.35),0_0_14px_rgba(99,102,241,0.22),0_0_24px_rgba(217,70,239,0.18)]
+              transition-all
+              duration-300
+              focus-within:border-violet-500
+              focus-within:shadow-[0_0_0_1px_rgba(59,130,246,0.55),0_0_18px_rgba(99,102,241,0.28),0_0_30px_rgba(217,70,239,0.22)]
+              dark:bg-[#2f2f2f]
+            ">
                   <textarea
                     ref={inputRef}
                     value={input}
@@ -991,34 +992,24 @@ const deductBalanceForText = (text: string) => {
                       }
                     }}
                     placeholder="Message RoomKhoj AI"
-                    rows={3}
+                    rows={1}
                     className="
-  min-h-[112px]
-  max-h-[220px]
-  min-w-0
-  flex-1
-  resize-none
-  rounded-[24px]
-  border-2
-  border-violet-500/80
-  bg-white
-  px-5
-  py-4
-  pr-14
-  text-base
-  leading-6
-  text-slate-900
-  outline-none
-  placeholder:text-slate-400
-  shadow-[0_0_0_1px_rgba(59,130,246,0.35),0_0_22px_rgba(99,102,241,0.22),0_0_32px_rgba(217,70,239,0.12)]
-  transition-all
-  duration-300
-  focus:border-fuchsia-500
-  focus:shadow-[0_0_0_1px_rgba(59,130,246,0.65),0_0_28px_rgba(59,130,246,0.28),0_0_42px_rgba(217,70,239,0.20)]
-  dark:bg-[#1b1b1d]
-  dark:text-white
-  dark:placeholder:text-slate-500
-"
+                  min-h-[40px]
+                  max-h-[120px]
+                  min-w-0
+                  flex-1
+                  resize-none
+                  bg-transparent
+                  px-2
+                  py-2
+                  text-base
+                  leading-6
+                  text-slate-900
+                  outline-none
+                  placeholder:text-slate-400
+                  dark:text-white
+                  dark:placeholder:text-slate-500
+                "
                   />
 
                   <button
