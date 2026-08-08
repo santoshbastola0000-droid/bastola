@@ -992,7 +992,33 @@ const deductBalanceForText = (text: string) => {
                     }}
                     placeholder="Message RoomKhoj AI"
                     rows={3}
-                    className="min-h-[80px] max-h-[180px] min-w-0 flex-1 resize-none bg-transparent px-2 py-3 text-base leading-6 text-slate-900 outline-none placeholder:text-slate-500 dark:text-white dark:placeholder:text-slate-400"
+                    className="
+  min-h-[112px]
+  max-h-[220px]
+  min-w-0
+  flex-1
+  resize-none
+  rounded-[24px]
+  border-2
+  border-violet-500/80
+  bg-white
+  px-5
+  py-4
+  pr-14
+  text-base
+  leading-6
+  text-slate-900
+  outline-none
+  placeholder:text-slate-400
+  shadow-[0_0_0_1px_rgba(59,130,246,0.35),0_0_22px_rgba(99,102,241,0.22),0_0_32px_rgba(217,70,239,0.12)]
+  transition-all
+  duration-300
+  focus:border-fuchsia-500
+  focus:shadow-[0_0_0_1px_rgba(59,130,246,0.65),0_0_28px_rgba(59,130,246,0.28),0_0_42px_rgba(217,70,239,0.20)]
+  dark:bg-[#1b1b1d]
+  dark:text-white
+  dark:placeholder:text-slate-500
+"
                   />
 
                   <button
