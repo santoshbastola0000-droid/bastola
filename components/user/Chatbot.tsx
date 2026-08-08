@@ -1044,9 +1044,6 @@ const deductBalanceForText = (text: string) => {
     dark:placeholder:text-slate-400
   "
 />
-                    placeholder="Message RoomKhoj AI"
-                    className="min-w-0 flex-1 bg-transparent px-2 py-2 text-base text-slate-900 outline-none placeholder:text-slate-500 sm:text-sm dark:text-white dark:placeholder:text-slate-400"
-                  />
 
                   <button
                     type="button"
