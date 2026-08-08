@@ -1034,37 +1034,6 @@ const deductBalanceForText = (text: string) => {
                   </button>
 
 
-<textarea
-  ref={inputRef}
-  value={input}
-  onChange={(e) => setInput(e.target.value)}
-  onKeyDown={(e) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
-    }
-  }}
-  placeholder="Message RoomKhoj AI"
-  rows={3}
-  className="
-    min-h-[80px]
-    max-h-[180px]
-    min-w-0
-    flex-1
-    resize-none
-    bg-transparent
-    px-2
-    py-3
-    text-base
-    leading-6
-    text-slate-900
-    outline-none
-    placeholder:text-slate-500
-    dark:text-white
-    dark:placeholder:text-slate-400
-  "
-/>
-
                   <button
                     type="button"
                     onClick={() => sendMessage()}
