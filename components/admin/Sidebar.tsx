@@ -97,6 +97,11 @@ const navItems: NavItem[] = [
     href: "/admin/dashboard/chatbot",
     icon: Bot,
   },
+  {
+    title: "AI Profiles",
+    href: "/admin/dashboard/ai-profiles",
+    icon: Bot,
+  },
 ];
 
 export function AdminSidebar({
