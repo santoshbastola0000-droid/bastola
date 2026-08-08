@@ -27,6 +27,14 @@ import { Input } from "@/components/ui/input";
 type AiProfile = {
   id: number;
   userId: string;
+account?: {
+  id?: string;
+  name?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  role?: string | null;
+  isVerified?: boolean | null;
+} | null;
   userName?: string | null;
   city?: string | null;
   budget?: string | null;
@@ -263,7 +271,8 @@ export default function AiProfilesPage() {
               <div>
                 <h2 className="font-bold">AI Saved Details</h2>
                 <p className="text-xs text-muted-foreground">
-                  {selected.userName ||
+                  {selected.account?.name ||
+                    selected.userName ||
                     selected.extraInfo?.jobSearch?.userName ||
                     selected.userId}
                 </p>
@@ -287,6 +296,7 @@ export default function AiProfilesPage() {
 
                 <div className="grid gap-3 sm:grid-cols-2">
                   <Detail label="Name" value={
+                    selected.account?.name ||
                     selected.userName ||
                     selected.extraInfo?.jobSearch?.userName
                   } />
@@ -298,6 +308,24 @@ export default function AiProfilesPage() {
                       selected.extraInfo?.jobSearch?.phone ||
                       selected.extraInfo?.jobSearch?.contactPhone
                     }
+                  />
+                </div>
+              </section>
+
+              <section>
+                <div className="mb-3 flex items-center gap-2">
+                  <User className="h-4 w-4" />
+                  <h3 className="font-semibold">Account Information</h3>
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <Detail label="Account Name" value={selected.account?.name} />
+                  <Detail label="Email" value={selected.account?.email} />
+                  <Detail label="Phone" value={selected.account?.phone} />
+                  <Detail label="Role" value={selected.account?.role} />
+                  <Detail
+                    label="Verified"
+                    value={selected.account?.isVerified}
                   />
                 </div>
               </section>
