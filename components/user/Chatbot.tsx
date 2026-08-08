@@ -154,7 +154,7 @@ useEffect(() => {
   const [locationRequested, setLocationRequested] = useState(false);
 
   const bottomRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const recognitionRef = useRef<any>(null);
 
@@ -977,12 +977,19 @@ const deductBalanceForText = (text: string) => {
                   dark:border-white/10
                   dark:bg-[#2f2f2f]
                 ">
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    onChange={handleFileUpload}
-                    accept="image/*,video/*"
-                    className="hidden"
+                  <textarea
+                    ref={inputRef}
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        sendMessage();
+                      }
+                    }}
+                    placeholder="Message RoomKhoj AI"
+                    rows={3}
+                    className="min-h-[80px] max-h-[180px] min-w-0 flex-1 resize-none bg-transparent px-2 py-3 text-base leading-6 text-slate-900 outline-none placeholder:text-slate-500 dark:text-white dark:placeholder:text-slate-400"
                   />
 
                   <button
@@ -1006,17 +1013,37 @@ const deductBalanceForText = (text: string) => {
                     {isRecording ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
                   </button>
 
-                  <input
-                    ref={inputRef}
-                    type="text"
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && !e.shiftKey) {
-                        e.preventDefault();
-                        sendMessage();
-                      }
-                    }}
+
+<textarea
+  ref={inputRef}
+  value={input}
+  onChange={(e) => setInput(e.target.value)}
+  onKeyDown={(e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  }}
+  placeholder="Message RoomKhoj AI"
+  rows={3}
+  className="
+    min-h-[80px]
+    max-h-[180px]
+    min-w-0
+    flex-1
+    resize-none
+    bg-transparent
+    px-2
+    py-3
+    text-base
+    leading-6
+    text-slate-900
+    outline-none
+    placeholder:text-slate-500
+    dark:text-white
+    dark:placeholder:text-slate-400
+  "
+/>
                     placeholder="Message RoomKhoj AI"
                     className="min-w-0 flex-1 bg-transparent px-2 py-2 text-base text-slate-900 outline-none placeholder:text-slate-500 sm:text-sm dark:text-white dark:placeholder:text-slate-400"
                   />
