@@ -16,6 +16,7 @@ import {
   Percent,
   BarChart,
   Bot,
+  BriefcaseBusiness,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -73,6 +74,11 @@ const navItems: NavItem[] = [
     icon: Users,
   },
   {
+    title: "Vacancies",
+    href: "/admin/dashboard/vacancies",
+    icon: BriefcaseBusiness,
+  },
+  {
     title: "Wallet",
     href: "/admin/dashboard/wallet",
     icon: Wallet,
@@ -100,6 +106,11 @@ const navItems: NavItem[] = [
   {
     title: "AI Profiles",
     href: "/admin/dashboard/ai-profiles",
+    icon: Bot,
+  },
+  {
+    title: "AI Developer",
+    href: "/admin/dashboard/ai-developer",
     icon: Bot,
   },
 ];
