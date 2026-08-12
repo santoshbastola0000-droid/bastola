@@ -3,11 +3,25 @@
 import { useState } from "react";
 import useTokenStore from "@/store";
 
+type ProposalResult = {
+  success?: boolean;
+  status?: string;
+  proposalId?: string;
+  prompt?: string;
+  proposal?: string;
+  filesRead?: string[];
+  message?: string;
+  error?: string;
+};
+
 export default function AiDeveloperPage() {
   const [prompt, setPrompt] = useState("");
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<any>(null);
+  const [approving, setApproving] = useState(false);
+  const [result, setResult] = useState<ProposalResult | null>(null);
   const [error, setError] = useState("");
+  const [approveMessage, setApproveMessage] = useState("");
+
   const token = useTokenStore((state) => state.token);
 
   async function proposeChange() {
@@ -15,11 +29,12 @@ export default function AiDeveloperPage() {
 
     setLoading(true);
     setError("");
+    setApproveMessage("");
     setResult(null);
 
     try {
       const response = await fetch(
-        `https://api.roomkhoj.com/ai-developer/propose`,
+        "https://api.roomkhoj.com/ai-developer/propose",
         {
           method: "POST",
           headers: {
@@ -50,12 +65,67 @@ export default function AiDeveloperPage() {
     }
   }
 
+  async function approveProposal() {
+    if (!result?.proposalId) return;
+
+    setApproving(true);
+    setError("");
+    setApproveMessage("");
+
+    try {
+      const response = await fetch(
+        `https://api.roomkhoj.com/ai-developer/proposals/${result.proposalId}/approve`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token
+              ? { Authorization: `Bearer ${token}` }
+              : {}),
+          },
+        },
+      );
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(
+          data.message || data.error || "Approval failed",
+        );
+      }
+
+      setResult((current) =>
+        current
+          ? {
+              ...current,
+              status: data.status || "APPROVED",
+              message: data.message,
+            }
+          : current,
+      );
+
+      setApproveMessage(
+        data.message || "Proposal approved and applied successfully.",
+      );
+    } catch (err: any) {
+      setError(err.message || "Approval failed");
+    } finally {
+      setApproving(false);
+    }
+  }
+
+  const canApprove =
+    result?.status === "PENDING_APPROVAL" &&
+    !!result.proposalId &&
+    !approving;
+
   return (
     <div className="space-y-6 p-6">
       <div>
         <h1 className="text-2xl font-bold">AI Developer</h1>
         <p className="mt-1 text-sm text-gray-500">
-          Describe a change and AI will prepare a code proposal.
+          Describe a code change and AI will prepare a proposal for
+          admin approval.
         </p>
       </div>
 
@@ -67,7 +137,7 @@ export default function AiDeveloperPage() {
         <textarea
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
-          placeholder="Example: Add salary filtering to approved job search..."
+          placeholder="Example: Improve the approved job search ranking..."
           className="min-h-[180px] w-full rounded-lg border p-4 outline-none focus:ring-2 focus:ring-black"
         />
 
@@ -87,15 +157,85 @@ export default function AiDeveloperPage() {
         </div>
       )}
 
+      {approveMessage && (
+        <div className="rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-700">
+          {approveMessage}
+        </div>
+      )}
+
       {result && (
         <div className="rounded-xl border bg-white p-5 shadow-sm">
-          <h2 className="text-lg font-semibold">
-            Proposal Created
-          </h2>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 className="text-lg font-semibold">
+              Proposal Created
+            </h2>
 
-          <pre className="mt-4 overflow-auto rounded-lg bg-gray-100 p-4 text-xs">
-            {JSON.stringify(result, null, 2)}
-          </pre>
+            <span
+              className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                result.status === "PENDING_APPROVAL"
+                  ? "bg-yellow-100 text-yellow-800"
+                  : result.status === "APPROVED"
+                    ? "bg-green-100 text-green-800"
+                    : "bg-gray-100 text-gray-700"
+              }`}
+            >
+              {result.status || "UNKNOWN"}
+            </span>
+          </div>
+
+          {result.proposalId && (
+            <div className="mt-3 text-xs text-gray-500">
+              Proposal ID: {result.proposalId}
+            </div>
+          )}
+
+          {result.filesRead && result.filesRead.length > 0 && (
+            <div className="mt-5">
+              <h3 className="mb-2 text-sm font-semibold">
+                Files Read
+              </h3>
+
+              <div className="rounded-lg bg-gray-50 p-3 text-xs">
+                {result.filesRead.map((file) => (
+                  <div key={file} className="py-1">
+                    {file}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {result.proposal && (
+            <div className="mt-5">
+              <h3 className="mb-2 text-sm font-semibold">
+                Proposed Changes
+              </h3>
+
+              <pre className="max-h-[500px] overflow-auto rounded-lg bg-gray-100 p-4 text-xs whitespace-pre-wrap">
+                {result.proposal}
+              </pre>
+            </div>
+          )}
+
+          {canApprove && (
+            <div className="mt-5 border-t pt-5">
+              <button
+                type="button"
+                onClick={approveProposal}
+                disabled={!canApprove}
+                className="rounded-lg bg-green-600 px-5 py-3 font-semibold text-white hover:bg-green-700 disabled:opacity-50"
+              >
+                {approving
+                  ? "Applying Changes..."
+                  : "Approve & Apply"}
+              </button>
+
+              <p className="mt-2 text-xs text-gray-500">
+                This will validate the patch and apply it to the
+                source code.
+              </p>
+            </div>
+          )}
         </div>
       )}
     </div>
