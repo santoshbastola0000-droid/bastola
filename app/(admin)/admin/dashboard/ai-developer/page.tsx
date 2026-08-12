@@ -17,7 +17,7 @@ export default function AiDeveloperPage() {
 
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/ai-developer/propose`,
+        `https://api.roomkhoj.com/ai-developer/propose`,
         {
           method: "POST",
           headers: {
