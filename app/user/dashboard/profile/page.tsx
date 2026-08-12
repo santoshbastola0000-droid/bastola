@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { useUserStore } from "@/stores/user-store";
 import { privateApi } from "@/http/api/privateApi";
@@ -16,6 +16,11 @@ import {
   Building2,
   BadgeCheck,
   Calendar,
+  Bot,
+  BriefcaseBusiness,
+  Home,
+  Trash2,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,6 +28,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { useRouter } from "next/navigation";
+import { aiProfileService } from "@/http/services/ai-profile.service";
 
 export default function ProfilePage() {
   const { user, updateUser } = useUserStore();
@@ -33,6 +39,192 @@ export default function ProfilePage() {
     name: user?.name || "",
     phone: user?.phone || "",
   });
+
+
+  const [aiProfile, setAiProfile] = useState<any>(null);
+  const [aiForm, setAiForm] = useState<any>({
+    roomSearch: {},
+    jobSearch: {},
+  });
+  const [aiLoading, setAiLoading] = useState(true);
+  const [aiEditing, setAiEditing] = useState(false);
+  const [aiSaving, setAiSaving] = useState(false);
+  const [deletingField, setDeletingField] = useState<string | null>(null);
+  const [clearingAi, setClearingAi] = useState(false);
+
+  const loadAiProfile = async () => {
+    try {
+      setAiLoading(true);
+      const data = await aiProfileService.getMine();
+      setAiProfile(data);
+      setAiForm({
+        roomSearch: { ...(data?.roomSearch || {}) },
+        jobSearch: { ...(data?.jobSearch || {}) },
+      });
+    } catch (err: any) {
+      console.error("Failed to load AI profile:", err);
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadAiProfile();
+  }, []);
+
+  const updateAiField = (
+    section: "roomSearch" | "jobSearch",
+    field: string,
+    value: string,
+  ) => {
+    setAiForm((prev: any) => ({
+      ...prev,
+      [section]: {
+        ...(prev?.[section] || {}),
+        [field]: value,
+      },
+    }));
+  };
+
+  const saveAiProfile = async () => {
+    try {
+      setAiSaving(true);
+
+      const updated = await aiProfileService.updateMine({
+        roomSearch: aiForm.roomSearch,
+        jobSearch: aiForm.jobSearch,
+      });
+
+      setAiProfile(updated);
+      setAiForm({
+        roomSearch: { ...(updated?.roomSearch || {}) },
+        jobSearch: { ...(updated?.jobSearch || {}) },
+      });
+
+      setAiEditing(false);
+      toast.success("AI details updated");
+    } catch (err: any) {
+      toast.error(
+        err?.response?.data?.message || "AI details update failed",
+      );
+    } finally {
+      setAiSaving(false);
+    }
+  };
+
+  const deleteAiField = async (field: string) => {
+    try {
+      setDeletingField(field);
+
+      const updated = await aiProfileService.deleteField(field);
+
+      setAiProfile(updated);
+      setAiForm({
+        roomSearch: { ...(updated?.roomSearch || {}) },
+        jobSearch: { ...(updated?.jobSearch || {}) },
+      });
+
+      toast.success("Saved detail deleted");
+    } catch (err: any) {
+      toast.error(
+        err?.response?.data?.message || "Could not delete detail",
+      );
+    } finally {
+      setDeletingField(null);
+    }
+  };
+
+  const clearAiProfile = async () => {
+    const ok = window.confirm(
+      "Delete all information saved by RoomKhoj AI? This cannot be undone.",
+    );
+
+    if (!ok) return;
+
+    try {
+      setClearingAi(true);
+      await aiProfileService.clearMine();
+
+      setAiProfile(null);
+      setAiForm({
+        roomSearch: {},
+        jobSearch: {},
+      });
+
+      toast.success("AI saved details cleared");
+    } catch (err: any) {
+      toast.error(
+        err?.response?.data?.message || "Could not clear AI details",
+      );
+    } finally {
+      setClearingAi(false);
+    }
+  };
+
+  const renderAiField = (
+    section: "roomSearch" | "jobSearch",
+    field: string,
+    label: string,
+  ) => {
+    const current =
+      aiForm?.[section]?.[field] ??
+      aiProfile?.[section]?.[field] ??
+      "";
+
+    if (
+      !aiEditing &&
+      (current === "" || current === null || current === undefined)
+    ) {
+      return null;
+    }
+
+    return (
+      <div className="rounded-2xl border bg-muted/20 p-3">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <p className="mb-1 text-xs text-muted-foreground">
+              {label}
+            </p>
+
+            {aiEditing ? (
+              <Input
+                value={String(current ?? "")}
+                onChange={(e) =>
+                  updateAiField(section, field, e.target.value)
+                }
+                className="h-9 rounded-xl"
+                placeholder={`Enter ${label.toLowerCase()}`}
+              />
+            ) : (
+              <p className="break-words text-sm font-medium">
+                {typeof current === "boolean"
+                  ? current
+                    ? "Yes"
+                    : "No"
+                  : String(current)}
+              </p>
+            )}
+          </div>
+
+          {!aiEditing && (
+            <button
+              type="button"
+              onClick={() => deleteAiField(field)}
+              disabled={deletingField === field}
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40"
+              title={`Delete ${label}`}
+            >
+              {deletingField === field ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Trash2 className="h-3.5 w-3.5" />
+              )}
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   const initials = user?.name
     ? user.name
@@ -305,6 +497,222 @@ export default function ProfilePage() {
             >
               + Add Room
             </Button>
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* AI Saved Details */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.3 }}
+      >
+        <Card className="overflow-hidden rounded-3xl border-0 shadow-sm">
+          <CardContent className="p-0">
+            <div className="border-b bg-gradient-to-r from-violet-50 via-fuchsia-50 to-rose-50 p-5 dark:from-violet-950/30 dark:via-fuchsia-950/20 dark:to-rose-950/30">
+              <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-600 to-fuchsia-600 shadow-md">
+                    <Bot className="h-5 w-5 text-white" />
+                  </div>
+
+                  <div>
+                    <h3 className="font-bold text-gray-900 dark:text-gray-100">
+                      AI Saved Details
+                    </h3>
+                    <p className="text-xs text-muted-foreground">
+                      Information RoomKhoj AI remembers to help you faster
+                    </p>
+                  </div>
+                </div>
+
+                {!aiLoading && (
+                  <div className="flex gap-2">
+                    {aiEditing ? (
+                      <>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="rounded-full"
+                          onClick={() => {
+                            setAiForm({
+                              roomSearch: {
+                                ...(aiProfile?.roomSearch || {}),
+                              },
+                              jobSearch: {
+                                ...(aiProfile?.jobSearch || {}),
+                              },
+                            });
+                            setAiEditing(false);
+                          }}
+                        >
+                          Cancel
+                        </Button>
+
+                        <Button
+                          size="sm"
+                          className="rounded-full"
+                          onClick={saveAiProfile}
+                          disabled={aiSaving}
+                        >
+                          {aiSaving ? (
+                            <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                          ) : (
+                            <Save className="mr-1 h-4 w-4" />
+                          )}
+                          Save
+                        </Button>
+                      </>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="rounded-full"
+                        onClick={() => setAiEditing(true)}
+                      >
+                        <Edit3 className="mr-1 h-4 w-4" />
+                        Edit
+                      </Button>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="p-5">
+              {aiLoading ? (
+                <div className="flex min-h-[120px] items-center justify-center">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  <section>
+                    <div className="mb-3 flex items-center gap-2">
+                      <Home className="h-4 w-4 text-red-600" />
+                      <h4 className="text-sm font-semibold">
+                        Room Preferences
+                      </h4>
+                    </div>
+
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      {renderAiField("roomSearch", "city", "City")}
+                      {renderAiField(
+                        "roomSearch",
+                        "exactLocation",
+                        "Location",
+                      )}
+                      {renderAiField("roomSearch", "budget", "Budget")}
+                      {renderAiField(
+                        "roomSearch",
+                        "roomType",
+                        "Room Type",
+                      )}
+                      {renderAiField(
+                        "roomSearch",
+                        "tenantType",
+                        "Tenant Type",
+                      )}
+                      {renderAiField(
+                        "roomSearch",
+                        "numberOfPeople",
+                        "Number of People",
+                      )}
+                      {renderAiField(
+                        "roomSearch",
+                        "moveInDate",
+                        "Move-in Date",
+                      )}
+                      {renderAiField(
+                        "roomSearch",
+                        "vehicleType",
+                        "Vehicle",
+                      )}
+                    </div>
+                  </section>
+
+                  <Separator />
+
+                  <section>
+                    <div className="mb-3 flex items-center gap-2">
+                      <BriefcaseBusiness className="h-4 w-4 text-violet-600" />
+                      <h4 className="text-sm font-semibold">
+                        Job Preferences
+                      </h4>
+                    </div>
+
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      {renderAiField(
+                        "jobSearch",
+                        "userName",
+                        "Name",
+                      )}
+                      {renderAiField(
+                        "jobSearch",
+                        "phone",
+                        "Phone",
+                      )}
+                      {renderAiField(
+                        "jobSearch",
+                        "location",
+                        "Preferred Location",
+                      )}
+                      {renderAiField(
+                        "jobSearch",
+                        "jobLocation",
+                        "Job Location",
+                      )}
+                      {renderAiField(
+                        "jobSearch",
+                        "jobTitle",
+                        "Job Title",
+                      )}
+                      {renderAiField(
+                        "jobSearch",
+                        "jobType",
+                        "Job Type",
+                      )}
+                      {renderAiField(
+                        "jobSearch",
+                        "experience",
+                        "Experience",
+                      )}
+                      {renderAiField(
+                        "jobSearch",
+                        "education",
+                        "Education",
+                      )}
+                      {renderAiField(
+                        "jobSearch",
+                        "expectedSalary",
+                        "Expected Salary",
+                      )}
+                      {renderAiField(
+                        "jobSearch",
+                        "joiningAvailability",
+                        "Joining Availability",
+                      )}
+                    </div>
+                  </section>
+
+                  <div className="flex justify-end border-t pt-4">
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      className="rounded-full"
+                      disabled={clearingAi}
+                      onClick={clearAiProfile}
+                    >
+                      {clearingAi ? (
+                        <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="mr-1 h-4 w-4" />
+                      )}
+                      Clear AI Details
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
           </CardContent>
         </Card>
       </motion.div>
