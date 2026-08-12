@@ -86,7 +86,12 @@ export default function AiDeveloperPage() {
         },
       );
 
+      console.log("AI DEV APPROVE STATUS:", response.status);
+      console.log("AI DEV APPROVE OK:", response.ok);
+
       const data = await response.json();
+
+      console.log("AI DEV APPROVE RESPONSE:", data);
 
       if (!response.ok || !data.success) {
         throw new Error(
