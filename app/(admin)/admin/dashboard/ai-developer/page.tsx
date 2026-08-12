@@ -1,12 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import useTokenStore from "@/store";
 
 export default function AiDeveloperPage() {
   const [prompt, setPrompt] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any>(null);
   const [error, setError] = useState("");
+  const token = useTokenStore((state) => state.token);
 
   async function proposeChange() {
     if (!prompt.trim()) return;
@@ -22,8 +24,9 @@ export default function AiDeveloperPage() {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "X-AI-DEV-KEY":
-              process.env.NEXT_PUBLIC_AI_DEVELOPER_DEV_KEY || "",
+            ...(token
+              ? { Authorization: `Bearer ${token}` }
+              : {}),
           },
           body: JSON.stringify({
             prompt: prompt.trim(),
