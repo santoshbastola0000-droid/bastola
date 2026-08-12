@@ -109,6 +109,11 @@ const navItems: NavItem[] = [
     icon: Bot,
   },
   {
+    title: "AI Learning",
+    href: "/admin/dashboard/ai-learning",
+    icon: Bot,
+  },
+  {
     title: "AI Developer",
     href: "/admin/dashboard/ai-developer",
     icon: Bot,
