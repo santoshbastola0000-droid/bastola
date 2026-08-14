@@ -27,6 +27,7 @@ import {
   Home,
   Briefcase,
   Building2,
+  FileText,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -130,6 +131,8 @@ const balance = Number(walletBalanceData?.balance ?? 0);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [isRecording, setIsRecording] = useState(false);
+  const [documentScanProgress, setDocumentScanProgress] = useState(0);
+  const [documentScanStep, setDocumentScanStep] = useState("");
   const [selectedFile, setSelectedFile] = useState<{
     url: string;
     type: "image" | "video" | "file";
@@ -350,6 +353,29 @@ const deductBalanceForText = (text: string) => {
       : "file";
 
     setSelectedFile({ url: fileUrl, type, rawFile: file });
+
+    if (type === "file") {
+      setDocumentScanProgress(8);
+      setDocumentScanStep("Preparing document...");
+
+      const stages = [
+        { progress: 24, text: "Scanning CV..." },
+        { progress: 43, text: "Reading basic information..." },
+        { progress: 61, text: "Reading education..." },
+        { progress: 78, text: "Reading experience..." },
+        { progress: 91, text: "Reading skills..." },
+      ];
+
+      stages.forEach((stage, index) => {
+        window.setTimeout(() => {
+          setDocumentScanProgress(stage.progress);
+          setDocumentScanStep(stage.text);
+        }, 450 * (index + 1));
+      });
+    } else {
+      setDocumentScanProgress(0);
+      setDocumentScanStep("");
+    }
   };
 
   const removeSelectedFile = () => {
@@ -357,6 +383,9 @@ const deductBalanceForText = (text: string) => {
       URL.revokeObjectURL(selectedFile.url);
     }
     setSelectedFile(null);
+    setDocumentScanProgress(0);
+    setDocumentScanStep("");
+
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
@@ -541,6 +570,9 @@ const deductBalanceForText = (text: string) => {
               inset-0
               z-[9999]
               flex
+              h-[100dvh]
+              max-h-[100dvh]
+              flex-col
               overflow-hidden
               bg-white
               text-slate-900
@@ -550,13 +582,11 @@ const deductBalanceForText = (text: string) => {
             "
           >
             <div className="
-              absolute
-              left-0
-              right-0
-              top-0
+              relative
               z-30
               flex
               h-14
+              shrink-0
               items-center
               justify-between
               border-b
@@ -564,7 +594,7 @@ const deductBalanceForText = (text: string) => {
               bg-white/95
               px-3
               backdrop-blur-xl
-              md:left-[260px]
+              md:ml-[260px]
               dark:border-white/10
               dark:bg-[#212121]/95
             ">
@@ -585,9 +615,9 @@ const deductBalanceForText = (text: string) => {
                   <h2 className="text-sm font-semibold leading-none text-slate-900 dark:text-white">
                     RoomKhoj AI
                   </h2>
-                  <span className="mt-1 flex items-center gap-1 text-[10px] text-slate-500 dark:text-slate-400">
+                  <span className="mt-1 flex items-center gap-1.5 text-[10px] text-slate-500 dark:text-slate-400">
                     <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                    Online
+                    Rooms • Jobs • Career
                   </span>
                 </div>
               </div>
@@ -607,13 +637,11 @@ const deductBalanceForText = (text: string) => {
             </div>
 
             <div className="
-              absolute
-              left-0
-              right-0
-              top-14
+              relative
               z-20
               flex
               h-10
+              shrink-0
               items-center
               justify-between
               border-b
@@ -622,7 +650,7 @@ const deductBalanceForText = (text: string) => {
               px-3
               text-[11px]
               text-slate-500
-              md:left-[260px]
+              md:ml-[260px]
               dark:border-white/10
               dark:bg-[#212121]
               dark:text-slate-400
@@ -640,7 +668,7 @@ const deductBalanceForText = (text: string) => {
               </button>
             </div>
 
-            <div className="relative flex h-full w-full overflow-hidden pt-24 md:pt-0">
+            <div className="relative flex min-h-0 w-full flex-1 overflow-hidden">
               <div
                 className={cn(
                   "fixed inset-y-0 left-0 z-40 w-[260px] bg-[#f9f9f9] text-slate-900 flex flex-col transition-transform duration-300 border-r border-slate-200 dark:bg-[#171717] dark:text-white dark:border-white/10 md:translate-x-0",
@@ -726,7 +754,7 @@ const deductBalanceForText = (text: string) => {
                 pt-5
                 dark:bg-[#212121]
                 md:ml-[260px]
-                md:pt-24
+                md:pt-5
               ">
                 <div className="mx-auto flex w-full max-w-[760px] flex-col gap-6 px-4 sm:px-6">
                 {messages.map((msg) => (
@@ -812,6 +840,126 @@ const deductBalanceForText = (text: string) => {
                         </div>
                       )}
 
+                      {msg.jobDetails && (
+                        <div className="mb-2 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm dark:border-white/10 dark:bg-[#2a2a2a]">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2">
+                                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-slate-100 dark:bg-white/10">
+                                  <Briefcase className="h-4 w-4 text-slate-700 dark:text-slate-200" />
+                                </div>
+
+                                <div className="min-w-0">
+                                  <h4 className="truncate font-semibold text-slate-900 dark:text-white">
+                                    {msg.jobDetails.jobTitle || "Job Vacancy"}
+                                  </h4>
+
+                                  {msg.jobDetails.companyName && (
+                                    <p className="truncate text-xs text-slate-500 dark:text-slate-400">
+                                      {msg.jobDetails.companyName}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+
+                            {typeof msg.jobDetails.matchPercent === "number" && (
+                              <div className="shrink-0 rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-700 dark:bg-white/10 dark:text-slate-200">
+                                {msg.jobDetails.matchPercent}% match
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="mt-3 grid gap-2 text-xs text-slate-600 dark:text-slate-300 sm:grid-cols-2">
+                            {msg.jobDetails.location && (
+                              <div className="flex items-center gap-1.5">
+                                <MapPin className="h-3.5 w-3.5 shrink-0" />
+                                <span>{msg.jobDetails.location}</span>
+                              </div>
+                            )}
+
+                            {msg.jobDetails.salary !== null &&
+                              msg.jobDetails.salary !== undefined && (
+                                <div className="flex items-center gap-1.5">
+                                  <Coins className="h-3.5 w-3.5 shrink-0" />
+                                  <span>Rs. {msg.jobDetails.salary}</span>
+                                </div>
+                              )}
+
+                            {msg.jobDetails.experience && (
+                              <div className="flex items-center gap-1.5">
+                                <User className="h-3.5 w-3.5 shrink-0" />
+                                <span>{msg.jobDetails.experience}</span>
+                              </div>
+                            )}
+                          </div>
+
+                          {msg.jobDetails.description && (
+                            <p className="mt-3 text-xs leading-5 text-slate-600 dark:text-slate-300">
+                              {msg.jobDetails.description}
+                            </p>
+                          )}
+                        </div>
+                      )}
+
+                      {msg.jobsList &&
+                        Array.isArray(msg.jobsList) &&
+                        msg.jobsList.length > 0 && (
+                          <div className="mb-2 space-y-2.5">
+                            {msg.jobsList.map((job, jIdx) => (
+                              <div
+                                key={job.id || jIdx}
+                                className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm dark:border-white/10 dark:bg-[#2a2a2a]"
+                              >
+                                <div className="flex items-start justify-between gap-3">
+                                  <div className="min-w-0">
+                                    <h4 className="truncate font-semibold text-slate-900 dark:text-white">
+                                      {job.number ? `${job.number}. ` : ""}
+                                      {job.jobTitle || "Job Vacancy"}
+                                    </h4>
+
+                                    {job.companyName && (
+                                      <p className="truncate text-xs text-slate-500 dark:text-slate-400">
+                                        {job.companyName}
+                                      </p>
+                                    )}
+                                  </div>
+
+                                  {typeof job.matchPercent === "number" && (
+                                    <span className="shrink-0 rounded-full bg-slate-100 px-2 py-1 text-[10px] font-semibold text-slate-700 dark:bg-white/10 dark:text-slate-200">
+                                      {job.matchPercent}%
+                                    </span>
+                                  )}
+                                </div>
+
+                                <div className="mt-2 grid gap-1.5 text-[11px] text-slate-600 dark:text-slate-300 sm:grid-cols-2">
+                                  {job.location && (
+                                    <div className="flex items-center gap-1">
+                                      <MapPin className="h-3 w-3 shrink-0" />
+                                      <span>{job.location}</span>
+                                    </div>
+                                  )}
+
+                                  {job.salary !== null &&
+                                    job.salary !== undefined && (
+                                      <div className="flex items-center gap-1">
+                                        <Coins className="h-3 w-3 shrink-0" />
+                                        <span>Rs. {job.salary}</span>
+                                      </div>
+                                    )}
+
+                                  {job.experience && (
+                                    <div className="flex items-center gap-1">
+                                      <User className="h-3 w-3 shrink-0" />
+                                      <span>{job.experience}</span>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
                       {msg.roomsList && Array.isArray(msg.roomsList) && msg.roomsList.length > 0 && (
                         <div className="mb-2 space-y-2.5">
                           {msg.roomsList.map((room, rIdx) => (
@@ -886,33 +1034,22 @@ const deductBalanceForText = (text: string) => {
                 ))}
 
                 {isTyping && (
-                  <div className="flex items-center gap-1.5">
-                    <div className="w-5 h-5 rounded-full bg-red-100 dark:bg-red-950 flex items-center justify-center shrink-0">
-                      <Bot className="w-3 h-3 text-red-600 dark:text-red-400" />
+                  <div className="flex items-center gap-3 py-1">
+                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-900 dark:bg-white">
+                      <Sparkles className="h-3.5 w-3.5 animate-pulse text-white dark:text-slate-900" />
                     </div>
-                    <div className="flex items-center gap-1.5 py-2">
-                      <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce [animation-delay:-0.3s]" />
-                      <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce [animation-delay:-0.15s]" />
-                      <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" />
-                    </div>
-                  </div>
-                )}
 
-                {messages.length <= 1 && !isTyping && (
-                  <div className="pt-2 flex flex-col gap-1.5">
-                    <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-1">
-                      <Sparkles className="w-3 h-3 text-amber-500" /> Suggestions
-                    </p>
-                    {QUICK_SUGGESTIONS.map((sugg, idx) => (
-                      <button
-                        key={idx}
-                        type="button"
-                        onClick={() => sendMessage(sugg)}
-                        className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-left text-xs text-slate-700 transition hover:bg-slate-50 dark:border-white/10 dark:bg-[#2f2f2f] dark:text-slate-200 dark:hover:bg-[#3a3a3a] cursor-pointer"
-                      >
-                        {sugg}
-                      </button>
-                    ))}
+                    <div className="flex items-center gap-2 rounded-2xl bg-slate-50 px-3.5 py-2 dark:bg-white/5">
+                      <span className="text-[13px] font-medium text-slate-500 dark:text-slate-300">
+                        Thinking
+                      </span>
+
+                      <div className="flex items-center gap-1">
+                        <span className="h-1.5 w-1.5 animate-[bounce_1.2s_infinite] rounded-full bg-slate-400 [animation-delay:-0.30s]" />
+                        <span className="h-1.5 w-1.5 animate-[bounce_1.2s_infinite] rounded-full bg-slate-400 [animation-delay:-0.15s]" />
+                        <span className="h-1.5 w-1.5 animate-[bounce_1.2s_infinite] rounded-full bg-slate-400" />
+                      </div>
+                    </div>
                   </div>
                 )}
 
@@ -972,11 +1109,95 @@ const deductBalanceForText = (text: string) => {
                       : "border-slate-200 dark:border-white/10"
                   )}
                 >
+                  {selectedFile?.type === "file" && (
+                    <div className="mb-3 overflow-hidden rounded-2xl border border-slate-200 bg-slate-50/80 p-3 dark:border-white/10 dark:bg-white/[0.04]">
+                      <div className="flex items-start gap-3">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white shadow-sm dark:bg-white/10">
+                          <FileText className="h-5 w-5 text-slate-700 dark:text-slate-200" />
+                        </div>
+
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-semibold text-slate-900 dark:text-white">
+                                {selectedFile.rawFile.name}
+                              </p>
+
+                              <p className="mt-0.5 text-[11px] text-slate-400">
+                                {(selectedFile.rawFile.size / 1024 / 1024).toFixed(2)} MB
+                              </p>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={removeSelectedFile}
+                              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-200 hover:text-slate-700 dark:hover:bg-white/10 dark:hover:text-white"
+                              title="Remove document"
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                          </div>
+
+                          <div className="mt-3">
+                            <div className="mb-1.5 flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <Loader2 className="h-3.5 w-3.5 animate-spin text-slate-500" />
+
+                                <span className="text-xs font-medium text-slate-600 dark:text-slate-300">
+                                  {documentScanStep || "Preparing document..."}
+                                </span>
+                              </div>
+
+                              <span className="text-[11px] tabular-nums text-slate-400">
+                                {documentScanProgress}%
+                              </span>
+                            </div>
+
+                            <div className="h-1.5 overflow-hidden rounded-full bg-slate-200 dark:bg-white/10">
+                              <div
+                                className="h-full rounded-full bg-slate-900 transition-all duration-500 ease-out dark:bg-white"
+                                style={{
+                                  width: `${documentScanProgress}%`,
+                                }}
+                              />
+                            </div>
+
+                            <div className="mt-3 space-y-1">
+                              <p className={
+                                documentScanProgress >= 61
+                                  ? "text-[11px] text-slate-600 dark:text-slate-300"
+                                  : "text-[11px] text-slate-400"
+                              }>
+                                {documentScanProgress >= 61 ? "✓" : "○"} Reading education
+                              </p>
+
+                              <p className={
+                                documentScanProgress >= 78
+                                  ? "text-[11px] text-slate-600 dark:text-slate-300"
+                                  : "text-[11px] text-slate-400"
+                              }>
+                                {documentScanProgress >= 78 ? "✓" : "○"} Reading experience
+                              </p>
+
+                              <p className={
+                                documentScanProgress >= 91
+                                  ? "text-[11px] text-slate-600 dark:text-slate-300"
+                                  : "text-[11px] text-slate-400"
+                              }>
+                                {documentScanProgress >= 91 ? "✓" : "○"} Reading skills
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   <input
                     type="file"
                     ref={fileInputRef}
                     onChange={handleFileUpload}
-                    accept="image/*,video/*"
+                    accept="image/*,video/*,.pdf,.doc,.docx"
                     className="hidden"
                   />
 
