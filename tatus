@@ -1,0 +1,629 @@
+[1mdiff --git a/app/user/dashboard/profile/page.tsx b/app/user/dashboard/profile/page.tsx[m
+[1mindex 27cd1e2..05b34fc 100644[m
+[1m--- a/app/user/dashboard/profile/page.tsx[m
+[1m+++ b/app/user/dashboard/profile/page.tsx[m
+[36m@@ -1,6 +1,6 @@[m
+ "use client";[m
+ [m
+[31m-import { useState } from "react";[m
+[32m+[m[32mimport { useEffect, useState } from "react";[m
+ import { motion } from "framer-motion";[m
+ import { useUserStore } from "@/stores/user-store";[m
+ import { privateApi } from "@/http/api/privateApi";[m
+[36m@@ -16,6 +16,11 @@[m [mimport {[m
+   Building2,[m
+   BadgeCheck,[m
+   Calendar,[m
+[32m+[m[32m  Bot,[m
+[32m+[m[32m  BriefcaseBusiness,[m
+[32m+[m[32m  Home,[m
+[32m+[m[32m  Trash2,[m
+[32m+[m[32m  Loader2,[m
+ } from "lucide-react";[m
+ import { Button } from "@/components/ui/button";[m
+ import { Input } from "@/components/ui/input";[m
+[36m@@ -23,6 +28,7 @@[m [mimport { Badge } from "@/components/ui/badge";[m
+ import { Card, CardContent } from "@/components/ui/card";[m
+ import { Separator } from "@/components/ui/separator";[m
+ import { useRouter } from "next/navigation";[m
+[32m+[m[32mimport { aiProfileService } from "@/http/services/ai-profile.service";[m
+ [m
+ export default function ProfilePage() {[m
+   const { user, updateUser } = useUserStore();[m
+[36m@@ -34,6 +40,192 @@[m [mexport default function ProfilePage() {[m
+     phone: user?.phone || "",[m
+   });[m
+ [m
+[32m+[m
+[32m+[m[32m  const [aiProfile, setAiProfile] = useState<any>(null);[m
+[32m+[m[32m  const [aiForm, setAiForm] = useState<any>({[m
+[32m+[m[32m    roomSearch: {},[m
+[32m+[m[32m    jobSearch: {},[m
+[32m+[m[32m  });[m
+[32m+[m[32m  const [aiLoading, setAiLoading] = useState(true);[m
+[32m+[m[32m  const [aiEditing, setAiEditing] = useState(false);[m
+[32m+[m[32m  const [aiSaving, setAiSaving] = useState(false);[m
+[32m+[m[32m  const [deletingField, setDeletingField] = useState<string | null>(null);[m
+[32m+[m[32m  const [clearingAi, setClearingAi] = useState(false);[m
+[32m+[m
+[32m+[m[32m  const loadAiProfile = async () => {[m
+[32m+[m[32m    try {[m
+[32m+[m[32m      setAiLoading(true);[m
+[32m+[m[32m      const data = await aiProfileService.getMine();[m
+[32m+[m[32m      setAiProfile(data);[m
+[32m+[m[32m      setAiForm({[m
+[32m+[m[32m        roomSearch: { ...(data?.roomSearch || {}) },[m
+[32m+[m[32m        jobSearch: { ...(data?.jobSearch || {}) },[m
+[32m+[m[32m      });[m
+[32m+[m[32m    } catch (err: any) {[m
+[32m+[m[32m      console.error("Failed to load AI profile:", err);[m
+[32m+[m[32m    } finally {[m
+[32m+[m[32m      setAiLoading(false);[m
+[32m+[m[32m    }[m
+[32m+[m[32m  };[m
+[32m+[m
+[32m+[m[32m  useEffect(() => {[m
+[32m+[m[32m    loadAiProfile();[m
+[32m+[m[32m  }, []);[m
+[32m+[m
+[32m+[m[32m  const updateAiField = ([m
+[32m+[m[32m    section: "roomSearch" | "jobSearch",[m
+[32m+[m[32m    field: string,[m
+[32m+[m[32m    value: string,[m
+[32m+[m[32m  ) => {[m
+[32m+[m[32m    setAiForm((prev: any) => ({[m
+[32m+[m[32m      ...prev,[m
+[32m+[m[32m      [section]: {[m
+[32m+[m[32m        ...(prev?.[section] || {}),[m
+[32m+[m[32m        [field]: value,[m
+[32m+[m[32m      },[m
+[32m+[m[32m    }));[m
+[32m+[m[32m  };[m
+[32m+[m
+[32m+[m[32m  const saveAiProfile = async () => {[m
+[32m+[m[32m    try {[m
+[32m+[m[32m      setAiSaving(true);[m
+[32m+[m
+[32m+[m[32m      const updated = await aiProfileService.updateMine({[m
+[32m+[m[32m        roomSearch: aiForm.roomSearch,[m
+[32m+[m[32m        jobSearch: aiForm.jobSearch,[m
+[32m+[m[32m      });[m
+[32m+[m
+[32m+[m[32m      setAiProfile(updated);[m
+[32m+[m[32m      setAiForm({[m
+[32m+[m[32m        roomSearch: { ...(updated?.roomSearch || {}) },[m
+[32m+[m[32m        jobSearch: { ...(updated?.jobSearch || {}) },[m
+[32m+[m[32m      });[m
+[32m+[m
+[32m+[m[32m      setAiEditing(false);[m
+[32m+[m[32m      toast.success("AI details updated");[m
+[32m+[m[32m    } catch (err: any) {[m
+[32m+[m[32m      toast.error([m
+[32m+[m[32m        err?.response?.data?.message || "AI details update failed",[m
+[32m+[m[32m      );[m
+[32m+[m[32m    } finally {[m
+[32m+[m[32m      setAiSaving(false);[m
+[32m+[m[32m    }[m
+[32m+[m[32m  };[m
+[32m+[m
+[32m+[m[32m  const deleteAiField = async (field: string) => {[m
+[32m+[m[32m    try {[m
+[32m+[m[32m      setDeletingField(field);[m
+[32m+[m
+[32m+[m[32m      const updated = await aiProfileService.deleteField(field);[m
+[32m+[m
+[32m+[m[32m      setAiProfile(updated);[m
+[32m+[m[32m      setAiForm({[m
+[32m+[m[32m        roomSearch: { ...(updated?.roomSearch || {}) },[m
+[32m+[m[32m        jobSearch: { ...(updated?.jobSearch || {}) },[m
+[32m+[m[32m      });[m
+[32m+[m
+[32m+[m[32m      toast.success("Saved detail deleted");[m
+[32m+[m[32m    } catch (err: any) {[m
+[32m+[m[32m      toast.error([m
+[32m+[m[32m        err?.response?.data?.message || "Could not delete detail",[m
+[32m+[m[32m      );[m
+[32m+[m[32m    } finally {[m
+[32m+[m[32m      setDeletingField(null);[m
+[32m+[m[32m    }[m
+[32m+[m[32m  };[m
+[32m+[m
+[32m+[m[32m  const clearAiProfile = async () => {[m
+[32m+[m[32m    const ok = window.confirm([m
+[32m+[m[32m      "Delete all information saved by RoomKhoj AI? This cannot be undone.",[m
+[32m+[m[32m    );[m
+[32m+[m
+[32m+[m[32m    if (!ok) return;[m
+[32m+[m
+[32m+[m[32m    try {[m
+[32m+[m[32m      setClearingAi(true);[m
+[32m+[m[32m      await aiProfileService.clearMine();[m
+[32m+[m
+[32m+[m[32m      setAiProfile(null);[m
+[32m+[m[32m      setAiForm({[m
+[32m+[m[32m        roomSearch: {},[m
+[32m+[m[32m        jobSearch: {},[m
+[32m+[m[32m      });[m
+[32m+[m
+[32m+[m[32m      toast.success("AI saved details cleared");[m
+[32m+[m[32m    } catch (err: any) {[m
+[32m+[m[32m      toast.error([m
+[32m+[m[32m        err?.response?.data?.message || "Could not clear AI details",[m
+[32m+[m[32m      );[m
+[32m+[m[32m    } finally {[m
+[32m+[m[32m      setClearingAi(false);[m
+[32m+[m[32m    }[m
+[32m+[m[32m  };[m
+[32m+[m
+[32m+[m[32m  const renderAiField = ([m
+[32m+[m[32m    section: "roomSearch" | "jobSearch",[m
+[32m+[m[32m    field: string,[m
+[32m+[m[32m    label: string,[m
+[32m+[m[32m  ) => {[m
+[32m+[m[32m    const current =[m
+[32m+[m[32m      aiForm?.[section]?.[field] ??[m
+[32m+[m[32m      aiProfile?.[section]?.[field] ??[m
+[32m+[m[32m      "";[m
+[32m+[m
+[32m+[m[32m    if ([m
+[32m+[m[32m      !aiEditing &&[m
+[32m+[m[32m      (current === "" || current === null || current === undefined)[m
+[32m+[m[32m    ) {[m
+[32m+[m[32m      return null;[m
+[32m+[m[32m    }[m
+[32m+[m
+[32m+[m[32m    return ([m
+[32m+[m[32m      <div className="rounded-2xl border bg-muted/20 p-3">[m
+[32m+[m[32m        <div className="flex items-start justify-between gap-3">[m
+[32m+[m[32m          <div className="min-w-0 flex-1">[m
+[32m+[m[32m            <p className="mb-1 text-xs text-muted-foreground">[m
+[32m+[m[32m              {label}[m
+[32m+[m[32m            </p>[m
+[32m+[m
+[32m+[m[32m            {aiEditing ? ([m
+[32m+[m[32m              <Input[m
+[32m+[m[32m                value={String(current ?? "")}[m
+[32m+[m[32m                onChange={(e) =>[m
+[32m+[m[32m                  updateAiField(section, field, e.target.value)[m
+[32m+[m[32m                }[m
+[32m+[m[32m                className="h-9 rounded-xl"[m
+[32m+[m[32m                placeholder={`Enter ${label.toLowerCase()}`}[m
+[32m+[m[32m              />[m
+[32m+[m[32m            ) : ([m
+[32m+[m[32m              <p className="break-words text-sm font-medium">[m
+[32m+[m[32m                {typeof current === "boolean"[m
+[32m+[m[32m                  ? current[m
+[32m+[m[32m                    ? "Yes"[m
+[32m+[m[32m                    : "No"[m
+[32m+[m[32m                  : String(current)}[m
+[32m+[m[32m              </p>[m
+[32m+[m[32m            )}[m
+[32m+[m[32m          </div>[m
+[32m+[m
+[32m+[m[32m          {!aiEditing && ([m
+[32m+[m[32m            <button[m
+[32m+[m[32m              type="button"[m
+[32m+[m[32m              onClick={() => deleteAiField(field)}[m
+[32m+[m[32m              disabled={deletingField === field}[m
+[32m+[m[32m              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40"[m
+[32m+[m[32m              title={`Delete ${label}`}[m
+[32m+[m[32m            >[m
+[32m+[m[32m              {deletingField === field ? ([m
+[32m+[m[32m                <Loader2 className="h-3.5 w-3.5 animate-spin" />[m
+[32m+[m[32m              ) : ([m
+[32m+[m[32m                <Trash2 className="h-3.5 w-3.5" />[m
+[32m+[m[32m              )}[m
+[32m+[m[32m            </button>[m
+[32m+[m[32m          )}[m
+[32m+[m[32m        </div>[m
+[32m+[m[32m      </div>[m
+[32m+[m[32m    );[m
+[32m+[m[32m  };[m
+[32m+[m
+   const initials = user?.name[m
+     ? user.name[m
+         .split(" ")[m
+[36m@@ -308,6 +500,222 @@[m [mexport default function ProfilePage() {[m
+           </CardContent>[m
+         </Card>[m
+       </motion.div>[m
+[32m+[m
+[32m+[m[32m      {/* AI Saved Details */}[m
+[32m+[m[32m      <motion.div[m
+[32m+[m[32m        initial={{ opacity: 0, y: 20 }}[m
+[32m+[m[32m        animate={{ opacity: 1, y: 0 }}[m
+[32m+[m[32m        transition={{ delay: 0.3 }}[m
+[32m+[m[32m      >[m
+[32m+[m[32m        <Card className="overflow-hidden rounded-3xl border-0 shadow-sm">[m
+[32m+[m[32m          <CardContent className="p-0">[m
+[32m+[m[32m            <div className="border-b bg-gradient-to-r from-violet-50 via-fuchsia-50 to-rose-50 p-5 dark:from-violet-950/30 dark:via-fuchsia-950/20 dark:to-rose-950/30">[m
+[32m+[m[32m              <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">[m
+[32m+[m[32m                <div className="flex items-center gap-3">[m
+[32m+[m[32m                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-600 to-fuchsia-600 shadow-md">[m
+[32m+[m[32m                    <Bot className="h-5 w-5 text-white" />[m
+[32m+[m[32m                  </div>[m
+[32m+[m
+[32m+[m[32m                  <div>[m
+[32m+[m[32m                    <h3 className="font-bold text-gray-900 dark:text-gray-100">[m
+[32m+[m[32m                      AI Saved Details[m
+[32m+[m[32m                    </h3>[m
+[32m+[m[32m                    <p className="text-xs text-muted-foreground">[m
+[32m+[m[32m                      Information RoomKhoj AI remembers to help you faster[m
+[32m+[m[32m                    </p>[m
+[32m+[m[32m                  </div>[m
+[32m+[m[32m                </div>[m
+[32m+[m
+[32m+[m[32m                {!aiLoading && ([m
+[32m+[m[32m                  <div className="flex gap-2">[m
+[32m+[m[32m                    {aiEditing ? ([m
+[32m+[m[32m                      <>[m
+[32m+[m[32m                        <Button[m
+[32m+[m[32m                          size="sm"[m
+[32m+[m[32m                          variant="outline"[m
+[32m+[m[32m                          className="rounded-full"[m
+[32m+[m[32m                          onClick={() => {[m
+[32m+[m[32m                            setAiForm({[m
+[32m+[m[32m                              roomSearch: {[m
+[32m+[m[32m                                ...(aiProfile?.roomSearch || {}),[m
+[32m+[m[32m                              },[m
+[32m+[m[32m                              jobSearch: {[m
+[32m+[m[32m                                ...(aiProfile?.jobSearch || {}),[m
+[32m+[m[32m                              },[m
+[32m+[m[32m                            });[m
+[32m+[m[32m                            setAiEditing(false);[m
+[32m+[m[32m                          }}[m
+[32m+[m[32m                        >[m
+[32m+[m[32m                          Cancel[m
+[32m+[m[32m                        </Button>[m
+[32m+[m
+[32m+[m[32m                        <Button[m
+[32m+[m[32m                          size="sm"[m
+[32m+[m[32m                          className="rounded-full"[m
+[32m+[m[32m                          onClick={saveAiProfile}[m
+[32m+[m[32m                          disabled={aiSaving}[m
+[32m+[m[32m                        >[m
+[32m+[m[32m                          {aiSaving ? ([m
+[32m+[m[32m                            <Loader2 className="mr-1 h-4 w-4 animate-spin" />[m
+[32m+[m[32m                          ) : ([m
+[32m+[m[32m                            <Save className="mr-1 h-4 w-4" />[m
+[32m+[m[32m                          )}[m
+[32m+[m[32m                          Save[m
+[32m+[m[32m                        </Button>[m
+[32m+[m[32m                      </>[m
+[32m+[m[32m                    ) : ([m
+[32m+[m[32m                      <Button[m
+[32m+[m[32m                        size="sm"[m
+[32m+[m[32m                        variant="outline"[m
+[32m+[m[32m                        className="rounded-full"[m
+[32m+[m[32m                        onClick={() => setAiEditing(true)}[m
+[32m+[m[32m                      >[m
+[32m+[m[32m                        <Edit3 className="mr-1 h-4 w-4" />[m
+[32m+[m[32m                        Edit[m
+[32m+[m[32m                      </Button>[m
+[32m+[m[32m                    )}[m
+[32m+[m[32m                  </div>[m
+[32m+[m[32m                )}[m
+[32m+[m[32m              </div>[m
+[32m+[m[32m            </div>[m
+[32m+[m
+[32m+[m[32m            <div className="p-5">[m
+[32m+[m[32m              {aiLoading ? ([m
+[32m+[m[32m                <div className="flex min-h-[120px] items-center justify-center">[m
+[32m+[m[32m                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />[m
+[32m+[m[32m                </div>[m
+[32m+[m[32m              ) : ([m
+[32m+[m[32m                <div className="space-y-6">[m
+[32m+[m[32m                  <section>[m
+[32m+[m[32m                    <div className="mb-3 flex items-center gap-2">[m
+[32m+[m[32m                      <Home className="h-4 w-4 text-red-600" />[m
+[32m+[m[32m                      <h4 className="text-sm font-semibold">[m
+[32m+[m[32m                        Room Preferences[m
+[32m+[m[32m                      </h4>[m
+[32m+[m[32m                    </div>[m
+[32m+[m
+[32m+[m[32m                    <div className="grid gap-3 sm:grid-cols-2">[m
+[32m+[m[32m                      {renderAiField("roomSearch", "city", "City")}[m
+[32m+[m[32m                      {renderAiField([m
+[32m+[m[32m                        "roomSearch",[m
+[32m+[m[32m                        "exactLocation",[m
+[32m+[m[32m                        "Location",[m
+[32m+[m[32m                      )}[m
+[32m+[m[32m                      {renderAiField("roomSearch", "budget", "Budget")}[m
+[32m+[m[32m                      {renderAiField([m
+[32m+[m[32m                        "roomSearch",[m
+[32m+[m[32m                        "roomType",[m
+[32m+[m[32m                        "Room Type",[m
+[32m+[m[32m                      )}[m
+[32m+[m[32m                      {renderAiField([m
+[32m+[m[32m                        "roomSearch",[m
+[32m+[m[32m                        "tenantType",[m
+[32m+[m[32m                        "Tenant Type",[m
+[32m+[m[32m                      )}[m
+[32m+[m[32m                      {renderAiField([m
+[32m+[m[32m                        "roomSearch",[m
+[32m+[m[32m                        "numberOfPeople",[m
+[32m+[m[32m                        "Number of People",[m
+[32m+[m[32m                      )}[m
+[32m+[m[32m                      {renderAiField([m
+[32m+[m[32m                        "roomSearch",[m
+[32m+[m[32m                        "moveInDate",[m
+[32m+[m[32m                        "Move-in Date",[m
+[32m+[m[32m                      )}[m
+[32m+[m[32m                      {renderAiField([m
+[32m+[m[32m                        "roomSearch",[m
+[32m+[m[32m                        "vehicleType",[m
+[32m+[m[32m                        "Vehicle",[m
+[32m+[m[32m                      )}[m
+[32m+[m[32m                    </div>[m
+[32m+[m[32m                  </section>[m
+[32m+[m
+[32m+[m[32m                  <Separator />[m
+[32m+[m
+[32m+[m[32m                  <section>[m
+[32m+[m[32m                    <div className="mb-3 flex items-center gap-2">[m
+[32m+[m[32m                      <BriefcaseBusiness className="h-4 w-4 text-violet-600" />[m
+[32m+[m[32m                      <h4 className="text-sm font-semibold">[m
+[32m+[m[32m                        Job Preferences[m
+[32m+[m[32m                      </h4>[m
+[32m+[m[32m                    </div>[m
+[32m+[m
+[32m+[m[32m                    <div className="grid gap-3 sm:grid-cols-2">[m
+[32m+[m[32m                      {renderAiField([m
+[32m+[m[32m                        "jobSearch",[m
+[32m+[m[32m                        "userName",[m
+[32m+[m[32m                        "Name",[m
+[32m+[m[32m                      )}[m
+[32m+[m[32m                      {renderAiField([m
+[32m+[m[32m                        "jobSearch",[m
+[32m+[m[32m                        "phone",[m
+[32m+[m[32m                        "Phone",[m
+[32m+[m[32m                      )}[m
+[32m+[m[32m                      {renderAiField([m
+[32m+[m[32m                        "jobSearch",[m
+[32m+[m[32m                        "location",[m
+[32m+[m[32m                        "Preferred Location",[m
+[32m+[m[32m                      )}[m
+[32m+[m[32m                      {renderAiField([m
+[32m+[m[32m                        "jobSearch",[m
+[32m+[m[32m                        "jobLocation",[m
+[32m+[m[32m                        "Job Location",[m
+[32m+[m[32m                      )}[m
+[32m+[m[32m                      {renderAiField([m
+[32m+[m[32m                        "jobSearch",[m
+[32m+[m[32m                        "jobTitle",[m
+[32m+[m[32m                        "Job Title",[m
+[32m+[m[32m                      )}[m
+[32m+[m[32m                      {renderAiField([m
+[32m+[m[32m                        "jobSearch",[m
+[32m+[m[32m                        "jobType",[m
+[32m+[m[32m                        "Job Type",[m
+[32m+[m[32m                      )}[m
+[32m+[m[32m                      {renderAiField([m
+[32m+[m[32m                        "jobSearch",[m
+[32m+[m[32m                        "experience",[m
+[32m+[m[32m                        "Experience",[m
+[32m+[m[32m                      )}[m
+[32m+[m[32m                      {renderAiField([m
+[32m+[m[32m                        "jobSearch",[m
+[32m+[m[32m                        "education",[m
+[32m+[m[32m                        "Education",[m
+[32m+[m[32m                      )}[m
+[32m+[m[32m                      {renderAiField([m
+[32m+[m[32m                        "jobSearch",[m
+[32m+[m[32m                        "expectedSalary",[m
+[32m+[m[32m                        "Expected Salary",[m
+[32m+[m[32m                      )}[m
+[32m+[m[32m                      {renderAiField([m
+[32m+[m[32m                        "jobSearch",[m
+[32m+[m[32m                        "joiningAvailability",[m
+[32m+[m[32m                        "Joining Availability",[m
+[32m+[m[32m                      )}[m
+[32m+[m[32m                    </div>[m
+[32m+[m[32m                  </section>[m
+[32m+[m
+[32m+[m[32m                  <div className="flex justify-end border-t pt-4">[m
+[32m+[m[32m                    <Button[m
+[32m+[m[32m                      variant="destructive"[m
+[32m+[m[32m                      size="sm"[m
+[32m+[m[32m                      className="rounded-full"[m
+[32m+[m[32m                      disabled={clearingAi}[m
+[32m+[m[32m                      onClick={clearAiProfile}[m
+[32m+[m[32m                    >[m
+[32m+[m[32m                      {clearingAi ? ([m
+[32m+[m[32m                        <Loader2 className="mr-1 h-4 w-4 animate-spin" />[m
+[32m+[m[32m                      ) : ([m
+[32m+[m[32m                        <Trash2 className="mr-1 h-4 w-4" />[m
+[32m+[m[32m                      )}[m
+[32m+[m[32m                      Clear AI Details[m
+[32m+[m[32m                    </Button>[m
+[32m+[m[32m                  </div>[m
+[32m+[m[32m                </div>[m
+[32m+[m[32m              )}[m
+[32m+[m[32m            </div>[m
+[32m+[m[32m          </CardContent>[m
+[32m+[m[32m        </Card>[m
+[32m+[m[32m      </motion.div>[m
+     </div>[m
+   );[m
+ }[m
+[1mdiff --git a/components/user/Chatbot.tsx b/components/user/Chatbot.tsx[m
+[1mindex d41fcf4..76b1eb0 100644[m
+[1m--- a/components/user/Chatbot.tsx[m
+[1m+++ b/components/user/Chatbot.tsx[m
+[36m@@ -963,24 +963,22 @@[m [mconst deductBalanceForText = (text: string) => {[m
+                 dark:to-transparent[m
+               ">[m
+                 <div className="mx-auto w-full max-w-[760px]">[m
+[31m-                <div className="[m
+[31m-              flex[m
+[31m-              min-h-[58px][m
+[31m-              items-end[m
+[31m-              gap-1.5[m
+[31m-              rounded-[26px][m
+[31m-              border-2[m
+[31m-              border-fuchsia-500/80[m
+[31m-              bg-white[m
+[31m-              px-2.5[m
+[31m-              py-2[m
+[31m-              shadow-[0_0_0_1px_rgba(59,130,246,0.35),0_0_14px_rgba(99,102,241,0.22),0_0_24px_rgba(217,70,239,0.18)][m
+[31m-              transition-all[m
+[31m-              duration-300[m
+[31m-              focus-within:border-violet-500[m
+[31m-              focus-within:shadow-[0_0_0_1px_rgba(59,130,246,0.55),0_0_18px_rgba(99,102,241,0.28),0_0_30px_rgba(217,70,239,0.22)][m
+[31m-              dark:bg-[#2f2f2f][m
+[31m-            ">[m
+[32m+[m[32m                <div[m
+[32m+[m[32m                  className={cn([m
+[32m+[m[32m                    "relative rounded-[32px] border bg-white px-4 pt-4 pb-3 shadow-[0_8px_30px_rgba(0,0,0,0.08)] transition-all duration-300 dark:bg-[#212121]",[m
+[32m+[m[32m                    input.trim()[m
+[32m+[m[32m                      ? "border-slate-300 shadow-[0_10px_35px_rgba(0,0,0,0.12)] dark:border-white/20"[m
+[32m+[m[32m                      : "border-slate-200 dark:border-white/10"[m
+[32m+[m[32m                  )}[m
+[32m+[m[32m                >[m
+[32m+[m[32m                  <input[m
+[32m+[m[32m                    type="file"[m
+[32m+[m[32m                    ref={fileInputRef}[m
+[32m+[m[32m                    onChange={handleFileUpload}[m
+[32m+[m[32m                    accept="image/*,video/*"[m
+[32m+[m[32m                    className="hidden"[m
+[32m+[m[32m                  />[m
+[32m+[m
+                   <textarea[m
+                     ref={inputRef}[m
+                     value={input}[m
+[36m@@ -991,62 +989,84 @@[m [mconst deductBalanceForText = (text: string) => {[m
+                         sendMessage();[m
+                       }[m
+                     }}[m
+[31m-                    placeholder="Message RoomKhoj AI"[m
+[31m-                    rows={1}[m
+[32m+[m[32m                    placeholder="Ask RoomKhoj AI"[m
+[32m+[m[32m                    rows={3}[m
+                     className="[m
+[31m-                  min-h-[40px][m
+[31m-                  max-h-[120px][m
+[31m-                  min-w-0[m
+[31m-                  flex-1[m
+[31m-                  resize-none[m
+[31m-                  bg-transparent[m
+[31m-                  px-2[m
+[31m-                  py-2[m
+[31m-                  text-base[m
+[31m-                  leading-6[m
+[31m-                  text-slate-900[m
+[31m-                  outline-none[m
+[31m-                  placeholder:text-slate-400[m
+[31m-                  dark:text-white[m
+[31m-                  dark:placeholder:text-slate-500[m
+[31m-                "[m
+[32m+[m[32m                      block[m
+[32m+[m[32m                      min-h-[74px][m
+[32m+[m[32m                      max-h-[180px][m
+[32m+[m[32m                      w-full[m
+[32m+[m[32m                      resize-none[m
+[32m+[m[32m                      bg-transparent[m
+[32m+[m[32m                      px-1[m
+[32m+[m[32m                      py-1[m
+[32m+[m[32m                      text-[18px][m
+[32m+[m[32m                      leading-7[m
+[32m+[m[32m                      text-slate-900[m
+[32m+[m[32m                      outline-none[m
+[32m+[m[32m                      placeholder:text-slate-400[m
+[32m+[m[32m                      dark:text-white[m
+[32m+[m[32m                      dark:placeholder:text-slate-500[m
+[32m+[m[32m                    "[m
+                   />[m
+ [m
+[31m-                  <button[m
+[31m-                    type="button"[m
+[31m-                    onClick={() => fileInputRef.current?.click()}[m
+[31m-                    className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-full transition cursor-pointer"[m
+[31m-                    title="Attach file"[m
+[31m-                  >[m
+[31m-                    <Paperclip className="w-4 h-4" />[m
+[31m-                  </button>[m
+[31m-[m
+[31m-                  <button[m
+[31m-                    type="button"[m
+[31m-                    onClick={toggleVoiceRecording}[m
+[31m-                    className={cn([m
+[31m-                      "p-1.5 rounded-full transition cursor-pointer",[m
+[31m-                      isRecording ? "text-red-600 animate-pulse bg-red-100 dark:bg-red-950" : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"[m
+[31m-                    )}[m
+[31m-                    title={isRecording ? "Stop recording" : "Voice input"}[m
+[31m-                  >[m
+[31m-                    {isRecording ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}[m
+[31m-                  </button>[m
+[32m+[m[32m                  <div className="mt-2 flex items-center justify-between gap-2">[m
+[32m+[m[32m                    <button[m
+[32m+[m[32m                      type="button"[m
+[32m+[m[32m                      onClick={() => fileInputRef.current?.click()}[m
+[32m+[m[32m                      className="[m
+[32m+[m[32m                        flex h-11 w-11 shrink-0[m
+[32m+[m[32m                        items-center justify-center[m
+[32m+[m[32m                        rounded-full[m
+[32m+[m[32m                        text-slate-900[m
+[32m+[m[32m                        transition[m
+[32m+[m[32m                        hover:bg-slate-100[m
+[32m+[m[32m                        dark:text-white[m
+[32m+[m[32m                        dark:hover:bg-white/10[m
+[32m+[m[32m                      "[m
+[32m+[m[32m                      title="Attach file"[m
+[32m+[m[32m                    >[m
+[32m+[m[32m                      <Plus className="h-7 w-7" />[m
+[32m+[m[32m                    </button>[m
+ [m
+[32m+[m[32m                    <div className="ml-auto flex items-center gap-1">[m
+[32m+[m[32m                      <button[m
+[32m+[m[32m                        type="button"[m
+[32m+[m[32m                        onClick={toggleVoiceRecording}[m
+[32m+[m[32m                        className={cn([m
+[32m+[m[32m                          "flex h-11 w-11 items-center justify-center rounded-full transition",[m
+[32m+[m[32m                          isRecording[m
+[32m+[m[32m                            ? "bg-red-100 text-red-600 animate-pulse dark:bg-red-950"[m
+[32m+[m[32m                            : "text-slate-900 hover:bg-slate-100 dark:text-white dark:hover:bg-white/10"[m
+[32m+[m[32m                        )}[m
+[32m+[m[32m                        title={isRecording ? "Stop recording" : "Voice input"}[m
+[32m+[m[32m                      >[m
+[32m+[m[32m                        {isRecording ? ([m
+[32m+[m[32m                          <MicOff className="h-6 w-6" />[m
+[32m+[m[32m                        ) : ([m
+[32m+[m[32m                          <Mic className="h-6 w-6" />[m
+[32m+[m[32m                        )}[m
+[32m+[m[32m                      </button>[m
+ [m
+[31m-                  <button[m
+[31m-                    type="button"[m
+[31m-                    onClick={() => sendMessage()}[m
+[31m-                    disabled={(!input.trim() && !selectedFile) || isTyping}[m
+[31m-                    className={cn([m
+[31m-                      "flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-white transition cursor-pointer",[m
+[31m-                      (!input.trim() && !selectedFile) || isTyping[m
+[31m-                        ? "bg-slate-300 dark:bg-slate-600 cursor-not-allowed"[m
+[31m-                        : "bg-slate-900 hover:bg-black dark:bg-white dark:text-slate-900"[m
+[31m-                    )}[m
+[31m-                  >[m
+[31m-                    {isTyping ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}[m
+[31m-                  </button>[m
+[32m+[m[32m                      <button[m
+[32m+[m[32m                        type="button"[m
+[32m+[m[32m                        onClick={() => sendMessage()}[m
+[32m+[m[32m                        disabled={(!input.trim() && !selectedFile) || isTyping}[m
+[32m+[m[32m                        className={cn([m
+[32m+[m[32m                          "flex h-11 w-11 items-center justify-center rounded-full transition-all duration-200",[m
+[32m+[m[32m                          (!input.trim() && !selectedFile) || isTyping[m
+[32m+[m[32m                            ? "bg-slate-100 text-slate-400 dark:bg-white/10 dark:text-slate-500"[m
+[32m+[m[32m                            : "bg-black text-white hover:scale-105 dark:bg-white dark:text-black"[m
+[32m+[m[32m                        )}[m
+[32m+[m[32m                      >[m
+[32m+[m[32m                        {isTyping ? ([m
+[32m+[m[32m                          <Loader2 className="h-5 w-5 animate-spin" />[m
+[32m+[m[32m                        ) : ([m
+[32m+[m[32m                          <Send className="h-5 w-5" />[m
+[32m+[m[32m                        )}[m
+[32m+[m[32m                      </button>[m
+[32m+[m[32m                    </div>[m
+[32m+[m[32m                  </div>[m
+                 </div>[m
+ [m
+                 <p className="mt-2 text-center text-[10px] text-slate-400">[m
