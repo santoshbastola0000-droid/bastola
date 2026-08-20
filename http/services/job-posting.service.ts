@@ -62,7 +62,7 @@ export interface JobPostingInput {
 
 export const jobPostingService = {
   getAll: async (): Promise<JobPosting[]> => {
-    const response = await api.get("/job-posting");
+    const response = await privateApi.get("/job-posting");
     return response.data || [];
   },
 
@@ -72,7 +72,7 @@ export const jobPostingService = {
   },
 
   getOne: async (id: string): Promise<JobPosting> => {
-    const response = await api.get(`/job-posting/${id}`);
+    const response = await privateApi.get(`/job-posting/${id}`);
     return response.data;
   },
 
