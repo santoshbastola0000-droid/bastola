@@ -79,6 +79,16 @@ const navItems: NavItem[] = [
     icon: BriefcaseBusiness,
   },
   {
+    title: "Candidates",
+    href: "/admin/dashboard/candidates",
+    icon: Users,
+  },
+  {
+    title: "Contact History",
+    href: "/admin/dashboard/candidate-contacts",
+    icon: Users,
+  },
+  {
     title: "Wallet",
     href: "/admin/dashboard/wallet",
     icon: Wallet,
