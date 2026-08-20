@@ -6,15 +6,30 @@ export type JobStatus = "PENDING" | "APPROVED" | "REJECTED";
 export interface JobPosting {
   id: string;
   userId: string;
+  jobCode?: number | null;
   companyName?: string | null;
   jobTitle: string;
   category?: string | null;
   location: string;
+
   salary?: number | null;
+  salaryMin?: number | null;
+  salaryMax?: number | null;
+  salaryNegotiable?: boolean;
+
   experience?: string | null;
+  requiredSkills?: string[] | null;
+  requiredEducation?: string | null;
+
+  requiresLicense?: boolean;
+  licenseType?: string | null;
+
   contactPhone: string;
   description?: string | null;
+  applicationDeadline?: string | null;
+
   status: JobStatus | string;
+
   createdAt: string;
   updatedAt: string;
 }
@@ -25,16 +40,34 @@ export interface JobPostingInput {
   jobTitle: string;
   category?: string;
   location: string;
+
   salary?: number | null;
+  salaryMin?: number | null;
+  salaryMax?: number | null;
+  salaryNegotiable?: boolean;
+
   experience?: string;
+  requiredSkills?: string[];
+  requiredEducation?: string;
+
+  requiresLicense?: boolean;
+  licenseType?: string;
+
   contactPhone: string;
   description?: string;
+  applicationDeadline?: string | null;
+
   status?: JobStatus;
 }
 
 export const jobPostingService = {
   getAll: async (): Promise<JobPosting[]> => {
     const response = await api.get("/job-posting");
+    return response.data || [];
+  },
+
+  getApproved: async (): Promise<JobPosting[]> => {
+    const response = await api.get("/job-posting/approved");
     return response.data || [];
   },
 
@@ -45,6 +78,11 @@ export const jobPostingService = {
 
   create: async (data: JobPostingInput): Promise<JobPosting> => {
     const response = await privateApi.post("/job-posting", data);
+    return response.data;
+  },
+
+  createPublic: async (data: JobPostingInput): Promise<JobPosting> => {
+    const response = await api.post("/job-posting", data);
     return response.data;
   },
 

@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { NavBar } from "@/components/common/navbar";
 import Footer from "@/components/common/footer";
+import ApprovedVacancies from "@/components/jobs/ApprovedVacancies";
 
 const title = "Jobs in Nepal & Job Vacancies | RoomKhoj";
 
@@ -139,6 +140,8 @@ export default function NepalJobsPage() {
             </a>
           </div>
         </section>
+
+        <ApprovedVacancies />
 
         <section className="mx-auto max-w-6xl px-4 py-16">
           <p className="font-semibold text-red-600">
