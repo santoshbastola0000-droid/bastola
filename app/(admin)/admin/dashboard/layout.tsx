@@ -11,6 +11,7 @@ import { isTokenExpired } from "@/lib/utils";
 import { toast } from "sonner";
 import { FAILURETOAST } from "@/lib/constants/app.constants";
 import { ThemeProvider } from "@/components/theme-provider";
+import { AdminTwoFactorGate } from "@/components/admin/AdminTwoFactorGate";
 
 export default function AdminLayout({
   children,
@@ -66,6 +67,7 @@ export default function AdminLayout({
 
   return (
     <ThemeProvider>
+      <AdminTwoFactorGate>
       <div className="min-h-screen bg-background">
         <AdminSidebar
           isCollapsed={false}
@@ -90,6 +92,7 @@ export default function AdminLayout({
           </div>
         </div>
       </div>
+      </AdminTwoFactorGate>
     </ThemeProvider>
   );
 }
