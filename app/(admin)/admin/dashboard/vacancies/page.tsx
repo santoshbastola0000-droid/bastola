@@ -351,9 +351,9 @@ export default function VacanciesPage() {
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {[
-          ["ALL", "All Vacancies", jobs.length],
-          ["APPROVED", "Approved", approved],
+          ["ALL", "All", jobs.length],
           ["PENDING", "Pending", pending],
+          ["APPROVED", "Approved", approved],
           ["REJECTED", "Rejected", rejected],
         ].map(([key, label, count]) => (
           <button
