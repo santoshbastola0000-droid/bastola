@@ -96,6 +96,27 @@ export function AdminTwoFactorGate({
     loadStatus();
   }, [loadStatus]);
 
+  const showQrAgain =
+    async () => {
+      setSubmitting(true);
+
+      try {
+        const setup =
+          await adminTwoFactorService.setup();
+
+        setSetupData(setup);
+        setStage("setup");
+        setCode("");
+      } catch (error: any) {
+        toast.error(
+          error?.response?.data?.message ||
+            "QR code load गर्न सकिएन.",
+        );
+      } finally {
+        setSubmitting(false);
+      }
+    };
+
   const verifyCurrentSession =
     async () => {
       if (cleanCode.length !== 6) {
@@ -388,6 +409,15 @@ export function AdminTwoFactorGate({
           )}
 
           Verify & Continue
+        </Button>
+
+        <Button
+          variant="outline"
+          className="mt-3 w-full"
+          disabled={submitting}
+          onClick={showQrAgain}
+        >
+          Show QR Again
         </Button>
 
         <p className="mt-4 text-center text-xs text-muted-foreground">
