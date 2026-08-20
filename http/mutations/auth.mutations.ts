@@ -161,11 +161,41 @@ export const useVerifyMutation = () => {
       return response.data;
     },
     onSuccess: async (data) => {
-      const { accessToken } = data.data || {};
+      const {
+        accessToken,
+        challengeToken,
+        requiresTwoFactor,
+      } = data.data || {};
+
+      /*
+       * Admin 2FA enabled:
+       * accessToken अझै आएको हुँदैन।
+       * Temporary challengeToken लिएर 2FA page मा जाने।
+       */
+      if (
+        requiresTwoFactor &&
+        challengeToken
+      ) {
+        if (typeof window !== "undefined") {
+          sessionStorage.setItem(
+            "admin_2fa_challenge",
+            challengeToken,
+          );
+        }
+
+        router.push("/auth/2fa");
+        return;
+      }
+
+      if (!accessToken) {
+        toast.error("Login token प्राप्त भएन।");
+        return;
+      }
 
       setToken(accessToken);
 
-      const userData = await fetchActiveUser(accessToken);
+      const userData =
+        await fetchActiveUser(accessToken);
 
       setUser(userData);
 
