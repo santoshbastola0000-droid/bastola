@@ -24,6 +24,24 @@ export interface ChatMessage {
 }
 
 export const messageService = {
+  startByPhone: async (
+    phoneNumber: string,
+  ) => {
+    const response = await privateApi.post(
+      "/message/start-by-phone",
+      { phoneNumber },
+    );
+
+    return response.data as {
+      conversation: MessageConversation;
+      user: {
+        id: string;
+        name: string;
+        phoneNumber: string;
+      };
+    };
+  },
+
   createConversation: async (
     otherUserId: string,
     contextType = "USER",

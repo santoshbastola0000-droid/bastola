@@ -8,6 +8,7 @@ import {
 import {
   Loader2,
   MessageCircle,
+  Phone,
   Search,
   Send,
 } from "lucide-react";
@@ -44,6 +45,19 @@ export default function MessagesPage() {
   const [search, setSearch] =
     useState("");
 
+  const [phoneNumber, setPhoneNumber] =
+    useState("");
+
+  const [phoneResult, setPhoneResult] =
+    useState<{
+      id: string;
+      name: string;
+      phoneNumber: string;
+    } | null>(null);
+
+  const [phoneSearching, setPhoneSearching] =
+    useState(false);
+
   const [draft, setDraft] =
     useState("");
 
@@ -78,6 +92,44 @@ export default function MessagesPage() {
   useEffect(() => {
     loadConversations();
   }, []);
+
+  const searchByPhone =
+    async () => {
+      const phone =
+        phoneNumber.replace(/\D/g, "");
+
+      if (phone.length !== 10) {
+        toast.error(
+          "10-digit phone number राख्नुहोस्.",
+        );
+        return;
+      }
+
+      try {
+        setPhoneSearching(true);
+        setPhoneResult(null);
+
+        const result =
+          await messageService.startByPhone(
+            phone,
+          );
+
+        setPhoneResult(result.user);
+
+        await loadConversations();
+
+        await openConversation(
+          result.conversation,
+        );
+      } catch (error: any) {
+        toast.error(
+          error?.response?.data?.message ||
+            "यो नम्बर भएको user भेटिएन.",
+        );
+      } finally {
+        setPhoneSearching(false);
+      }
+    };
 
   const openConversation =
     async (
@@ -190,6 +242,62 @@ export default function MessagesPage() {
             <h1 className="text-xl font-bold">
               Messages
             </h1>
+
+            <div className="mt-4 rounded-xl border p-3">
+              <p className="mb-2 text-sm font-medium">
+                Start chat by phone number
+              </p>
+
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Phone className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+
+                  <Input
+                    value={phoneNumber}
+                    onChange={(e) =>
+                      setPhoneNumber(
+                        e.target.value
+                          .replace(/\D/g, "")
+                          .slice(0, 10),
+                      )
+                    }
+                    placeholder="98XXXXXXXX"
+                    inputMode="numeric"
+                    className="pl-9"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        searchByPhone();
+                      }
+                    }}
+                  />
+                </div>
+
+                <Button
+                  onClick={searchByPhone}
+                  disabled={
+                    phoneSearching ||
+                    phoneNumber.length !== 10
+                  }
+                >
+                  {phoneSearching ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    "Search"
+                  )}
+                </Button>
+              </div>
+
+              {phoneResult && (
+                <div className="mt-3 rounded-lg bg-muted p-3">
+                  <p className="font-medium">
+                    {phoneResult.name}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {phoneResult.phoneNumber}
+                  </p>
+                </div>
+              )}
+            </div>
 
             <div className="relative mt-4">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
