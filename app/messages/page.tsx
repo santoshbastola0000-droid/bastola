@@ -154,6 +154,22 @@ export default function MessagesPage() {
     nextSocket.on(
       "message:new",
       (message: ChatMessage) => {
+        if (
+          message?.id &&
+          message?.receiverId ===
+            currentUserId
+        ) {
+          nextSocket.emit(
+            "message:delivered",
+            {
+              messageId:
+                message.id,
+              userId:
+                currentUserId,
+            },
+          );
+        }
+
         console.log(
           "[MESSAGE SOCKET] new message",
           message,
@@ -216,9 +232,33 @@ export default function MessagesPage() {
       },
     );
 
+
+    nextSocket.on(
+      "message:status",
+      (status) => {
+        setMessages((prev) =>
+          prev.map((message) =>
+            message.id ===
+            status.messageId
+              ? {
+                  ...message,
+                  deliveredAt:
+                    status.deliveredAt ??
+                    message.deliveredAt,
+                  seenAt:
+                    status.seenAt ??
+                    message.seenAt,
+                }
+              : message,
+          ),
+        );
+      },
+    );
+
     setSocket(nextSocket);
 
     return () => {
+      nextSocket.off("message:status");
       nextSocket.disconnect();
       setSocket(null);
     };
@@ -631,10 +671,28 @@ export default function MessagesPage() {
                                 },
                               )}
 
-                              {mine &&
-                              message.seenAt
-                                ? " · Seen"
-                                : ""}
+                              {mine && (
+                                <span
+                                  className={`ml-1 font-semibold ${
+                                    message.seenAt
+                                      ? "text-sky-300"
+                                      : ""
+                                  }`}
+                                  title={
+                                    message.seenAt
+                                      ? "Seen"
+                                      : message.deliveredAt
+                                        ? "Delivered"
+                                        : "Sent"
+                                  }
+                                >
+                                  {message.seenAt
+                                    ? " ✓✓"
+                                    : message.deliveredAt
+                                      ? " ✓✓"
+                                      : " ✓"}
+                                </span>
+                              )}
                             </p>
                           </div>
                         </div>
