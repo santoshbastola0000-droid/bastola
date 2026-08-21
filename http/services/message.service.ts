@@ -85,6 +85,17 @@ export const messageService = {
     return response.data as Blob;
   },
 
+  startByUser: async (
+    userId: string,
+  ) => {
+    const response =
+      await privateApi.post(
+        `/message/start-by-user/${userId}`,
+      );
+
+    return response.data;
+  },
+
   startByContact: async (
     contact: string,
   ) => {

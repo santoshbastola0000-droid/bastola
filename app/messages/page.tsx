@@ -26,6 +26,10 @@ import {
 import { useUserStore } from "@/stores/user-store";
 
 export default function MessagesPage() {
+  const searchParams =
+    useSearchParams();
+
+
   const user = useUserStore(
     (state) => state.user,
   );
@@ -600,6 +604,54 @@ export default function MessagesPage() {
     selected?.id,
     messages.length,
   ]);
+
+  useEffect(() => {
+    const profileUserId =
+      searchParams.get("user");
+
+    if (!profileUserId) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const openProfileChat =
+      async () => {
+        try {
+          const result =
+            await messageService
+              .startByUser(
+                profileUserId,
+              );
+
+          if (cancelled) {
+            return;
+          }
+
+          await loadConversations();
+
+          const conversation =
+            result.conversation;
+
+          if (conversation) {
+            setSelected(
+              conversation,
+            );
+          }
+        } catch (error) {
+          console.error(
+            "Profile message start failed:",
+            error,
+          );
+        }
+      };
+
+    openProfileChat();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [searchParams]);
 
   const sendMessage =
     async () => {
