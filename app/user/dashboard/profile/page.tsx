@@ -884,8 +884,11 @@ export default function ProfilePage() {
               src={
                 coverPhoto
               }
-              alt="Cover"
+              alt=""
               className="h-full w-full object-cover"
+              onError={(e) => {
+                e.currentTarget.style.display = "none";
+              }}
             />
           )}
 
@@ -935,11 +938,11 @@ export default function ProfilePage() {
                       src={
                         profilePhoto
                       }
-                      alt={
-                        profile.user
-                          .name
-                      }
+                      alt=""
                       className="h-full w-full object-cover"
+                      onError={(e) => {
+                        e.currentTarget.style.display = "none";
+                      }}
                     />
                   ) : (
                     <div className="flex h-full w-full items-center justify-center text-3xl font-bold text-white">

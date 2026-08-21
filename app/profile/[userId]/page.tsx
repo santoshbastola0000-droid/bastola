@@ -241,10 +241,11 @@ export default function PublicProfilePage() {
                   {profilePhoto ? (
                     <img
                       src={profilePhoto}
-                      alt={
-                        profile.user.name
-                      }
+                      alt=""
                       className="h-full w-full object-cover"
+                      onError={(e) => {
+                        e.currentTarget.style.display = "none";
+                      }}
                     />
                   ) : (
                     <div className="flex h-full w-full items-center justify-center text-3xl font-bold text-white">
