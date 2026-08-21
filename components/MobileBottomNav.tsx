@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
+import { messageService } from "@/http/services/message.service";
 import {
   Home,
   BriefcaseBusiness,
@@ -12,6 +14,33 @@ import {
 
 export function MobileBottomNav() {
   const pathname = usePathname();
+
+  const [unreadCount, setUnreadCount] =
+    useState(0);
+
+  useEffect(() => {
+    const loadUnread = async () => {
+      try {
+        const data =
+          await messageService.getUnreadCount();
+
+        setUnreadCount(data.count || 0);
+      } catch {
+        setUnreadCount(0);
+      }
+    };
+
+    loadUnread();
+
+    const timer = window.setInterval(
+      loadUnread,
+      15000,
+    );
+
+    return () =>
+      window.clearInterval(timer);
+  }, []);
+
 
   const isHome = pathname === "/";
   const isJobs = pathname.startsWith("/jobs");
@@ -103,10 +132,39 @@ export function MobileBottomNav() {
               : "text-gray-500"
           }`}
         >
-          <MessageCircle
-            className="h-6 w-6"
-            strokeWidth={isMessages ? 2.5 : 2}
-          />
+          <div className="relative">
+            <MessageCircle
+              className="h-6 w-6"
+              strokeWidth={
+                isMessages ? 2.5 : 2
+              }
+            />
+
+            {unreadCount > 0 && (
+              <span
+                className="
+                  absolute
+                  -right-3
+                  -top-2
+                  flex
+                  min-w-[18px]
+                  h-[18px]
+                  items-center
+                  justify-center
+                  rounded-full
+                  bg-red-500
+                  px-1
+                  text-[10px]
+                  font-bold
+                  text-white
+                "
+              >
+                {unreadCount > 99
+                  ? "99+"
+                  : unreadCount}
+              </span>
+            )}
+          </div>
 
           <span>Messages</span>
         </Link>

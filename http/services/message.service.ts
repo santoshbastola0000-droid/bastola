@@ -85,6 +85,17 @@ export const messageService = {
     return response.data;
   },
 
+  getUnreadCount: async () => {
+    const response = await privateApi.get(
+      "/message/unread-count",
+    );
+
+    return response.data as {
+      count: number;
+      display: string;
+    };
+  },
+
   getConversations: async (): Promise<
     MessageConversation[]
   > => {
