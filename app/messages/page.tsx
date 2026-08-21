@@ -56,7 +56,8 @@ export default function MessagesPage() {
     useState<{
       id: string;
       name: string;
-      contactSearch: string;
+      email?: string;
+      phoneNumber: string;
     } | null>(null);
 
   const [phoneSearching, setPhoneSearching] =
