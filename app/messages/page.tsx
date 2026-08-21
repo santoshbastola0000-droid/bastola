@@ -109,10 +109,46 @@ export default function MessagesPage() {
     );
 
     nextSocket.on("connect", () => {
-      nextSocket.emit("join-user", {
-        userId: currentUserId,
-      });
+      console.log(
+        "[MESSAGE SOCKET] connected",
+        nextSocket.id,
+        "user:",
+        currentUserId,
+      );
+
+      nextSocket.emit(
+        "join-user",
+        {
+          userId: currentUserId,
+        },
+        (response: any) => {
+          console.log(
+            "[MESSAGE SOCKET] joined",
+            response,
+          );
+        },
+      );
     });
+
+    nextSocket.on(
+      "connect_error",
+      (error) => {
+        console.error(
+          "[MESSAGE SOCKET] connect error",
+          error.message,
+        );
+      },
+    );
+
+    nextSocket.on(
+      "disconnect",
+      (reason) => {
+        console.log(
+          "[MESSAGE SOCKET] disconnected",
+          reason,
+        );
+      },
+    );
 
     nextSocket.on(
       "message:new",
