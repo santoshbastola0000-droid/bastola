@@ -229,8 +229,8 @@ export default function MessagesPage() {
       : "";
 
   return (
-    <main className="mx-auto min-h-[calc(100vh-70px)] max-w-7xl bg-background md:p-4">
-      <div className="grid min-h-[calc(100vh-90px)] overflow-hidden border bg-background md:grid-cols-[340px_1fr] md:rounded-2xl">
+    <main className="mx-auto h-[calc(100dvh-68px)] max-w-7xl overflow-hidden bg-background md:h-[calc(100dvh-24px)] md:p-4">
+      <div className="grid h-full min-h-0 overflow-hidden border bg-background md:grid-cols-[340px_1fr] md:rounded-2xl">
         <aside
           className={`border-r ${
             selected
@@ -358,11 +358,9 @@ export default function MessagesPage() {
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center justify-between gap-3">
                           <p className="truncate font-medium">
-                            User{" "}
-                            {otherId?.slice(
-                              0,
-                              8,
-                            )}
+                            {conversation.otherUser
+                              ?.phoneNumber ||
+                              otherId}
                           </p>
 
                           {conversation.unreadCount >
@@ -432,12 +430,16 @@ export default function MessagesPage() {
 
                 <div>
                   <p className="font-semibold">
-                    User{" "}
-                    {otherUserId.slice(
-                      0,
-                      8,
-                    )}
+                    {selected.otherUser
+                      ?.phoneNumber ||
+                      otherUserId}
                   </p>
+
+                  {selected.otherUser?.name && (
+                    <p className="text-xs text-muted-foreground">
+                      {selected.otherUser.name}
+                    </p>
+                  )}
 
                   <p className="text-xs text-muted-foreground">
                     {selected.contextType}
@@ -445,7 +447,7 @@ export default function MessagesPage() {
                 </div>
               </header>
 
-              <div className="flex-1 space-y-3 overflow-y-auto p-4">
+              <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4 pb-24">
                 {messagesLoading ? (
                   <div className="flex justify-center p-10">
                     <Loader2 className="h-6 w-6 animate-spin" />
@@ -511,7 +513,7 @@ export default function MessagesPage() {
                 )}
               </div>
 
-              <div className="border-t p-3">
+              <div className="sticky bottom-[68px] z-20 border-t bg-background md:bottom-0 p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
                 <div className="flex gap-2">
                   <Input
                     value={draft}

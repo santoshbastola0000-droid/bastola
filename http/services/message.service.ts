@@ -6,6 +6,13 @@ export interface MessageConversation {
   userTwoId: string;
   contextType: string;
   contextId?: string | null;
+
+  otherUser?: {
+    id: string;
+    name: string;
+    phoneNumber: string;
+  } | null;
+
   lastMessageAt?: string | null;
   createdAt: string;
   updatedAt: string;
