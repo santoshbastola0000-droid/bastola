@@ -26,11 +26,7 @@ import {
 import { useUserStore } from "@/stores/user-store";
 
 export default function MessagesPage() {
-  const searchParams =
-    useSearchParams();
-
-
-  const user = useUserStore(
+const user = useUserStore(
     (state) => state.user,
   );
 
@@ -607,7 +603,9 @@ export default function MessagesPage() {
 
   useEffect(() => {
     const profileUserId =
-      searchParams.get("user");
+      new URLSearchParams(
+        window.location.search,
+      ).get("user");
 
     if (!profileUserId) {
       return;
@@ -651,7 +649,7 @@ export default function MessagesPage() {
     return () => {
       cancelled = true;
     };
-  }, [searchParams]);
+  }, []);
 
   const sendMessage =
     async () => {
