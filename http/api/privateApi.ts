@@ -56,12 +56,15 @@ privateApi.interceptors.response.use(
 
         // Get current path to redirect back after login
         const currentPath = window.location.pathname;
-        const redirectUrl = `/auth/login${currentPath !== "/" ? `?redirect=${encodeURIComponent(currentPath)}` : ""}`;
 
-        // Small delay to ensure toast is shown
-        setTimeout(() => {
-          window.location.href = redirectUrl;
-        }, 500);
+        // Never redirect auth pages back to themselves
+        if (!currentPath.startsWith("/auth/")) {
+          const redirectUrl = `/auth/login${currentPath !== "/" ? `?redirect=${encodeURIComponent(currentPath)}` : ""}`;
+
+          setTimeout(() => {
+            window.location.href = redirectUrl;
+          }, 500);
+        }
       }
 
       return Promise.reject(error);

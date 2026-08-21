@@ -26,9 +26,12 @@ export function SessionChecker() {
           clearUser();
           useTokenStore.getState().clearToken();
 
-          // Redirect to login
+          // Redirect to login only if we are not already on an auth page
           const currentPath = window.location.pathname;
-          window.location.href = `/auth/login${currentPath !== "/" ? `?redirect=${encodeURIComponent(currentPath)}` : ""}`;
+
+          if (!currentPath.startsWith("/auth/")) {
+            window.location.href = `/auth/login${currentPath !== "/" ? `?redirect=${encodeURIComponent(currentPath)}` : ""}`;
+          }
         } else {
           // Optional: Show warning when token is about to expire (e.g., within 5 minutes)
           const expirationDate = getTokenExpiration(token);
