@@ -20,7 +20,7 @@ export default function GlobalError({
             Application temporarily unavailable
           </h2>
           <p className="mt-2 text-sm text-slate-600">
-            An unexpected error occurred while rendering the app.
+            {error?.message || "Unknown runtime error"}
           </p>
           <div className="mt-5 flex items-center justify-center gap-3">
             <Button onClick={reset}>Retry</Button>
