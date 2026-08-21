@@ -2,8 +2,9 @@
 
 import {
   useEffect,
-  useMemo,
+  useRef,
   useState,
+  useMemo,
 } from "react";
 import {
   Loader2,
@@ -65,6 +66,23 @@ export default function MessagesPage() {
 
   const [draft, setDraft] =
     useState("");
+
+  const [selectedMedia, setSelectedMedia] =
+    useState<File | null>(null);
+
+  const [mediaPreview, setMediaPreview] =
+    useState<string | null>(null);
+
+  const [mediaSending, setMediaSending] =
+    useState(false);
+
+
+  const [mediaObjectUrls, setMediaObjectUrls] =
+    useState<Record<string, string>>({});
+
+  const mediaInputRef =
+    useRef<HTMLInputElement | null>(null);
+
 
   const [loading, setLoading] =
     useState(true);
@@ -332,6 +350,177 @@ export default function MessagesPage() {
         setMessagesLoading(false);
       }
     };
+
+  const handleMediaSelect = (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file =
+      e.target.files?.[0];
+
+    if (!file) return;
+
+    const isImage =
+      file.type.startsWith("image/");
+
+    const isVideo =
+      file.type.startsWith("video/");
+
+    if (!isImage && !isVideo) {
+      alert(
+        "Photo वा video मात्र select गर्नुहोस्.",
+      );
+
+      e.target.value = "";
+      return;
+    }
+
+    /*
+     * यो preview मात्र हो।
+     * Original file modify/compress हुँदैन।
+     */
+    if (mediaPreview) {
+      URL.revokeObjectURL(
+        mediaPreview,
+      );
+    }
+
+    setSelectedMedia(file);
+
+    setMediaPreview(
+      URL.createObjectURL(file),
+    );
+  };
+
+  const removeSelectedMedia = () => {
+    if (mediaPreview) {
+      URL.revokeObjectURL(
+        mediaPreview,
+      );
+    }
+
+    setSelectedMedia(null);
+    setMediaPreview(null);
+
+    if (mediaInputRef.current) {
+      mediaInputRef.current.value =
+        "";
+    }
+  };
+
+  const sendSelectedMedia =
+    async () => {
+      if (
+        !selected ||
+        !selectedMedia
+      ) {
+        return;
+      }
+
+      try {
+        setMediaSending(true);
+
+        const sent =
+          await messageService.sendMedia(
+            selected.id,
+            selectedMedia,
+            draft.trim() ||
+              undefined,
+          );
+
+        setMessages((prev) => {
+          if (
+            prev.some(
+              (m) =>
+                m.id === sent.id,
+            )
+          ) {
+            return prev;
+          }
+
+          return [
+            ...prev,
+            sent,
+          ];
+        });
+
+        setDraft("");
+
+        removeSelectedMedia();
+
+        await loadConversations();
+      } catch (error) {
+        console.error(
+          "Media send failed:",
+          error,
+        );
+
+        alert(
+          "Photo/video send हुन सकेन.",
+        );
+      } finally {
+        setMediaSending(false);
+      }
+    };
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadMessageMedia =
+      async () => {
+        const mediaMessages =
+          messages.filter(
+            (message) =>
+              (
+                message.type === "IMAGE" ||
+                message.type === "VIDEO"
+              ) &&
+              !mediaObjectUrls[
+                message.id
+              ],
+          );
+
+        for (
+          const message
+          of mediaMessages
+        ) {
+          try {
+            const blob =
+              await messageService
+                .getMediaBlob(
+                  message.id,
+                );
+
+            if (cancelled) {
+              return;
+            }
+
+            const url =
+              URL.createObjectURL(
+                blob,
+              );
+
+            setMediaObjectUrls(
+              (prev) => ({
+                ...prev,
+                [message.id]:
+                  url,
+              }),
+            );
+          } catch (error) {
+            console.error(
+              "Media load failed:",
+              error,
+            );
+          }
+        }
+      };
+
+    loadMessageMedia();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [messages]);
 
   const sendMessage =
     async () => {
@@ -653,11 +842,50 @@ export default function MessagesPage() {
                                 : "bg-muted"
                             }`}
                           >
-                            <p className="whitespace-pre-wrap break-words">
-                              {
-                                message.content
-                              }
-                            </p>
+                            {message.type ===
+                              "IMAGE" &&
+                              mediaObjectUrls[
+                                message.id
+                              ] && (
+                                <img
+                                  src={
+                                    mediaObjectUrls[
+                                      message.id
+                                    ]
+                                  }
+                                  alt={
+                                    message.mediaOriginalName ||
+                                    "Photo"
+                                  }
+                                  className="mb-2 max-h-[420px] w-auto max-w-full rounded-xl object-contain"
+                                />
+                              )}
+
+                            {message.type ===
+                              "VIDEO" &&
+                              mediaObjectUrls[
+                                message.id
+                              ] && (
+                                <video
+                                  src={
+                                    mediaObjectUrls[
+                                      message.id
+                                    ]
+                                  }
+                                  controls
+                                  playsInline
+                                  preload="metadata"
+                                  className="mb-2 max-h-[420px] w-full rounded-xl"
+                                />
+                              )}
+
+                            {message.content && (
+                              <p className="whitespace-pre-wrap break-words">
+                                {
+                                  message.content
+                                }
+                              </p>
+                            )}
 
                             <p className="mt-1 text-[10px] opacity-70">
                               {new Date(
@@ -703,7 +931,85 @@ export default function MessagesPage() {
               </div>
 
               <div className="sticky bottom-[68px] z-20 border-t bg-background md:bottom-0 p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
+
+                {selectedMedia &&
+                  mediaPreview && (
+                    <div className="mb-3 rounded-xl border bg-background p-2">
+                      <div className="relative inline-block max-w-full">
+
+                        {selectedMedia.type.startsWith(
+                          "image/",
+                        ) ? (
+                          <img
+                            src={
+                              mediaPreview
+                            }
+                            alt="Selected"
+                            className="max-h-52 max-w-full rounded-lg object-contain"
+                          />
+                        ) : (
+                          <video
+                            src={
+                              mediaPreview
+                            }
+                            controls
+                            playsInline
+                            className="max-h-52 max-w-full rounded-lg"
+                          />
+                        )}
+
+                        <button
+                          type="button"
+                          onClick={
+                            removeSelectedMedia
+                          }
+                          className="absolute right-1 top-1 flex h-7 w-7 items-center justify-center rounded-full bg-black/70 text-sm text-white"
+                        >
+                          ×
+                        </button>
+                      </div>
+
+                      <div className="mt-1 max-w-full truncate text-xs text-muted-foreground">
+                        {
+                          selectedMedia.name
+                        }
+                        {" · "}
+                        {(
+                          selectedMedia.size /
+                          1024 /
+                          1024
+                        ).toFixed(1)}
+                        MB
+                      </div>
+                    </div>
+                  )}
+
+                <input
+                  ref={mediaInputRef}
+                  type="file"
+                  accept="image/*,video/*"
+                  className="hidden"
+                  onChange={
+                    handleMediaSelect
+                  }
+                />
+
                 <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="outline"
+                    onClick={() =>
+                      mediaInputRef.current
+                        ?.click()
+                    }
+                    disabled={
+                      mediaSending
+                    }
+                    title="Photo or video"
+                  >
+                    📎
+                  </Button>
                   <Input
                     value={draft}
                     onChange={(e) =>
@@ -727,14 +1033,21 @@ export default function MessagesPage() {
                   <Button
                     size="icon"
                     onClick={
-                      sendMessage
+                      selectedMedia
+                        ? sendSelectedMedia
+                        : sendMessage
                     }
                     disabled={
                       sending ||
-                      !draft.trim()
+                      mediaSending ||
+                      (
+                        !selectedMedia &&
+                        !draft.trim()
+                      )
                     }
                   >
-                    {sending ? (
+                    {sending ||
+                    mediaSending ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
                       <Send className="h-4 w-4" />

@@ -28,9 +28,63 @@ export interface ChatMessage {
   deliveredAt?: string | null;
   seenAt?: string | null;
   createdAt: string;
+  mediaUrl?: string | null;
+  mediaOriginalName?: string | null;
+  mediaMimeType?: string | null;
+  mediaSize?: number | null;
+  mediaStorage?: string | null;
 }
 
 export const messageService = {
+  sendMedia: async (
+    conversationId: string,
+    file: File,
+    caption?: string,
+  ) => {
+    const formData =
+      new FormData();
+
+    formData.append(
+      "file",
+      file,
+    );
+
+    if (caption?.trim()) {
+      formData.append(
+        "caption",
+        caption.trim(),
+      );
+    }
+
+    const response =
+      await privateApi.post(
+        `/message/conversations/${conversationId}/media`,
+        formData,
+        {
+          headers: {
+            "Content-Type":
+              "multipart/form-data",
+          },
+        },
+      );
+
+    return response.data;
+  },
+
+  getMediaBlob: async (
+    messageId: string,
+  ) => {
+    const response =
+      await privateApi.get(
+        `/message/media/${messageId}`,
+        {
+          responseType: "blob",
+        },
+      );
+
+    return response.data as Blob;
+  },
+
   startByContact: async (
     contact: string,
   ) => {
