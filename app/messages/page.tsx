@@ -49,14 +49,14 @@ export default function MessagesPage() {
   const [search, setSearch] =
     useState("");
 
-  const [phoneNumber, setPhoneNumber] =
+  const [contactSearch, setContactSearch] =
     useState("");
 
   const [phoneResult, setPhoneResult] =
     useState<{
       id: string;
       name: string;
-      phoneNumber: string;
+      contactSearch: string;
     } | null>(null);
 
   const [phoneSearching, setPhoneSearching] =
@@ -224,14 +224,14 @@ export default function MessagesPage() {
   }, [currentUserId]);
 
 
-  const searchByPhone =
+  const searchByContact =
     async () => {
-      const phone =
-        phoneNumber.replace(/\D/g, "");
+      const contact =
+        contactSearch.trim();
 
-      if (phone.length !== 10) {
+      if (!contact) {
         toast.error(
-          "10-digit phone number राख्नुहोस्.",
+          "Phone number वा email राख्नुहोस्.",
         );
         return;
       }
@@ -241,8 +241,8 @@ export default function MessagesPage() {
         setPhoneResult(null);
 
         const result =
-          await messageService.startByPhone(
-            phone,
+          await messageService.startByContact(
+            contact,
           );
 
         setPhoneResult(result.user);
@@ -384,30 +384,29 @@ export default function MessagesPage() {
                   <Phone className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
 
                   <Input
-                    value={phoneNumber}
+                    value={contactSearch}
                     onChange={(e) =>
                       setPhoneNumber(
                         e.target.value
-                          .replace(/\D/g, "")
-                          .slice(0, 10),
+                          ,
                       )
                     }
-                    placeholder="98XXXXXXXX"
-                    inputMode="numeric"
+                    placeholder="Phone number or email"
+                    inputMode="text"
                     className="pl-9"
                     onKeyDown={(e) => {
                       if (e.key === "Enter") {
-                        searchByPhone();
+                        searchByContact();
                       }
                     }}
                   />
                 </div>
 
                 <Button
-                  onClick={searchByPhone}
+                  onClick={searchByContact}
                   disabled={
                     phoneSearching ||
-                    phoneNumber.length !== 10
+                    contactSearch.length !== 10
                   }
                 >
                   {phoneSearching ? (
@@ -424,7 +423,7 @@ export default function MessagesPage() {
                     {phoneResult.name}
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    {phoneResult.phoneNumber}
+                    {phoneResult.contactSearch}
                   </p>
                 </div>
               )}
@@ -490,7 +489,7 @@ export default function MessagesPage() {
                         <div className="flex items-center justify-between gap-3">
                           <p className="truncate font-medium">
                             {conversation.otherUser
-                              ?.phoneNumber ||
+                              ?.contactSearch ||
                               otherId}
                           </p>
 
@@ -562,7 +561,7 @@ export default function MessagesPage() {
                 <div>
                   <p className="font-semibold">
                     {selected.otherUser
-                      ?.phoneNumber ||
+                      ?.contactSearch ||
                       otherUserId}
                   </p>
 
