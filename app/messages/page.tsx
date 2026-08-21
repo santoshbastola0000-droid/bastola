@@ -359,11 +359,20 @@ export default function MessagesPage() {
 
     if (!file) return;
 
+    const fileName =
+      file.name.toLowerCase();
+
     const isImage =
-      file.type.startsWith("image/");
+      file.type.startsWith("image/") ||
+      /\.(jpg|jpeg|png|webp|gif|heic|heif)$/i.test(
+        fileName,
+      );
 
     const isVideo =
-      file.type.startsWith("video/");
+      file.type.startsWith("video/") ||
+      /\.(mp4|mov|m4v|webm|mkv|avi)$/i.test(
+        fileName,
+      );
 
     if (!isImage && !isVideo) {
       alert(
@@ -987,7 +996,7 @@ export default function MessagesPage() {
                 <input
                   ref={mediaInputRef}
                   type="file"
-                  accept="image/*,video/*"
+                  accept="image/*,video/*,.mp4,.mov,.m4v,.webm,.mkv,.avi"
                   className="hidden"
                   onChange={
                     handleMediaSelect
