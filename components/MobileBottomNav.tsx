@@ -32,13 +32,28 @@ export function MobileBottomNav() {
 
     loadUnread();
 
+    const handleUnreadRefresh = () => {
+      loadUnread();
+    };
+
+    window.addEventListener(
+      "roomkhoj:unread-refresh",
+      handleUnreadRefresh,
+    );
+
     const timer = window.setInterval(
       loadUnread,
       15000,
     );
 
-    return () =>
+    return () => {
       window.clearInterval(timer);
+
+      window.removeEventListener(
+        "roomkhoj:unread-refresh",
+        handleUnreadRefresh,
+      );
+    };
   }, []);
 
 
