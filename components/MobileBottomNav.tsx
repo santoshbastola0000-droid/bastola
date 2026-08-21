@@ -6,7 +6,7 @@ import {
   Home,
   BriefcaseBusiness,
   Plus,
-  Sparkles,
+  MessageCircle,
   UserRound,
 } from "lucide-react";
 
@@ -15,6 +15,7 @@ export function MobileBottomNav() {
 
   const isHome = pathname === "/";
   const isJobs = pathname.startsWith("/jobs");
+  const isMessages = pathname.startsWith("/messages");
   const isProfile = pathname.startsWith("/user/dashboard/profile");
 
   const openChatbot = () => {
@@ -93,44 +94,22 @@ export function MobileBottomNav() {
           />
         </Link>
 
-        {/* ROOMKHOJ AI */}
-        <button
-          type="button"
-          onClick={openChatbot}
-          aria-label="Open RoomKhoj AI"
-          className="
-            flex min-w-[58px]
-            flex-col
-            items-center
-            justify-center
-            gap-1
-            text-[11px]
-            text-gray-500
-            active:scale-95
-            transition-transform
-          "
+        {/* MESSAGES */}
+        <Link
+          href="/messages"
+          className={`flex min-w-[58px] flex-col items-center justify-center gap-1 text-[11px] ${
+            isMessages
+              ? "font-semibold text-black"
+              : "text-gray-500"
+          }`}
         >
-          <div className="relative">
-            <Sparkles
-              className="h-6 w-6"
-              strokeWidth={2.2}
-            />
+          <MessageCircle
+            className="h-6 w-6"
+            strokeWidth={isMessages ? 2.5 : 2}
+          />
 
-            <span
-              className="
-                absolute
-                -right-1
-                -top-1
-                h-2
-                w-2
-                rounded-full
-                bg-red-500
-              "
-            />
-          </div>
-
-          <span>AI</span>
-        </button>
+          <span>Messages</span>
+        </Link>
 
         {/* PROFILE */}
         <Link

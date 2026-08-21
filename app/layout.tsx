@@ -7,6 +7,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { SessionChecker } from "@/components/SessionChecker";
 import { GlobalChatbot } from "@/components/GlobalChatbot";
 import { MobileBottomNav } from "@/components/MobileBottomNav";
+import { RoomKhojAIFloatingButton } from "@/components/RoomKhojAIFloatingButton";
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -101,6 +102,7 @@ export default function RootLayout({
           <TooltipProvider>
             {children}
 
+          <RoomKhojAIFloatingButton />
           <MobileBottomNav />           
           <GlobalChatbot />
           </TooltipProvider>
