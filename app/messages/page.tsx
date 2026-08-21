@@ -13,6 +13,7 @@ import {
   Send,
 } from "lucide-react";
 import { toast } from "sonner";
+import { io, Socket } from "socket.io-client";
 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -30,6 +31,9 @@ export default function MessagesPage() {
 
   const currentUserId =
     user?.id || "";
+
+  const [socket, setSocket] =
+    useState<Socket | null>(null);
 
   const [conversations, setConversations] =
     useState<MessageConversation[]>([]);
@@ -92,6 +96,97 @@ export default function MessagesPage() {
   useEffect(() => {
     loadConversations();
   }, []);
+
+  useEffect(() => {
+    if (!currentUserId) return;
+
+    const nextSocket = io(
+      "https://api.roomkhoj.com/messages",
+      {
+        transports: ["websocket"],
+        withCredentials: true,
+      },
+    );
+
+    nextSocket.on("connect", () => {
+      nextSocket.emit("join-user", {
+        userId: currentUserId,
+      });
+    });
+
+    nextSocket.on(
+      "message:new",
+      (message: ChatMessage) => {
+        setConversations((prev) => prev);
+
+        setSelected((current) => {
+          if (
+            current &&
+            current.id ===
+              message.conversationId
+          ) {
+            setMessages((prev) => {
+              if (
+                prev.some(
+                  (item) =>
+                    item.id === message.id,
+                )
+              ) {
+                return prev;
+              }
+
+              return [...prev, message];
+            });
+
+            messageService
+              .markSeen(
+                message.conversationId,
+              )
+              .catch(() => {});
+
+            return current;
+          }
+
+          return current;
+        });
+
+        loadConversations();
+      },
+    );
+
+    nextSocket.on(
+      "message:seen",
+      (payload: {
+        conversationId: string;
+      }) => {
+        if (!payload?.conversationId) {
+          return;
+        }
+
+        setMessages((prev) =>
+          prev.map((message) =>
+            message.conversationId ===
+            payload.conversationId
+              ? {
+                  ...message,
+                  seenAt:
+                    message.seenAt ||
+                    new Date().toISOString(),
+                }
+              : message,
+          ),
+        );
+      },
+    );
+
+    setSocket(nextSocket);
+
+    return () => {
+      nextSocket.disconnect();
+      setSocket(null);
+    };
+  }, [currentUserId]);
+
 
   const searchByPhone =
     async () => {
