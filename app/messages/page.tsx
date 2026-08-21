@@ -153,13 +153,15 @@ export default function MessagesPage() {
     nextSocket.on(
       "message:new",
       (message: ChatMessage) => {
-        setConversations((prev) => prev);
+        console.log(
+          "[MESSAGE SOCKET] new message",
+          message,
+        );
 
         setSelected((current) => {
           if (
-            current &&
-            current.id ===
-              message.conversationId
+            current?.id ===
+            message.conversationId
           ) {
             setMessages((prev) => {
               if (
@@ -179,8 +181,6 @@ export default function MessagesPage() {
                 message.conversationId,
               )
               .catch(() => {});
-
-            return current;
           }
 
           return current;
