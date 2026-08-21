@@ -531,6 +531,76 @@ export default function MessagesPage() {
     };
   }, [messages]);
 
+  /*
+   * Selected chat खुलिसकेपछि त्यस conversation का
+   * received messages seen मान्ने।
+   *
+   * messages.length dependency ले नयाँ message
+   * खुलेको chat मै आएमा पनि badge तुरुन्त clear गर्छ।
+   */
+  useEffect(() => {
+    if (!selected?.id) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const syncSeenStatus =
+      async () => {
+        try {
+          await messageService.markSeen(
+            selected.id,
+          );
+
+          if (cancelled) {
+            return;
+          }
+
+          /*
+           * Left conversation list को
+           * unread badge तुरुन्त हटाउने।
+           */
+          setConversations(
+            (prev) =>
+              prev.map(
+                (conversation) =>
+                  conversation.id ===
+                  selected.id
+                    ? {
+                        ...conversation,
+                        unreadCount: 0,
+                      }
+                    : conversation,
+              ),
+          );
+
+          /*
+           * Bottom nav unread count पनि
+           * तुरुन्त refresh गर्ने।
+           */
+          window.dispatchEvent(
+            new Event(
+              "roomkhoj:unread-refresh",
+            ),
+          );
+        } catch (error) {
+          console.error(
+            "Failed to mark conversation seen:",
+            error,
+          );
+        }
+      };
+
+    syncSeenStatus();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    selected?.id,
+    messages.length,
+  ]);
+
   const sendMessage =
     async () => {
       const text = draft.trim();
