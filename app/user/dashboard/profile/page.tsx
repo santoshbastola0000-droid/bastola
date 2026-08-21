@@ -1,631 +1,1699 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
-import { useUserStore } from "@/stores/user-store";
-import { privateApi } from "@/http/api/privateApi";
-import { toast } from "sonner";
 import {
-  User,
-  Mail,
-  Phone,
-  Shield,
-  Edit3,
-  Save,
-  X,
-  Building2,
+  useEffect,
+  useRef,
+  useState,
+  type ChangeEvent,
+} from "react";
+import {
   BadgeCheck,
-  Calendar,
   Bot,
   BriefcaseBusiness,
+  Camera,
+  Edit3,
+  Globe2,
   Home,
-  Trash2,
   Loader2,
+  Mail,
+  MapPin,
+  Phone,
+  Save,
+  Trash2,
+  UserRound,
+  Users,
+  X,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+} from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { useRouter } from "next/navigation";
+
+import { privateApi } from "@/http/api/privateApi";
 import { aiProfileService } from "@/http/services/ai-profile.service";
+import {
+  profileService,
+  type PublicProfile,
+} from "@/http/services/profile.service";
+import { profileMediaUrl } from "@/lib/profile-media";
+import { useUserStore } from "@/stores/user-store";
+
+type ActivityTab =
+  | "rooms"
+  | "jobs"
+  | "friends"
+  | "about";
 
 export default function ProfilePage() {
-  const { user, updateUser } = useUserStore();
   const router = useRouter();
-  const [isEditing, setIsEditing] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const [form, setForm] = useState({
-    name: user?.name || "",
-    phone: user?.phone || "",
-  });
 
+  const {
+    user,
+    updateUser,
+  } = useUserStore();
 
-  const [aiProfile, setAiProfile] = useState<any>(null);
-  const [aiForm, setAiForm] = useState<any>({
-    roomSearch: {},
-    jobSearch: {},
-  });
-  const [aiLoading, setAiLoading] = useState(true);
-  const [aiEditing, setAiEditing] = useState(false);
-  const [aiSaving, setAiSaving] = useState(false);
-  const [deletingField, setDeletingField] = useState<string | null>(null);
-  const [clearingAi, setClearingAi] = useState(false);
+  const [
+    currentUserId,
+    setCurrentUserId,
+  ] = useState("");
 
-  const loadAiProfile = async () => {
-    try {
-      setAiLoading(true);
-      const data = await aiProfileService.getMine();
-      setAiProfile(data);
-      setAiForm({
-        roomSearch: { ...(data?.roomSearch || {}) },
-        jobSearch: { ...(data?.jobSearch || {}) },
-      });
-    } catch (err: any) {
-      console.error("Failed to load AI profile:", err);
-    } finally {
-      setAiLoading(false);
-    }
-  };
+  const [
+    profile,
+    setProfile,
+  ] =
+    useState<PublicProfile | null>(
+      null,
+    );
 
-  useEffect(() => {
-    loadAiProfile();
-  }, []);
+  const [friends, setFriends] =
+    useState<any[]>([]);
+
+  const [profileLoading, setProfileLoading] =
+    useState(true);
+
+  const [isEditing, setIsEditing] =
+    useState(false);
+
+  const [isSaving, setIsSaving] =
+    useState(false);
+
+  const [
+    uploadingProfile,
+    setUploadingProfile,
+  ] = useState(false);
+
+  const [
+    uploadingCover,
+    setUploadingCover,
+  ] = useState(false);
+
+  const [tab, setTab] =
+    useState<ActivityTab>("rooms");
+
+  const [form, setForm] =
+    useState({
+      name: "",
+      bio: "",
+      location: "",
+      website: "",
+    });
+
+  const profileInputRef =
+    useRef<HTMLInputElement | null>(
+      null,
+    );
+
+  const coverInputRef =
+    useRef<HTMLInputElement | null>(
+      null,
+    );
+
+  /*
+   * ==========================
+   * AI PROFILE
+   * ==========================
+   */
+
+  const [
+    aiProfile,
+    setAiProfile,
+  ] = useState<any>(null);
+
+  const [aiForm, setAiForm] =
+    useState<any>({
+      roomSearch: {},
+      jobSearch: {},
+    });
+
+  const [
+    aiLoading,
+    setAiLoading,
+  ] = useState(true);
+
+  const [
+    aiEditing,
+    setAiEditing,
+  ] = useState(false);
+
+  const [
+    aiSaving,
+    setAiSaving,
+  ] = useState(false);
+
+  const [
+    deletingField,
+    setDeletingField,
+  ] = useState<string | null>(
+    null,
+  );
+
+  const [
+    clearingAi,
+    setClearingAi,
+  ] = useState(false);
+
+  const loadAiProfile =
+    async () => {
+      try {
+        setAiLoading(true);
+
+        const data =
+          await aiProfileService
+            .getMine();
+
+        setAiProfile(data);
+
+        setAiForm({
+          roomSearch: {
+            ...(
+              data?.roomSearch ||
+              {}
+            ),
+          },
+
+          jobSearch: {
+            ...(
+              data?.jobSearch ||
+              {}
+            ),
+          },
+        });
+      } catch (error) {
+        console.error(
+          "AI profile load failed:",
+          error,
+        );
+      } finally {
+        setAiLoading(false);
+      }
+    };
 
   const updateAiField = (
-    section: "roomSearch" | "jobSearch",
+    section:
+      | "roomSearch"
+      | "jobSearch",
     field: string,
     value: string,
   ) => {
-    setAiForm((prev: any) => ({
-      ...prev,
-      [section]: {
-        ...(prev?.[section] || {}),
-        [field]: value,
-      },
-    }));
-  };
+    setAiForm(
+      (prev: any) => ({
+        ...prev,
 
-  const saveAiProfile = async () => {
-    try {
-      setAiSaving(true);
+        [section]: {
+          ...(
+            prev?.[section] ||
+            {}
+          ),
 
-      const updated = await aiProfileService.updateMine({
-        roomSearch: aiForm.roomSearch,
-        jobSearch: aiForm.jobSearch,
-      });
-
-      setAiProfile(updated);
-      setAiForm({
-        roomSearch: { ...(updated?.roomSearch || {}) },
-        jobSearch: { ...(updated?.jobSearch || {}) },
-      });
-
-      setAiEditing(false);
-      toast.success("AI details updated");
-    } catch (err: any) {
-      toast.error(
-        err?.response?.data?.message || "AI details update failed",
-      );
-    } finally {
-      setAiSaving(false);
-    }
-  };
-
-  const deleteAiField = async (field: string) => {
-    try {
-      setDeletingField(field);
-
-      const updated = await aiProfileService.deleteField(field);
-
-      setAiProfile(updated);
-      setAiForm({
-        roomSearch: { ...(updated?.roomSearch || {}) },
-        jobSearch: { ...(updated?.jobSearch || {}) },
-      });
-
-      toast.success("Saved detail deleted");
-    } catch (err: any) {
-      toast.error(
-        err?.response?.data?.message || "Could not delete detail",
-      );
-    } finally {
-      setDeletingField(null);
-    }
-  };
-
-  const clearAiProfile = async () => {
-    const ok = window.confirm(
-      "Delete all information saved by RoomKhoj AI? This cannot be undone.",
+          [field]:
+            value,
+        },
+      }),
     );
+  };
 
-    if (!ok) return;
+  const saveAiProfile =
+    async () => {
+      try {
+        setAiSaving(true);
 
-    try {
-      setClearingAi(true);
-      await aiProfileService.clearMine();
+        const updated =
+          await aiProfileService
+            .updateMine({
+              roomSearch:
+                aiForm.roomSearch,
 
-      setAiProfile(null);
-      setAiForm({
-        roomSearch: {},
-        jobSearch: {},
+              jobSearch:
+                aiForm.jobSearch,
+            });
+
+        setAiProfile(updated);
+
+        setAiForm({
+          roomSearch: {
+            ...(
+              updated
+                ?.roomSearch ||
+              {}
+            ),
+          },
+
+          jobSearch: {
+            ...(
+              updated
+                ?.jobSearch ||
+              {}
+            ),
+          },
+        });
+
+        setAiEditing(false);
+
+        toast.success(
+          "AI information saved",
+        );
+      } catch (error: any) {
+        toast.error(
+          error?.response?.data
+            ?.message ||
+            "AI information save failed",
+        );
+      } finally {
+        setAiSaving(false);
+      }
+    };
+
+  const deleteAiField =
+    async (
+      field: string,
+    ) => {
+      try {
+        setDeletingField(
+          field,
+        );
+
+        const updated =
+          await aiProfileService
+            .deleteField(
+              field,
+            );
+
+        setAiProfile(updated);
+
+        setAiForm({
+          roomSearch: {
+            ...(
+              updated
+                ?.roomSearch ||
+              {}
+            ),
+          },
+
+          jobSearch: {
+            ...(
+              updated
+                ?.jobSearch ||
+              {}
+            ),
+          },
+        });
+
+        toast.success(
+          "Saved AI detail deleted",
+        );
+      } catch (error: any) {
+        toast.error(
+          error?.response?.data
+            ?.message ||
+            "Could not delete detail",
+        );
+      } finally {
+        setDeletingField(
+          null,
+        );
+      }
+    };
+
+  const clearAiProfile =
+    async () => {
+      const ok =
+        window.confirm(
+          "Delete all information saved by RoomKhoj AI?",
+        );
+
+      if (!ok) return;
+
+      try {
+        setClearingAi(true);
+
+        await aiProfileService
+          .clearMine();
+
+        setAiProfile(null);
+
+        setAiForm({
+          roomSearch: {},
+          jobSearch: {},
+        });
+
+        toast.success(
+          "AI information cleared",
+        );
+      } catch (error: any) {
+        toast.error(
+          error?.response?.data
+            ?.message ||
+            "Could not clear AI information",
+        );
+      } finally {
+        setClearingAi(false);
+      }
+    };
+
+  /*
+   * ==========================
+   * MAIN PROFILE
+   * ==========================
+   */
+
+  const resolveUserId =
+    async () => {
+      const storeId =
+        String(
+          (user as any)?.id ||
+          "",
+        );
+
+      if (storeId) {
+        return storeId;
+      }
+
+      const response =
+        await privateApi.get(
+          "/user/active",
+        );
+
+      return String(
+        response.data?.data?.id ||
+        "",
+      );
+    };
+
+  const loadProfile =
+    async () => {
+      try {
+        setProfileLoading(
+          true,
+        );
+
+        const userId =
+          currentUserId ||
+          await resolveUserId();
+
+        if (!userId) {
+          throw new Error(
+            "User ID unavailable",
+          );
+        }
+
+        if (
+          !currentUserId
+        ) {
+          setCurrentUserId(
+            userId,
+          );
+        }
+
+        const data =
+          await profileService
+            .getProfile(
+              userId,
+            );
+
+        setProfile(data);
+
+        setForm({
+          name:
+            data.user.name ||
+            "",
+
+          bio:
+            data.user.bio ||
+            "",
+
+          location:
+            data.user
+              .location ||
+            "",
+
+          website:
+            data.user
+              .website ||
+            "",
+        });
+
+        try {
+          const list =
+            await profileService
+              .getFriends(
+                userId,
+              );
+
+          setFriends(
+            Array.isArray(list)
+              ? list
+              : [],
+          );
+        } catch {
+          setFriends([]);
+        }
+      } catch (error: any) {
+        console.error(
+          "Profile load failed:",
+          error,
+        );
+
+        toast.error(
+          "Profile load हुन सकेन",
+        );
+      } finally {
+        setProfileLoading(
+          false,
+        );
+      }
+    };
+
+  useEffect(() => {
+    loadProfile();
+    loadAiProfile();
+  }, []);
+
+  const handleEdit =
+    () => {
+      if (!profile) {
+        return;
+      }
+
+      setForm({
+        name:
+          profile.user.name ||
+          "",
+
+        bio:
+          profile.user.bio ||
+          "",
+
+        location:
+          profile.user
+            .location ||
+          "",
+
+        website:
+          profile.user
+            .website ||
+          "",
       });
 
-      toast.success("AI saved details cleared");
-    } catch (err: any) {
-      toast.error(
-        err?.response?.data?.message || "Could not clear AI details",
-      );
-    } finally {
-      setClearingAi(false);
-    }
-  };
+      setIsEditing(true);
+    };
+
+  const handleCancel =
+    () => {
+      setIsEditing(false);
+
+      if (profile) {
+        setForm({
+          name:
+            profile.user.name ||
+            "",
+
+          bio:
+            profile.user.bio ||
+            "",
+
+          location:
+            profile.user
+              .location ||
+            "",
+
+          website:
+            profile.user
+              .website ||
+            "",
+        });
+      }
+    };
+
+  const handleSave =
+    async () => {
+      if (
+        !form.name.trim()
+      ) {
+        toast.error(
+          "Name खाली राख्न मिल्दैन",
+        );
+
+        return;
+      }
+
+      try {
+        setIsSaving(true);
+
+        const updated =
+          await profileService
+            .updateProfile({
+              name:
+                form.name.trim(),
+
+              bio:
+                form.bio.trim(),
+
+              location:
+                form.location
+                  .trim(),
+
+              website:
+                form.website
+                  .trim(),
+            });
+
+        if (
+          updated?.user
+        ) {
+          setProfile(
+            updated,
+          );
+
+          updateUser({
+            name:
+              updated.user
+                .name,
+          } as any);
+
+          setForm({
+            name:
+              updated.user
+                .name ||
+              "",
+
+            bio:
+              updated.user
+                .bio ||
+              "",
+
+            location:
+              updated.user
+                .location ||
+              "",
+
+            website:
+              updated.user
+                .website ||
+              "",
+          });
+        } else {
+          await loadProfile();
+        }
+
+        setIsEditing(false);
+
+        toast.success(
+          "Profile saved successfully",
+        );
+      } catch (error: any) {
+        toast.error(
+          error?.response?.data
+            ?.message ||
+            "Profile save हुन सकेन",
+        );
+      } finally {
+        setIsSaving(false);
+      }
+    };
+
+  const uploadProfilePhoto =
+    async (
+      event:
+        ChangeEvent<HTMLInputElement>,
+    ) => {
+      const file =
+        event.target
+          .files?.[0];
+
+      if (!file) return;
+
+      if (
+        !file.type
+          .startsWith(
+            "image/",
+          )
+      ) {
+        toast.error(
+          "Image मात्र select गर्नुहोस्",
+        );
+
+        return;
+      }
+
+      try {
+        setUploadingProfile(
+          true,
+        );
+
+        await profileService
+          .uploadProfilePhoto(
+            file,
+          );
+
+        await loadProfile();
+
+        toast.success(
+          "Profile photo updated",
+        );
+      } catch (error: any) {
+        toast.error(
+          error?.response?.data
+            ?.message ||
+            "Profile photo upload failed",
+        );
+      } finally {
+        setUploadingProfile(
+          false,
+        );
+
+        event.target.value =
+          "";
+      }
+    };
+
+  const uploadCoverPhoto =
+    async (
+      event:
+        ChangeEvent<HTMLInputElement>,
+    ) => {
+      const file =
+        event.target
+          .files?.[0];
+
+      if (!file) return;
+
+      if (
+        !file.type
+          .startsWith(
+            "image/",
+          )
+      ) {
+        toast.error(
+          "Image मात्र select गर्नुहोस्",
+        );
+
+        return;
+      }
+
+      try {
+        setUploadingCover(
+          true,
+        );
+
+        await profileService
+          .uploadCoverPhoto(
+            file,
+          );
+
+        await loadProfile();
+
+        toast.success(
+          "Cover photo updated",
+        );
+      } catch (error: any) {
+        toast.error(
+          error?.response?.data
+            ?.message ||
+            "Cover upload failed",
+        );
+      } finally {
+        setUploadingCover(
+          false,
+        );
+
+        event.target.value =
+          "";
+      }
+    };
 
   const renderAiField = (
-    section: "roomSearch" | "jobSearch",
+    section:
+      | "roomSearch"
+      | "jobSearch",
     field: string,
     label: string,
   ) => {
     const current =
-      aiForm?.[section]?.[field] ??
-      aiProfile?.[section]?.[field] ??
+      aiForm?.[section]
+        ?.[field] ??
+      aiProfile?.[section]
+        ?.[field] ??
       "";
 
     if (
       !aiEditing &&
-      (current === "" || current === null || current === undefined)
+      (
+        current === "" ||
+        current === null ||
+        current ===
+          undefined
+      )
     ) {
       return null;
     }
 
     return (
-      <div className="rounded-2xl border bg-muted/20 p-3">
-        <div className="flex items-start justify-between gap-3">
+      <div className="rounded-xl border bg-muted/20 p-3">
+        <div className="flex items-start gap-2">
           <div className="min-w-0 flex-1">
-            <p className="mb-1 text-xs text-muted-foreground">
+            <p className="mb-1 text-[11px] text-muted-foreground">
               {label}
             </p>
 
             {aiEditing ? (
               <Input
-                value={String(current ?? "")}
+                value={String(
+                  current ??
+                  "",
+                )}
                 onChange={(e) =>
-                  updateAiField(section, field, e.target.value)
+                  updateAiField(
+                    section,
+                    field,
+                    e.target
+                      .value,
+                  )
                 }
-                className="h-9 rounded-xl"
-                placeholder={`Enter ${label.toLowerCase()}`}
+                className="h-8 rounded-lg text-xs"
               />
             ) : (
               <p className="break-words text-sm font-medium">
-                {typeof current === "boolean"
+                {typeof current ===
+                "boolean"
                   ? current
                     ? "Yes"
                     : "No"
-                  : String(current)}
+                  : String(
+                      current,
+                    )}
               </p>
             )}
           </div>
 
-          {!aiEditing && (
-            <button
-              type="button"
-              onClick={() => deleteAiField(field)}
-              disabled={deletingField === field}
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40"
-              title={`Delete ${label}`}
-            >
-              {deletingField === field ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <Trash2 className="h-3.5 w-3.5" />
-              )}
-            </button>
-          )}
+          {!aiEditing &&
+            current !== "" && (
+              <button
+                type="button"
+                onClick={() =>
+                  deleteAiField(
+                    field,
+                  )
+                }
+                disabled={
+                  deletingField ===
+                  field
+                }
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-red-50 hover:text-red-600"
+              >
+                {deletingField ===
+                field ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <Trash2 className="h-3 w-3" />
+                )}
+              </button>
+            )}
         </div>
       </div>
     );
   };
 
-  const initials = user?.name
-    ? user.name
-        .split(" ")
-        .filter((n) => n.length > 0)
-        .map((n) => n[0])
-        .join("")
-        .toUpperCase()
-        .slice(0, 2)
-    : (user?.email?.slice(0, 2).toUpperCase() ?? "U");
+  if (profileLoading) {
+    return (
+      <div className="flex min-h-[500px] items-center justify-center">
+        <Loader2 className="h-7 w-7 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
-  const handleEdit = () => {
-    setForm({ name: user?.name || "", phone: user?.phone || "" });
-    setIsEditing(true);
-  };
+  if (!profile) {
+    return (
+      <div className="p-10 text-center">
+        Profile load हुन सकेन।
+      </div>
+    );
+  }
 
-  const handleCancel = () => {
-    setIsEditing(false);
-  };
+  const profilePhoto =
+    profileMediaUrl(
+      profile.user
+        .profilePhotoUrl,
+    );
 
-  const handleSave = async () => {
-    if (!form.name.trim()) {
-      toast.error("Name cannot be empty");
-      return;
-    }
-    setIsSaving(true);
-    try {
-      const response = await privateApi.patch("/user/profile", {
-        name: form.name.trim(),
-        phone: form.phone.trim(),
-      });
-      const updated = response.data?.data;
-      updateUser({
-        name: updated?.name ?? form.name.trim(),
-        phone: updated?.phone ?? form.phone.trim(),
-      });
-      toast.success("Profile updated!", {
-        description: "Your changes have been saved.",
-      });
-      setIsEditing(false);
-    } catch (err: any) {
-      toast.error("Failed to update profile", {
-        description: err?.response?.data?.message || "Please try again.",
-      });
-    } finally {
-      setIsSaving(false);
-    }
-  };
+  const coverPhoto =
+    profileMediaUrl(
+      profile.user
+        .coverPhotoUrl,
+    );
 
-  const joinedDate = user?.createdAt
-    ? new Date(user.createdAt).toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "long",
-      })
-    : null;
+  const initials =
+    profile.user.name
+      ?.split(" ")
+      .filter(Boolean)
+      .map(
+        (part) =>
+          part[0],
+      )
+      .join("")
+      .slice(0, 2)
+      .toUpperCase() ||
+    "U";
+
+  const websiteHref =
+    profile.user.website
+      ? /^https?:\/\//i.test(
+          profile.user
+            .website,
+        )
+        ? profile.user
+            .website
+        : `https://${
+            profile.user
+              .website
+          }`
+      : "";
 
   return (
-    <div className="max-w-2xl mx-auto space-y-4">
-      {/* Cover + Avatar */}
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="relative rounded-3xl overflow-hidden"
-      >
-        {/* Cover gradient */}
-        <div className="h-40 bg-gradient-to-br from-red-500 via-rose-500 to-pink-600" />
+    <main className="mx-auto max-w-7xl space-y-5 pb-24">
+      {/* COVER + PROFILE */}
+      <Card className="overflow-hidden rounded-3xl border-0 shadow-sm">
+        <div className="relative h-44 bg-gradient-to-br from-red-500 via-rose-500 to-pink-600 sm:h-64">
+          {coverPhoto && (
+            <img
+              src={
+                coverPhoto
+              }
+              alt="Cover"
+              className="h-full w-full object-cover"
+            />
+          )}
 
-        {/* Avatar overlapping cover */}
-        <div className="px-6 pb-6 bg-white dark:bg-gray-900">
-          <div className="flex items-end justify-between -mt-12 mb-4">
-            <div className="relative">
-              <div className="w-24 h-24 rounded-full ring-4 ring-white dark:ring-gray-900 bg-gradient-to-br from-red-500 to-rose-600 flex items-center justify-center shadow-xl">
-                <span className="text-3xl font-bold text-white">{initials}</span>
-              </div>
-              {user?.isVerified && (
-                <div className="absolute -bottom-1 -right-1 w-7 h-7 bg-blue-500 rounded-full flex items-center justify-center ring-2 ring-white dark:ring-gray-900">
-                  <BadgeCheck className="w-4 h-4 text-white" />
+          <input
+            ref={
+              coverInputRef
+            }
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={
+              uploadCoverPhoto
+            }
+          />
+
+          <Button
+            type="button"
+            size="sm"
+            variant="secondary"
+            className="absolute bottom-3 right-3 gap-2 rounded-full shadow"
+            disabled={
+              uploadingCover
+            }
+            onClick={() =>
+              coverInputRef
+                .current
+                ?.click()
+            }
+          >
+            {uploadingCover ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Camera className="h-4 w-4" />
+            )}
+
+            Change Cover
+          </Button>
+        </div>
+
+        <CardContent className="px-5 pb-6 sm:px-8">
+          <div className="-mt-12 flex flex-col gap-4 sm:-mt-16 sm:flex-row sm:items-end sm:justify-between">
+            <div className="flex items-end gap-4">
+              <div className="relative">
+                <div className="h-28 w-28 overflow-hidden rounded-full border-4 border-background bg-gradient-to-br from-red-500 to-rose-600 shadow-xl sm:h-36 sm:w-36">
+                  {profilePhoto ? (
+                    <img
+                      src={
+                        profilePhoto
+                      }
+                      alt={
+                        profile.user
+                          .name
+                      }
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center text-3xl font-bold text-white">
+                      {initials}
+                    </div>
+                  )}
                 </div>
-              )}
+
+                {profile.user
+                  .isVerified && (
+                  <div className="absolute bottom-1 right-1 flex h-7 w-7 items-center justify-center rounded-full border-2 border-background bg-blue-500">
+                    <BadgeCheck className="h-4 w-4 text-white" />
+                  </div>
+                )}
+
+                <input
+                  ref={
+                    profileInputRef
+                  }
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={
+                    uploadProfilePhoto
+                  }
+                />
+
+                <button
+                  type="button"
+                  disabled={
+                    uploadingProfile
+                  }
+                  onClick={() =>
+                    profileInputRef
+                      .current
+                      ?.click()
+                  }
+                  className="absolute bottom-1 left-1 flex h-9 w-9 items-center justify-center rounded-full border-2 border-background bg-background shadow"
+                >
+                  {uploadingProfile ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Camera className="h-4 w-4" />
+                  )}
+                </button>
+              </div>
+
+              <div className="mb-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <h1 className="truncate text-2xl font-bold sm:text-3xl">
+                    {
+                      profile.user
+                        .name
+                    }
+                  </h1>
+                </div>
+
+                <p className="text-sm text-muted-foreground">
+                  {friends.length}{" "}
+                  {friends.length ===
+                  1
+                    ? "friend"
+                    : "friends"}
+                  {" · "}
+                  {
+                    profile.rooms
+                      .length
+                  }{" "}
+                  rooms
+                  {" · "}
+                  {
+                    profile.jobs
+                      .length
+                  }{" "}
+                  jobs
+                </p>
+              </div>
             </div>
 
-            {/* Edit / Save / Cancel buttons */}
-            <div className="flex gap-2 mt-14">
+            <div className="flex gap-2 sm:pb-1">
               {isEditing ? (
                 <>
                   <Button
                     variant="outline"
-                    size="sm"
-                    onClick={handleCancel}
-                    className="rounded-full gap-1"
+                    className="gap-2 rounded-full"
+                    onClick={
+                      handleCancel
+                    }
                   >
-                    <X className="w-3.5 h-3.5" />
+                    <X className="h-4 w-4" />
                     Cancel
                   </Button>
+
                   <Button
-                    size="sm"
-                    onClick={handleSave}
-                    disabled={isSaving}
-                    className="rounded-full gap-1 bg-red-600 hover:bg-red-700 text-white"
+                    className="gap-2 rounded-full"
+                    onClick={
+                      handleSave
+                    }
+                    disabled={
+                      isSaving
+                    }
                   >
-                    <Save className="w-3.5 h-3.5" />
-                    {isSaving ? "Saving…" : "Save"}
+                    {isSaving ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Save className="h-4 w-4" />
+                    )}
+                    Save
                   </Button>
                 </>
               ) : (
                 <Button
                   variant="outline"
-                  size="sm"
-                  onClick={handleEdit}
-                  className="rounded-full gap-1 border-red-300 text-red-600 hover:bg-red-50 dark:hover:bg-red-950"
+                  className="gap-2 rounded-full"
+                  onClick={
+                    handleEdit
+                  }
                 >
-                  <Edit3 className="w-3.5 h-3.5" />
+                  <Edit3 className="h-4 w-4" />
                   Edit Profile
                 </Button>
               )}
             </div>
           </div>
 
-          {/* Name / role */}
           {isEditing ? (
-            <div className="space-y-2 mb-3">
-              <Input
-                value={form.name}
-                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                placeholder="Your name"
-                className="text-xl font-bold h-10 rounded-xl"
-              />
+            <div className="mt-6 grid gap-4 sm:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-xs font-medium">
+                  Name
+                </label>
+                <Input
+                  value={
+                    form.name
+                  }
+                  onChange={(e) =>
+                    setForm(
+                      (prev) => ({
+                        ...prev,
+                        name:
+                          e.target
+                            .value,
+                      }),
+                    )
+                  }
+                  placeholder="Your name"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-xs font-medium">
+                  Location
+                </label>
+                <Input
+                  value={
+                    form.location
+                  }
+                  onChange={(e) =>
+                    setForm(
+                      (prev) => ({
+                        ...prev,
+                        location:
+                          e.target
+                            .value,
+                      }),
+                    )
+                  }
+                  placeholder="Pokhara, Nepal"
+                />
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="mb-1 block text-xs font-medium">
+                  Bio
+                </label>
+                <textarea
+                  value={
+                    form.bio
+                  }
+                  onChange={(e) =>
+                    setForm(
+                      (prev) => ({
+                        ...prev,
+                        bio:
+                          e.target
+                            .value,
+                      }),
+                    )
+                  }
+                  maxLength={300}
+                  placeholder="Tell people about yourself..."
+                  className="min-h-24 w-full rounded-xl border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
+                />
+
+                <p className="mt-1 text-right text-[11px] text-muted-foreground">
+                  {
+                    form.bio
+                      .length
+                  }
+                  /300
+                </p>
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="mb-1 block text-xs font-medium">
+                  Website
+                </label>
+                <Input
+                  value={
+                    form.website
+                  }
+                  onChange={(e) =>
+                    setForm(
+                      (prev) => ({
+                        ...prev,
+                        website:
+                          e.target
+                            .value,
+                      }),
+                    )
+                  }
+                  placeholder="https://example.com"
+                />
+              </div>
             </div>
           ) : (
-            <div className="mb-1">
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                {user?.name || "Unknown User"}
-              </h2>
-            </div>
-          )}
-
-          <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-            <span className="flex items-center gap-1">
-              <Mail className="w-3.5 h-3.5" />
-              {user?.email}
-            </span>
-            <Badge
-              variant="outline"
-              className="text-[11px] px-2 py-0 h-5 rounded-full"
-            >
-              {user?.role}
-            </Badge>
-            {user?.isVerified && (
-              <Badge className="text-[11px] px-2 py-0 h-5 rounded-full bg-blue-100 text-blue-700 border-blue-200">
-                Verified
-              </Badge>
-            )}
-          </div>
-        </div>
-      </motion.div>
-
-      {/* Info cards */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-      >
-        <Card className="rounded-3xl border-0 shadow-sm">
-          <CardContent className="p-6 space-y-4">
-            <h3 className="font-semibold text-gray-900 dark:text-gray-100 text-sm uppercase tracking-wide text-muted-foreground">
-              Contact Info
-            </h3>
-
-            <div className="space-y-3">
-              {/* Email */}
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-950 flex items-center justify-center flex-shrink-0">
-                  <Mail className="w-4 h-4 text-blue-600" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs text-muted-foreground">Email</p>
-                  <p className="text-sm font-medium truncate">{user?.email}</p>
-                </div>
-              </div>
-
-              <Separator />
-
-              {/* Phone */}
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-green-50 dark:bg-green-950 flex items-center justify-center flex-shrink-0">
-                  <Phone className="w-4 h-4 text-green-600" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs text-muted-foreground">Phone</p>
-                  {isEditing ? (
-                    <Input
-                      value={form.phone}
-                      onChange={(e) =>
-                        setForm((f) => ({ ...f, phone: e.target.value }))
-                      }
-                      placeholder="Phone number"
-                      className="h-8 text-sm rounded-lg mt-0.5"
-                    />
-                  ) : (
-                    <p className="text-sm font-medium">
-                      {user?.phone || (
-                        <span className="text-muted-foreground italic">
-                          Not set
-                        </span>
-                      )}
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              <Separator />
-
-              {/* Role */}
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-purple-50 dark:bg-purple-950 flex items-center justify-center flex-shrink-0">
-                  <Shield className="w-4 h-4 text-purple-600" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs text-muted-foreground">Role</p>
-                  <p className="text-sm font-medium">{user?.role}</p>
-                </div>
-              </div>
-
-              {joinedDate && (
-                <>
-                  <Separator />
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-xl bg-orange-50 dark:bg-orange-950 flex items-center justify-center flex-shrink-0">
-                      <Calendar className="w-4 h-4 text-orange-600" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs text-muted-foreground">
-                        Member Since
-                      </p>
-                      <p className="text-sm font-medium">{joinedDate}</p>
-                    </div>
-                  </div>
-                </>
+            <div className="mt-5">
+              {profile.user.bio && (
+                <p className="max-w-2xl whitespace-pre-wrap text-sm sm:text-base">
+                  {
+                    profile.user
+                      .bio
+                  }
+                </p>
               )}
-            </div>
-          </CardContent>
-        </Card>
-      </motion.div>
 
-      {/* Quick action */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
-      >
-        <Card className="rounded-3xl border-0 shadow-sm bg-gradient-to-br from-red-50 to-rose-50 dark:from-red-950/30 dark:to-rose-950/30">
-          <CardContent className="p-6 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-red-600 flex items-center justify-center shadow-md">
-                <Building2 className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <p className="font-semibold text-gray-900 dark:text-gray-100 text-sm">
-                  List a Room
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Start earning by adding your property
-                </p>
-              </div>
-            </div>
-            <Button
-              size="sm"
-              className="rounded-full bg-red-600 hover:bg-red-700 text-white shadow"
-              onClick={() => router.push("/user/dashboard/rooms/create")}
-            >
-              + Add Room
-            </Button>
-          </CardContent>
-        </Card>
-      </motion.div>
+              <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted-foreground">
+                {profile.user
+                  .location && (
+                  <span className="flex items-center gap-1.5">
+                    <MapPin className="h-4 w-4" />
+                    {
+                      profile.user
+                        .location
+                    }
+                  </span>
+                )}
 
-      {/* AI Saved Details */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
-      >
-        <Card className="overflow-hidden rounded-3xl border-0 shadow-sm">
-          <CardContent className="p-0">
-            <div className="border-b bg-gradient-to-r from-violet-50 via-fuchsia-50 to-rose-50 p-5 dark:from-violet-950/30 dark:via-fuchsia-950/20 dark:to-rose-950/30">
-              <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-600 to-fuchsia-600 shadow-md">
-                    <Bot className="h-5 w-5 text-white" />
-                  </div>
-
-                  <div>
-                    <h3 className="font-bold text-gray-900 dark:text-gray-100">
-                      AI Saved Details
-                    </h3>
-                    <p className="text-xs text-muted-foreground">
-                      Information RoomKhoj AI remembers to help you faster
-                    </p>
-                  </div>
-                </div>
-
-                {!aiLoading && (
-                  <div className="flex gap-2">
-                    {aiEditing ? (
-                      <>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="rounded-full"
-                          onClick={() => {
-                            setAiForm({
-                              roomSearch: {
-                                ...(aiProfile?.roomSearch || {}),
-                              },
-                              jobSearch: {
-                                ...(aiProfile?.jobSearch || {}),
-                              },
-                            });
-                            setAiEditing(false);
-                          }}
-                        >
-                          Cancel
-                        </Button>
-
-                        <Button
-                          size="sm"
-                          className="rounded-full"
-                          onClick={saveAiProfile}
-                          disabled={aiSaving}
-                        >
-                          {aiSaving ? (
-                            <Loader2 className="mr-1 h-4 w-4 animate-spin" />
-                          ) : (
-                            <Save className="mr-1 h-4 w-4" />
-                          )}
-                          Save
-                        </Button>
-                      </>
-                    ) : (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="rounded-full"
-                        onClick={() => setAiEditing(true)}
-                      >
-                        <Edit3 className="mr-1 h-4 w-4" />
-                        Edit
-                      </Button>
-                    )}
-                  </div>
+                {profile.user
+                  .website && (
+                  <a
+                    href={
+                      websiteHref
+                    }
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center gap-1.5 font-medium text-primary hover:underline"
+                  >
+                    <Globe2 className="h-4 w-4" />
+                    {
+                      profile.user
+                        .website
+                    }
+                  </a>
                 )}
               </div>
             </div>
+          )}
+        </CardContent>
+      </Card>
 
-            <div className="p-5">
+      {/* TWO COLUMN PROFILE */}
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_380px]">
+        {/* LEFT */}
+        <section className="space-y-5">
+          <Card className="rounded-3xl border-0 shadow-sm">
+            <CardContent className="p-5">
+              <h2 className="mb-4 text-lg font-bold">
+                About
+              </h2>
+
+              <div className="space-y-4 text-sm">
+                <div className="flex items-center gap-3">
+                  <Mail className="h-4 w-4 text-muted-foreground" />
+
+                  <div>
+                    <p className="text-xs text-muted-foreground">
+                      Email
+                    </p>
+
+                    <p className="font-medium">
+                      {
+                        (user as any)
+                          ?.email ||
+                        "Not available"
+                      }
+                    </p>
+                  </div>
+                </div>
+
+                <Separator />
+
+                <div className="flex items-center gap-3">
+                  <Phone className="h-4 w-4 text-muted-foreground" />
+
+                  <div>
+                    <p className="text-xs text-muted-foreground">
+                      Phone
+                    </p>
+
+                    <p className="font-medium">
+                      {
+                        (user as any)
+                          ?.phone ||
+                        (user as any)
+                          ?.phoneNumber ||
+                        "Not available"
+                      }
+                    </p>
+                  </div>
+                </div>
+
+                {profile.user.location && (
+                  <>
+                    <Separator />
+
+                    <div className="flex items-center gap-3">
+                      <MapPin className="h-4 w-4 text-muted-foreground" />
+
+                      <div>
+                        <p className="text-xs text-muted-foreground">
+                          Location
+                        </p>
+
+                        <p className="font-medium">
+                          {
+                            profile.user
+                              .location
+                          }
+                        </p>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* ACTIVITY TABS */}
+          <Card className="overflow-hidden rounded-3xl border-0 shadow-sm">
+            <div className="flex overflow-x-auto border-b px-2">
+              {[
+                [
+                  "rooms",
+                  "Rooms",
+                ],
+                [
+                  "jobs",
+                  "Jobs",
+                ],
+                [
+                  "friends",
+                  "Friends",
+                ],
+                [
+                  "about",
+                  "About",
+                ],
+              ].map(
+                ([
+                  value,
+                  label,
+                ]) => (
+                  <button
+                    key={
+                      value
+                    }
+                    type="button"
+                    onClick={() =>
+                      setTab(
+                        value as ActivityTab,
+                      )
+                    }
+                    className={`relative min-w-fit px-5 py-4 text-sm font-semibold ${
+                      tab ===
+                      value
+                        ? "text-primary"
+                        : "text-muted-foreground"
+                    }`}
+                  >
+                    {label}
+
+                    {tab ===
+                      value && (
+                      <span className="absolute inset-x-3 bottom-0 h-0.5 rounded-full bg-primary" />
+                    )}
+                  </button>
+                ),
+              )}
+            </div>
+
+            <CardContent className="p-5">
+              {tab ===
+                "rooms" && (
+                <div className="space-y-3">
+                  {profile.rooms
+                    .length ===
+                  0 ? (
+                    <div className="py-10 text-center text-sm text-muted-foreground">
+                      No room listings yet.
+                    </div>
+                  ) : (
+                    profile.rooms
+                      .map(
+                        (
+                          room: any,
+                        ) => (
+                          <button
+                            key={
+                              room.id
+                            }
+                            type="button"
+                            onClick={() =>
+                              router.push(
+                                `/property/${room.id}`,
+                              )
+                            }
+                            className="w-full rounded-2xl border p-4 text-left transition hover:bg-muted/40"
+                          >
+                            <div className="flex items-start gap-3">
+                              <Home className="mt-1 h-5 w-5 shrink-0 text-red-600" />
+
+                              <div className="min-w-0">
+                                <h3 className="font-semibold">
+                                  {room.title ||
+                                    room.roomType ||
+                                    "Room"}
+                                </h3>
+
+                                <p className="mt-1 text-sm text-muted-foreground">
+                                  {room.address ||
+                                    room.location ||
+                                    ""}
+                                </p>
+
+                                {room.price !=
+                                  null && (
+                                  <p className="mt-2 font-bold">
+                                    Rs.{" "}
+                                    {Number(
+                                      room.price,
+                                    ).toLocaleString()}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          </button>
+                        ),
+                      )
+                  )}
+
+                  <Button
+                    variant="outline"
+                    className="w-full rounded-xl"
+                    onClick={() =>
+                      router.push(
+                        "/user/dashboard/rooms/create",
+                      )
+                    }
+                  >
+                    + Add Room
+                  </Button>
+                </div>
+              )}
+
+              {tab ===
+                "jobs" && (
+                <div className="space-y-3">
+                  {profile.jobs
+                    .length ===
+                  0 ? (
+                    <div className="py-10 text-center text-sm text-muted-foreground">
+                      No job posts yet.
+                    </div>
+                  ) : (
+                    profile.jobs
+                      .map(
+                        (
+                          job: any,
+                        ) => (
+                          <div
+                            key={
+                              job.id
+                            }
+                            className="rounded-2xl border p-4"
+                          >
+                            <div className="flex items-start gap-3">
+                              <BriefcaseBusiness className="mt-1 h-5 w-5 shrink-0 text-violet-600" />
+
+                              <div>
+                                <h3 className="font-semibold">
+                                  {
+                                    job.jobTitle
+                                  }
+                                </h3>
+
+                                <p className="mt-1 text-sm text-muted-foreground">
+                                  {job.companyName ||
+                                    "Company"}
+                                  {" · "}
+                                  {job.location ||
+                                    ""}
+                                </p>
+
+                                {job.salary !=
+                                  null && (
+                                  <p className="mt-2 font-bold">
+                                    Rs.{" "}
+                                    {Number(
+                                      job.salary,
+                                    ).toLocaleString()}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        ),
+                      )
+                  )}
+                </div>
+              )}
+
+              {tab ===
+                "friends" && (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {friends.length ===
+                  0 ? (
+                    <div className="col-span-full py-10 text-center text-sm text-muted-foreground">
+                      No friends yet.
+                    </div>
+                  ) : (
+                    friends.map(
+                      (
+                        friend,
+                      ) => (
+                        <button
+                          key={
+                            friend.id
+                          }
+                          onClick={() =>
+                            router.push(
+                              `/profile/${friend.id}`,
+                            )
+                          }
+                          className="flex items-center gap-3 rounded-xl border p-3 text-left hover:bg-muted/40"
+                        >
+                          <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-muted">
+                            {friend.profilePhotoUrl ? (
+                              <img
+                                src={
+                                  profileMediaUrl(
+                                    friend.profilePhotoUrl,
+                                  ) ||
+                                  ""
+                                }
+                                alt={
+                                  friend.name
+                                }
+                                className="h-full w-full object-cover"
+                              />
+                            ) : (
+                              <Users className="h-5 w-5 text-muted-foreground" />
+                            )}
+                          </div>
+
+                          <span className="truncate font-semibold">
+                            {
+                              friend.name
+                            }
+                          </span>
+                        </button>
+                      ),
+                    )
+                  )}
+                </div>
+              )}
+
+              {tab ===
+                "about" && (
+                <div className="space-y-3">
+                  <div className="flex items-start gap-3">
+                    <UserRound className="mt-0.5 h-5 w-5 text-muted-foreground" />
+
+                    <p className="whitespace-pre-wrap">
+                      {profile.user
+                        .bio ||
+                        "No bio added yet."}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </section>
+
+        {/* RIGHT AI SIDE */}
+        <aside className="lg:sticky lg:top-20 lg:self-start">
+          <Card className="overflow-hidden rounded-3xl border-0 shadow-sm">
+            <div className="border-b bg-gradient-to-r from-violet-50 via-fuchsia-50 to-rose-50 p-4 dark:from-violet-950/30 dark:via-fuchsia-950/20 dark:to-rose-950/30">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex min-w-0 items-center gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-600 to-fuchsia-600">
+                    <Bot className="h-5 w-5 text-white" />
+                  </div>
+
+                  <div className="min-w-0">
+                    <h2 className="font-bold">
+                      RoomKhoj AI
+                    </h2>
+
+                    <p className="truncate text-xs text-muted-foreground">
+                      Saved information
+                    </p>
+                  </div>
+                </div>
+
+                {!aiLoading &&
+                  !aiEditing && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="rounded-full"
+                    onClick={() =>
+                      setAiEditing(
+                        true,
+                      )
+                    }
+                  >
+                    <Edit3 className="mr-1 h-3.5 w-3.5" />
+                    Edit
+                  </Button>
+                )}
+              </div>
+
+              {aiEditing && (
+                <div className="mt-3 flex justify-end gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="rounded-full"
+                    onClick={() => {
+                      setAiForm({
+                        roomSearch: {
+                          ...(
+                            aiProfile
+                              ?.roomSearch ||
+                            {}
+                          ),
+                        },
+
+                        jobSearch: {
+                          ...(
+                            aiProfile
+                              ?.jobSearch ||
+                            {}
+                          ),
+                        },
+                      });
+
+                      setAiEditing(
+                        false,
+                      );
+                    }}
+                  >
+                    Cancel
+                  </Button>
+
+                  <Button
+                    size="sm"
+                    className="rounded-full"
+                    disabled={
+                      aiSaving
+                    }
+                    onClick={
+                      saveAiProfile
+                    }
+                  >
+                    {aiSaving ? (
+                      <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Save className="mr-1 h-4 w-4" />
+                    )}
+                    Save
+                  </Button>
+                </div>
+              )}
+            </div>
+
+            <CardContent className="p-4">
               {aiLoading ? (
-                <div className="flex min-h-[120px] items-center justify-center">
+                <div className="flex min-h-48 items-center justify-center">
                   <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                 </div>
               ) : (
-                <div className="space-y-6">
+                <div className="space-y-5">
                   <section>
                     <div className="mb-3 flex items-center gap-2">
                       <Home className="h-4 w-4 text-red-600" />
-                      <h4 className="text-sm font-semibold">
+                      <h3 className="text-sm font-bold">
                         Room Preferences
-                      </h4>
+                      </h3>
                     </div>
 
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      {renderAiField("roomSearch", "city", "City")}
+                    <div className="space-y-2">
+                      {renderAiField(
+                        "roomSearch",
+                        "city",
+                        "City",
+                      )}
+
                       {renderAiField(
                         "roomSearch",
                         "exactLocation",
                         "Location",
                       )}
-                      {renderAiField("roomSearch", "budget", "Budget")}
+
+                      {renderAiField(
+                        "roomSearch",
+                        "budget",
+                        "Budget",
+                      )}
+
                       {renderAiField(
                         "roomSearch",
                         "roomType",
                         "Room Type",
                       )}
+
                       {renderAiField(
                         "roomSearch",
                         "tenantType",
                         "Tenant Type",
                       )}
+
                       {renderAiField(
                         "roomSearch",
                         "numberOfPeople",
-                        "Number of People",
+                        "People",
                       )}
+
                       {renderAiField(
                         "roomSearch",
                         "moveInDate",
                         "Move-in Date",
-                      )}
-                      {renderAiField(
-                        "roomSearch",
-                        "vehicleType",
-                        "Vehicle",
                       )}
                     </div>
                   </section>
@@ -635,87 +1703,83 @@ export default function ProfilePage() {
                   <section>
                     <div className="mb-3 flex items-center gap-2">
                       <BriefcaseBusiness className="h-4 w-4 text-violet-600" />
-                      <h4 className="text-sm font-semibold">
+                      <h3 className="text-sm font-bold">
                         Job Preferences
-                      </h4>
+                      </h3>
                     </div>
 
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      {renderAiField(
-                        "jobSearch",
-                        "userName",
-                        "Name",
-                      )}
-                      {renderAiField(
-                        "jobSearch",
-                        "phone",
-                        "Phone",
-                      )}
-                      {renderAiField(
-                        "jobSearch",
-                        "location",
-                        "Preferred Location",
-                      )}
-                      {renderAiField(
-                        "jobSearch",
-                        "jobLocation",
-                        "Job Location",
-                      )}
+                    <div className="space-y-2">
                       {renderAiField(
                         "jobSearch",
                         "jobTitle",
                         "Job Title",
                       )}
+
                       {renderAiField(
                         "jobSearch",
                         "jobType",
                         "Job Type",
                       )}
+
+                      {renderAiField(
+                        "jobSearch",
+                        "location",
+                        "Location",
+                      )}
+
                       {renderAiField(
                         "jobSearch",
                         "experience",
                         "Experience",
                       )}
+
                       {renderAiField(
                         "jobSearch",
                         "education",
                         "Education",
                       )}
+
                       {renderAiField(
                         "jobSearch",
                         "expectedSalary",
                         "Expected Salary",
                       )}
+
                       {renderAiField(
                         "jobSearch",
                         "joiningAvailability",
-                        "Joining Availability",
+                        "Availability",
                       )}
                     </div>
                   </section>
 
-                  <div className="flex justify-end border-t pt-4">
+                  <div className="border-t pt-4">
                     <Button
                       variant="destructive"
                       size="sm"
-                      className="rounded-full"
-                      disabled={clearingAi}
-                      onClick={clearAiProfile}
+                      className="w-full rounded-xl"
+                      disabled={
+                        clearingAi
+                      }
+                      onClick={
+                        clearAiProfile
+                      }
                     >
                       {clearingAi ? (
-                        <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       ) : (
-                        <Trash2 className="mr-1 h-4 w-4" />
+                        <Trash2 className="mr-2 h-4 w-4" />
                       )}
-                      Clear AI Details
+
+                      Clear AI Information
                     </Button>
                   </div>
                 </div>
               )}
-            </div>
-          </CardContent>
-        </Card>
-      </motion.div>
-    </div>
+            </CardContent>
+          </Card>
+        </aside>
+      </div>
+    </main>
   );
 }
