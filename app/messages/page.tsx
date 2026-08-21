@@ -387,7 +387,7 @@ export default function MessagesPage() {
                   <Input
                     value={contactSearch}
                     onChange={(e) =>
-                      setPhoneNumber(
+                      setContactSearch(
                         e.target.value
                           ,
                       )
@@ -424,7 +424,7 @@ export default function MessagesPage() {
                     {phoneResult.name}
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    {phoneResult.contactSearch}
+                    {phoneResult.phoneNumber}
                   </p>
                 </div>
               )}
@@ -490,7 +490,7 @@ export default function MessagesPage() {
                         <div className="flex items-center justify-between gap-3">
                           <p className="truncate font-medium">
                             {conversation.otherUser
-                              ?.contactSearch ||
+                              ?.phoneNumber ||
                               otherId}
                           </p>
 
@@ -562,7 +562,7 @@ export default function MessagesPage() {
                 <div>
                   <p className="font-semibold">
                     {selected.otherUser
-                      ?.contactSearch ||
+                      ?.phoneNumber ||
                       otherUserId}
                   </p>
 
