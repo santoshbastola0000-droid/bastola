@@ -31,6 +31,25 @@ export interface ChatMessage {
 }
 
 export const messageService = {
+  startByContact: async (
+    contact: string,
+  ) => {
+    const response = await privateApi.post(
+      "/message/start-by-contact",
+      { contact },
+    );
+
+    return response.data as {
+      conversation: MessageConversation;
+      user: {
+        id: string;
+        name: string;
+        email: string;
+        phoneNumber: string;
+      };
+    };
+  },
+
   startByPhone: async (
     phoneNumber: string,
   ) => {
