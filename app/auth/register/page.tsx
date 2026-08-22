@@ -4,7 +4,7 @@ import Link from "next/link";
 import RegisterForm from "@/components/auth/RegisterForm";
 
 export const metadata: Metadata = {
-  title: "Sign Up | RoomHub",
+  title: "Create Account | RoomKhoj",
   description: "Create your RoomHub account",
 };
 

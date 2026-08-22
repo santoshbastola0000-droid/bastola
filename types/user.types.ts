@@ -15,6 +15,7 @@ export interface UserDetail {
   isVerified: boolean;
   role: UserRole;
   phone: string;
+  accountPurpose?: "FIND_ROOM" | "POST_ROOM" | "FIND_JOB" | "POST_JOB" | null;
   balance?: number;
   pendingBalance?: number;
   location?: UserLocation | null;

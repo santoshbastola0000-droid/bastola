@@ -87,6 +87,9 @@ export default function UsersList() {
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<UserRole | "all">("all");
+  const [purposeFilter, setPurposeFilter] = useState<
+    "all" | "FIND_ROOM" | "POST_ROOM" | "FIND_JOB" | "POST_JOB"
+  >("all");
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(10);
   const [selectedUser, setSelectedUser] = useState<{
@@ -111,6 +114,19 @@ export default function UsersList() {
     take: pageSize,
     search: debouncedSearch || undefined,
     role: roleFilter !== "all" ? roleFilter : undefined,
+    accountPurpose:
+      purposeFilter !== "all" ? purposeFilter : undefined,
+  };
+
+  const getPurposeLabel = (purpose?: string | null) => {
+    const labels: Record<string, string> = {
+      FIND_ROOM: "कोठा खोज्न",
+      POST_ROOM: "कोठा पोस्ट गर्न",
+      FIND_JOB: "जागिर खोज्न",
+      POST_JOB: "Vacancy पोस्ट गर्न",
+    };
+
+    return labels[purpose || ""] || "छानेको छैन";
   };
 
   const {
@@ -339,6 +355,7 @@ export default function UsersList() {
               onClick={() => {
                 setSearchTerm("");
                 setRoleFilter("all");
+                setPurposeFilter("all");
                 setPage(0);
                 refetch();
               }}
@@ -433,10 +450,48 @@ export default function UsersList() {
               </Select>
             </div>
 
+            {/* Account Purpose Filter */}
+            <Select
+              value={purposeFilter}
+              onValueChange={(value) => {
+                setPurposeFilter(
+                  value as
+                    | "all"
+                    | "FIND_ROOM"
+                    | "POST_ROOM"
+                    | "FIND_JOB"
+                    | "POST_JOB",
+                );
+                setPage(0);
+              }}
+            >
+              <SelectTrigger className="w-full sm:w-[190px] cursor-pointer">
+                <SelectValue placeholder="Account purpose" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all" className="cursor-pointer">
+                  सबै उद्देश्य
+                </SelectItem>
+                <SelectItem value="FIND_ROOM" className="cursor-pointer">
+                  कोठा खोज्न
+                </SelectItem>
+                <SelectItem value="POST_ROOM" className="cursor-pointer">
+                  कोठा पोस्ट गर्न
+                </SelectItem>
+                <SelectItem value="FIND_JOB" className="cursor-pointer">
+                  जागिर खोज्न
+                </SelectItem>
+                <SelectItem value="POST_JOB" className="cursor-pointer">
+                  Vacancy पोस्ट गर्न
+                </SelectItem>
+              </SelectContent>
+            </Select>
+
             <Button
               onClick={() => {
                 setSearchTerm("");
                 setRoleFilter("all");
+                setPurposeFilter("all");
                 setPage(0);
               }}
               variant="outline"
@@ -487,6 +542,7 @@ export default function UsersList() {
                   <TableHead className="w-[140px]">Balance</TableHead>
                   <TableHead className="w-[160px]">Location</TableHead>
                   <TableHead className="w-[120px]">Role</TableHead>
+                  <TableHead className="w-[170px]">Account Purpose</TableHead>
                   <TableHead className="w-[120px]">Status</TableHead>
                   <TableHead className="text-right w-[100px]">
                     Actions
@@ -562,6 +618,11 @@ export default function UsersList() {
                         </div>
                       </TableCell>
                       <TableCell>
+                        <Badge variant="secondary" className="whitespace-nowrap">
+                          {getPurposeLabel(user.accountPurpose)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
                         <div className="min-w-[100px]">
                           {getVerificationBadge(user.isVerified)}
                         </div>
@@ -583,22 +644,23 @@ export default function UsersList() {
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={7} className="h-32 text-center">
+                    <TableCell colSpan={8} className="h-32 text-center">
                       <div className="flex flex-col items-center justify-center gap-3">
                         <UsersIcon className="h-12 w-12 text-muted-foreground opacity-50" />
                         <div>
                           <p className="font-medium">No users found</p>
                           <p className="text-sm text-muted-foreground">
-                            {debouncedSearch || roleFilter !== "all"
+                            {debouncedSearch || roleFilter !== "all" || purposeFilter !== "all"
                               ? "Try adjusting your search or filters"
                               : "No users registered yet"}
                           </p>
                         </div>
-                        {(debouncedSearch || roleFilter !== "all") && (
+                        {(debouncedSearch || roleFilter !== "all" || purposeFilter !== "all") && (
                           <Button
                             onClick={() => {
                               setSearchTerm("");
                               setRoleFilter("all");
+                setPurposeFilter("all");
                             }}
                             variant="outline"
                             className="mt-2 cursor-pointer"
@@ -623,15 +685,16 @@ export default function UsersList() {
                 <UsersIcon className="h-12 w-12 text-muted-foreground opacity-50 mx-auto mb-3" />
                 <p className="font-medium">No users found</p>
                 <p className="text-sm text-muted-foreground">
-                  {debouncedSearch || roleFilter !== "all"
+                  {debouncedSearch || roleFilter !== "all" || purposeFilter !== "all"
                     ? "Try adjusting your search or filters"
                     : "No users registered yet"}
                 </p>
-                {(debouncedSearch || roleFilter !== "all") && (
+                {(debouncedSearch || roleFilter !== "all" || purposeFilter !== "all") && (
                   <Button
                     onClick={() => {
                       setSearchTerm("");
                       setRoleFilter("all");
+                setPurposeFilter("all");
                     }}
                     variant="outline"
                     className="mt-4 cursor-pointer"

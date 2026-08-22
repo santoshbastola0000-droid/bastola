@@ -194,7 +194,7 @@ const LoginForm = ({ onSuccess }: LoginFormProps) => {
             href={routes.REGISTER}
             className="font-medium text-primary hover:text-primary-dark"
           >
-            Sign up
+            Create Account
           </Link>
         </p>
       </div>

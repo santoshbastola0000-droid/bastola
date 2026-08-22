@@ -10,6 +10,7 @@ export interface UserFilters {
   take?: number;
   search?: string;
   role?: UserRole;
+  accountPurpose?: "FIND_ROOM" | "POST_ROOM" | "FIND_JOB" | "POST_JOB";
 }
 
 export const userService = {
@@ -24,6 +25,9 @@ export const userService = {
       params.append("take", filters.take.toString());
     if (filters.search) params.append("search", filters.search);
     if (filters.role) params.append("role", filters.role);
+    if (filters.accountPurpose) {
+      params.append("accountPurpose", filters.accountPurpose);
+    }
 
     const response = await privateApi.get<PaginatedUserResponse>(
       `/user?${params.toString()}`,
