@@ -297,6 +297,12 @@ export default function UsersList() {
         </div>
         <div className="flex justify-end">{getRoleBadge(user.role)}</div>
         <div className="col-span-2 flex items-center justify-between gap-2">
+          <span className="text-xs text-muted-foreground">Account purpose</span>
+          <Badge variant="secondary" className="whitespace-nowrap">
+            {getPurposeLabel(user.accountPurpose)}
+          </Badge>
+        </div>
+        <div className="col-span-2 flex items-center justify-between gap-2">
           {getLocationText(user)}
           {getOnlineBadge(user.isOnline, user.lastActiveAt)}
         </div>
