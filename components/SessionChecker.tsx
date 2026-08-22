@@ -3,75 +3,64 @@
 import { useEffect } from "react";
 import { useUserRole } from "@/stores/user-store";
 import useTokenStore from "@/store";
-import { isTokenExpired, getTokenExpiration } from "@/lib/utils";
+import { isTokenExpired } from "@/lib/utils";
 import { toast } from "sonner";
 
+const MANUAL_LOGOUT_KEY = "roomkhoj_manual_logout_at";
+let hasHandledExpiredSession = false;
+
 export function SessionChecker() {
-  const { user, clearUser } = useUserRole();
+  const { clearUser } = useUserRole();
   const token = useTokenStore((state) => state.token);
 
   useEffect(() => {
-    // Check token expiration immediately
+    // नयाँ valid login आएपछि भविष्यको expiry का लागि reset गर्ने।
+    if (token && !isTokenExpired(token)) {
+      hasHandledExpiredSession = false;
+    }
+
     const checkTokenExpiry = () => {
-      if (token) {
-        if (isTokenExpired(token)) {
-          const manualLogoutAt = Number(
-            sessionStorage.getItem("roomkhoj_manual_logout_at"),
-          );
-          const isManualLogout =
-            Number.isFinite(manualLogoutAt) &&
-            Date.now() - manualLogoutAt < 10_000;
+      if (!token || !isTokenExpired(token) || hasHandledExpiredSession) {
+        return;
+      }
 
-          if (isManualLogout) {
-            sessionStorage.removeItem("roomkhoj_manual_logout_at");
-            clearUser();
-            useTokenStore.getState().clearToken();
-            return;
-          }
+      const manualLogoutAt = Number(
+        sessionStorage.getItem(MANUAL_LOGOUT_KEY),
+      );
 
-          // Show toast notification
-          toast.error("Session Expired", {
-            description:
-              "Your session has expired. Please log in again to continue.",
-            duration: 4000,
-          });
+      const isManualLogout =
+        Number.isFinite(manualLogoutAt) &&
+        Date.now() - manualLogoutAt < 10_000;
 
-          // Clear auth data
-          clearUser();
-          useTokenStore.getState().clearToken();
+      if (isManualLogout) {
+        sessionStorage.removeItem(MANUAL_LOGOUT_KEY);
+        return;
+      }
 
-          // Redirect to login only if we are not already on an auth page
-          const currentPath = window.location.pathname;
+      hasHandledExpiredSession = true;
 
-          if (!currentPath.startsWith("/auth/")) {
-            window.location.href = `/auth/login${currentPath !== "/" ? `?redirect=${encodeURIComponent(currentPath)}` : ""}`;
-          }
-        } else {
-          // Optional: Show warning when token is about to expire (e.g., within 5 minutes)
-          const expirationDate = getTokenExpiration(token);
-          if (expirationDate) {
-            const timeUntilExpiry = expirationDate.getTime() - Date.now();
-            const fiveMinutes = 5 * 60 * 1000;
+      toast.error("Session Expired", {
+        description: "Your session has expired. Please log in again to continue.",
+        duration: 4000,
+      });
 
-            if (timeUntilExpiry > 0 && timeUntilExpiry < fiveMinutes) {
-              const minutesLeft = Math.ceil(timeUntilExpiry / 60000);
-              toast.warning("Session Expiring Soon", {
-                description: `Your session will expire in ${minutesLeft} minute${minutesLeft !== 1 ? "s" : ""}. Please save your work.`,
-                duration: 5000,
-              });
-            }
-          }
-        }
+      clearUser();
+      useTokenStore.getState().clearToken();
+
+      const currentPath = window.location.pathname;
+
+      if (!currentPath.startsWith("/auth/")) {
+        window.location.href =
+          currentPath === "/"
+            ? "/auth/login"
+            : `/auth/login?redirect=${encodeURIComponent(currentPath)}`;
       }
     };
 
-    // Check on mount
     checkTokenExpiry();
 
-    // Set up interval to check token expiry every minute
-    const interval = setInterval(checkTokenExpiry, 60000); // Check every minute
-
-    return () => clearInterval(interval);
+    const interval = window.setInterval(checkTokenExpiry, 60_000);
+    return () => window.clearInterval(interval);
   }, [token, clearUser]);
 
   return null;
