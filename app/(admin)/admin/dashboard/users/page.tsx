@@ -685,7 +685,7 @@ export default function UsersList() {
                   users.map((user) => (
                     <TableRow
                       key={user.id}
-                      className="hover:bg-accent/50 transition-colors"
+                      className="transition-colors"
                     >
                       <TableCell>
                         <div className="flex items-start gap-3 min-w-[220px]">
