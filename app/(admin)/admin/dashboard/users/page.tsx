@@ -170,6 +170,41 @@ export default function UsersList() {
     },
   });
 
+  const handleAddBalance = (user: any) => {
+    const rawAmount = window.prompt(
+      `Add balance for ${user.name}. Enter amount in Rs.:`,
+    );
+
+    if (rawAmount === null) return;
+
+    const amount = Number(rawAmount.replace(/,/g, "").trim());
+
+    if (!Number.isFinite(amount) || amount <= 0) {
+      toast.error("Please enter a valid amount.");
+      return;
+    }
+
+    const rawRemarks = window.prompt(
+      "Reason for this balance credit:",
+      "Manual balance credit by admin",
+    );
+
+    if (rawRemarks === null) return;
+
+    if (
+      window.confirm(
+        `Add Rs. ${amount.toLocaleString()} to ${user.name}'s wallet?`,
+      )
+    ) {
+      adminCreditMutation.mutate({
+        userId: user.id,
+        amount,
+        remarks:
+          rawRemarks.trim() || "Manual balance credit by admin",
+      });
+    }
+  };
+
   const releasePendingMutation = useMutation({
     mutationFn: (userId: string) => userService.releasePendingBalance(userId),
     onSuccess: (result) => {
