@@ -7,7 +7,7 @@ import { LogIn, Sparkles, UserPlus, X } from "lucide-react";
 import useTokenStore from "@/store";
 import { Button } from "@/components/ui/button";
 
-const POPUP_DELAY_MS = 30_000;
+const POPUP_DELAY_MS = 5_000;
 
 export function GuestLoginPopup() {
   const pathname = usePathname();
