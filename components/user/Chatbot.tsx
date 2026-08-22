@@ -32,6 +32,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { walletService } from "@/http/services/wallet.service";
+import useTokenStore from "@/store";
 
 interface RoomItem {
   id?: string;
@@ -106,6 +107,7 @@ function sanitizeTitle(text: string): string {
 
 export function Chatbot() {
   const userStore = useUserRole() as any;
+  const token = useTokenStore((state) => state.token);
   const loggedInUserId =
     userStore?.user?.id ||
     userStore?.user?._id ||
@@ -260,21 +262,7 @@ useEffect(() => {
     setShowHistorySidebar(false);
   };
 
-const deductBalanceForText = (text: string) => {
-  if (!text) return;
 
-  const wordCount = text.trim().split(/\s+/).filter(Boolean).length;
-  const cost = Math.max(1, Math.ceil(wordCount / 5));
-
-  queryClient.setQueryData(["wallet-balance"], (old: any) => {
-    if (!old) return old;
-
-    return {
-      ...old,
-      balance: Math.max(0, Number(old.balance ?? 0) - cost),
-    };
-  });
-};
   const toggleVoiceRecording = () => {
     if (typeof window === "undefined") return;
 
@@ -404,12 +392,10 @@ const deductBalanceForText = (text: string) => {
     const textToSend = customText || input;
     if ((!textToSend.trim() && !selectedFile) || isTyping) return;
 
-    if (balance <= 0) {
-      alert("Your balance is finished! Please top-up to continue chatting.");
+    if (loggedInUserId && balance < 1) {
+      alert("Your AI balance is finished! Please top-up to continue chatting.");
       return;
     }
-
-    deductBalanceForText(textToSend);
 
     const newUserMsg: ChatMessage = {
       id: Date.now().toString(),
@@ -426,16 +412,19 @@ const deductBalanceForText = (text: string) => {
     setSelectedFile(null);
     setIsTyping(true);
 
-    const currentUserId = loggedInUserId || "guest_user";
-
     try {
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
+
       const res = await fetch("https://api.roomkhoj.com/ai-v3/chat", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers,
         body: JSON.stringify({
-          userId: String(currentUserId),
           message: textToSend,
           hasMedia: Boolean(newUserMsg.mediaUrl),
           mediaType: newUserMsg.mediaType,
@@ -454,6 +443,15 @@ const deductBalanceForText = (text: string) => {
 
       if (!res.ok) {
         throw new Error(data?.message || data?.error || `API Error status: ${res.status}`);
+      }
+
+      if (
+        typeof data?.billing?.balance === "number"
+      ) {
+        queryClient.setQueryData(["wallet-balance"], (old: any) => ({
+          ...(old || {}),
+          balance: data.billing.balance,
+        }));
       }
 
       const responseObj =
