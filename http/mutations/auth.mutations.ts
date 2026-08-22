@@ -95,7 +95,7 @@ export const useRegisterMutation = () => {
       });
 
       localStorage.setItem("verificationEmail", data.email);
-      router.push(`/auth/verify?email=${encodeURIComponent(data.email)}`);
+      router.push(`/auth/verify/email?email=${encodeURIComponent(data.email)}`);
     },
     onError: (error: AxiosError<any>) => {
       const errorData = error.response?.data;
