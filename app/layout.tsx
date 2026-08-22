@@ -8,6 +8,7 @@ import { SessionChecker } from "@/components/SessionChecker";
 import { GlobalChatbot } from "@/components/GlobalChatbot";
 import { MobileBottomNav } from "@/components/MobileBottomNav";
 import { RoomKhojAIFloatingButton } from "@/components/RoomKhojAIFloatingButton";
+import { GuestLoginPopup } from "@/components/GuestLoginPopup";
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -98,6 +99,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <SessionChecker />
+        <GuestLoginPopup />
         <QueryClientProviderWrapper>
           <TooltipProvider>
             {children}
