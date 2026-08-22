@@ -1,18 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LogIn, Sparkles, UserPlus, X } from "lucide-react";
 import useTokenStore from "@/store";
 import { Button } from "@/components/ui/button";
 
-const POPUP_DELAY_MS = 5_000;
+const POPUP_DELAYS_MS = [5_000, 30_000, 60_000];
 
 export function GuestLoginPopup() {
   const pathname = usePathname();
   const token = useTokenStore((state) => state.token);
   const [open, setOpen] = useState(false);
+  const showCountRef = useRef(0);
 
   const isAuthPage = pathname.startsWith("/auth");
 
@@ -21,9 +22,18 @@ export function GuestLoginPopup() {
       return;
     }
 
+    const delay =
+      POPUP_DELAYS_MS[
+        Math.min(
+          showCountRef.current,
+          POPUP_DELAYS_MS.length - 1,
+        )
+      ];
+
     const timer = window.setTimeout(() => {
+      showCountRef.current += 1;
       setOpen(true);
-    }, POPUP_DELAY_MS);
+    }, delay);
 
     return () => window.clearTimeout(timer);
   }, [token, isAuthPage, open]);
