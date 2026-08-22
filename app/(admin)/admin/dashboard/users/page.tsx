@@ -145,6 +145,31 @@ export default function UsersList() {
   console.log("users", usersResponse);
 
   // Delete user mutation
+  const adminCreditMutation = useMutation({
+    mutationFn: ({
+      userId,
+      amount,
+      remarks,
+    }: {
+      userId: string;
+      amount: number;
+      remarks: string;
+    }) => userService.adminCreditWallet(userId, amount, remarks),
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-wallet-stats"] });
+      toast.success(`Rs. ${result.amount} added to wallet`, {
+        style: { background: SUCCESSTOAST, color: "#fff" },
+      });
+    },
+    onError: (error: any) => {
+      toast.error(
+        error?.response?.data?.message || "Could not add balance",
+        { style: { background: FAILURETOAST, color: "#fff" } },
+      );
+    },
+  });
+
   const releasePendingMutation = useMutation({
     mutationFn: (userId: string) => userService.releasePendingBalance(userId),
     onSuccess: (result) => {
@@ -350,6 +375,18 @@ export default function UsersList() {
         <div className="col-span-2 flex justify-between items-center pt-2 border-t">
           <div>{getVerificationBadge(user.isVerified)}</div>
           <div className="flex items-center gap-2">
+            {(
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleAddBalance(user)}
+                disabled={adminCreditMutation.isPending}
+                className="cursor-pointer border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100"
+              >
+                <Wallet className="mr-1 h-4 w-4" />
+                Add Balance
+              </Button>
+            )}
             {Number(user.pendingBalance ?? 0) > 0 && (
               <Button
                 variant="outline"
@@ -685,7 +722,19 @@ export default function UsersList() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
-                          {Number(user.pendingBalance ?? 0) > 0 && (
+                          {(
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleAddBalance(user)}
+                disabled={adminCreditMutation.isPending}
+                className="cursor-pointer border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100"
+              >
+                <Wallet className="mr-1 h-4 w-4" />
+                Add Balance
+              </Button>
+            )}
+            {Number(user.pendingBalance ?? 0) > 0 && (
                             <Button
                               variant="outline"
                               size="sm"
