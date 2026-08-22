@@ -145,6 +145,43 @@ export default function UsersList() {
   console.log("users", usersResponse);
 
   // Delete user mutation
+  const releasePendingMutation = useMutation({
+    mutationFn: (userId: string) => userService.releasePendingBalance(userId),
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-wallet-stats"] });
+      toast.success(`Rs. ${result.releasedAmount} released to seller wallet`, {
+        style: { background: SUCCESSTOAST, color: "#fff" },
+      });
+    },
+    onError: (error: any) => {
+      toast.error(
+        error?.response?.data?.message || "Failed to release pending balance",
+        { style: { background: FAILURETOAST, color: "#fff" } },
+      );
+    },
+  });
+
+  const handleReleasePending = (user: {
+    id: string;
+    name: string;
+    pendingBalance?: number;
+  }) => {
+    const amount = Number(user.pendingBalance ?? 0);
+
+    if (amount <= 0) {
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Release Rs. ${amount} from pending balance to ${user.name}'s wallet?`,
+    );
+
+    if (confirmed) {
+      releasePendingMutation.mutate(user.id);
+    }
+  };
+
   const deleteUserMutation = useMutation({
     mutationFn: (id: string) => userService.deleteUser(id),
     onSuccess: () => {
@@ -312,18 +349,31 @@ export default function UsersList() {
         </div>
         <div className="col-span-2 flex justify-between items-center pt-2 border-t">
           <div>{getVerificationBadge(user.isVerified)}</div>
-          {user.role !== UserRole.ADMIN && (
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={() => handleDeleteClick(user)}
-              className="cursor-pointer"
-              disabled={deleteUserMutation.isPending}
-            >
-              <Trash2 className="h-4 w-4 mr-1" />
-              Delete
-            </Button>
-          )}
+          <div className="flex items-center gap-2">
+            {Number(user.pendingBalance ?? 0) > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleReleasePending(user)}
+                className="cursor-pointer border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                disabled={releasePendingMutation.isPending}
+              >
+                Release Pending
+              </Button>
+            )}
+            {user.role !== UserRole.ADMIN && (
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => handleDeleteClick(user)}
+                className="cursor-pointer"
+                disabled={deleteUserMutation.isPending}
+              >
+                <Trash2 className="h-4 w-4 mr-1" />
+                Delete
+              </Button>
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -634,17 +684,30 @@ export default function UsersList() {
                         </div>
                       </TableCell>
                       <TableCell className="text-right">
-                        {user.role !== UserRole.ADMIN && (
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => handleDeleteClick(user)}
-                            disabled={deleteUserMutation.isPending}
-                            className="cursor-pointer"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        )}
+                        <div className="flex justify-end gap-2">
+                          {Number(user.pendingBalance ?? 0) > 0 && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleReleasePending(user)}
+                              disabled={releasePendingMutation.isPending}
+                              className="cursor-pointer border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                            >
+                              Release Pending
+                            </Button>
+                          )}
+                          {user.role !== UserRole.ADMIN && (
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => handleDeleteClick(user)}
+                              disabled={deleteUserMutation.isPending}
+                              className="cursor-pointer"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))

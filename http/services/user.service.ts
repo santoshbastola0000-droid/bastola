@@ -35,8 +35,34 @@ export const userService = {
     return response.data;
   },
 
+  adminCreditWallet: async (
+    userId: string,
+    amount: number,
+    remarks: string,
+  ): Promise<{ amount: number; balance: number }> => {
+    const response = await privateApi.post(
+      `/unlock/admin/users/${userId}/credit-wallet`,
+      { amount, remarks },
+    );
+    return response.data.data;
+  },
+
   deleteUser: async (id: string): Promise<void> => {
     await privateApi.delete(`/user/${id}`);
+  },
+
+  releasePendingBalance: async (
+    userId: string,
+  ): Promise<{
+    releasedAmount: number;
+    balance: number;
+    pendingBalance: number;
+  }> => {
+    const response = await privateApi.post(
+      `/wallet/admin/users/${userId}/release-pending`,
+      {},
+    );
+    return response.data.data;
   },
 
   updateLocation: async (location: Omit<UserLocation, "updatedAt">): Promise<void> => {
