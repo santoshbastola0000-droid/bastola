@@ -1,4 +1,3 @@
-\
 import * as z from "zod";
 
 import { sizeConstants } from "@/lib/constants/app.constants";
