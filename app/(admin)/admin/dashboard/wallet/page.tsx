@@ -161,7 +161,7 @@ export default function AdminWalletPage() {
       queryClient.invalidateQueries({ queryKey: ["admin-wallet-stats"] });
       toast.success(
         processAction === "Approve"
-          ? "Withdrawal request approved successfully"
+          ? "Withdrawal released successfully"
           : "Withdrawal request rejected successfully",
         {
           style: { background: SUCCESSTOAST, color: "#fff" },
@@ -186,7 +186,7 @@ export default function AdminWalletPage() {
     if (!selectedWithdrawal) return;
 
     if (processAction === "Approve" && !transactionReference.trim()) {
-      toast.error("Transaction reference is required for approval");
+      toast.error("Transaction reference is required before release");
       return;
     }
 
@@ -670,7 +670,7 @@ export default function AdminWalletPage() {
                             }
                           >
                             <CheckCircle className="h-3 w-3 mr-1" />
-                            Approve
+                            Release Payment
                           </Button>
                           <Button
                             variant="outline"
@@ -918,7 +918,7 @@ export default function AdminWalletPage() {
               {processAction === "Approve" ? (
                 <>
                   <CheckCircle className="h-5 w-5 text-green-600" />
-                  Approve Withdrawal
+                  Release Withdrawal
                 </>
               ) : (
                 <>
@@ -929,7 +929,7 @@ export default function AdminWalletPage() {
             </DialogTitle>
             <DialogDescription>
               {processAction === "Approve"
-                ? "This will mark the withdrawal as approved and update user's wallet"
+                ? "Confirm only after sending the payment to the user. This will release the withdrawal and update the wallet."
                 : "This will reject the withdrawal request and return funds to user's wallet"}
             </DialogDescription>
           </DialogHeader>
@@ -1037,7 +1037,7 @@ export default function AdminWalletPage() {
                   Processing...
                 </>
               ) : processAction === "Approve" ? (
-                "Approve Withdrawal"
+                "Release Withdrawal"
               ) : (
                 "Reject Withdrawal"
               )}
