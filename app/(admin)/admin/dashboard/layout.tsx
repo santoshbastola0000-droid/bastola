@@ -23,6 +23,20 @@ export default function AdminLayout({
   useEffect(() => {
     const checkAuth = () => {
       if (token && isTokenExpired(token)) {
+        const manualLogoutAt = Number(
+          sessionStorage.getItem("roomkhoj_manual_logout_at"),
+        );
+        const isManualLogout =
+          Number.isFinite(manualLogoutAt) &&
+          Date.now() - manualLogoutAt < 10_000;
+
+        if (isManualLogout) {
+          sessionStorage.removeItem("roomkhoj_manual_logout_at");
+          clearUser();
+          useTokenStore.getState().clearToken();
+          return;
+        }
+
         toast.error("Session Expired", {
           description: "Your session has expired. Please log in again.",
           style: { background: FAILURETOAST, color: "#ffff" },

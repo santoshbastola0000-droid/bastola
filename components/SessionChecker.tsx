@@ -15,6 +15,20 @@ export function SessionChecker() {
     const checkTokenExpiry = () => {
       if (token) {
         if (isTokenExpired(token)) {
+          const manualLogoutAt = Number(
+            sessionStorage.getItem("roomkhoj_manual_logout_at"),
+          );
+          const isManualLogout =
+            Number.isFinite(manualLogoutAt) &&
+            Date.now() - manualLogoutAt < 10_000;
+
+          if (isManualLogout) {
+            sessionStorage.removeItem("roomkhoj_manual_logout_at");
+            clearUser();
+            useTokenStore.getState().clearToken();
+            return;
+          }
+
           // Show toast notification
           toast.error("Session Expired", {
             description:
