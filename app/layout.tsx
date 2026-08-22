@@ -99,9 +99,9 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <SessionChecker />
-        <GuestLoginPopup />
         <QueryClientProviderWrapper>
           <TooltipProvider>
+            <GuestLoginPopup />
             {children}
 
           <RoomKhojAIFloatingButton />
