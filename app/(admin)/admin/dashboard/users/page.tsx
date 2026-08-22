@@ -99,6 +99,11 @@ export default function UsersList() {
     isVerified: boolean;
   } | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [creditDialogUser, setCreditDialogUser] = useState<any | null>(null);
+  const [creditAmount, setCreditAmount] = useState("");
+  const [creditRemarks, setCreditRemarks] = useState(
+    "Manual balance credit by admin",
+  );
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -171,39 +176,37 @@ export default function UsersList() {
   });
 
   const handleAddBalance = (user: any) => {
-    const rawAmount = window.prompt(
-      `Add balance for ${user.name}. Enter amount in Rs.:`,
-    );
+    setCreditDialogUser(user);
+    setCreditAmount("");
+    setCreditRemarks("Manual balance credit by admin");
+  };
 
-    if (rawAmount === null) return;
+  const confirmAddBalance = () => {
+    if (!creditDialogUser) return;
 
-    const amount = Number(rawAmount.replace(/,/g, "").trim());
+    const amount = Number(creditAmount);
 
     if (!Number.isFinite(amount) || amount <= 0) {
       toast.error("Please enter a valid amount.");
       return;
     }
 
-    const rawRemarks = window.prompt(
-      "Reason for this balance credit:",
-      "Manual balance credit by admin",
-    );
-
-    if (rawRemarks === null) return;
-
-    if (
-      window.confirm(
-        `Add Rs. ${amount.toLocaleString()} to ${user.name}'s wallet?`,
-      )
-    ) {
-      adminCreditMutation.mutate({
-        userId: user.id,
+    adminCreditMutation.mutate(
+      {
+        userId: creditDialogUser.id,
         amount,
         remarks:
-          rawRemarks.trim() || "Manual balance credit by admin",
-      });
-    }
+          creditRemarks.trim() || "Manual balance credit by admin",
+      },
+      {
+        onSuccess: () => {
+          setCreditDialogUser(null);
+          setCreditAmount("");
+        },
+      },
+    );
   };
+
 
   const releasePendingMutation = useMutation({
     mutationFn: (userId: string) => userService.releasePendingBalance(userId),
@@ -968,6 +971,65 @@ export default function UsersList() {
           </CardContent>
         </Card>
       )}
+
+      {/* Add Balance Dialog */}
+      <AlertDialog
+        open={Boolean(creditDialogUser)}
+        onOpenChange={(open) => {
+          if (!open) setCreditDialogUser(null);
+        }}
+      >
+        <AlertDialogContent className="w-[95vw] max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Add Wallet Balance</AlertDialogTitle>
+            <AlertDialogDescription>
+              Add balance to{" "}
+              <span className="font-semibold text-foreground">
+                {creditDialogUser?.name}
+              </span>
+              &apos;s wallet. This creates a permanent wallet transaction.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Amount (Rs.)</label>
+              <Input
+                type="number"
+                min="1"
+                placeholder="e.g. 500"
+                value={creditAmount}
+                onChange={(event) => setCreditAmount(event.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Remarks</label>
+              <Input
+                placeholder="Reason for wallet credit"
+                value={creditRemarks}
+                onChange={(event) => setCreditRemarks(event.target.value)}
+              />
+            </div>
+          </div>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(event) => {
+                event.preventDefault();
+                confirmAddBalance();
+              }}
+              disabled={adminCreditMutation.isPending}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              {adminCreditMutation.isPending
+                ? "Adding..."
+                : "Add Balance"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Delete User Confirmation Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
