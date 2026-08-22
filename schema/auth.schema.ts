@@ -20,6 +20,12 @@ export const registerSchema = z
     phoneNumber: z.string().min(10, "Phone Number must be at least 10 characters"),
     password: z.string().min(8, "Password must be at least 8 characters"),
     confirmPassword: z.string(),
+    accountPurpose: z.enum([
+      "FIND_ROOM",
+      "POST_ROOM",
+      "FIND_JOB",
+      "POST_JOB",
+    ]),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Passwords do not match",
