@@ -10,7 +10,7 @@ export function Hero() {
 
       <div className="relative container mx-auto px-4 py-20 text-center">
         <h1 className="text-5xl md:text-6xl font-bold mb-4 text-balance">
-          Find Your Perfect Room
+          Find Your Perfect Room or Job
         </h1>
         <p className="text-xl md:text-2xl mb-8 text-white/90 text-balance">
           Discover premium rooms with real-time location tracking and instant
