@@ -127,6 +127,65 @@ export const useRegisterMutation = () => {
   });
 };
 
+
+interface PasswordLoginData {
+  identifier: string;
+  password: string;
+}
+
+export const usePasswordLoginMutation = () => {
+  const router = useRouter();
+  const { setUser } = useUserStore();
+  const { setToken } = useTokenStore();
+
+  return useMutation({
+    mutationKey: [AUTH_QUERY_KEYS.LOGIN, "password"],
+    mutationFn: async (data: PasswordLoginData) => {
+      const response = await api.post("/user/login/password", data);
+      return response.data;
+    },
+    onSuccess: async (data) => {
+      const { accessToken, challengeToken, requiresTwoFactor } = data.data || {};
+
+      if (requiresTwoFactor && challengeToken) {
+        sessionStorage.setItem("admin_2fa_challenge", challengeToken);
+        router.push("/auth/2fa");
+        return;
+      }
+
+      if (!accessToken) {
+        toast.error("Login token प्राप्त भएन।");
+        return;
+      }
+
+      setToken(accessToken);
+      const userData = await fetchActiveUser(accessToken);
+      setUser(userData);
+
+      toast.success("Login successful", {
+        description: "Welcome back to RoomKhoj.",
+        duration: 3000,
+      });
+
+      if (userData?.role === "Admin") {
+        router.push("/admin/dashboard");
+      } else if (userData?.role === "User") {
+        router.push("/user/dashboard");
+      } else {
+        router.push("/");
+      }
+    },
+    onError: (error: AxiosError<any>) => {
+      toast.error("Login failed", {
+        description:
+          error.response?.data?.message ||
+          "Please check your details and try again.",
+        duration: 4000,
+      });
+    },
+  });
+};
+
 /**
  * Verify Mutation - Verify OTP and get token with user role
  */

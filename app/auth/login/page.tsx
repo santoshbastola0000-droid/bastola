@@ -4,8 +4,8 @@ import Link from "next/link";
 import LoginForm from "@/components/auth/LoginForm";
 
 export const metadata: Metadata = {
-  title: "Login | RoomHub",
-  description: "Login to your RoomHub account",
+  title: "Login | RoomKhoj",
+  description: "Login to your RoomKhoj account",
 };
 
 const LoginPage = () => {
