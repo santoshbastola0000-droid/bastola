@@ -1,9 +1,11 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Link from "next/link";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
+  GitFork,
   Users as UsersIcon,
   Search,
   Filter,
@@ -760,6 +762,18 @@ export default function UsersList() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
+                          <Link
+                            href={`/admin/dashboard/referrals?userId=${user.id}`}
+                          >
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="cursor-pointer border-violet-300 bg-violet-50 text-violet-700 hover:bg-violet-100"
+                            >
+                              <GitFork className="mr-1 h-4 w-4" />
+                              Chain
+                            </Button>
+                          </Link>
                           {(
               <Button
                 variant="outline"

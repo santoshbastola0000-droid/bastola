@@ -26,9 +26,9 @@ import { toast } from "sonner";
 
 type ReferralStats = {
   referralCode: string;
-  shareLink: string;
-  qualifiedCount: number;
-  pendingCount: number;
+  referralLink: string;
+  qualifiedReferrals: number;
+  pendingReferrals: number;
 };
 
 export default function ReferralPage() {
@@ -44,10 +44,10 @@ export default function ReferralPage() {
   });
 
   const copyLink = async () => {
-    if (!data?.shareLink) return;
+    if (!data?.referralLink) return;
 
     try {
-      await navigator.clipboard.writeText(data.shareLink);
+      await navigator.clipboard.writeText(data.referralLink);
       setCopied(true);
       toast.success("Referral link copied");
       window.setTimeout(() => setCopied(false), 2000);
@@ -57,12 +57,12 @@ export default function ReferralPage() {
   };
 
   const shareReferral = async () => {
-    if (!data?.shareLink) return;
+    if (!data?.referralLink) return;
 
     const shareData = {
       title: "Join RoomKhoj",
       text: "RoomKhoj मा कोठा, जागिर र vacancy सजिलै खोज्नुहोस्।",
-      url: data.shareLink,
+      url: data.referralLink,
     };
 
     if (navigator.share) {
@@ -79,11 +79,11 @@ export default function ReferralPage() {
   };
 
   const shareWhatsApp = () => {
-    if (!data?.shareLink) return;
+    if (!data?.referralLink) return;
 
     const message =
       "RoomKhoj मा कोठा, जागिर र vacancy सजिलै खोज्नुहोस्। मेरो link बाट account बनाउनुहोस्: " +
-      data.shareLink;
+      data.referralLink;
 
     window.open(
       `https://wa.me/?text=${encodeURIComponent(message)}`,
@@ -139,7 +139,7 @@ export default function ReferralPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="break-all rounded-xl border bg-background p-3 font-mono text-sm">
-            {data.shareLink}
+            {data.referralLink}
           </div>
 
           <div className="flex flex-col gap-3 sm:flex-row">
@@ -180,7 +180,7 @@ export default function ReferralPage() {
               <Users className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-2xl font-bold">{data.qualifiedCount}</p>
+              <p className="text-2xl font-bold">{data.qualifiedReferrals}</p>
               <p className="text-sm text-muted-foreground">
                 Qualified referrals
               </p>
@@ -194,7 +194,7 @@ export default function ReferralPage() {
               <Gift className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-2xl font-bold">{data.pendingCount}</p>
+              <p className="text-2xl font-bold">{data.pendingReferrals}</p>
               <p className="text-sm text-muted-foreground">
                 Pending verification
               </p>

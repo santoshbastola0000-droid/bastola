@@ -17,6 +17,7 @@ import {
   BarChart,
   Bot,
   BriefcaseBusiness,
+  GitFork,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -87,6 +88,11 @@ const navItems: NavItem[] = [
     title: "Contact History",
     href: "/admin/dashboard/candidate-contacts",
     icon: Users,
+  },
+  {
+    title: "Referrals",
+    href: "/admin/dashboard/referrals",
+    icon: GitFork,
   },
   {
     title: "Wallet",
