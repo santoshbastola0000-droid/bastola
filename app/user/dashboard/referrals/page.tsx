@@ -8,12 +8,20 @@ import {
   Gift,
   MessageCircle,
   Share2,
+  Send,
   Trophy,
   Users,
 } from "lucide-react";
 
 import { privateApi } from "@/http/api/privateApi";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Card,
   CardContent,
@@ -35,6 +43,7 @@ type ReferralStats = {
 
 export default function ReferralPage() {
   const [copied, setCopied] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["my-referral-stats"],
@@ -63,7 +72,7 @@ export default function ReferralPage() {
 
     const shareData = {
       title: "Join RoomKhoj",
-      text: "RoomKhoj मा कोठा, जागिर र vacancy सजिलै खोज्नुहोस्।",
+      text: "🎁 RoomKhoj Invite & Win! मेरो link बाट verified account बनाउनुहोस्। धेरै qualified referrals ल्याएर Rs. 10,000 जित्नुहोस्। हरेक verified signup मा Rs. 5 wallet reward तुरुन्त पाउनुहोस्।",
       url: data.referralLink,
     };
 
@@ -84,7 +93,7 @@ export default function ReferralPage() {
     if (!data?.referralLink) return;
 
     const message =
-      "🎁 RoomKhoj Invite & Earn! मेरो link बाट verified account बनाउनुहोस्। प्रत्येक verified signup मा Rs. 5 कमाउने मौका पाउनुहोस्: " +
+      "🎁 RoomKhoj Invite & Win! मेरो link बाट verified account बनाउनुहोस्। धेरै qualified referrals ल्याएर Rs. 10,000 जित्नुहोस्। हरेक verified signup मा Rs. 5 wallet reward तुरुन्त पाउनुहोस्। " +
       data.referralLink;
 
     window.open(
@@ -92,6 +101,44 @@ export default function ReferralPage() {
       "_blank",
       "noopener,noreferrer",
     );
+  };
+
+  const shareFacebook = () => {
+    if (!data?.referralLink) return;
+
+    window.open(
+      `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(
+        data.referralLink,
+      )}`,
+      "_blank",
+      "noopener,noreferrer",
+    );
+  };
+
+  const shareTelegram = () => {
+    if (!data?.referralLink) return;
+
+    const message =
+      "🎁 RoomKhoj Invite & Win! धेरै qualified referrals ल्याएर Rs. 10,000 जित्नुहोस्। हरेक verified signup मा Rs. 5 पाउनुहोस्।";
+
+    window.open(
+      `https://t.me/share/url?url=${encodeURIComponent(
+        data.referralLink,
+      )}&text=${encodeURIComponent(message)}`,
+      "_blank",
+      "noopener,noreferrer",
+    );
+  };
+
+  const shareViber = () => {
+    if (!data?.referralLink) return;
+
+    const message =
+      "🎁 RoomKhoj Invite & Win! धेरै qualified referrals ल्याएर Rs. 10,000 जित्नुहोस्। हरेक verified signup मा Rs. 5 पाउनुहोस्। " +
+      data.referralLink;
+
+    window.location.href =
+      `viber://forward?text=${encodeURIComponent(message)}`;
   };
 
   if (isLoading) {
@@ -156,20 +203,11 @@ export default function ReferralPage() {
 
             <Button
               variant="outline"
-              onClick={shareReferral}
+              onClick={() => setShareOpen(true)}
               className="cursor-pointer border-primary/30 text-primary hover:bg-primary/5"
             >
               <Share2 className="mr-2 h-4 w-4" />
               Share
-            </Button>
-
-            <Button
-              variant="outline"
-              onClick={shareWhatsApp}
-              className="cursor-pointer border-emerald-300 text-emerald-700 hover:bg-emerald-50"
-            >
-              <MessageCircle className="mr-2 h-4 w-4" />
-              Share on WhatsApp
             </Button>
           </div>
         </CardContent>
@@ -246,6 +284,110 @@ export default function ReferralPage() {
           <p>4. सबैभन्दा धेरै qualified referral ल्याउनेले monthly Rs. 10,000 जित्ने मौका पाउँछ।</p>
         </CardContent>
       </Card>
+
+      <Dialog open={shareOpen} onOpenChange={setShareOpen}>
+        <DialogContent className="w-[94vw] max-w-xl overflow-hidden rounded-3xl p-0">
+          <DialogHeader className="border-b px-6 py-5 text-left">
+            <DialogTitle className="text-center text-xl">
+              Share & Earn
+            </DialogTitle>
+            <DialogDescription className="text-center">
+              साथीलाई invite गर्नुहोस्। हरेक verified signup मा Rs. 5 पाउनुहोस्।
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="grid grid-cols-3 gap-x-3 gap-y-6 px-5 py-7 sm:grid-cols-6">
+            <button
+              type="button"
+              onClick={copyLink}
+              className="group flex flex-col items-center gap-2"
+            >
+              <span className="flex h-14 w-14 items-center justify-center rounded-full bg-blue-600 text-white transition-transform group-hover:scale-105">
+                {copied ? (
+                  <Check className="h-6 w-6" />
+                ) : (
+                  <Copy className="h-6 w-6" />
+                )}
+              </span>
+              <span className="text-xs font-medium">
+                {copied ? "Copied" : "Copy"}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={shareWhatsApp}
+              className="group flex flex-col items-center gap-2"
+            >
+              <span className="flex h-14 w-14 items-center justify-center rounded-full bg-[#25D366] text-white transition-transform group-hover:scale-105">
+                <MessageCircle className="h-7 w-7" />
+              </span>
+              <span className="text-xs font-medium">WhatsApp</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={shareFacebook}
+              className="group flex flex-col items-center gap-2"
+            >
+              <span className="flex h-14 w-14 items-center justify-center rounded-full bg-[#1877F2] text-2xl font-black text-white transition-transform group-hover:scale-105">
+                f
+              </span>
+              <span className="text-xs font-medium">Facebook</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={shareReferral}
+              className="group flex flex-col items-center gap-2"
+            >
+              <span className="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-[#00B2FF] to-[#6A5CFF] text-white transition-transform group-hover:scale-105">
+                <MessageCircle className="h-7 w-7" />
+              </span>
+              <span className="text-xs font-medium">Messenger</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={shareTelegram}
+              className="group flex flex-col items-center gap-2"
+            >
+              <span className="flex h-14 w-14 items-center justify-center rounded-full bg-[#229ED9] text-white transition-transform group-hover:scale-105">
+                <Send className="h-6 w-6" />
+              </span>
+              <span className="text-xs font-medium">Telegram</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={shareViber}
+              className="group flex flex-col items-center gap-2"
+            >
+              <span className="flex h-14 w-14 items-center justify-center rounded-full bg-[#7360F2] text-xl font-bold text-white transition-transform group-hover:scale-105">
+                V
+              </span>
+              <span className="text-xs font-medium">Viber</span>
+            </button>
+          </div>
+
+          <div className="border-t bg-muted/40 px-5 py-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={shareReferral}
+              className="w-full cursor-pointer rounded-xl"
+            >
+              <Share2 className="mr-2 h-4 w-4" />
+              More Apps
+            </Button>
+
+            <p className="mt-3 text-center text-xs text-muted-foreground">
+              Reward unique OTP-verified account बनेपछि मात्र wallet मा credit हुन्छ।
+            </p>
+          </div>
+        </DialogContent>
+      </Dialog>
+
     </div>
   );
 }
