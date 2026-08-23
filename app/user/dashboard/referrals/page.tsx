@@ -7,6 +7,7 @@ import {
   Copy,
   Gift,
   MessageCircle,
+  Share2,
   Trophy,
   Users,
 } from "lucide-react";
@@ -53,6 +54,28 @@ export default function ReferralPage() {
     } catch {
       toast.error("Could not copy link. Please copy it manually.");
     }
+  };
+
+  const shareReferral = async () => {
+    if (!data?.shareLink) return;
+
+    const shareData = {
+      title: "Join RoomKhoj",
+      text: "RoomKhoj मा कोठा, जागिर र vacancy सजिलै खोज्नुहोस्।",
+      url: data.shareLink,
+    };
+
+    if (navigator.share) {
+      try {
+        await navigator.share(shareData);
+      } catch {
+        // User cancelled the share menu; no action needed.
+      }
+      return;
+    }
+
+    await copyLink();
+    toast.success("Your browser does not support direct sharing. Link copied.");
   };
 
   const shareWhatsApp = () => {
@@ -127,6 +150,15 @@ export default function ReferralPage() {
                 <Copy className="mr-2 h-4 w-4" />
               )}
               {copied ? "Copied" : "Copy Link"}
+            </Button>
+
+            <Button
+              variant="outline"
+              onClick={shareReferral}
+              className="cursor-pointer border-primary/30 text-primary hover:bg-primary/5"
+            >
+              <Share2 className="mr-2 h-4 w-4" />
+              Share
             </Button>
 
             <Button
