@@ -903,7 +903,7 @@ export default function EditRoomPage() {
 
       {/* ══ Sticky Bottom Navigation ══ */}
       <nav
-        className="fixed bottom-0 left-0 right-0 z-30 bg-white/95 backdrop-blur-md border-t border-slate-200 shadow-xl"
+        className="fixed bottom-[calc(68px+env(safe-area-inset-bottom))] left-0 right-0 z-30 md:bottom-0 bg-white/95 backdrop-blur-md border-t border-slate-200 shadow-xl"
         aria-label="Form navigation"
       >
         <div className="max-w-3xl mx-auto px-4 py-3">

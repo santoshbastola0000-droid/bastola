@@ -1806,7 +1806,7 @@ export default function PropertyDetailsPage() {
         </div>
 
         {/* Mobile sticky CTA */}
-        <div className="fixed bottom-0 left-0 right-0 z-30 lg:hidden bg-white/95 backdrop-blur-md border-t border-slate-200 shadow-xl px-4 py-3">
+        <div className="fixed bottom-[calc(68px+env(safe-area-inset-bottom))] left-0 right-0 z-30 md:bottom-0 lg:hidden bg-white/95 backdrop-blur-md border-t border-slate-200 shadow-xl px-4 py-3">
           <div className="max-w-4xl mx-auto flex items-center gap-3">
             <div className="flex-1">
               <p className="text-xs text-slate-400">Monthly Rent</p>
