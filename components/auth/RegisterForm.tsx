@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
@@ -57,6 +57,24 @@ const purposes = [
 
 const RegisterForm = () => {
   const [showPassword, setShowPassword] = useState(false);
+  const [referralCode, setReferralCode] = useState("");
+
+  useEffect(() => {
+    const code = new URLSearchParams(window.location.search)
+      .get("ref")
+      ?.trim()
+      .toUpperCase();
+
+    if (code && /^RK[A-Z0-9]+$/.test(code)) {
+      localStorage.setItem("roomkhoj_referral_code", code);
+      setReferralCode(code);
+      return;
+    }
+
+    setReferralCode(
+      localStorage.getItem("roomkhoj_referral_code")?.trim().toUpperCase() || "",
+    );
+  }, []);
 
   const form = useForm<TRegister>({
     resolver: zodResolver(registerSchema),
@@ -85,7 +103,12 @@ const RegisterForm = () => {
 
       <Form {...form}>
         <form
-          onSubmit={form.handleSubmit((values) => register(values))}
+          onSubmit={form.handleSubmit((values) =>
+            register({
+              ...values,
+              referralCode: referralCode || undefined,
+            })
+          )}
           className="space-y-4"
         >
           <FormField
