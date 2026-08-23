@@ -20,6 +20,7 @@ import {
   Bell,
   MessageSquare,
   ShieldAlert,
+  Gift,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -67,6 +68,11 @@ const navItems = [
     icon: CheckCircle,
   },
   { title: "Wallet", href: "/user/dashboard/wallet", icon: Wallet },
+  {
+    title: "Invite & Earn",
+    href: "/user/dashboard/referrals",
+    icon: Gift,
+  },
 ];
 
 interface UserSidebarProps {
