@@ -51,11 +51,17 @@ function ReferralTreeNode({
   const hasChildren = node.children?.length > 0;
 
   return (
-    <div className="space-y-2">
-      <div
-        className="flex items-center gap-3 rounded-xl border bg-background p-3"
-        style={{ marginLeft: `${Math.min(level, 6) * 18}px` }}
-      >
+    <div
+      className={
+        level === 0
+          ? "space-y-2"
+          : "relative ml-4 space-y-2 border-l-2 border-violet-200 pl-5"
+      }
+    >
+      {level > 0 && (
+        <span className="absolute left-0 top-8 h-0.5 w-5 -translate-x-px bg-violet-200" />
+      )}
+      <div className="flex items-center gap-3 rounded-xl border border-violet-100 bg-background p-3 shadow-sm">
         {hasChildren ? (
           <button
             type="button"
