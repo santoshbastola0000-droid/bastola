@@ -271,10 +271,22 @@ export const useVerifyMutation = () => {
       });
 
       const role = userData?.role;
+      const cameFromReferral =
+        typeof window !== "undefined" &&
+        sessionStorage.getItem("roomkhoj_signup_has_referral") === "1";
+
+      if (typeof window !== "undefined") {
+        sessionStorage.removeItem("roomkhoj_signup_has_referral");
+      }
+
       if (role === "Admin") {
         router.push("/admin/dashboard");
       } else if (role === "User") {
-        router.push("/user/dashboard");
+        router.push(
+          cameFromReferral
+            ? "/user/dashboard/referrals?welcome=1"
+            : "/user/dashboard",
+        );
       } else {
         router.push("/");
       }

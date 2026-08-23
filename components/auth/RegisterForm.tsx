@@ -103,12 +103,23 @@ const RegisterForm = () => {
 
       <Form {...form}>
         <form
-          onSubmit={form.handleSubmit((values) =>
+          onSubmit={form.handleSubmit((values) => {
+            if (referralCode) {
+              sessionStorage.setItem(
+                "roomkhoj_signup_has_referral",
+                "1",
+              );
+            } else {
+              sessionStorage.removeItem(
+                "roomkhoj_signup_has_referral",
+              );
+            }
+
             register({
               ...values,
               referralCode: referralCode || undefined,
-            })
-          )}
+            });
+          })}
           className="space-y-4"
         >
           <FormField
