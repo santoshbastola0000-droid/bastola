@@ -29,6 +29,8 @@ type ReferralStats = {
   referralLink: string;
   qualifiedReferrals: number;
   pendingReferrals: number;
+  totalReferralEarnings: number;
+  rewardPerVerifiedReferral: number;
 };
 
 export default function ReferralPage() {
@@ -82,7 +84,7 @@ export default function ReferralPage() {
     if (!data?.referralLink) return;
 
     const message =
-      "RoomKhoj मा कोठा, जागिर र vacancy सजिलै खोज्नुहोस्। मेरो link बाट account बनाउनुहोस्: " +
+      "🎁 RoomKhoj Invite & Earn! मेरो link बाट verified account बनाउनुहोस्। प्रत्येक verified signup मा Rs. 5 कमाउने मौका पाउनुहोस्: " +
       data.referralLink;
 
     window.open(
@@ -97,7 +99,7 @@ export default function ReferralPage() {
       <div className="space-y-6 p-4 md:p-6">
         <Skeleton className="h-10 w-56" />
         <Skeleton className="h-48 w-full" />
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <Skeleton className="h-28 w-full" />
           <Skeleton className="h-28 w-full" />
           <Skeleton className="h-28 w-full" />
@@ -126,7 +128,7 @@ export default function ReferralPage() {
           Invite & Earn
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          आफ्नो link share गर्नुहोस्। तपाईंको link बाट verified account बनेमा referral count बढ्छ।
+          आफ्नो link share गर्नुहोस्। हरेक verified नयाँ account मा Rs. 5 wallet reward पाउनुहोस्।
         </p>
       </div>
 
@@ -204,6 +206,22 @@ export default function ReferralPage() {
 
         <Card>
           <CardContent className="flex items-center gap-4 p-5">
+            <div className="rounded-xl bg-blue-100 p-3 text-blue-700">
+              <Gift className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold">
+                Rs. {Number(data.totalReferralEarnings || 0).toLocaleString()}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Total referral earnings
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="flex items-center gap-4 p-5">
             <div className="rounded-xl bg-emerald-100 p-3 text-emerald-700">
               <Trophy className="h-5 w-5" />
             </div>
@@ -223,9 +241,9 @@ export default function ReferralPage() {
         </CardHeader>
         <CardContent className="space-y-3 text-sm text-muted-foreground">
           <p>1. आफ्नो referral link share गर्नुहोस्।</p>
-          <p>2. नयाँ user ले link बाट account बनाएर OTP verify गर्छ।</p>
+          <p>2. हरेक नयाँ user ले OTP verify गरेपछि तपाईंको wallet मा Rs. {data.rewardPerVerifiedReferral} credit हुन्छ।</p>
           <p>3. Verified signup मात्र count हुन्छ; duplicate वा self-referral मानिँदैन।</p>
-          <p>* Monthly winner verification र admin review पछि घोषणा हुन्छ।</p>
+          <p>4. सबैभन्दा धेरै qualified referral ल्याउनेले monthly Rs. 10,000 जित्ने मौका पाउँछ।</p>
         </CardContent>
       </Card>
     </div>
