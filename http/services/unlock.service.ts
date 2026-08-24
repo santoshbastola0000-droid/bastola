@@ -88,21 +88,11 @@ const unlockService = {
     amount: number,
     screenshot: File,
   ): Promise<TopUpRequest> {
-    // 1. Upload the screenshot image
+    const formData = new FormData();
+    formData.append("amount", String(amount));
+    formData.append("screenshot", screenshot);
 
-    // 2. Create the top-up request with the returned URL
-    const { data } = await privateApi.post(
-      "/unlock/topup",
-      {
-        amount,
-        screenshot,
-      },
-      {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      },
-    );
+    const { data } = await privateApi.post("/unlock/topup", formData);
     return data.data;
   },
 
