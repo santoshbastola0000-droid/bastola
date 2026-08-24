@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { io, Socket } from "socket.io-client";
+import { useSearchParams } from "next/navigation";
 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -27,6 +28,9 @@ import { useUserStore } from "@/stores/user-store";
 import useTokenStore from "@/store";
 
 export default function MessagesPage() {
+  const searchParams = useSearchParams();
+  const requestedConversationId = searchParams.get("conversation");
+
 const user = useUserStore(
     (state) => state.user,
   );
@@ -107,6 +111,16 @@ const user = useUserStore(
           await messageService.getConversations();
 
         setConversations(data);
+
+        if (requestedConversationId) {
+          const requested = data.find(
+            (conversation) => conversation.id === requestedConversationId,
+          );
+
+          if (requested) {
+            setSelected(requested);
+          }
+        }
       } catch (error: any) {
         toast.error(
           error?.response?.data?.message ||
@@ -119,7 +133,7 @@ const user = useUserStore(
 
   useEffect(() => {
     loadConversations();
-  }, []);
+  }, [requestedConversationId]);
 
   useEffect(() => {
     if (!currentUserId) return;
@@ -769,7 +783,7 @@ const user = useUserStore(
                   onClick={searchByContact}
                   disabled={
                     phoneSearching ||
-                    contactSearch.length !== 10
+                    !contactSearch.trim()
                   }
                 >
                   {phoneSearching ? (
