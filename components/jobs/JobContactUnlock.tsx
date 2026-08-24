@@ -38,22 +38,31 @@ export default function JobContactUnlock({
   const [sharing, setSharing] =
     useState(false);
 
-  const loadStatus = async () => {
-    const messageEmployer = async () => {
+  const messageEmployer = async () => {
     if (!token || openingMessage) return;
 
     try {
       setOpeningMessage(true);
-      const result = await messageService.startForJob(jobId);
-      router.push(`/messages?conversation=${encodeURIComponent(result.conversation.id)}`);
+      const result =
+        await messageService.startForJob(jobId);
+
+      router.push(
+        `/messages?conversation=${encodeURIComponent(
+          result.conversation.id,
+        )}`,
+      );
     } catch (error: any) {
-      toast.error(error?.response?.data?.message || "Employer लाई message सुरु गर्न सकिएन।");
+      toast.error(
+        error?.response?.data?.message ||
+          "Employer लाई message सुरु गर्न सकिएन।",
+      );
     } finally {
       setOpeningMessage(false);
     }
   };
 
-  if (!token) {
+  const loadStatus = async () => {
+    if (!token) {
       setLoading(false);
       return;
     }
