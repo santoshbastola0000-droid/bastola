@@ -115,7 +115,7 @@ export default function PostVacancyPage() {
 
   const mutation = useMutation({
     mutationFn: (payload: JobPostingInput) =>
-      jobPostingService.createPublic(payload),
+      jobPostingService.create(payload),
 
     onSuccess: () => {
       setSubmitted(true);
@@ -183,7 +183,6 @@ export default function PostVacancyPage() {
     }
 
     const payload: JobPostingInput = {
-      userId: "public-employer",
       companyName: form.companyName.trim() || undefined,
       jobTitle: form.jobTitle.trim(),
       category: form.category.trim() || undefined,
@@ -212,7 +211,6 @@ export default function PostVacancyPage() {
 
       contactPhone: form.contactPhone.trim(),
 
-      status: "PENDING",
     };
 
     mutation.mutate(payload);
