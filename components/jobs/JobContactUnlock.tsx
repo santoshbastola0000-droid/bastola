@@ -108,12 +108,12 @@ export default function JobContactUnlock({
         window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`, "_blank", "noopener,noreferrer");
       } else if (channel === "copy") {
         await navigator.clipboard.writeText(text);
-        toast.success("Link copied. 10 फरक मानिसले खोलेपछि contact unlock हुन्छ।");
+        toast.success("Link copied. 5 फरक मानिसले खोलेपछि contact unlock हुन्छ।");
       } else if (navigator.share) {
         await navigator.share({ title: "RoomKhoj jobs", text, url });
       } else {
         await navigator.clipboard.writeText(text);
-        toast.success("Link copied. 10 फरक मानिसले खोलेपछि contact unlock हुन्छ।");
+        toast.success("Link copied. 5 फरक मानिसले खोलेपछि contact unlock हुन्छ।");
       }
 
       await loadStatus();
@@ -166,7 +166,7 @@ export default function JobContactUnlock({
             Contact Employee
           </h2>
           <p className="mt-1 text-sm text-slate-600">
-            Link लाई 10 फरक IP/device ले खोलेपछि पूरा नम्बर खुल्छ।
+            Link लाई 5 फरक IP/device ले खोलेपछि पूरा नम्बर खुल्छ।
           </p>
         </div>
 
@@ -180,7 +180,7 @@ export default function JobContactUnlock({
           className="h-full bg-red-600 transition-all"
           style={{
             width: `${Math.min(
-              shareCount * 10,
+              shareCount * 20,
               100,
             )}%`,
           }}
@@ -188,8 +188,8 @@ export default function JobContactUnlock({
       </div>
 
       <div className="mt-2 flex justify-between text-sm font-medium text-slate-600">
-        <span>{shareCount}/10 confirmed opens</span>
-        <span>{shareCount * 10}%</span>
+        <span>{shareCount}/5 confirmed opens</span>
+        <span>{shareCount * 20}%</span>
       </div>
 
       {contact && (
