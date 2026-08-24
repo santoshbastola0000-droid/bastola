@@ -24,6 +24,7 @@ import {
   messageService,
 } from "@/http/services/message.service";
 import { useUserStore } from "@/stores/user-store";
+import useTokenStore from "@/store";
 
 export default function MessagesPage() {
 const user = useUserStore(
@@ -32,6 +33,10 @@ const user = useUserStore(
 
   const currentUserId =
     user?.id || "";
+
+  const authToken = useTokenStore(
+    (state) => state.token,
+  );
 
   const [socket, setSocket] =
     useState<Socket | null>(null);
@@ -124,6 +129,9 @@ const user = useUserStore(
       {
         transports: ["websocket"],
         withCredentials: true,
+        auth: {
+          token: authToken,
+        },
       },
     );
 
@@ -137,9 +145,7 @@ const user = useUserStore(
 
       nextSocket.emit(
         "join-user",
-        {
-          userId: currentUserId,
-        },
+        {},
         (response: any) => {
           console.log(
             "[MESSAGE SOCKET] joined",
@@ -182,8 +188,6 @@ const user = useUserStore(
             {
               messageId:
                 message.id,
-              userId:
-                currentUserId,
             },
           );
         }
@@ -280,7 +284,7 @@ const user = useUserStore(
       nextSocket.disconnect();
       setSocket(null);
     };
-  }, [currentUserId]);
+  }, [currentUserId, authToken]);
 
 
   const searchByContact =
