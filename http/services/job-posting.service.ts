@@ -75,6 +75,7 @@ export interface JobPostingInput {
   contactPhone: string;
   description?: string;
   applicationDeadline?: string | null;
+  status?: JobStatus;
 
 }
 
