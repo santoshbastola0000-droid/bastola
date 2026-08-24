@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import {
   BriefcaseBusiness,
   CheckCircle2,
@@ -8,6 +9,7 @@ import {
 import { NavBar } from "@/components/common/navbar";
 import Footer from "@/components/common/footer";
 import ApprovedVacancies from "@/components/jobs/ApprovedVacancies";
+import ShareOpenTracker from "@/components/jobs/ShareOpenTracker";
 
 const title = "Jobs in Pokhara & Job Vacancy in Pokhara | RoomKhoj";
 
@@ -99,6 +101,7 @@ const jsonLd = {
 export default function PokharaJobsPage() {
   return (
     <>
+      <Suspense fallback={null}><ShareOpenTracker /></Suspense>
       <NavBar />
 
       <script
