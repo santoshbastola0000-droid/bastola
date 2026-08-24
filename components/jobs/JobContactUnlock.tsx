@@ -96,96 +96,35 @@ export default function JobContactUnlock({
   ) => {
     if (!token || sharing) return;
 
-    const url = window.location.href;
-    const text = `RoomKhoj मा ${jobTitle} vacancy हेर्नुहोस्: ${url}`;
-
     try {
       setSharing(true);
+      const link = await jobPostingService.createShareLink(jobId);
+      const url = `${window.location.origin}/jobs/pokhara?share=${encodeURIComponent(link.token)}`;
+      const text = "RoomKhoj मा नयाँ job vacancies हेर्नुहोस्: " + url;
+
       if (channel === "whatsapp") {
         window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank", "noopener,noreferrer");
       } else if (channel === "facebook") {
         window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`, "_blank", "noopener,noreferrer");
       } else if (channel === "copy") {
         await navigator.clipboard.writeText(text);
-        toast.success("Link copied. अब share गर्नुहोस्।");
+        toast.success("Link copied. 10 फरक मानिसले खोलेपछि contact unlock हुन्छ।");
       } else if (navigator.share) {
-        await navigator.share({ title: `${jobTitle} vacancy`, text, url });
+        await navigator.share({ title: "RoomKhoj jobs", text, url });
       } else {
         await navigator.clipboard.writeText(text);
+        toast.success("Link copied. 10 फरक मानिसले खोलेपछि contact unlock हुन्छ।");
       }
 
-      const next = await jobPostingService.recordShare(jobId, crypto.randomUUID());
-      setStatus(next);
-      if (next.isFullyUnlocked) toast.success("पूरा contact number unlock भयो।");
-      else if (next.isPartiallyUnlocked && next.shareCount === 5) toast.success("Contact number को 50% unlock भयो।");
+      await loadStatus();
     } catch (error: any) {
-      if (error?.name !== "AbortError") toast.error(error?.response?.data?.message || "Share record हुन सकेन।");
+      if (error?.name !== "AbortError") toast.error(error?.response?.data?.message || "Share link बनाउन सकिएन।");
     } finally {
       setSharing(false);
     }
   };
 
-  const share = async () => {
-    if (!token || sharing) {
-      return;
-    }
-
-    const url = `${window.location.origin}/jobs/pokhara`;
-    const text =
-      `RoomKhoj मा नयाँ job vacancies हेर्नुहोस्: ${url}`;
-
-    try {
-      setSharing(true);
-
-      if (navigator.share) {
-        await navigator.share({
-          title: `${jobTitle} vacancy`,
-          text,
-          url,
-        });
-      } else {
-        await navigator.clipboard.writeText(
-          text,
-        );
-
-        toast.success(
-          "Job link copied. अब share गर्नुहोस्।",
-        );
-      }
-
-      const next =
-        await jobPostingService.recordShare(
-          jobId,
-          crypto.randomUUID(),
-        );
-
-      setStatus(next);
-
-      if (next.isFullyUnlocked) {
-        toast.success(
-          "पूरा contact number unlock भयो।",
-        );
-      } else if (
-        next.isPartiallyUnlocked &&
-        next.shareCount === 5
-      ) {
-        toast.success(
-          "Contact number को 50% unlock भयो।",
-        );
-      }
-    } catch (error: any) {
-      if (error?.name === "AbortError") {
-        return;
-      }
-
-      toast.error(
-        error?.response?.data?.message ||
-          "Share record हुन सकेन।",
-      );
-    } finally {
-      setSharing(false);
-    }
-  };
+  const share = () => shareTo("native");
 
   if (!token) {
     return (
@@ -227,7 +166,7 @@ export default function JobContactUnlock({
             Contact Employee
           </h2>
           <p className="mt-1 text-sm text-slate-600">
-            5 shares मा आधा र 10 shares मा पूरा नम्बर खुल्छ।
+            Link लाई 10 फरक IP/device ले खोलेपछि पूरा नम्बर खुल्छ।
           </p>
         </div>
 
@@ -249,7 +188,7 @@ export default function JobContactUnlock({
       </div>
 
       <div className="mt-2 flex justify-between text-sm font-medium text-slate-600">
-        <span>{shareCount}/10 shares</span>
+        <span>{shareCount}/10 confirmed opens</span>
         <span>{shareCount * 10}%</span>
       </div>
 
