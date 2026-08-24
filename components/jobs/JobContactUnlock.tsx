@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   CheckCircle2,
@@ -14,6 +15,7 @@ import {
   type JobShareStatus,
 } from "@/http/services/job-posting.service";
 import useTokenStore from "@/store";
+import { messageService } from "@/http/services/message.service";
 
 export default function JobContactUnlock({
   jobId,
@@ -22,6 +24,9 @@ export default function JobContactUnlock({
   jobId: string;
   jobTitle: string;
 }) {
+  const router = useRouter();
+  const [openingMessage, setOpeningMessage] = useState(false);
+
   const token = useTokenStore(
     (state) => state.token,
   );
@@ -34,7 +39,21 @@ export default function JobContactUnlock({
     useState(false);
 
   const loadStatus = async () => {
-    if (!token) {
+    const messageEmployer = async () => {
+    if (!token || openingMessage) return;
+
+    try {
+      setOpeningMessage(true);
+      const result = await messageService.startForJob(jobId);
+      router.push(`/messages?conversation=${encodeURIComponent(result.conversation.id)}`);
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || "Employer लाई message सुरु गर्न सकिएन।");
+    } finally {
+      setOpeningMessage(false);
+    }
+  };
+
+  if (!token) {
       setLoading(false);
       return;
     }
@@ -200,6 +219,16 @@ export default function JobContactUnlock({
           {contact}
         </a>
       )}
+
+      <button
+        type="button"
+        onClick={messageEmployer}
+        disabled={openingMessage}
+        className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-slate-300 px-5 py-3 font-semibold text-slate-800 disabled:opacity-50"
+      >
+        {openingMessage ? <Loader2 className="h-5 w-5 animate-spin" /> : null}
+        Message employer
+      </button>
 
       {!status?.isFullyUnlocked && (
         <button
