@@ -45,6 +45,11 @@ export interface JobShareStatus {
   isUnlocked: boolean;
 }
 
+export interface JobShareLink {
+  token: string;
+  expiresAt: string;
+}
+
 export interface JobContactResult {
   jobPostingId: string;
   employerUserId: string;
@@ -127,14 +132,8 @@ export const jobPostingService = {
     return response.data;
   },
 
-  recordShare: async (
-    id: string,
-    shareToken: string,
-  ): Promise<JobShareStatus> => {
-    const response = await privateApi.post(
-      `/job-posting/${id}/share`,
-      { shareToken },
-    );
+  createShareLink: async (id: string): Promise<JobShareLink> => {
+    const response = await privateApi.post(`/job-posting/${id}/share-link`);
     return response.data;
   },
 
