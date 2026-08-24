@@ -7,6 +7,9 @@ import {
   CheckCircle2,
   Loader2,
   Share2,
+  Facebook,
+  Link as LinkIcon,
+  MessageCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -87,6 +90,40 @@ export default function JobContactUnlock({
   useEffect(() => {
     loadStatus();
   }, [jobId, token]);
+
+  const shareTo = async (
+    channel: "native" | "whatsapp" | "facebook" | "copy",
+  ) => {
+    if (!token || sharing) return;
+
+    const url = window.location.href;
+    const text = `RoomKhoj मा ${jobTitle} vacancy हेर्नुहोस्: ${url}`;
+
+    try {
+      setSharing(true);
+      if (channel === "whatsapp") {
+        window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank", "noopener,noreferrer");
+      } else if (channel === "facebook") {
+        window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`, "_blank", "noopener,noreferrer");
+      } else if (channel === "copy") {
+        await navigator.clipboard.writeText(text);
+        toast.success("Link copied. अब share गर्नुहोस्।");
+      } else if (navigator.share) {
+        await navigator.share({ title: `${jobTitle} vacancy`, text, url });
+      } else {
+        await navigator.clipboard.writeText(text);
+      }
+
+      const next = await jobPostingService.recordShare(jobId, crypto.randomUUID());
+      setStatus(next);
+      if (next.isFullyUnlocked) toast.success("पूरा contact number unlock भयो।");
+      else if (next.isPartiallyUnlocked && next.shareCount === 5) toast.success("Contact number को 50% unlock भयो।");
+    } catch (error: any) {
+      if (error?.name !== "AbortError") toast.error(error?.response?.data?.message || "Share record हुन सकेन।");
+    } finally {
+      setSharing(false);
+    }
+  };
 
   const share = async () => {
     if (!token || sharing) {
@@ -238,6 +275,15 @@ export default function JobContactUnlock({
         {openingMessage ? <Loader2 className="h-5 w-5 animate-spin" /> : null}
         Message employer
       </button>
+
+      {!status?.isFullyUnlocked && (
+        <div className="mt-5 grid grid-cols-4 gap-2">
+          <button type="button" onClick={() => shareTo("whatsapp")} disabled={sharing} aria-label="Share on WhatsApp" className="rounded-xl border p-3 text-emerald-600 disabled:opacity-50"><MessageCircle className="mx-auto h-5 w-5" /></button>
+          <button type="button" onClick={() => shareTo("facebook")} disabled={sharing} aria-label="Share on Facebook" className="rounded-xl border p-3 text-blue-600 disabled:opacity-50"><Facebook className="mx-auto h-5 w-5" /></button>
+          <button type="button" onClick={() => shareTo("copy")} disabled={sharing} aria-label="Copy share link" className="rounded-xl border p-3 disabled:opacity-50"><LinkIcon className="mx-auto h-5 w-5" /></button>
+          <button type="button" onClick={() => shareTo("native")} disabled={sharing} aria-label="More share options" className="rounded-xl border p-3 disabled:opacity-50"><Share2 className="mx-auto h-5 w-5" /></button>
+        </div>
+      )}
 
       {!status?.isFullyUnlocked && (
         <button
