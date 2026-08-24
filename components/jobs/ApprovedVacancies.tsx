@@ -32,9 +32,26 @@ function formatSalary(job: JobPosting) {
   return "Salary not specified";
 }
 
-export default function ApprovedVacancies() {
-  const [search, setSearch] = useState("");
-  const [location, setLocation] = useState("");
+function jobSlug(job: JobPosting) {
+  const title = job.jobTitle
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+
+  return `${job.id}-${title || "vacancy"}`;
+}
+
+export default function ApprovedVacancies({
+  defaultSearch = "",
+  defaultLocation = "",
+}: {
+  defaultSearch?: string;
+  defaultLocation?: string;
+}) {
+  const [search, setSearch] =
+    useState(defaultSearch);
+  const [location, setLocation] =
+    useState(defaultLocation);
 
   const {
     data: jobs = [],
@@ -195,10 +212,10 @@ export default function ApprovedVacancies() {
 
               <div className="mt-5 border-t border-slate-100 pt-4">
                 <a
-                  href={`tel:${job.contactPhone}`}
+                  href={`/job/${jobSlug(job)}`}
                   className="inline-flex w-full items-center justify-center rounded-xl bg-slate-900 px-4 py-2.5 font-semibold text-white transition hover:bg-black"
                 >
-                  Contact Employer
+                  Contact Employee
                 </a>
               </div>
             </article>
