@@ -188,8 +188,6 @@ const LockedView: React.FC<{
   onUnlockClick,
   onTopUpClick,
 }) => {
-  console.log("unlockstatus", unlockStatus);
-
   const serviceCharge = unlockStatus?.serviceCharge ?? 0;
   const walletBalance = unlockStatus?.walletBalance ?? 0;
   const hasSufficient = walletBalance >= serviceCharge;
