@@ -130,9 +130,9 @@ export default function JobContactUnlock({
       return;
     }
 
-    const url = window.location.href;
+    const url = `${window.location.origin}/jobs/pokhara`;
     const text =
-      `RoomKhoj मा ${jobTitle} vacancy हेर्नुहोस्: ${url}`;
+      `RoomKhoj मा नयाँ job vacancies हेर्नुहोस्: ${url}`;
 
     try {
       setSharing(true);
