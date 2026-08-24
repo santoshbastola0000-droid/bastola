@@ -166,7 +166,7 @@ export default function JobContactUnlock({
             Contact Employee
           </h2>
           <p className="mt-1 text-sm text-slate-600">
-            Link लाई 5 फरक IP/device ले खोलेपछि पूरा नम्बर खुल्छ।
+            यो link 5 जनालाई पठाउनुहोस् र उनीहरूलाई खोल्न लगाउनुहोस्। 5 फरक जनाले खोलेपछि पूरा contact number unlock हुन्छ।
           </p>
         </div>
 
@@ -216,7 +216,13 @@ export default function JobContactUnlock({
       </button>
 
       {!status?.isFullyUnlocked && (
-        <div className="mt-5 grid grid-cols-4 gap-2">
+        <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+          <strong>कसरी unlock गर्ने?</strong> तलको WhatsApp वा अन्य share button बाट link 5 जनालाई पठाउनुहोस्। प्रत्येक जनाले link खोल्दा 1 confirmed open count हुन्छ।
+        </div>
+      )}
+
+      {!status?.isFullyUnlocked && (
+        <div className="mt-3 grid grid-cols-4 gap-2">
           <button type="button" onClick={() => shareTo("whatsapp")} disabled={sharing} aria-label="Share on WhatsApp" className="rounded-xl border p-3 text-emerald-600 disabled:opacity-50"><MessageCircle className="mx-auto h-5 w-5" /></button>
           <button type="button" onClick={() => shareTo("facebook")} disabled={sharing} aria-label="Share on Facebook" className="rounded-xl border p-3 text-blue-600 disabled:opacity-50"><Facebook className="mx-auto h-5 w-5" /></button>
           <button type="button" onClick={() => shareTo("copy")} disabled={sharing} aria-label="Copy share link" className="rounded-xl border p-3 disabled:opacity-50"><LinkIcon className="mx-auto h-5 w-5" /></button>
