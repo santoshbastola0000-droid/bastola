@@ -54,7 +54,8 @@ export interface JobContactResult {
 }
 
 export interface JobPostingInput {
-  userId: string;
+  // Server derives the owner from the authenticated session.
+  userId?: string;
   companyName?: string;
   jobTitle: string;
   category?: string;
