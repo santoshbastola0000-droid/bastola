@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { NavBar } from "@/components/common/navbar";
 import Footer from "@/components/common/footer";
+import ApprovedVacancies from "@/components/jobs/ApprovedVacancies";
 
 const title = "Jobs in Pokhara & Job Vacancy in Pokhara | RoomKhoj";
 
@@ -184,6 +185,10 @@ export default function PokharaJobsPage() {
             </div>
           </div>
         </section>
+
+        <ApprovedVacancies
+          defaultLocation="Pokhara"
+        />
 
         <section
           id="how-to-find-job"
