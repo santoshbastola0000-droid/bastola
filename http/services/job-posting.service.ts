@@ -5,7 +5,6 @@ export type JobStatus = "PENDING" | "APPROVED" | "REJECTED";
 
 export interface JobPosting {
   id: string;
-  userId: string;
   jobCode?: number | null;
   companyName?: string | null;
   jobTitle: string;
@@ -24,7 +23,7 @@ export interface JobPosting {
   requiresLicense?: boolean;
   licenseType?: string | null;
 
-  contactPhone: string;
+  contactPhone?: string;
   description?: string | null;
   applicationDeadline?: string | null;
 
@@ -32,6 +31,26 @@ export interface JobPosting {
 
   createdAt: string;
   updatedAt: string;
+}
+
+export interface JobShareStatus {
+  shareCount: number;
+  requiredShares: number;
+  percentage: number;
+  contactPhone?: string | null;
+  isPartiallyUnlocked: boolean;
+  isFullyUnlocked: boolean;
+  isUnlocked: boolean;
+}
+
+export interface JobContactResult {
+  jobPostingId: string;
+  employerUserId: string;
+  companyName?: string | null;
+  jobTitle: string;
+  contactPhone: string;
+  isPartiallyUnlocked: boolean;
+  isFullyUnlocked: boolean;
 }
 
 export interface JobPostingInput {
@@ -57,7 +76,6 @@ export interface JobPostingInput {
   description?: string;
   applicationDeadline?: string | null;
 
-  status?: JobStatus;
 }
 
 export const jobPostingService = {
@@ -72,17 +90,12 @@ export const jobPostingService = {
   },
 
   getOne: async (id: string): Promise<JobPosting> => {
-    const response = await privateApi.get(`/job-posting/${id}`);
+    const response = await api.get(`/job-posting/${id}`);
     return response.data;
   },
 
   create: async (data: JobPostingInput): Promise<JobPosting> => {
     const response = await privateApi.post("/job-posting", data);
-    return response.data;
-  },
-
-  createPublic: async (data: JobPostingInput): Promise<JobPosting> => {
-    const response = await api.post("/job-posting", data);
     return response.data;
   },
 
@@ -99,5 +112,34 @@ export const jobPostingService = {
 
   remove: async (id: string): Promise<void> => {
     await privateApi.delete(`/job-posting/${id}`);
+  },
+
+  getShareStatus: async (
+    id: string,
+  ): Promise<JobShareStatus> => {
+    const response = await privateApi.get(
+      `/job-posting/${id}/share-status`,
+    );
+    return response.data;
+  },
+
+  recordShare: async (
+    id: string,
+    shareToken: string,
+  ): Promise<JobShareStatus> => {
+    const response = await privateApi.post(
+      `/job-posting/${id}/share`,
+      { shareToken },
+    );
+    return response.data;
+  },
+
+  getContact: async (
+    id: string,
+  ): Promise<JobContactResult> => {
+    const response = await privateApi.get(
+      `/job-posting/${id}/contact`,
+    );
+    return response.data;
   },
 };
