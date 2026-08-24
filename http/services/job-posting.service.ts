@@ -5,6 +5,8 @@ export type JobStatus = "PENDING" | "APPROVED" | "REJECTED";
 
 export interface JobPosting {
   id: string;
+  // Present for authenticated admin/owner responses; omitted from public listings.
+  userId?: string;
   jobCode?: number | null;
   companyName?: string | null;
   jobTitle: string;
