@@ -108,6 +108,42 @@ function sanitizeTitle(text: string): string {
 export function Chatbot() {
   const userStore = useUserRole() as any;
   const token = useTokenStore((state) => state.token);
+
+  const [guestSessionId] = useState(() => {
+    if (typeof window === "undefined") {
+      return "";
+    }
+
+    const storageKey =
+      "roomkhoj_guest_session_id";
+
+    const existing =
+      localStorage.getItem(storageKey);
+
+    if (
+      existing &&
+      /^[A-Za-z0-9_-]{16,128}$/.test(
+        existing,
+      )
+    ) {
+      return existing;
+    }
+
+    const created =
+      typeof crypto.randomUUID === "function"
+        ? crypto.randomUUID()
+        : `${Date.now()}_${Math.random()
+            .toString(36)
+            .slice(2)}`;
+
+    localStorage.setItem(
+      storageKey,
+      created,
+    );
+
+    return created;
+  });
+
   const loggedInUserId =
     userStore?.user?.id ||
     userStore?.user?._id ||
@@ -425,7 +461,11 @@ useEffect(() => {
         method: "POST",
         headers,
         body: JSON.stringify({
-          message: textToSend,
+          message: textToSend.slice(0, 2000),
+          guestSessionId:
+            loggedInUserId
+              ? undefined
+              : guestSessionId,
           hasMedia: Boolean(newUserMsg.mediaUrl),
           mediaType: newUserMsg.mediaType,
         }),

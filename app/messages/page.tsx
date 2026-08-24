@@ -5,6 +5,7 @@ import {
   useRef,
   useState,
   useMemo,
+  Suspense,
 } from "react";
 import {
   Loader2,
@@ -15,6 +16,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { io, Socket } from "socket.io-client";
+import { useSearchParams } from "next/navigation";
 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -24,14 +26,22 @@ import {
   messageService,
 } from "@/http/services/message.service";
 import { useUserStore } from "@/stores/user-store";
+import useTokenStore from "@/store";
 
-export default function MessagesPage() {
+function MessagesContent() {
+  const searchParams = useSearchParams();
+  const requestedConversationId = searchParams.get("conversation");
+
 const user = useUserStore(
     (state) => state.user,
   );
 
   const currentUserId =
     user?.id || "";
+
+  const authToken = useTokenStore(
+    (state) => state.token,
+  );
 
   const [socket, setSocket] =
     useState<Socket | null>(null);
@@ -102,6 +112,16 @@ const user = useUserStore(
           await messageService.getConversations();
 
         setConversations(data);
+
+        if (requestedConversationId) {
+          const requested = data.find(
+            (conversation) => conversation.id === requestedConversationId,
+          );
+
+          if (requested) {
+            setSelected(requested);
+          }
+        }
       } catch (error: any) {
         toast.error(
           error?.response?.data?.message ||
@@ -114,7 +134,7 @@ const user = useUserStore(
 
   useEffect(() => {
     loadConversations();
-  }, []);
+  }, [requestedConversationId]);
 
   useEffect(() => {
     if (!currentUserId) return;
@@ -124,6 +144,9 @@ const user = useUserStore(
       {
         transports: ["websocket"],
         withCredentials: true,
+        auth: {
+          token: authToken,
+        },
       },
     );
 
@@ -137,9 +160,7 @@ const user = useUserStore(
 
       nextSocket.emit(
         "join-user",
-        {
-          userId: currentUserId,
-        },
+        {},
         (response: any) => {
           console.log(
             "[MESSAGE SOCKET] joined",
@@ -182,8 +203,6 @@ const user = useUserStore(
             {
               messageId:
                 message.id,
-              userId:
-                currentUserId,
             },
           );
         }
@@ -280,7 +299,7 @@ const user = useUserStore(
       nextSocket.disconnect();
       setSocket(null);
     };
-  }, [currentUserId]);
+  }, [currentUserId, authToken]);
 
 
   const searchByContact =
@@ -765,7 +784,7 @@ const user = useUserStore(
                   onClick={searchByContact}
                   disabled={
                     phoneSearching ||
-                    contactSearch.length !== 10
+                    !contactSearch.trim()
                   }
                 >
                   {phoneSearching ? (
@@ -1189,5 +1208,14 @@ const user = useUserStore(
         </section>
       </div>
     </main>
+  );
+}
+
+
+export default function MessagesPage() {
+  return (
+    <Suspense fallback={<main className="p-8 text-center text-sm text-muted-foreground">Loading messages…</main>}>
+      <MessagesContent />
+    </Suspense>
   );
 }

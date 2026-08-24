@@ -150,6 +150,16 @@ export const messageService = {
     return response.data;
   },
 
+  startForJob: async (jobId: string) => {
+    const response = await privateApi.post(
+      `/message/jobs/${jobId}`,
+    );
+
+    return response.data as {
+      conversation: MessageConversation;
+    };
+  },
+
   getUnreadCount: async () => {
     const response = await privateApi.get(
       "/message/unread-count",
