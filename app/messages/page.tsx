@@ -5,6 +5,7 @@ import {
   useRef,
   useState,
   useMemo,
+  Suspense,
 } from "react";
 import {
   Loader2,
@@ -27,7 +28,7 @@ import {
 import { useUserStore } from "@/stores/user-store";
 import useTokenStore from "@/store";
 
-export default function MessagesPage() {
+function MessagesContent() {
   const searchParams = useSearchParams();
   const requestedConversationId = searchParams.get("conversation");
 
@@ -1207,5 +1208,14 @@ const user = useUserStore(
         </section>
       </div>
     </main>
+  );
+}
+
+
+export default function MessagesPage() {
+  return (
+    <Suspense fallback={<main className="p-8 text-center text-sm text-muted-foreground">Loading messages…</main>}>
+      <MessagesContent />
+    </Suspense>
   );
 }
