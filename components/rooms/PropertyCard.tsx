@@ -21,7 +21,6 @@ import {
 import type { Room } from "@/types/room.types";
 import { formatPriceNPR, resolveImageUrl } from "@/lib/utils";
 import { amenityIcons, categoryConfig } from "@/lib/room-utils";
-import useTokenStore from "@/store";
 
 interface PropertyCardProps {
   room: Room;
@@ -33,8 +32,6 @@ export function PropertyCard({
   index = 0,
 }: PropertyCardProps) {
   const router = useRouter();
-  const token = useTokenStore((state) => state.token);
-
   const [imgError, setImgError] = useState(false);
   const [imgLoaded, setImgLoaded] = useState(false);
   const [liked, setLiked] = useState(false);
@@ -73,11 +70,8 @@ export function PropertyCard({
     ownerName.trim().charAt(0).toUpperCase() || "R";
 
   const openRoom = () => {
-    if (!token) {
-      router.push(`/auth/login?redirect=${encodeURIComponent(`/property/${room.id}`)}`);
-      return;
-    }
-
+    // Approved listings are public. Contact details stay protected
+    // by the unlock flow on the property page.
     router.push(`/property/${room.id}`);
   };
 
