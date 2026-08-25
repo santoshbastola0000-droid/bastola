@@ -1,67 +1,36 @@
 "use client";
 
 import { useEffect } from "react";
-import { useUserRole } from "@/stores/user-store";
 import useTokenStore from "@/store";
-import { isTokenExpired } from "@/lib/utils";
+import { getTokenExpiration } from "@/lib/utils";
 import { toast } from "sonner";
 
-const MANUAL_LOGOUT_KEY = "roomkhoj_manual_logout_at";
-let hasHandledExpiredSession = false;
-
+/*
+ * privateApi refreshes a session after an authenticated 401 response.
+ * Clearing an expired access token here would prevent that refresh and
+ * interrupt users while they are opening a property.
+ */
 export function SessionChecker() {
-  const { clearUser } = useUserRole();
   const token = useTokenStore((state) => state.token);
 
   useEffect(() => {
-    // नयाँ valid login आएपछि भविष्यको expiry का लागि reset गर्ने।
-    if (token && !isTokenExpired(token)) {
-      hasHandledExpiredSession = false;
-    }
+    if (!token) return;
 
-    const checkTokenExpiry = () => {
-      if (!token || !isTokenExpired(token) || hasHandledExpiredSession) {
-        return;
-      }
+    const expirationDate = getTokenExpiration(token);
+    if (!expirationDate) return;
 
-      const manualLogoutAt = Number(
-        sessionStorage.getItem(MANUAL_LOGOUT_KEY),
-      );
+    const timeUntilExpiry = expirationDate.getTime() - Date.now();
+    const fiveMinutes = 5 * 60 * 1000;
 
-      const isManualLogout =
-        Number.isFinite(manualLogoutAt) &&
-        Date.now() - manualLogoutAt < 10_000;
+    if (timeUntilExpiry > 0 && timeUntilExpiry < fiveMinutes) {
+      const minutesLeft = Math.ceil(timeUntilExpiry / 60000);
 
-      if (isManualLogout) {
-        sessionStorage.removeItem(MANUAL_LOGOUT_KEY);
-        return;
-      }
-
-      hasHandledExpiredSession = true;
-
-      toast.error("Session Expired", {
-        description: "Your session has expired. Please log in again to continue.",
-        duration: 4000,
+      toast.warning("Session Expiring Soon", {
+        description: `Your session will refresh automatically. About ${minutesLeft} minute${minutesLeft !== 1 ? "s" : ""} remaining.`,
+        duration: 5000,
       });
-
-      clearUser();
-      useTokenStore.getState().clearToken();
-
-      const currentPath = window.location.pathname;
-
-      if (!currentPath.startsWith("/auth/")) {
-        window.location.href =
-          currentPath === "/"
-            ? "/auth/login"
-            : `/auth/login?redirect=${encodeURIComponent(currentPath)}`;
-      }
-    };
-
-    checkTokenExpiry();
-
-    const interval = window.setInterval(checkTokenExpiry, 60_000);
-    return () => window.clearInterval(interval);
-  }, [token, clearUser]);
+    }
+  }, [token]);
 
   return null;
 }
