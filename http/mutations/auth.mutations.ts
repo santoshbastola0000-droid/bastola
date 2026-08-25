@@ -11,6 +11,17 @@ import { FAILURETOAST, STATUS_CODES } from "@/lib/constants/app.constants";
 import useTokenStore from "@/store";
 import { privateApi } from "../api/privateApi";
 
+const consumePostAuthRedirect = (): string | null => {
+  if (typeof window === "undefined") return null;
+
+  const target = sessionStorage.getItem(
+    "roomkhoj_post_auth_redirect",
+  );
+  sessionStorage.removeItem("roomkhoj_post_auth_redirect");
+
+  return target?.startsWith("/property/") ? target : null;
+};
+
 /**
  * Login Mutation - Send OTP to email
  */
@@ -169,7 +180,10 @@ export const usePasswordLoginMutation = () => {
         duration: 3000,
       });
 
-      if (userData?.role === "Admin") {
+      const redirectTarget = consumePostAuthRedirect();
+      if (redirectTarget) {
+        router.push(redirectTarget);
+      } else if (userData?.role === "Admin") {
         router.push("/admin/dashboard");
       } else if (userData?.role === "User") {
         router.push("/user/dashboard");
@@ -279,7 +293,10 @@ export const useVerifyMutation = () => {
         sessionStorage.removeItem("roomkhoj_signup_has_referral");
       }
 
-      if (role === "Admin") {
+      const redirectTarget = consumePostAuthRedirect();
+      if (redirectTarget) {
+        router.push(redirectTarget);
+      } else if (role === "Admin") {
         router.push("/admin/dashboard");
       } else if (role === "User") {
         router.push(

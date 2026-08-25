@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useUserStore } from "@/stores/user-store";
 import { motion } from "framer-motion";
 import {
   MapPin,
@@ -32,6 +33,8 @@ export function PropertyCard({
   index = 0,
 }: PropertyCardProps) {
   const router = useRouter();
+  const user = useUserStore((state) => state.user);
+  const isLoaded = useUserStore((state) => state.isLoaded);
   const [imgError, setImgError] = useState(false);
   const [imgLoaded, setImgLoaded] = useState(false);
   const [liked, setLiked] = useState(false);
@@ -70,9 +73,18 @@ export function PropertyCard({
     ownerName.trim().charAt(0).toUpperCase() || "R";
 
   const openRoom = () => {
-    // Approved listings are public. Contact details stay protected
-    // by the unlock flow on the property page.
-    router.push(`/property/${room.id}`);
+    const propertyPath = `/property/${room.id}`;
+
+    if (!isLoaded || !user) {
+      sessionStorage.setItem(
+        "roomkhoj_post_auth_redirect",
+        propertyPath,
+      );
+      router.push("/auth/login");
+      return;
+    }
+
+    router.push(propertyPath);
   };
 
   const handleShare = async () => {
