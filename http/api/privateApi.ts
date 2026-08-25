@@ -1,20 +1,28 @@
-import axios from "axios";
+import type { AxiosError, InternalAxiosRequestConfig } from "axios";
 import useTokenStore from "@/store";
 import { toast } from "sonner";
 import { useUserStore } from "@/stores/user-store";
+import { api } from "@/http/api/api";
 
 const MANUAL_LOGOUT_KEY = "roomkhoj_manual_logout_at";
-let isHandlingSessionExpiry = false;
 
-export const privateApi = axios.create({
+type RetriableRequest = InternalAxiosRequestConfig & {
+  _retry?: boolean;
+  _hadAuthToken?: boolean;
+};
+
+export const privateApi = api.create({
   baseURL: process.env.NEXT_PUBLIC_BACKEND_URL || "https://api.roomkhoj.com",
   withCredentials: true,
 });
 
+let refreshPromise: Promise<string | null> | null = null;
+let isRedirecting = false;
+
 privateApi.interceptors.request.use((config) => {
   const token = useTokenStore.getState().token;
 
-  (config as any)._hadAuthToken = Boolean(token);
+  (config as RetriableRequest)._hadAuthToken = Boolean(token);
 
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
@@ -23,57 +31,91 @@ privateApi.interceptors.request.use((config) => {
   return config;
 });
 
+async function refreshAccessToken(): Promise<string | null> {
+  if (!refreshPromise) {
+    refreshPromise = api
+      .post("/user/session/refresh")
+      .then((response) => {
+        const payload = response.data?.data ?? response.data;
+        const accessToken =
+          payload?.accessToken ?? payload?.token ?? payload?.access_token ?? null;
+
+        if (accessToken) {
+          useTokenStore.getState().setToken(accessToken);
+        }
+
+        return accessToken;
+      })
+      .catch(() => null)
+      .finally(() => {
+        refreshPromise = null;
+      });
+  }
+
+  return refreshPromise;
+}
+
+function wasManualLogout() {
+  if (typeof window === "undefined") return false;
+
+  const manualLogoutAt = Number(
+    sessionStorage.getItem(MANUAL_LOGOUT_KEY),
+  );
+
+  return (
+    Number.isFinite(manualLogoutAt) &&
+    Date.now() - manualLogoutAt < 10_000
+  );
+}
+
+function redirectToLogin() {
+  if (typeof window === "undefined" || isRedirecting) return;
+
+  const currentPath = window.location.pathname;
+  if (currentPath.startsWith("/auth/")) return;
+
+  isRedirecting = true;
+
+  const redirect = `/auth/login?redirect=${encodeURIComponent(
+    `${currentPath}${window.location.search}`,
+  )}`;
+
+  window.location.assign(redirect);
+}
+
 privateApi.interceptors.response.use(
   (response) => response,
-  async (error) => {
-    const originalRequest = error.config as any;
+  async (error: AxiosError) => {
+    const originalRequest = error.config as RetriableRequest | undefined;
     const isUnauthorized = error.response?.status === 401;
-    const hadAuthToken = Boolean(originalRequest?._hadAuthToken);
 
-    const manualLogoutAt =
-      typeof window !== "undefined"
-        ? Number(sessionStorage.getItem(MANUAL_LOGOUT_KEY))
-        : 0;
-
-    const isManualLogout =
-      Number.isFinite(manualLogoutAt) &&
-      Date.now() - manualLogoutAt < 10_000;
-
-    // Logout पछिको request वा login नै नभएको request मा toast नदेखाउने।
-    if (!isUnauthorized || !hadAuthToken || isManualLogout) {
+    if (
+      !isUnauthorized ||
+      !originalRequest ||
+      !originalRequest._hadAuthToken ||
+      originalRequest._retry ||
+      wasManualLogout()
+    ) {
       return Promise.reject(error);
     }
 
-    // धेरै API request ले 401 दिए पनि एक पटक मात्र handle गर्ने।
-    if (isHandlingSessionExpiry || originalRequest?._sessionHandled) {
-      return Promise.reject(error);
+    originalRequest._retry = true;
+
+    const accessToken = await refreshAccessToken();
+
+    if (accessToken) {
+      return privateApi(originalRequest);
     }
-
-    isHandlingSessionExpiry = true;
-    originalRequest._sessionHandled = true;
-
-    toast.error("Session Expired", {
-      description: "Your session has expired. Please log in again to continue.",
-      duration: 4000,
-    });
 
     useTokenStore.getState().clearToken();
     useUserStore.getState().clearUser();
 
-    if (typeof window !== "undefined") {
-      const currentPath = window.location.pathname;
+    toast.error("Session expired", {
+      description: "Please log in again to continue.",
+      duration: 4000,
+    });
 
-      if (!currentPath.startsWith("/auth/")) {
-        const redirect =
-          currentPath === "/"
-            ? "/auth/login"
-            : `/auth/login?redirect=${encodeURIComponent(currentPath)}`;
-
-        window.setTimeout(() => {
-          window.location.href = redirect;
-        }, 300);
-      }
-    }
+    redirectToLogin();
 
     return Promise.reject(error);
   },
