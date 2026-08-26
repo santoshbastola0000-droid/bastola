@@ -15,7 +15,6 @@ import {
   jobPostingService,
   type JobPosting,
 } from "@/http/services/job-posting.service";
-import useTokenStore from "@/store";
 
 function formatSalary(job: JobPosting) {
   if (job.salaryNegotiable) {
@@ -49,7 +48,6 @@ export default function ApprovedVacancies({
   defaultSearch?: string;
   defaultLocation?: string;
 }) {
-  const token = useTokenStore((state) => state.token);
   const [search, setSearch] =
     useState(defaultSearch);
   const [location, setLocation] =
@@ -59,7 +57,7 @@ export default function ApprovedVacancies({
     const shareCode = params.get("share");
     const jobId = params.get("job");
 
-    if (!shareCode || !jobId || !token) return;
+    if (!shareCode || !jobId) return;
 
     try {
       const owned = JSON.parse(
@@ -68,13 +66,21 @@ export default function ApprovedVacancies({
 
       if (owned.includes(shareCode)) return;
 
+      const key = "roomkhoj_browser_id";
+      let browserId = localStorage.getItem(key);
+
+      if (!browserId) {
+        browserId = crypto.randomUUID();
+        localStorage.setItem(key, browserId);
+      }
+
       jobPostingService
-        .recordOpen(jobId, shareCode)
+        .recordOpen(jobId, shareCode, browserId)
         .catch(() => undefined);
     } catch {
       // A shared-list page must still work when browser storage is unavailable.
     }
-  }, [token]);
+  }, []);
 
   const {
     data: jobs = [],
