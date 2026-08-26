@@ -36,6 +36,10 @@ export interface ChatMessage {
 }
 
 export const messageService = {
+  getCallCredentials: async () => {
+    const response = await privateApi.get("/message/call-credentials");
+    return response.data as { iceServers: RTCIceServer[] };
+  },
   sendMedia: async (
     conversationId: string,
     file: File,
