@@ -174,6 +174,13 @@ export const jobPostingService = {
     };
   },
 
+  payUnlock: async (id: string): Promise<JobShareStatus> => {
+    const response = await privateApi.post(
+      `/job-posting/${id}/pay-unlock`,
+    );
+    return response.data;
+  },
+
   getContact: async (
     id: string,
   ): Promise<JobContactResult> => {
