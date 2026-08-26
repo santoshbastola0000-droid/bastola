@@ -175,6 +175,17 @@ export default function JobContactUnlock({
   };
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const shareCode = params.get("share");
+
+    if (!shareCode) return;
+
+    router.replace(
+      `/jobs?share=${encodeURIComponent(shareCode)}&job=${encodeURIComponent(jobId)}`,
+    );
+  }, [jobId, router]);
+
+  useEffect(() => {
     const shareCode =
       new URLSearchParams(window.location.search)
         .get("share");
