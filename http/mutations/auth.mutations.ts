@@ -48,21 +48,25 @@ export const useLoginMutation = () => {
       // Navigate to verification page with email
       router.push(`/auth/verify/email?email=${encodeURIComponent(email)}`);
     },
-    onError: (error: AxiosError<any>) => {
+    onError: (
+      error: AxiosError<any>,
+      email: string,
+    ) => {
       const errorData = error.response?.data;
       const statusCode = error.response?.status;
 
       if (statusCode === 404 || errorData?.statusCode === 404) {
-        toast.error(errorData?.message || "User not found", {
+        toast.info("Create your account", {
           description:
-            "No account found with this email. Please sign up first.",
-          style: {
-            background: "#ef4444",
-            color: "#fff",
-            border: "none",
-          },
-          duration: 4000,
+            "यो email को account भेटिएन। Email भरिएको signup page खोलिँदैछ।",
+          duration: 3500,
         });
+
+        router.push(
+          `/auth/register?email=${encodeURIComponent(
+            email.trim().toLowerCase(),
+          )}`,
+        );
         return;
       }
 
