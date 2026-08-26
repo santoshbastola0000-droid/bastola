@@ -93,7 +93,7 @@ export default function JobContactUnlock({
     } finally {
       setLoading(false);
     }
-  }, [jobId, token]);
+  }, [jobId]);
 
   useEffect(() => {
     loadStatus();
@@ -174,12 +174,24 @@ export default function JobContactUnlock({
     );
   }, [jobId, router]);
 
+  const getBrowserId = () => {
+    const key = "roomkhoj_browser_id";
+    let value = localStorage.getItem(key);
+
+    if (!value) {
+      value = crypto.randomUUID();
+      localStorage.setItem(key, value);
+    }
+
+    return value;
+  };
+
   useEffect(() => {
     const shareCode =
       new URLSearchParams(window.location.search)
         .get("share");
 
-    if (!shareCode || !token) return;
+    if (!shareCode) return;
 
     try {
       const owned = JSON.parse(
@@ -194,6 +206,7 @@ export default function JobContactUnlock({
         .recordOpen(
           jobId,
           shareCode,
+          getBrowserId(),
         )
         .catch(() => undefined);
     } catch {
