@@ -166,7 +166,7 @@ const user = useUserStore(
       const saved = JSON.parse(raw);
       pendingIceCandidatesRef.current = (
         Array.isArray(saved.candidates) ? saved.candidates : []
-      ).map((candidate) => ({
+      ).map((candidate: RTCIceCandidateInit) => ({
         callId: String(saved.callId),
         candidate,
       }));
