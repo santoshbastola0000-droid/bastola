@@ -43,6 +43,7 @@ export interface JobShareStatus {
   isPartiallyUnlocked: boolean;
   isFullyUnlocked: boolean;
   isUnlocked: boolean;
+  shareCode?: string;
 }
 
 export interface JobContactResult {
@@ -136,6 +137,41 @@ export const jobPostingService = {
       { shareToken },
     );
     return response.data;
+  },
+
+  recordOpen: async (
+    id: string,
+    shareCode: string,
+    visitorId: string,
+  ) => {
+    const response = await api.post(
+      `/job-posting/${id}/open/${shareCode}`,
+      { shareToken: visitorId },
+    );
+    return response.data as {
+      shareCount: number;
+      requiredShares: number;
+      percentage: number;
+      counted: boolean;
+    };
+  },
+
+  getShareSummary: async () => {
+    const response = await privateApi.get(
+      "/job-posting/share-summary",
+    );
+    return response.data as {
+      totalUniqueOpens: number;
+      items: Array<{
+        jobPostingId: string;
+        jobTitle: string;
+        companyName?: string | null;
+        shareCount: number;
+        requiredShares: number;
+        isUnlocked: boolean;
+        lastOpenedAt?: string | null;
+      }>;
+    };
   },
 
   getContact: async (
