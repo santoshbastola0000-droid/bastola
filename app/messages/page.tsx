@@ -835,6 +835,34 @@ const user = useUserStore(
     }
   };
 
+  const describeMediaError = (
+    error: unknown,
+    mode: "audio" | "video",
+  ) => {
+    const name =
+      error instanceof DOMException
+        ? error.name
+        : "";
+
+    if (name === "NotReadableError") {
+      return "Camera अर्को app वा tab ले प्रयोग गरिरहेको छ।";
+    }
+
+    if (name === "NotFoundError") {
+      return mode === "video"
+        ? "Camera device भेटिएन।"
+        : "Microphone device भेटिएन।";
+    }
+
+    if (name === "NotAllowedError" || name === "SecurityError") {
+      return mode === "video"
+        ? "Browser ले camera access रोकेको छ।"
+        : "Browser ले microphone access रोकेको छ।";
+    }
+
+    return "Video call सुरु हुन सकेन। फेरि प्रयास गर्नुहोस्।";
+  };
+
   const startCall = async (mode: "audio" | "video") => {
     if (!selected || !otherUserId) return;
     try {
@@ -870,6 +898,9 @@ const user = useUserStore(
       }, 30000);
     } catch (error) {
       console.error("Unable to start call:", error);
+      setCall(null);
+      setCallNotice(describeMediaError(error, mode));
+      window.setTimeout(() => setCallNotice(null), 5000);
     }
   };
 
@@ -899,6 +930,14 @@ const user = useUserStore(
       setIncomingCall(null);
     } catch (error) {
       console.error("Unable to accept call:", error);
+      setIncomingCall(null);
+      setCallNotice(
+        describeMediaError(
+          error,
+          incomingCall.mode === "video" ? "video" : "audio",
+        ),
+      );
+      window.setTimeout(() => setCallNotice(null), 5000);
     }
   };
 
