@@ -1606,7 +1606,7 @@ const user = useUserStore(
                   autoPlay
                   muted
                   playsInline
-                  className="absolute bottom-3 right-3 h-24 w-16 rounded-lg border-2 border-white object-cover shadow-lg"
+                  className="absolute bottom-3 right-3 h-24 w-16 -scale-x-100 rounded-lg border-2 border-white object-cover shadow-lg"
                 />
               </div>
             )}
