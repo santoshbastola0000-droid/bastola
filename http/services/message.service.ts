@@ -213,6 +213,18 @@ export const messageService = {
     return response.data;
   },
 
+  recordMissedCall: async (
+    conversationId: string,
+    mode: "audio" | "video",
+  ): Promise<ChatMessage> => {
+    const response = await privateApi.post(
+      `/message/conversations/${conversationId}/missed-call`,
+      { mode },
+    );
+
+    return response.data;
+  },
+
   markSeen: async (
     conversationId: string,
   ): Promise<{ success: boolean }> => {
