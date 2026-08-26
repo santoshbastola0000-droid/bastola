@@ -55,6 +55,7 @@ const user = useUserStore(
   const localVideoRef = useRef<HTMLVideoElement | null>(null);
   const activeCallRef = useRef<any>(null);
   const callTimeoutRef = useRef<number | null>(null);
+  const pendingIceCandidatesRef = useRef<Array<{ callId: string; candidate: RTCIceCandidateInit }>>([]);
   const [call, setCall] = useState<any>(null);
   const [incomingCall, setIncomingCall] = useState<any>(null);
   const [callNotice, setCallNotice] = useState<string | null>(null);
@@ -308,12 +309,13 @@ const user = useUserStore(
           callTimeoutRef.current = null;
         }
         await peerRef.current.setRemoteDescription(signal.payload);
+        await flushPendingIceCandidates(signal.callId);
         setCall((current: any) =>
           current ? { ...current, status: "connected", connected: true } : current,
         );
       }
-      if (signal.type === "candidate" && peerRef.current && signal.payload) {
-        await peerRef.current.addIceCandidate(signal.payload);
+      if (signal.type === "candidate" && signal.payload) {
+        await addOrQueueIceCandidate(signal.callId, signal.payload);
       }
       if (signal.type === "end") {
         if (signal.payload?.reason === "declined") {
@@ -737,6 +739,36 @@ const user = useUserStore(
     socket?.emit("call:signal", { targetUserId, callId, type, payload, mode });
   };
 
+  const addOrQueueIceCandidate = async (
+    callId: string,
+    candidate: RTCIceCandidateInit,
+  ) => {
+    const peer = peerRef.current;
+
+    if (!peer || !peer.remoteDescription) {
+      pendingIceCandidatesRef.current.push({ callId, candidate });
+      return;
+    }
+
+    try {
+      await peer.addIceCandidate(candidate);
+    } catch (error) {
+      console.warn("Could not add ICE candidate:", error);
+    }
+  };
+
+  const flushPendingIceCandidates = async (callId: string) => {
+    const queued = pendingIceCandidatesRef.current.filter(
+      (item) => item.callId === callId,
+    );
+    pendingIceCandidatesRef.current =
+      pendingIceCandidatesRef.current.filter((item) => item.callId !== callId);
+
+    for (const item of queued) {
+      await addOrQueueIceCandidate(item.callId, item.candidate);
+    }
+  };
+
   const createPeer = async (targetUserId: string, callId: string, mode: "audio" | "video") => {
     /*
      * TURN credentials improve reliability, but a temporary TURN/API
@@ -757,7 +789,15 @@ const user = useUserStore(
 
     const peer = new RTCPeerConnection({ iceServers });
     peer.onicecandidate = (event) => {
-      if (event.candidate) sendCallSignal(targetUserId, callId, "candidate", event.candidate, mode);
+      if (event.candidate) {
+        sendCallSignal(
+          targetUserId,
+          callId,
+          "candidate",
+          event.candidate.toJSON(),
+          mode,
+        );
+      }
     };
     peer.ontrack = (event) => {
       const remoteStream = event.streams[0];
@@ -803,7 +843,10 @@ const user = useUserStore(
       const callId = crypto.randomUUID();
       const peer = await createPeer(otherUserId, callId, mode);
       stream.getTracks().forEach((track) => peer.addTrack(track, stream));
-      const offer = await peer.createOffer();
+      const offer = await peer.createOffer({
+        offerToReceiveAudio: true,
+        offerToReceiveVideo: mode === "video",
+      });
       await peer.setLocalDescription(offer);
       sendCallSignal(otherUserId, callId, "offer", offer, mode);
       const outgoingCall = {
@@ -838,6 +881,7 @@ const user = useUserStore(
       const peer = await createPeer(incomingCall.fromUserId, incomingCall.callId, incomingCall.mode);
       stream.getTracks().forEach((track) => peer.addTrack(track, stream));
       await peer.setRemoteDescription(incomingCall.payload);
+      await flushPendingIceCandidates(incomingCall.callId);
       const answer = await peer.createAnswer();
       await peer.setLocalDescription(answer);
       sendCallSignal(incomingCall.fromUserId, incomingCall.callId, "answer", answer, incomingCall.mode);
@@ -869,6 +913,7 @@ const user = useUserStore(
     }
     peerRef.current?.close();
     peerRef.current = null;
+    pendingIceCandidatesRef.current = [];
     localStreamRef.current?.getTracks().forEach((track) => track.stop());
     localStreamRef.current = null;
     activeCallRef.current = null;
