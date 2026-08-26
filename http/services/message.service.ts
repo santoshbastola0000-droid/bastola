@@ -6,6 +6,7 @@ export interface MessageConversation {
   userTwoId: string;
   contextType: string;
   contextId?: string | null;
+  otherUserId?: string;
 
   otherUser?: {
     id: string;
