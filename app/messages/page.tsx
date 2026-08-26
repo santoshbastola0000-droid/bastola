@@ -287,6 +287,18 @@ const user = useUserStore(
       if (signal.type === "offer") {
         setIncomingCall(signal);
         setCallNotice(null);
+        sendCallSignal(
+          signal.fromUserId,
+          signal.callId,
+          "ringing",
+          undefined,
+          signal.mode,
+        );
+      }
+      if (signal.type === "ringing") {
+        setCall((current: any) =>
+          current ? { ...current, status: "ringing" } : current,
+        );
       }
       if (signal.type === "answer" && peerRef.current) {
         if (callTimeoutRef.current) {
@@ -844,7 +856,7 @@ const user = useUserStore(
         incomingCall.mode,
       );
     }
-    endCall(false);
+    endCall(false, "Call declined");
   };
 
   const sendMessage =
@@ -1139,30 +1151,7 @@ const user = useUserStore(
                 </div>
               </header>
               <audio ref={remoteAudioRef} autoPlay />
-              {call && (
-                <div className="m-3 flex items-center justify-between rounded-xl border bg-muted p-3">
-                  <span className="font-medium">
-                    {call.status === "calling" ? "Calling…" : "Call connected"}
-                  </span>
-                  <div className="flex gap-2">
-                    <Button size="icon" variant="outline" onClick={() => {
-                      const track = localStreamRef.current?.getAudioTracks()[0];
-                      if (track) {
-                        track.enabled = !track.enabled;
-                        setCall({ ...call, muted: !track.enabled });
-                      }
-                    }}>
-                      {call.muted ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
-                    </Button>
-                    <Button size="icon" variant="destructive" onClick={() => endCall()}><PhoneOff className="h-4 w-4" /></Button>
-                  </div>
-                </div>
-              )}
-              {callNotice && (
-                <p className="mx-3 rounded-lg bg-muted px-3 py-2 text-center text-sm text-muted-foreground">
-                  {callNotice}
-                </p>
-              )}
+
 
               <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4 pb-24">
                 {messagesLoading ? (
@@ -1417,6 +1406,49 @@ const user = useUserStore(
         </section>
       </div>
     </main>
+      {call && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-sm rounded-2xl bg-background p-6 text-center shadow-2xl">
+            {call.mode === "video" ? <Video className="mx-auto h-10 w-10 text-primary" /> : <Phone className="mx-auto h-10 w-10 text-primary" />}
+            <h2 className="mt-3 text-xl font-bold">
+              {call.status === "calling"
+                ? "Calling…"
+                : call.status === "ringing"
+                  ? "Ringing…"
+                  : "Call connected"}
+            </h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {call.mode === "video" ? "Video call" : "Audio call"}
+            </p>
+            <div className="mt-6 flex justify-center gap-3">
+              <Button
+                size="icon"
+                variant="outline"
+                onClick={() => {
+                  const track = localStreamRef.current?.getAudioTracks()[0];
+                  if (track) {
+                    track.enabled = !track.enabled;
+                    setCall({ ...call, muted: !track.enabled });
+                  }
+                }}
+              >
+                {call.muted ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+              </Button>
+              <Button size="icon" variant="destructive" onClick={() => endCall()}>
+                <PhoneOff className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+      {callNotice && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-sm rounded-2xl bg-background p-6 text-center shadow-2xl">
+            <PhoneOff className="mx-auto h-10 w-10 text-muted-foreground" />
+            <h2 className="mt-3 text-xl font-bold">{callNotice}</h2>
+          </div>
+        </div>
+      )}
       {incomingCall && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="w-full max-w-sm rounded-2xl bg-background p-6 text-center shadow-2xl">
