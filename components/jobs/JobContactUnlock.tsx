@@ -83,6 +83,7 @@ export default function JobContactUnlock({
           jobId,
         );
 
+      setStatus(next);
     } catch (error: any) {
       // Do not expose raw backend errors such as "Internal server error".
       toast.error("Share progress load गर्न सकिएन। पछि फेरि प्रयास गर्नुहोस्।");
