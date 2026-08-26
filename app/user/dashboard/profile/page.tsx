@@ -1347,7 +1347,7 @@ export default function ProfilePage() {
                 ],
                 [
                   "shares",
-                  "Link Opens",
+                  "Interested Vacancies",
                 ],
                 [
                   "about",
@@ -1577,7 +1577,7 @@ export default function ProfilePage() {
                 <div className="space-y-3">
                   <div className="rounded-2xl bg-emerald-50 p-4">
                     <p className="text-sm text-emerald-700">
-                      Total unique link opens
+                      Interested vacancy opens
                     </p>
                     <p className="mt-1 text-3xl font-bold text-emerald-900">
                       {shareSummary.totalUniqueOpens}
@@ -1586,7 +1586,7 @@ export default function ProfilePage() {
 
                   {shareSummary.items.length === 0 ? (
                     <div className="py-10 text-center text-sm text-muted-foreground">
-                      अहिलेसम्म कसैले तपाईंको shared job link खोलेको छैन।
+                      तपाईंले अझै कुनै vacancy share गर्नुभएको छैन।
                     </div>
                   ) : (
                     shareSummary.items.map((item) => (
