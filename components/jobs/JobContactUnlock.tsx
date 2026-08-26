@@ -275,7 +275,8 @@ export default function JobContactUnlock({
             Contact Employee
           </h2>
           <p className="mt-1 text-sm text-slate-600">
-            तपाईंको unique link 5 जना फरक साथीले खोलेपछि पूरा नम्बर खुल्छ।
+            5 जना साथीलाई यो vacancy share गर्नुहोस् र उहाँहरूलाई link खोलेर click गर्न भन्नुहोस्।
+            5 जनाले खोलेपछि vacancy unlock भएर तपाईंको Profile मा देखिनेछ।
           </p>
         </div>
 
