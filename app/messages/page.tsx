@@ -36,6 +36,7 @@ function MessagesContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const requestedConversationId = searchParams.get("conversation");
+  const requestedIncomingCallId = searchParams.get("incomingCall");
 
 const user = useUserStore(
     (state) => state.user,
@@ -152,6 +153,36 @@ const user = useUserStore(
   useEffect(() => {
     loadConversations();
   }, [requestedConversationId]);
+
+  useEffect(() => {
+    if (!requestedIncomingCallId) return;
+
+    const raw = sessionStorage.getItem(
+      `roomkhoj:incoming-call:${requestedIncomingCallId}`,
+    );
+    if (!raw) return;
+
+    try {
+      const saved = JSON.parse(raw);
+      pendingIceCandidatesRef.current = (
+        Array.isArray(saved.candidates) ? saved.candidates : []
+      ).map((candidate) => ({
+        callId: String(saved.callId),
+        candidate,
+      }));
+      setIncomingCall({
+        callId: String(saved.callId),
+        fromUserId: String(saved.fromUserId),
+        mode: saved.mode === "video" ? "video" : "audio",
+        payload: saved.payload,
+      });
+    } catch {
+      sessionStorage.removeItem(
+        `roomkhoj:incoming-call:${requestedIncomingCallId}`,
+      );
+    }
+  }, [requestedIncomingCallId]);
+
 
   useEffect(() => {
     if (!currentUserId) return;
