@@ -314,6 +314,22 @@ export default function JobContactUnlock({
     }
   };
 
+  const payToUnlock = async () => {
+    if (paying || status?.isFullyUnlocked) return;
+    if (!window.confirm("तपाईंको RoomKhoj wallet बाट रु 500 काटिनेछ। अहिले contact unlock गर्ने?")) return;
+
+    try {
+      setPaying(true);
+      const next = await jobPostingService.payUnlock(jobId);
+      setStatus(next);
+      toast.success("रु 500 wallet बाट काटियो। Employer contact unlock भयो।");
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || "Payment गर्न सकिएन।");
+    } finally {
+      setPaying(false);
+    }
+  };
+
   const share = () => setShowShareMenu((open) => !open);
 
   if (!token) {
@@ -483,19 +499,29 @@ export default function JobContactUnlock({
       )}
 
       {!status?.isFullyUnlocked && (
-        <button
-          type="button"
-          onClick={share}
-          disabled={sharing}
-          className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 px-5 py-3 font-semibold text-white disabled:opacity-50"
-        >
-          {sharing ? (
-            <Loader2 className="h-5 w-5 animate-spin" />
-          ) : (
-            <Share2 className="h-5 w-5" />
-          )}
-          Share vacancy
-        </button>
+        <div className="mt-5 space-y-3">
+          <button
+            type="button"
+            onClick={share}
+            disabled={sharing}
+            className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 px-5 py-3 font-semibold text-white disabled:opacity-50"
+          >
+            {sharing ? <Loader2 className="h-5 w-5 animate-spin" /> : <Share2 className="h-5 w-5" />}
+            Free: 5 जना share गरेर unlock गर्नुहोस्
+          </button>
+          <button
+            type="button"
+            onClick={payToUnlock}
+            disabled={paying}
+            className="inline-flex w-full items-center justify-center gap-2 rounded-xl border-2 border-emerald-600 bg-emerald-50 px-5 py-3 font-semibold text-emerald-800 disabled:opacity-50"
+          >
+            {paying ? <Loader2 className="h-5 w-5 animate-spin" /> : null}
+            रु 500 तिरेर अहिले unlock गर्नुहोस्
+          </button>
+          <p className="text-center text-xs text-slate-500">
+            Wallet मा रु 500 नभए free share option प्रयोग गर्नुहोस्।
+          </p>
+        </div>
       )}
       </div>
     </>
