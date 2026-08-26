@@ -1,3 +1,8 @@
+self.addEventListener("install", () => self.skipWaiting());
+self.addEventListener("activate", (event) => {
+  event.waitUntil(self.clients.claim());
+});
+
 self.addEventListener(
   'push',
   (event) => {
@@ -30,6 +35,13 @@ self.addEventListener(
 
       badge:
         '/roomkhoj-logo.png',
+
+      tag:
+        data.tag ||
+        'roomkhoj-notification',
+
+      renotify:
+        Boolean(data.renotify),
 
       data: {
         url:
