@@ -47,6 +47,14 @@ const nextConfig = {
       },
     ],
   },
+  async rewrites() {
+    return [
+      {
+        source: "/api/:path*",
+        destination: "https://api.roomkhoj.com/:path*",
+      },
+    ];
+  },
 };
 
 module.exports = nextConfig;
