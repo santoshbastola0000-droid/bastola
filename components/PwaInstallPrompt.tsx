@@ -15,6 +15,8 @@ export function PwaInstallPrompt() {
     useState<InstallPromptEvent | null>(null);
   const [iosGuide, setIosGuide] = useState(false);
   const [dismissed, setDismissed] = useState(true);
+  const [notificationPermission, setNotificationPermission] =
+    useState<NotificationPermission | "unsupported">("default");
 
   useEffect(() => {
     if ("serviceWorker" in navigator) {
@@ -30,6 +32,11 @@ export function PwaInstallPrompt() {
     }
 
     setDismissed(false);
+    setNotificationPermission(
+      "Notification" in window
+        ? Notification.permission
+        : "unsupported",
+    );
 
     const onBeforeInstall = (event: Event) => {
       event.preventDefault();
@@ -48,6 +55,16 @@ export function PwaInstallPrompt() {
   const dismiss = () => {
     localStorage.setItem("roomkhoj:pwa-dismissed", "1");
     setDismissed(true);
+  };
+
+  const enableCallNotifications = async () => {
+    if (!("Notification" in window)) {
+      setNotificationPermission("unsupported");
+      return;
+    }
+
+    const permission = await Notification.requestPermission();
+    setNotificationPermission(permission);
   };
 
   const install = async () => {
@@ -92,6 +109,24 @@ export function PwaInstallPrompt() {
         <Button className="mt-4 w-full" onClick={install}>
           <Download className="mr-2 h-4 w-4" />
           Install RoomKhoj
+        </Button>
+      )}
+
+      {notificationPermission === "granted" ? (
+        <p className="mt-3 text-center text-sm font-medium text-emerald-600">
+          Call notification allowed
+        </p>
+      ) : (
+        <Button
+          className="mt-3 w-full"
+          variant="outline"
+          onClick={enableCallNotifications}
+          disabled={notificationPermission === "denied"}
+        >
+          <Bell className="mr-2 h-4 w-4" />
+          {notificationPermission === "denied"
+            ? "Notification browser settings मा blocked छ"
+            : "Enable call notifications"}
         </Button>
       )}
 
