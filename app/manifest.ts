@@ -14,7 +14,7 @@ export default function manifest(): MetadataRoute.Manifest {
         src: "/roomkhoj-logo.png",
         sizes: "512x512",
         type: "image/png",
-        purpose: "maskable",
+        purpose: "any",
       },
     ],
   };
