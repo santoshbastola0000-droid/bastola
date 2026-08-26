@@ -10,6 +10,8 @@ import {
   Facebook,
   Link as LinkIcon,
   MessageCircle,
+  Phone,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -41,6 +43,8 @@ export default function JobContactUnlock({
   const [sharing, setSharing] =
     useState(false);
   const [showFlowerRain, setShowFlowerRain] =
+    useState(false);
+  const [showShareMenu, setShowShareMenu] =
     useState(false);
   const wasUnlockedRef = useRef(false);
 
@@ -252,7 +256,7 @@ export default function JobContactUnlock({
     }
   };
 
-  const share = () => shareTo("native");
+  const share = () => setShowShareMenu((open) => !open);
 
   if (!token) {
     return (
@@ -372,12 +376,37 @@ export default function JobContactUnlock({
         Message employer
       </button>
 
-      {!status?.isFullyUnlocked && (
-        <div className="mt-5 grid grid-cols-4 gap-2">
-          <button type="button" onClick={() => shareTo("whatsapp")} disabled={sharing} aria-label="Share on WhatsApp" className="rounded-xl border p-3 text-emerald-600 disabled:opacity-50"><MessageCircle className="mx-auto h-5 w-5" /></button>
-          <button type="button" onClick={() => shareTo("facebook")} disabled={sharing} aria-label="Share on Facebook" className="rounded-xl border p-3 text-blue-600 disabled:opacity-50"><Facebook className="mx-auto h-5 w-5" /></button>
-          <button type="button" onClick={() => shareTo("copy")} disabled={sharing} aria-label="Copy share link" className="rounded-xl border p-3 disabled:opacity-50"><LinkIcon className="mx-auto h-5 w-5" /></button>
-          <button type="button" onClick={() => shareTo("native")} disabled={sharing} aria-label="More share options" className="rounded-xl border p-3 disabled:opacity-50"><Share2 className="mx-auto h-5 w-5" /></button>
+      {!status?.isFullyUnlocked && showShareMenu && (
+        <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-3 shadow-inner">
+          <div className="mb-3 flex items-center justify-between px-1">
+            <p className="text-sm font-semibold text-slate-700">Share vacancy</p>
+            <button
+              type="button"
+              onClick={() => setShowShareMenu(false)}
+              aria-label="Close share menu"
+              className="rounded-full p-1 text-slate-500 hover:bg-slate-200"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="grid grid-cols-4 gap-2">
+            <button type="button" onClick={() => shareTo("whatsapp")} disabled={sharing} aria-label="Share on WhatsApp" className="flex flex-col items-center gap-1 text-xs font-medium text-slate-700 disabled:opacity-50">
+              <span className="relative flex h-12 w-12 items-center justify-center rounded-full bg-[#25D366] text-white shadow-sm"><MessageCircle className="h-8 w-8" strokeWidth={2.6} /><Phone className="absolute h-3.5 w-3.5 fill-[#25D366] text-white" strokeWidth={3} /></span>
+              WhatsApp
+            </button>
+            <button type="button" onClick={() => shareTo("facebook")} disabled={sharing} aria-label="Share on Facebook" className="flex flex-col items-center gap-1 text-xs font-medium text-slate-700 disabled:opacity-50">
+              <span className="flex h-12 w-12 items-center justify-center rounded-full bg-[#1877F2] text-white shadow-sm"><Facebook className="h-7 w-7 fill-white" strokeWidth={2.5} /></span>
+              Facebook
+            </button>
+            <button type="button" onClick={() => shareTo("copy")} disabled={sharing} aria-label="Copy share link" className="flex flex-col items-center gap-1 text-xs font-medium text-slate-700 disabled:opacity-50">
+              <span className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-700 text-white shadow-sm"><LinkIcon className="h-6 w-6" /></span>
+              Copy link
+            </button>
+            <button type="button" onClick={() => shareTo("native")} disabled={sharing} aria-label="More share options" className="flex flex-col items-center gap-1 text-xs font-medium text-slate-700 disabled:opacity-50">
+              <span className="flex h-12 w-12 items-center justify-center rounded-full bg-red-600 text-white shadow-sm"><Share2 className="h-6 w-6" /></span>
+              More
+            </button>
+          </div>
         </div>
       )}
 
