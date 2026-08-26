@@ -163,17 +163,6 @@ export default function JobContactUnlock({
     }
   };
 
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const shareCode = params.get("share");
-
-    if (!shareCode) return;
-
-    router.replace(
-      `/jobs?share=${encodeURIComponent(shareCode)}&job=${encodeURIComponent(jobId)}`,
-    );
-  }, [jobId, router]);
-
   // A persistent browser ID lets each device count only once.
   const getBrowserId = () => {
     const key = "roomkhoj_browser_id";
@@ -268,7 +257,7 @@ export default function JobContactUnlock({
       }
 
       const url =
-        `${window.location.origin}/jobs?share=${encodeURIComponent(shareCode)}&job=${encodeURIComponent(jobId)}`;
+        `${window.location.origin}/job/${encodeURIComponent(jobId)}?share=${encodeURIComponent(shareCode)}`;
       shareUrl = url;
       const text =
         `RoomKhoj मा vacancy list हेर्नुहोस्: ${url}`;
