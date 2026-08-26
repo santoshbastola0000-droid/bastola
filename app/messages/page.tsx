@@ -324,7 +324,7 @@ const user = useUserStore(
             contact,
           );
 
-        setPhoneResult(result.user);
+        setPhoneResult(result);
 
         // Finding a number must never create a conversation.
 
