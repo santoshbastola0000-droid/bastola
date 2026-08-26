@@ -262,7 +262,7 @@ export default function JobContactUnlock({
         `${window.location.origin}/jobs?share=${encodeURIComponent(shareCode)}&job=${encodeURIComponent(jobId)}`;
       shareUrl = url;
       const text =
-        `RoomKhoj मा ${jobTitle} vacancy हेर्नुहोस्: ${url}`;
+        `RoomKhoj मा vacancy list हेर्नुहोस्: ${url}`;
 
       if (channel === "whatsapp") {
         window.open(
