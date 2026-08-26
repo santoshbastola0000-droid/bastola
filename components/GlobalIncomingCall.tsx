@@ -63,25 +63,26 @@ export function GlobalIncomingCall() {
 
     socket.on("call:signal", (signal: any) => {
       if (signal?.type === "offer" && signal?.callId) {
-        const saved: IncomingSignal & {
-          candidates: RTCIceCandidateInit[];
-        } = {
-          callId: String(signal.callId),
-          fromUserId: String(signal.fromUserId || ""),
-          mode: signal.mode === "video" ? "video" : "audio",
-          payload: signal.payload,
-          candidates: [],
-        };
+        const callId = String(signal.callId);
+        const mode: IncomingSignal["mode"] =
+          signal.mode === "video" ? "video" : "audio";
+        const payload = signal.payload as RTCSessionDescriptionInit;
 
         sessionStorage.setItem(
-          storageKey(saved.callId),
-          JSON.stringify(saved),
+          storageKey(callId),
+          JSON.stringify({
+            callId,
+            fromUserId: String(signal.fromUserId || ""),
+            mode,
+            payload,
+            candidates: [],
+          }),
         );
         setIncoming({
-          callId: saved.callId,
-          fromUserId: saved.fromUserId,
-          mode: saved.mode === "video" ? "video" : "audio",
-          payload: saved.payload,
+          callId,
+          fromUserId: String(signal.fromUserId || ""),
+          mode,
+          payload,
         });
         return;
       }
