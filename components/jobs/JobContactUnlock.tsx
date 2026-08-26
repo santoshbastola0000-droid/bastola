@@ -240,6 +240,14 @@ export default function JobContactUnlock({
         throw new Error("Share link unavailable");
       }
 
+      // Save this vacancy as the user's interest immediately on share/copy.
+      const interest = await jobPostingService.recordShare(
+        jobId,
+        getBrowserId(),
+      );
+      setStatus(interest);
+      shareCode = interest.shareCode || shareCode;
+
       const ownedKey = "roomkhoj_owned_share_codes";
       try {
         const stored = JSON.parse(
