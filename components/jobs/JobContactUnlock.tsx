@@ -48,6 +48,7 @@ export default function JobContactUnlock({
     useState(false);
   const [manualShareUrl, setManualShareUrl] =
     useState("");
+  // Prevent the unlock celebration from repeating on status refreshes.
   const wasUnlockedRef = useRef(false);
 
   const messageEmployer = async () => {
