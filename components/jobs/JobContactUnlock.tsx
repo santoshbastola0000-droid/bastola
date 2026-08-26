@@ -174,6 +174,7 @@ export default function JobContactUnlock({
     );
   }, [jobId, router]);
 
+  // A persistent browser ID lets each device count only once.
   const getBrowserId = () => {
     const key = "roomkhoj_browser_id";
     let value = localStorage.getItem(key);
