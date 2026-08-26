@@ -257,7 +257,7 @@ export default function JobContactUnlock({
       }
 
       const url =
-        `${window.location.origin}/job/${encodeURIComponent(jobId)}?share=${encodeURIComponent(shareCode)}`;
+        `${window.location.origin}/jobs?share=${encodeURIComponent(shareCode)}&job=${encodeURIComponent(jobId)}`;
       shareUrl = url;
       const text =
         `RoomKhoj मा vacancy list हेर्नुहोस्: ${url}`;
