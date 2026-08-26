@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
+import { MailOpen } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -43,6 +44,29 @@ const VerifyOTPForm = () => {
     }
   }, [email, router]);
 
+  const openGmail = () => {
+    const userAgent =
+      navigator.userAgent || "";
+
+    if (/Android/i.test(userAgent)) {
+      window.location.href =
+        "intent://mail.google.com/mail/u/0/#inbox#Intent;scheme=https;package=com.google.android.gm;end";
+      return;
+    }
+
+    if (/iPhone|iPad|iPod/i.test(userAgent)) {
+      window.location.href =
+        "googlegmail://";
+      return;
+    }
+
+    window.open(
+      "https://mail.google.com/mail/u/0/#inbox",
+      "_blank",
+      "noopener,noreferrer",
+    );
+  };
+
   const handleVerify = (value: string) => {
     setOtp(value);
     if (value.length === 5) {
@@ -81,6 +105,16 @@ const VerifyOTPForm = () => {
           <span className="font-medium text-primary">{email}</span>
         </p>
       </div>
+
+      <Button
+        type="button"
+        variant="outline"
+        onClick={openGmail}
+        className="w-full gap-2 rounded-xl border-red-200 text-red-600 hover:bg-red-50"
+      >
+        <MailOpen className="h-4 w-4" />
+        Open Gmail to get OTP
+      </Button>
 
       <div className="flex justify-center">
         <InputOTP
