@@ -828,6 +828,7 @@ const user = useUserStore(
       : "";
 
   return (
+    <>
     <main className="mx-auto h-[calc(100dvh-68px)] max-w-7xl overflow-hidden bg-background md:h-[calc(100dvh-24px)] md:p-4">
       <div className="grid h-full min-h-0 overflow-hidden border bg-background md:grid-cols-[340px_1fr] md:rounded-2xl">
         <aside
@@ -1050,12 +1051,6 @@ const user = useUserStore(
                 </div>
               </header>
               <audio ref={remoteAudioRef} autoPlay />
-              {incomingCall && (
-                <div className="m-3 flex items-center justify-between rounded-xl border bg-muted p-3">
-                  <span>{incomingCall.mode === "video" ? "Incoming video call" : "Incoming audio call"}</span>
-                  <div className="flex gap-2"><Button onClick={acceptCall}>Accept</Button><Button variant="destructive" onClick={declineIncomingCall}>Decline</Button></div>
-                </div>
-              )}
               {call && (
                 <div className="m-3 flex items-center justify-between rounded-xl border bg-muted p-3">
                   <span>{call.connected ? "Call connected" : "Calling…"}</span>
@@ -1316,6 +1311,22 @@ const user = useUserStore(
         </section>
       </div>
     </main>
+      {incomingCall && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-sm rounded-2xl bg-background p-6 text-center shadow-2xl">
+            <Phone className="mx-auto h-10 w-10 text-primary" />
+            <h2 className="mt-3 text-lg font-bold">
+              {incomingCall.mode === "video" ? "Incoming video call" : "Incoming audio call"}
+            </h2>
+            <p className="mt-1 text-sm text-muted-foreground">RoomKhoj user is calling you</p>
+            <div className="mt-6 flex gap-3">
+              <Button className="flex-1" onClick={acceptCall}>Accept</Button>
+              <Button className="flex-1" variant="destructive" onClick={declineIncomingCall}>Decline</Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
