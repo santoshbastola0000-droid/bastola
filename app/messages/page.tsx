@@ -476,14 +476,15 @@ const user = useUserStore(
         removeSelectedMedia();
 
         await loadConversations();
-      } catch (error) {
+      } catch (error: any) {
         console.error(
           "Media send failed:",
           error,
         );
 
-        alert(
-          "Photo/video send हुन सकेन.",
+        toast.error(
+          error?.response?.data?.message ||
+            "Photo/video send हुन सकेन.",
         );
       } finally {
         setMediaSending(false);
