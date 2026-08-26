@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -64,7 +64,7 @@ export default function JobContactUnlock({
     }
   };
 
-  const loadStatus = async () => {
+  const loadStatus = useCallback(async () => {
     if (!token) {
       setLoading(false);
       return;
@@ -85,11 +85,33 @@ export default function JobContactUnlock({
     } finally {
       setLoading(false);
     }
-  };
+  }, [jobId, token]);
 
   useEffect(() => {
     loadStatus();
-  }, [jobId, token]);
+  }, [loadStatus]);
+
+  // Other people open the shared link on their own devices. Refresh while this
+  // card is visible, and as soon as the sharer returns from WhatsApp/Facebook.
+  useEffect(() => {
+    if (!token || status?.isFullyUnlocked) return;
+
+    const refresh = () => {
+      if (document.visibilityState === "visible") {
+        loadStatus();
+      }
+    };
+
+    const interval = window.setInterval(refresh, 10_000);
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
+
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, [loadStatus, status?.isFullyUnlocked, token]);
 
   const getBrowserId = () => {
     const key = "roomkhoj_browser_id";
@@ -253,7 +275,7 @@ export default function JobContactUnlock({
             Contact Employee
           </h2>
           <p className="mt-1 text-sm text-slate-600">
-            5 जना साथीलाई share गरेपछि पूरा नम्बर खुल्छ।
+            तपाईंको unique link 5 जना फरक साथीले खोलेपछि पूरा नम्बर खुल्छ।
           </p>
         </div>
 
@@ -275,7 +297,7 @@ export default function JobContactUnlock({
       </div>
 
       <div className="mt-2 flex justify-between text-sm font-medium text-slate-600">
-        <span>{Math.min(shareCount, 5)}/5 shares</span>
+        <span>{Math.min(shareCount, 5)}/5 unique opens</span>
         <span>{Math.min(shareCount * 20, 100)}%</span>
       </div>
 
