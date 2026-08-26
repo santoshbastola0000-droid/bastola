@@ -51,6 +51,8 @@ const user = useUserStore(
   const peerRef = useRef<RTCPeerConnection | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
   const remoteAudioRef = useRef<HTMLAudioElement | null>(null);
+  const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
+  const localVideoRef = useRef<HTMLVideoElement | null>(null);
   const activeCallRef = useRef<any>(null);
   const callTimeoutRef = useRef<number | null>(null);
   const [call, setCall] = useState<any>(null);
@@ -352,6 +354,18 @@ const user = useUserStore(
     };
   }, [currentUserId, authToken]);
 
+
+  useEffect(() => {
+    if (call?.mode !== "video") return;
+
+    if (localVideoRef.current && localStreamRef.current) {
+      localVideoRef.current.srcObject = localStreamRef.current;
+    }
+
+    if (remoteVideoRef.current && remoteAudioRef.current?.srcObject) {
+      remoteVideoRef.current.srcObject = remoteAudioRef.current.srcObject;
+    }
+  }, [call?.callId, call?.mode]);
 
   const searchByContact =
     async () => {
@@ -746,7 +760,9 @@ const user = useUserStore(
       if (event.candidate) sendCallSignal(targetUserId, callId, "candidate", event.candidate, mode);
     };
     peer.ontrack = (event) => {
-      if (remoteAudioRef.current) remoteAudioRef.current.srcObject = event.streams[0];
+      const remoteStream = event.streams[0];
+      if (remoteAudioRef.current) remoteAudioRef.current.srcObject = remoteStream;
+      if (remoteVideoRef.current) remoteVideoRef.current.srcObject = remoteStream;
     };
     peer.onconnectionstatechange = () => {
       if (peer.connectionState === "connected") {
@@ -1436,6 +1452,23 @@ const user = useUserStore(
             <p className="mt-1 text-sm text-muted-foreground">
               {call.mode === "video" ? "Video call" : "Audio call"}
             </p>
+            {call.mode === "video" && (
+              <div className="relative mt-5 overflow-hidden rounded-xl bg-black aspect-video">
+                <video
+                  ref={remoteVideoRef}
+                  autoPlay
+                  playsInline
+                  className="h-full w-full object-cover"
+                />
+                <video
+                  ref={localVideoRef}
+                  autoPlay
+                  muted
+                  playsInline
+                  className="absolute bottom-3 right-3 h-24 w-16 rounded-lg border-2 border-white object-cover shadow-lg"
+                />
+              </div>
+            )}
             <div className="mt-6 flex justify-center gap-3">
               <Button
                 size="icon"
