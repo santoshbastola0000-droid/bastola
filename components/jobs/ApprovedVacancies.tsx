@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import {
   BriefcaseBusiness,
@@ -52,6 +53,36 @@ export default function ApprovedVacancies({
     useState(defaultSearch);
   const [location, setLocation] =
     useState(defaultLocation);
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const shareCode = searchParams.get("share");
+    const jobId = searchParams.get("job");
+
+    if (!shareCode || !jobId) return;
+
+    try {
+      const owned = JSON.parse(
+        localStorage.getItem("roomkhoj_owned_share_codes") || "[]",
+      ) as string[];
+
+      if (owned.includes(shareCode)) return;
+
+      const key = "roomkhoj_browser_id";
+      let browserId = localStorage.getItem(key);
+
+      if (!browserId) {
+        browserId = crypto.randomUUID();
+        localStorage.setItem(key, browserId);
+      }
+
+      jobPostingService
+        .recordOpen(jobId, shareCode, browserId)
+        .catch(() => undefined);
+    } catch {
+      // A shared-list page must still work when browser storage is unavailable.
+    }
+  }, [searchParams]);
 
   const {
     data: jobs = [],
