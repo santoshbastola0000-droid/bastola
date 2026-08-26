@@ -142,11 +142,9 @@ export const jobPostingService = {
   recordOpen: async (
     id: string,
     shareCode: string,
-    visitorId: string,
   ) => {
-    const response = await api.post(
+    const response = await privateApi.post(
       `/job-posting/${id}/open/${shareCode}`,
-      { shareToken: visitorId },
     );
     return response.data as {
       shareCount: number;
