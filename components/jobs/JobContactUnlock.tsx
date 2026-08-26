@@ -247,7 +247,8 @@ export default function JobContactUnlock({
 
     } catch (error: any) {
       if (error?.name !== "AbortError") {
-        // Keep the share UI friendly; technical backend errors are never shown.
+        // Keep the UI friendly while preserving diagnostics in the browser console.
+        console.error("Job share action failed", error);
         toast.error("Share link बनाउन सकिएन। पछि फेरि प्रयास गर्नुहोस्।");
       }
     } finally {
