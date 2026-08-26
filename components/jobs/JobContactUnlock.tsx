@@ -91,94 +91,127 @@ export default function JobContactUnlock({
     loadStatus();
   }, [jobId, token]);
 
+  const getBrowserId = () => {
+    const key = "roomkhoj_browser_id";
+    let value = localStorage.getItem(key);
+
+    if (!value) {
+      value = crypto.randomUUID();
+      localStorage.setItem(key, value);
+    }
+
+    return value;
+  };
+
+  useEffect(() => {
+    const shareCode =
+      new URLSearchParams(window.location.search)
+        .get("share");
+
+    if (!shareCode) return;
+
+    try {
+      const owned = JSON.parse(
+        localStorage.getItem(
+          "roomkhoj_owned_share_codes",
+        ) || "[]",
+      ) as string[];
+
+      if (owned.includes(shareCode)) return;
+
+      jobPostingService
+        .recordOpen(
+          jobId,
+          shareCode,
+          getBrowserId(),
+        )
+        .catch(() => undefined);
+    } catch {
+      // Invalid local data must not block the job page.
+    }
+  }, [jobId]);
+
   const shareTo = async (
     channel: "native" | "whatsapp" | "facebook" | "copy",
   ) => {
     if (!token || sharing) return;
 
-    const url = window.location.href;
-    const text = `RoomKhoj मा ${jobTitle} vacancy हेर्नुहोस्: ${url}`;
-
     try {
       setSharing(true);
-      if (channel === "whatsapp") {
-        window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank", "noopener,noreferrer");
-      } else if (channel === "facebook") {
-        window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`, "_blank", "noopener,noreferrer");
-      } else if (channel === "copy") {
-        await navigator.clipboard.writeText(text);
-        toast.success("Link copied. अब share गर्नुहोस्।");
-      } else if (navigator.share) {
-        await navigator.share({ title: `${jobTitle} vacancy`, text, url });
-      } else {
-        await navigator.clipboard.writeText(text);
+
+      const next =
+        await jobPostingService.recordShare(
+          jobId,
+          getBrowserId(),
+        );
+
+      if (!next.shareCode) {
+        throw new Error("Share link unavailable");
       }
 
-      const next = await jobPostingService.recordShare(jobId, crypto.randomUUID());
-      setStatus(next);
-      if (next.isFullyUnlocked) toast.success("पूरा contact number unlock भयो।");
-      
-    } catch (error: any) {
-      if (error?.name !== "AbortError") toast.error(error?.response?.data?.message || "Share record हुन सकेन।");
-    } finally {
-      setSharing(false);
-    }
-  };
+      const ownedKey =
+        "roomkhoj_owned_share_codes";
+      const owned = JSON.parse(
+        localStorage.getItem(ownedKey) || "[]",
+      ) as string[];
 
-  const share = async () => {
-    if (!token || sharing) {
-      return;
-    }
+      localStorage.setItem(
+        ownedKey,
+        JSON.stringify(
+          Array.from(
+            new Set([...owned, next.shareCode]),
+          ).slice(-50),
+        ),
+      );
 
-    const url = `${window.location.origin}/jobs/pokhara`;
-    const text =
-      `RoomKhoj मा नयाँ job vacancies हेर्नुहोस्: ${url}`;
+      const url =
+        `${window.location.origin}${window.location.pathname}?share=${encodeURIComponent(next.shareCode)}`;
+      const text =
+        `RoomKhoj मा ${jobTitle} vacancy हेर्नुहोस्: ${url}`;
 
-    try {
-      setSharing(true);
-
-      if (navigator.share) {
+      if (channel === "whatsapp") {
+        window.open(
+          `https://wa.me/?text=${encodeURIComponent(text)}`,
+          "_blank",
+          "noopener,noreferrer",
+        );
+      } else if (channel === "facebook") {
+        window.open(
+          `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`,
+          "_blank",
+          "noopener,noreferrer",
+        );
+      } else if (channel === "copy") {
+        await navigator.clipboard.writeText(text);
+        toast.success(
+          "Unique link copied. अरूले खोलेपछि progress बढ्छ।",
+        );
+      } else if (navigator.share) {
         await navigator.share({
           title: `${jobTitle} vacancy`,
           text,
           url,
         });
       } else {
-        await navigator.clipboard.writeText(
-          text,
-        );
-
-        toast.success(
-          "Job link copied. अब share गर्नुहोस्।",
-        );
+        await navigator.clipboard.writeText(text);
+        toast.success("Unique job link copied.");
       }
-
-      const next =
-        await jobPostingService.recordShare(
-          jobId,
-          crypto.randomUUID(),
-        );
 
       setStatus(next);
-
-      if (next.isFullyUnlocked) {
-        toast.success(
-          "पूरा contact number unlock भयो।",
+    } catch (error: any) {
+      if (error?.name !== "AbortError") {
+        toast.error(
+          error?.response?.data?.message ||
+            error?.message ||
+            "Share link बनाउन सकिएन।",
         );
       }
-    } catch (error: any) {
-      if (error?.name === "AbortError") {
-        return;
-      }
-
-      toast.error(
-        error?.response?.data?.message ||
-          "Share record हुन सकेन।",
-      );
     } finally {
       setSharing(false);
     }
   };
+
+  const share = () => shareTo("native");
 
   if (!token) {
     return (
