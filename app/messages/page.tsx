@@ -820,12 +820,13 @@ const user = useUserStore(
     }, [conversations, search]);
 
   const otherUserId =
-    selected
-      ? selected.userOneId ===
-        currentUserId
+    selected?.otherUser?.id ||
+    selected?.otherUserId ||
+    (selected
+      ? selected.userOneId === currentUserId
         ? selected.userTwoId
         : selected.userOneId
-      : "";
+      : "");
 
   return (
     <>
