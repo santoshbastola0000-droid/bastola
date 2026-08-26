@@ -53,6 +53,7 @@ const user = useUserStore(
   const remoteAudioRef = useRef<HTMLAudioElement | null>(null);
   const [call, setCall] = useState<any>(null);
   const [incomingCall, setIncomingCall] = useState<any>(null);
+  const [callNotice, setCallNotice] = useState<string | null>(null);
   const [socket, setSocket] =
     useState<Socket | null>(null);
 
@@ -281,15 +282,22 @@ const user = useUserStore(
 
 
     nextSocket.on("call:signal", async (signal: any) => {
-      if (signal.type === "offer") setIncomingCall(signal);
+      if (signal.type === "offer") {
+        setIncomingCall(signal);
+        setCallNotice(null);
+      }
       if (signal.type === "answer" && peerRef.current) {
         await peerRef.current.setRemoteDescription(signal.payload);
-        setCall((current: any) => current ? { ...current, connected: true } : current);
+        setCall((current: any) =>
+          current ? { ...current, status: "connected", connected: true } : current,
+        );
       }
       if (signal.type === "candidate" && peerRef.current && signal.payload) {
         await peerRef.current.addIceCandidate(signal.payload);
       }
-      if (signal.type === "end") endCall(false);
+      if (signal.type === "end") {
+        endCall(false, signal.payload?.reason === "declined" ? "Call declined" : "Call ended");
+      }
     });
 
     nextSocket.on(
@@ -703,6 +711,13 @@ const user = useUserStore(
     peer.ontrack = (event) => {
       if (remoteAudioRef.current) remoteAudioRef.current.srcObject = event.streams[0];
     };
+    peer.onconnectionstatechange = () => {
+      if (peer.connectionState === "connected") {
+        setCall((current: any) =>
+          current ? { ...current, status: "connected", connected: true } : current,
+        );
+      }
+    };
     peerRef.current = peer;
     return peer;
   };
@@ -718,7 +733,8 @@ const user = useUserStore(
       const offer = await peer.createOffer();
       await peer.setLocalDescription(offer);
       sendCallSignal(otherUserId, callId, "offer", offer, mode);
-      setCall({ callId, targetUserId: otherUserId, mode, connected: false, muted: false });
+      setCall({ callId, targetUserId: otherUserId, mode, status: "calling", connected: false, muted: false });
+      setCallNotice(null);
     } catch {
       toast.error("Microphone/camera permission दिनुहोस्।");
     }
@@ -735,16 +751,21 @@ const user = useUserStore(
       const answer = await peer.createAnswer();
       await peer.setLocalDescription(answer);
       sendCallSignal(incomingCall.fromUserId, incomingCall.callId, "answer", answer, incomingCall.mode);
-      setCall({ callId: incomingCall.callId, targetUserId: incomingCall.fromUserId, mode: incomingCall.mode, connected: true, muted: false });
+      setCall({ callId: incomingCall.callId, targetUserId: incomingCall.fromUserId, mode: incomingCall.mode, status: "connected", connected: true, muted: false });
       setIncomingCall(null);
     } catch { toast.error("Call सुरु हुन सकेन।"); }
   };
 
-  const endCall = (notify = true) => {
+  const endCall = (notify = true, notice = "Call ended") => {
     if (notify && call) sendCallSignal(call.targetUserId, call.callId, "end");
-    peerRef.current?.close(); peerRef.current = null;
+    peerRef.current?.close();
+    peerRef.current = null;
     localStreamRef.current?.getTracks().forEach((track) => track.stop());
-    localStreamRef.current = null; setCall(null); setIncomingCall(null);
+    localStreamRef.current = null;
+    setCall(null);
+    setIncomingCall(null);
+    setCallNotice(notice);
+    window.setTimeout(() => setCallNotice(null), 3000);
   };
 
   const declineIncomingCall = () => {
@@ -1054,9 +1075,27 @@ const user = useUserStore(
               <audio ref={remoteAudioRef} autoPlay />
               {call && (
                 <div className="m-3 flex items-center justify-between rounded-xl border bg-muted p-3">
-                  <span>{call.connected ? "Call connected" : "Calling…"}</span>
-                  <div className="flex gap-2"><Button size="icon" variant="outline" onClick={() => { const track = localStreamRef.current?.getAudioTracks()[0]; if (track) { track.enabled = !track.enabled; setCall({ ...call, muted: !track.enabled }); } }}><Mic className="h-4 w-4" /></Button><Button size="icon" variant="destructive" onClick={() => endCall()}><PhoneOff className="h-4 w-4" /></Button></div>
+                  <span className="font-medium">
+                    {call.status === "calling" ? "Calling…" : "Call connected"}
+                  </span>
+                  <div className="flex gap-2">
+                    <Button size="icon" variant="outline" onClick={() => {
+                      const track = localStreamRef.current?.getAudioTracks()[0];
+                      if (track) {
+                        track.enabled = !track.enabled;
+                        setCall({ ...call, muted: !track.enabled });
+                      }
+                    }}>
+                      {call.muted ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                    </Button>
+                    <Button size="icon" variant="destructive" onClick={() => endCall()}><PhoneOff className="h-4 w-4" /></Button>
+                  </div>
                 </div>
+              )}
+              {callNotice && (
+                <p className="mx-3 rounded-lg bg-muted px-3 py-2 text-center text-sm text-muted-foreground">
+                  {callNotice}
+                </p>
               )}
 
               <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4 pb-24">
