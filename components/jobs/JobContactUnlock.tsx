@@ -205,6 +205,8 @@ export default function JobContactUnlock({
   ) => {
     if (!token || sharing) return;
 
+    let shareUrl = "";
+
     try {
       setSharing(true);
 
@@ -223,23 +225,28 @@ export default function JobContactUnlock({
         throw new Error("Share link unavailable");
       }
 
-      const ownedKey =
-        "roomkhoj_owned_share_codes";
-      const owned = JSON.parse(
-        localStorage.getItem(ownedKey) || "[]",
-      ) as string[];
+      const ownedKey = "roomkhoj_owned_share_codes";
+      try {
+        const stored = JSON.parse(
+          localStorage.getItem(ownedKey) || "[]",
+        ) as unknown;
+        const owned = Array.isArray(stored)
+          ? stored.filter((value): value is string => typeof value === "string")
+          : [];
 
-      localStorage.setItem(
-        ownedKey,
-        JSON.stringify(
-          Array.from(
-            new Set([...owned, shareCode]),
-          ).slice(-50),
-        ),
-      );
+        localStorage.setItem(
+          ownedKey,
+          JSON.stringify(
+            Array.from(new Set([...owned, shareCode])).slice(-50),
+          ),
+        );
+      } catch {
+        // Saving local share history is optional and must never block sharing.
+      }
 
       const url =
         `${window.location.origin}${window.location.pathname}?share=${encodeURIComponent(shareCode)}`;
+      shareUrl = url;
       const text =
         `RoomKhoj मा ${jobTitle} vacancy हेर्नुहोस्: ${url}`;
 
@@ -281,9 +288,14 @@ export default function JobContactUnlock({
 
     } catch (error: any) {
       if (error?.name !== "AbortError") {
-        // Keep the UI friendly while preserving diagnostics in the browser console.
         console.error("Job share action failed", error);
-        toast.error("Share link बनाउन सकिएन। पछि फेरि प्रयास गर्नुहोस्।");
+
+        if (shareUrl) {
+          setManualShareUrl(shareUrl);
+          toast.message("Unique link तल देखिएको छ। त्यसलाई select गरेर copy वा share गर्नुहोस्।");
+        } else {
+          toast.error("Share link तयार गर्न सकिएन। एक पटक page refresh गरेर पुन: प्रयास गर्नुहोस्।");
+        }
       }
     } finally {
       setSharing(false);
