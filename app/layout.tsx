@@ -10,6 +10,7 @@ import { MobileBottomNav } from "@/components/MobileBottomNav";
 import { RoomKhojAIFloatingButton } from "@/components/RoomKhojAIFloatingButton";
 import { GuestLoginPopup } from "@/components/GuestLoginPopup";
 import { GlobalIncomingCall } from "@/components/GlobalIncomingCall";
+import { PwaInstallPrompt } from "@/components/PwaInstallPrompt";
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -104,6 +105,7 @@ export default function RootLayout({
           <TooltipProvider>
             <GuestLoginPopup />
             <GlobalIncomingCall />
+            <PwaInstallPrompt />
             {children}
 
           <RoomKhojAIFloatingButton />
