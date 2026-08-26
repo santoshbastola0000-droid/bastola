@@ -42,6 +42,8 @@ export default function JobContactUnlock({
     useState(Boolean(token));
   const [sharing, setSharing] =
     useState(false);
+  const [paying, setPaying] =
+    useState(false);
   const [showFlowerRain, setShowFlowerRain] =
     useState(false);
   const [showShareMenu, setShowShareMenu] =
