@@ -858,8 +858,19 @@ const user = useUserStore(
     };
     peer.ontrack = (event) => {
       const remoteStream = event.streams[0];
-      if (remoteAudioRef.current) remoteAudioRef.current.srcObject = remoteStream;
-      if (remoteVideoRef.current) remoteVideoRef.current.srcObject = remoteStream;
+      if (remoteAudioRef.current) {
+        remoteAudioRef.current.srcObject = remoteStream;
+        remoteAudioRef.current.muted = false;
+        remoteAudioRef.current.volume = 1;
+        void remoteAudioRef.current.play().catch((error) => {
+          console.warn("Remote call audio could not autoplay:", error);
+        });
+      }
+      if (remoteVideoRef.current) {
+        remoteVideoRef.current.srcObject = remoteStream;
+        remoteVideoRef.current.muted = false;
+        void remoteVideoRef.current.play().catch(() => {});
+      }
     };
     peer.onconnectionstatechange = () => {
       if (peer.connectionState === "connected") {
@@ -1323,7 +1334,7 @@ const user = useUserStore(
                   <Button type="button" size="icon" variant="outline" onClick={() => startCall("video")} aria-label="Video call"><Video className="h-4 w-4" /></Button>
                 </div>
               </header>
-              <audio ref={remoteAudioRef} autoPlay />
+              <audio ref={remoteAudioRef} autoPlay playsInline />
 
 
               <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4 pb-24">
