@@ -747,6 +747,19 @@ const user = useUserStore(
     localStreamRef.current = null; setCall(null); setIncomingCall(null);
   };
 
+  const declineIncomingCall = () => {
+    if (incomingCall) {
+      sendCallSignal(
+        incomingCall.fromUserId,
+        incomingCall.callId,
+        "end",
+        { reason: "declined" },
+        incomingCall.mode,
+      );
+    }
+    endCall(false);
+  };
+
   const sendMessage =
     async () => {
       const text = draft.trim();
@@ -1040,7 +1053,7 @@ const user = useUserStore(
               {incomingCall && (
                 <div className="m-3 flex items-center justify-between rounded-xl border bg-muted p-3">
                   <span>{incomingCall.mode === "video" ? "Incoming video call" : "Incoming audio call"}</span>
-                  <div className="flex gap-2"><Button onClick={acceptCall}>Accept</Button><Button variant="destructive" onClick={() => endCall()}>Decline</Button></div>
+                  <div className="flex gap-2"><Button onClick={acceptCall}>Accept</Button><Button variant="destructive" onClick={declineIncomingCall}>Decline</Button></div>
                 </div>
               )}
               {call && (
