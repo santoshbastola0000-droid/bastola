@@ -63,7 +63,9 @@ export function GlobalIncomingCall() {
 
     socket.on("call:signal", (signal: any) => {
       if (signal?.type === "offer" && signal?.callId) {
-        const saved = {
+        const saved: IncomingSignal & {
+          candidates: RTCIceCandidateInit[];
+        } = {
           callId: String(signal.callId),
           fromUserId: String(signal.fromUserId || ""),
           mode: signal.mode === "video" ? "video" : "audio",
