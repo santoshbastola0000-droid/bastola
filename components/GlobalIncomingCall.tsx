@@ -37,13 +37,29 @@ export function GlobalIncomingCall() {
     const socket: Socket = io(
       "https://api.roomkhoj.com/messages",
       {
-        transports: ["websocket"],
+        /*
+         * Keep a connection on every page.  Polling fallback is important
+         * on networks where a fresh WebSocket is delayed or blocked.
+         */
+        transports: ["polling", "websocket"],
+        upgrade: true,
+        reconnection: true,
+        reconnectionAttempts: Infinity,
+        reconnectionDelay: 800,
         withCredentials: true,
         auth: { token },
       },
     );
 
     socketRef.current = socket;
+
+    socket.on("connect", () => {
+      console.log("[GLOBAL CALL] connected", socket.id);
+    });
+
+    socket.on("connect_error", (error) => {
+      console.warn("[GLOBAL CALL] connection error", error.message);
+    });
 
     socket.on("call:signal", (signal: any) => {
       if (signal?.type === "offer" && signal?.callId) {
