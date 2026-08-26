@@ -11,6 +11,10 @@ import {
   Loader2,
   MessageCircle,
   Phone,
+  PhoneOff,
+  Video,
+  Mic,
+  MicOff,
   Search,
   Send,
 } from "lucide-react";
@@ -44,6 +48,11 @@ const user = useUserStore(
     (state) => state.token,
   );
 
+  const peerRef = useRef<RTCPeerConnection | null>(null);
+  const localStreamRef = useRef<MediaStream | null>(null);
+  const remoteAudioRef = useRef<HTMLAudioElement | null>(null);
+  const [call, setCall] = useState<any>(null);
+  const [incomingCall, setIncomingCall] = useState<any>(null);
   const [socket, setSocket] =
     useState<Socket | null>(null);
 
@@ -270,6 +279,18 @@ const user = useUserStore(
       },
     );
 
+
+    nextSocket.on("call:signal", async (signal: any) => {
+      if (signal.type === "offer") setIncomingCall(signal);
+      if (signal.type === "answer" && peerRef.current) {
+        await peerRef.current.setRemoteDescription(signal.payload);
+        setCall((current: any) => current ? { ...current, connected: true } : current);
+      }
+      if (signal.type === "candidate" && peerRef.current && signal.payload) {
+        await peerRef.current.addIceCandidate(signal.payload);
+      }
+      if (signal.type === "end") endCall(false);
+    });
 
     nextSocket.on(
       "message:status",
@@ -669,6 +690,63 @@ const user = useUserStore(
     };
   }, []);
 
+  const sendCallSignal = (targetUserId: string, callId: string, type: string, payload?: any, mode?: string) => {
+    socket?.emit("call:signal", { targetUserId, callId, type, payload, mode });
+  };
+
+  const createPeer = async (targetUserId: string, callId: string, mode: "audio" | "video") => {
+    const credentials = await messageService.getCallCredentials();
+    const peer = new RTCPeerConnection({ iceServers: credentials.iceServers });
+    peer.onicecandidate = (event) => {
+      if (event.candidate) sendCallSignal(targetUserId, callId, "candidate", event.candidate, mode);
+    };
+    peer.ontrack = (event) => {
+      if (remoteAudioRef.current) remoteAudioRef.current.srcObject = event.streams[0];
+    };
+    peerRef.current = peer;
+    return peer;
+  };
+
+  const startCall = async (mode: "audio" | "video") => {
+    if (!selected || !otherUserId) return;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: mode === "video" });
+      localStreamRef.current = stream;
+      const callId = crypto.randomUUID();
+      const peer = await createPeer(otherUserId, callId, mode);
+      stream.getTracks().forEach((track) => peer.addTrack(track, stream));
+      const offer = await peer.createOffer();
+      await peer.setLocalDescription(offer);
+      sendCallSignal(otherUserId, callId, "offer", offer, mode);
+      setCall({ callId, targetUserId: otherUserId, mode, connected: false, muted: false });
+    } catch {
+      toast.error("Microphone/camera permission दिनुहोस्।");
+    }
+  };
+
+  const acceptCall = async () => {
+    if (!incomingCall) return;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: incomingCall.mode === "video" });
+      localStreamRef.current = stream;
+      const peer = await createPeer(incomingCall.fromUserId, incomingCall.callId, incomingCall.mode);
+      stream.getTracks().forEach((track) => peer.addTrack(track, stream));
+      await peer.setRemoteDescription(incomingCall.payload);
+      const answer = await peer.createAnswer();
+      await peer.setLocalDescription(answer);
+      sendCallSignal(incomingCall.fromUserId, incomingCall.callId, "answer", answer, incomingCall.mode);
+      setCall({ callId: incomingCall.callId, targetUserId: incomingCall.fromUserId, mode: incomingCall.mode, connected: true, muted: false });
+      setIncomingCall(null);
+    } catch { toast.error("Call सुरु हुन सकेन।"); }
+  };
+
+  const endCall = (notify = true) => {
+    if (notify && call) sendCallSignal(call.targetUserId, call.callId, "end");
+    peerRef.current?.close(); peerRef.current = null;
+    localStreamRef.current?.getTracks().forEach((track) => track.stop());
+    localStreamRef.current = null; setCall(null); setIncomingCall(null);
+  };
+
   const sendMessage =
     async () => {
       const text = draft.trim();
@@ -936,7 +1014,7 @@ const user = useUserStore(
                     .toUpperCase()}
                 </div>
 
-                <div>
+                <div className="flex-1">
                   <p className="font-semibold">
                     {selected.otherUser
                       ?.phoneNumber ||
@@ -953,7 +1031,24 @@ const user = useUserStore(
                     {selected.contextType}
                   </p>
                 </div>
+                <div className="ml-auto flex gap-2">
+                  <Button type="button" size="icon" variant="outline" onClick={() => startCall("audio")} aria-label="Audio call"><Phone className="h-4 w-4" /></Button>
+                  <Button type="button" size="icon" variant="outline" onClick={() => startCall("video")} aria-label="Video call"><Video className="h-4 w-4" /></Button>
+                </div>
               </header>
+              <audio ref={remoteAudioRef} autoPlay />
+              {incomingCall && (
+                <div className="m-3 flex items-center justify-between rounded-xl border bg-muted p-3">
+                  <span>{incomingCall.mode === "video" ? "Incoming video call" : "Incoming audio call"}</span>
+                  <div className="flex gap-2"><Button onClick={acceptCall}>Accept</Button><Button variant="destructive" onClick={() => endCall()}>Decline</Button></div>
+                </div>
+              )}
+              {call && (
+                <div className="m-3 flex items-center justify-between rounded-xl border bg-muted p-3">
+                  <span>{call.connected ? "Call connected" : "Calling…"}</span>
+                  <div className="flex gap-2"><Button size="icon" variant="outline" onClick={() => { const track = localStreamRef.current?.getAudioTracks()[0]; if (track) { track.enabled = !track.enabled; setCall({ ...call, muted: !track.enabled }); } }}><Mic className="h-4 w-4" /></Button><Button size="icon" variant="destructive" onClick={() => endCall()}><PhoneOff className="h-4 w-4" /></Button></div>
+                </div>
+              )}
 
               <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4 pb-24">
                 {messagesLoading ? (
