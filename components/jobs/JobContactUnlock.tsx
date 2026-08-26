@@ -85,10 +85,8 @@ export default function JobContactUnlock({
 
       setStatus(next);
     } catch (error: any) {
-      toast.error(
-        error?.response?.data?.message ||
-          "Share progress load गर्न सकिएन।",
-      );
+      // Do not expose raw backend errors such as "Internal server error".
+      toast.error("Share progress load गर्न सकिएन। पछि फेरि प्रयास गर्नुहोस्।");
     } finally {
       setLoading(false);
     }
@@ -245,11 +243,8 @@ export default function JobContactUnlock({
       setStatus(next);
     } catch (error: any) {
       if (error?.name !== "AbortError") {
-        toast.error(
-          error?.response?.data?.message ||
-            error?.message ||
-            "Share link बनाउन सकिएन।",
-        );
+        // Keep the share UI friendly; technical backend errors are never shown.
+        toast.error("Share link बनाउन सकिएन। पछि फेरि प्रयास गर्नुहोस्।");
       }
     } finally {
       setSharing(false);
