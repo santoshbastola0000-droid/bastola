@@ -37,6 +37,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 
 import { privateApi } from "@/http/api/privateApi";
+import { jobPostingService } from "@/http/services/job-posting.service";
 import { aiProfileService } from "@/http/services/ai-profile.service";
 import {
   profileService,
@@ -86,6 +87,7 @@ export default function ProfilePage() {
         shareCount: number;
         requiredShares: number;
         isUnlocked: boolean;
+        contactPhone?: string | null;
         lastOpenedAt?: string | null;
       }>;
     }>({
@@ -479,12 +481,27 @@ export default function ProfilePage() {
               "/job-posting/share-summary",
             );
 
-          setShareSummary(
-            shareResponse.data || {
-              totalUniqueOpens: 0,
-              items: [],
-            },
+          const summary = shareResponse.data || {
+            totalUniqueOpens: 0,
+            items: [],
+          };
+
+          const items = await Promise.all(
+            (summary.items || []).map(async (item: any) => {
+              if (!item.isUnlocked) return item;
+
+              try {
+                const contact = await jobPostingService.getContact(
+                  item.jobPostingId,
+                );
+                return { ...item, contactPhone: contact.contactPhone };
+              } catch {
+                return item;
+              }
+            }),
           );
+
+          setShareSummary({ ...summary, items });
         } catch {
           setShareSummary({
             totalUniqueOpens: 0,
@@ -1626,6 +1643,15 @@ export default function ProfilePage() {
                                   : `${item.requiredShares - item.shareCount} remaining`}
                               </span>
                             </div>
+                            {item.isUnlocked && item.contactPhone && (
+                              <a
+                                href={`tel:${item.contactPhone}`}
+                                className="mt-3 flex items-center gap-2 rounded-xl bg-emerald-50 px-3 py-2 font-semibold text-emerald-800"
+                              >
+                                <Phone className="h-4 w-4" />
+                                Employer: {item.contactPhone}
+                              </a>
+                            )}
                           </div>
                         </div>
                       </div>
