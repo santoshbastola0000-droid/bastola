@@ -88,6 +88,26 @@ const RegisterForm = () => {
     },
   });
 
+  useEffect(() => {
+    const email =
+      new URLSearchParams(
+        window.location.search,
+      )
+        .get("email")
+        ?.trim()
+        .toLowerCase();
+
+    if (email) {
+      form.setValue("email", email, {
+        shouldValidate: true,
+      });
+      localStorage.setItem(
+        "verificationEmail",
+        email,
+      );
+    }
+  }, [form]);
+
   const { mutate: register, isPending } = useRegisterMutation();
 
   return (
