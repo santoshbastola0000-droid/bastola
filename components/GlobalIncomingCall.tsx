@@ -77,7 +77,12 @@ export function GlobalIncomingCall() {
           storageKey(saved.callId),
           JSON.stringify(saved),
         );
-        setIncoming(saved);
+        setIncoming({
+          callId: saved.callId,
+          fromUserId: saved.fromUserId,
+          mode: saved.mode === "video" ? "video" : "audio",
+          payload: saved.payload,
+        });
         return;
       }
 
