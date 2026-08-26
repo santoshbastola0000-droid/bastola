@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Phone, PhoneOff, Video } from "lucide-react";
 import { io, Socket } from "socket.io-client";
 import { usePathname, useRouter } from "next/navigation";
@@ -24,6 +24,7 @@ export function GlobalIncomingCall() {
   const token = useTokenStore((state) => state.token);
   const [incoming, setIncoming] =
     useState<IncomingSignal | null>(null);
+  const socketRef = useRef<Socket | null>(null);
 
   useEffect(() => {
     /*
@@ -41,6 +42,8 @@ export function GlobalIncomingCall() {
         auth: { token },
       },
     );
+
+    socketRef.current = socket;
 
     socket.on("call:signal", (signal: any) => {
       if (signal?.type === "offer" && signal?.callId) {
@@ -88,7 +91,10 @@ export function GlobalIncomingCall() {
       }
     });
 
-    return () => socket.disconnect();
+    return () => {
+      socketRef.current = null;
+      socket.disconnect();
+    };
   }, [pathname, token]);
 
   if (!incoming) return null;
@@ -124,6 +130,13 @@ export function GlobalIncomingCall() {
             className="flex-1"
             variant="destructive"
             onClick={() => {
+              socketRef.current?.emit("call:signal", {
+                targetUserId: incoming.fromUserId,
+                callId: incoming.callId,
+                type: "end",
+                mode: incoming.mode,
+                payload: { reason: "declined" },
+              });
               sessionStorage.removeItem(storageKey(incoming.callId));
               setIncoming(null);
             }}
