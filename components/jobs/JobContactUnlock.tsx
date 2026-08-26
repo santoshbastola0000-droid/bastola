@@ -137,18 +137,6 @@ export default function JobContactUnlock({
     wasUnlockedRef.current = status.isFullyUnlocked;
   }, [status]);
 
-  const getBrowserId = () => {
-    const key = "roomkhoj_browser_id";
-    let value = localStorage.getItem(key);
-
-    if (!value) {
-      value = crypto.randomUUID();
-      localStorage.setItem(key, value);
-    }
-
-    return value;
-  };
-
   const copyShareText = async (value: string) => {
     try {
       if (navigator.clipboard?.writeText && window.isSecureContext) {
@@ -191,7 +179,7 @@ export default function JobContactUnlock({
       new URLSearchParams(window.location.search)
         .get("share");
 
-    if (!shareCode) return;
+    if (!shareCode || !token) return;
 
     try {
       const owned = JSON.parse(
@@ -206,13 +194,12 @@ export default function JobContactUnlock({
         .recordOpen(
           jobId,
           shareCode,
-          getBrowserId(),
         )
         .catch(() => undefined);
     } catch {
       // Invalid local data must not block the job page.
     }
-  }, [jobId]);
+  }, [jobId, token]);
 
   const shareTo = async (
     channel: "native" | "whatsapp" | "facebook" | "copy",
