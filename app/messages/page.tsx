@@ -51,6 +51,8 @@ const user = useUserStore(
   const peerRef = useRef<RTCPeerConnection | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
   const remoteAudioRef = useRef<HTMLAudioElement | null>(null);
+  const activeCallRef = useRef<any>(null);
+  const callTimeoutRef = useRef<number | null>(null);
   const [call, setCall] = useState<any>(null);
   const [incomingCall, setIncomingCall] = useState<any>(null);
   const [callNotice, setCallNotice] = useState<string | null>(null);
@@ -287,6 +289,10 @@ const user = useUserStore(
         setCallNotice(null);
       }
       if (signal.type === "answer" && peerRef.current) {
+        if (callTimeoutRef.current) {
+          window.clearTimeout(callTimeoutRef.current);
+          callTimeoutRef.current = null;
+        }
         await peerRef.current.setRemoteDescription(signal.payload);
         setCall((current: any) =>
           current ? { ...current, status: "connected", connected: true } : current,
@@ -296,6 +302,9 @@ const user = useUserStore(
         await peerRef.current.addIceCandidate(signal.payload);
       }
       if (signal.type === "end") {
+        if (signal.payload?.reason === "declined") {
+          void recordMissedCall();
+        }
         endCall(false, signal.payload?.reason === "declined" ? "Call declined" : "Call ended");
       }
     });
@@ -722,6 +731,26 @@ const user = useUserStore(
     return peer;
   };
 
+  const recordMissedCall = async () => {
+    const activeCall = activeCallRef.current;
+    if (!activeCall?.conversationId) return;
+
+    try {
+      const saved = await messageService.recordMissedCall(
+        activeCall.conversationId,
+        activeCall.mode,
+      );
+      setMessages((prev) =>
+        prev.some((message) => message.id === saved.id)
+          ? prev
+          : [...prev, saved],
+      );
+      void loadConversations();
+    } catch (error) {
+      console.error("Missed call could not be saved:", error);
+    }
+  };
+
   const startCall = async (mode: "audio" | "video") => {
     if (!selected || !otherUserId) return;
     try {
@@ -733,10 +762,27 @@ const user = useUserStore(
       const offer = await peer.createOffer();
       await peer.setLocalDescription(offer);
       sendCallSignal(otherUserId, callId, "offer", offer, mode);
-      setCall({ callId, targetUserId: otherUserId, mode, status: "calling", connected: false, muted: false });
+      const outgoingCall = {
+        callId,
+        conversationId: selected.id,
+        targetUserId: otherUserId,
+        mode,
+        status: "calling",
+        connected: false,
+        muted: false,
+      };
+      activeCallRef.current = outgoingCall;
+      setCall(outgoingCall);
       setCallNotice(null);
-    } catch {
-      toast.error("Microphone/camera permission दिनुहोस्।");
+
+      callTimeoutRef.current = window.setTimeout(async () => {
+        if (activeCallRef.current?.callId !== callId) return;
+        await recordMissedCall();
+        sendCallSignal(otherUserId, callId, "end", { reason: "missed" }, mode);
+        endCall(false, "No answer — missed call");
+      }, 30000);
+    } catch (error) {
+      console.error("Unable to start call:", error);
     }
   };
 
@@ -751,17 +797,37 @@ const user = useUserStore(
       const answer = await peer.createAnswer();
       await peer.setLocalDescription(answer);
       sendCallSignal(incomingCall.fromUserId, incomingCall.callId, "answer", answer, incomingCall.mode);
-      setCall({ callId: incomingCall.callId, targetUserId: incomingCall.fromUserId, mode: incomingCall.mode, status: "connected", connected: true, muted: false });
+      const acceptedCall = {
+        callId: incomingCall.callId,
+        conversationId: selected?.id,
+        targetUserId: incomingCall.fromUserId,
+        mode: incomingCall.mode,
+        status: "connected",
+        connected: true,
+        muted: false,
+      };
+      activeCallRef.current = acceptedCall;
+      setCall(acceptedCall);
       setIncomingCall(null);
-    } catch { toast.error("Call सुरु हुन सकेन।"); }
+    } catch (error) {
+      console.error("Unable to accept call:", error);
+    }
   };
 
   const endCall = (notify = true, notice = "Call ended") => {
-    if (notify && call) sendCallSignal(call.targetUserId, call.callId, "end");
+    const activeCall = activeCallRef.current;
+    if (callTimeoutRef.current) {
+      window.clearTimeout(callTimeoutRef.current);
+      callTimeoutRef.current = null;
+    }
+    if (notify && activeCall) {
+      sendCallSignal(activeCall.targetUserId, activeCall.callId, "end");
+    }
     peerRef.current?.close();
     peerRef.current = null;
     localStreamRef.current?.getTracks().forEach((track) => track.stop());
     localStreamRef.current = null;
+    activeCallRef.current = null;
     setCall(null);
     setIncomingCall(null);
     setCallNotice(notice);
