@@ -150,25 +150,25 @@ export default function JobContactUnlock({
     try {
       if (navigator.clipboard?.writeText && window.isSecureContext) {
         await navigator.clipboard.writeText(value);
-        return;
+        return true;
       }
     } catch {
-      // Fall back for browsers that deny Clipboard API access.
+      // Some browsers deny clipboard permission; use a selectable link below.
     }
 
-    const textArea = document.createElement("textarea");
-    textArea.value = value;
-    textArea.setAttribute("readonly", "");
-    textArea.style.position = "fixed";
-    textArea.style.opacity = "0";
-    document.body.appendChild(textArea);
-    textArea.select();
-
-    const copied = document.execCommand("copy");
-    document.body.removeChild(textArea);
-
-    if (!copied) {
-      throw new Error("Clipboard unavailable");
+    try {
+      const textArea = document.createElement("textarea");
+      textArea.value = value;
+      textArea.setAttribute("readonly", "");
+      textArea.style.position = "fixed";
+      textArea.style.opacity = "0";
+      document.body.appendChild(textArea);
+      textArea.select();
+      const copied = document.execCommand("copy");
+      document.body.removeChild(textArea);
+      return copied;
+    } catch {
+      return false;
     }
   };
 
@@ -256,10 +256,13 @@ export default function JobContactUnlock({
           "noopener,noreferrer",
         );
       } else if (channel === "copy") {
-        await copyShareText(text);
-        toast.success(
-          "Unique link copied. अरूले खोलेपछि progress बढ्छ।",
-        );
+        const copied = await copyShareText(url);
+        if (copied) {
+          toast.success("Unique link copied. अरूले खोलेपछि progress बढ्छ।");
+        } else {
+          setManualShareUrl(url);
+          toast.message("Unique link तल देखिएको छ। त्यसलाई select गरेर copy गर्नुहोस्।");
+        }
       } else if (navigator.share) {
         await navigator.share({
           title: `${jobTitle} vacancy`,
@@ -267,8 +270,13 @@ export default function JobContactUnlock({
           url,
         });
       } else {
-        await copyShareText(text);
-        toast.success("Unique job link copied.");
+        const copied = await copyShareText(url);
+        if (copied) {
+          toast.success("Unique job link copied.");
+        } else {
+          setManualShareUrl(url);
+          toast.message("Unique link तल देखिएको छ। त्यसलाई select गरेर copy गर्नुहोस्।");
+        }
       }
 
     } catch (error: any) {
@@ -433,6 +441,20 @@ export default function JobContactUnlock({
               More
             </button>
           </div>
+          {manualShareUrl && (
+            <div className="mt-3">
+              <label htmlFor="job-share-url" className="mb-1 block text-xs font-semibold text-slate-700">
+                Unique share link
+              </label>
+              <input
+                id="job-share-url"
+                readOnly
+                value={manualShareUrl}
+                onFocus={(event) => event.currentTarget.select()}
+                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs text-slate-700"
+              />
+            </div>
+          )}
         </div>
       )}
 
