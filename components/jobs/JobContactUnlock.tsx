@@ -117,7 +117,7 @@ export default function JobContactUnlock({
       const next = await jobPostingService.recordShare(jobId, crypto.randomUUID());
       setStatus(next);
       if (next.isFullyUnlocked) toast.success("पूरा contact number unlock भयो।");
-      else if (next.isPartiallyUnlocked && next.shareCount === 5) toast.success("Contact number को 50% unlock भयो।");
+      
     } catch (error: any) {
       if (error?.name !== "AbortError") toast.error(error?.response?.data?.message || "Share record हुन सकेन।");
     } finally {
@@ -164,13 +164,6 @@ export default function JobContactUnlock({
       if (next.isFullyUnlocked) {
         toast.success(
           "पूरा contact number unlock भयो।",
-        );
-      } else if (
-        next.isPartiallyUnlocked &&
-        next.shareCount === 5
-      ) {
-        toast.success(
-          "Contact number को 50% unlock भयो।",
         );
       }
     } catch (error: any) {
@@ -227,7 +220,7 @@ export default function JobContactUnlock({
             Contact Employee
           </h2>
           <p className="mt-1 text-sm text-slate-600">
-            5 shares मा आधा र 10 shares मा पूरा नम्बर खुल्छ।
+            5 जना साथीलाई share गरेपछि पूरा नम्बर खुल्छ।
           </p>
         </div>
 
@@ -241,7 +234,7 @@ export default function JobContactUnlock({
           className="h-full bg-red-600 transition-all"
           style={{
             width: `${Math.min(
-              shareCount * 10,
+              shareCount * 20,
               100,
             )}%`,
           }}
@@ -249,8 +242,8 @@ export default function JobContactUnlock({
       </div>
 
       <div className="mt-2 flex justify-between text-sm font-medium text-slate-600">
-        <span>{shareCount}/10 shares</span>
-        <span>{shareCount * 10}%</span>
+        <span>{Math.min(shareCount, 5)}/5 shares</span>
+        <span>{Math.min(shareCount * 20, 100)}%</span>
       </div>
 
       {contact && (
