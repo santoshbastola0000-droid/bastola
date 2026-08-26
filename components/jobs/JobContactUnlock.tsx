@@ -83,7 +83,6 @@ export default function JobContactUnlock({
           jobId,
         );
 
-      setStatus(next);
     } catch (error: any) {
       // Do not expose raw backend errors such as "Internal server error".
       toast.error("Share progress load गर्न सकिएन। पछि फेरि प्रयास गर्नुहोस्।");
@@ -182,13 +181,18 @@ export default function JobContactUnlock({
     try {
       setSharing(true);
 
-      const next =
-        await jobPostingService.recordShare(
-          jobId,
-          getBrowserId(),
-        );
+      // The status endpoint creates one stable share code for this user and job.
+      // Reusing it avoids an unnecessary POST before opening the share menu.
+      let shareCode = status?.shareCode;
 
-      if (!next.shareCode) {
+      if (!shareCode) {
+        const next =
+          await jobPostingService.getShareStatus(jobId);
+        shareCode = shareCode;
+        setStatus(next);
+      }
+
+      if (!shareCode) {
         throw new Error("Share link unavailable");
       }
 
@@ -202,13 +206,13 @@ export default function JobContactUnlock({
         ownedKey,
         JSON.stringify(
           Array.from(
-            new Set([...owned, next.shareCode]),
+            new Set([...owned, shareCode]),
           ).slice(-50),
         ),
       );
 
       const url =
-        `${window.location.origin}${window.location.pathname}?share=${encodeURIComponent(next.shareCode)}`;
+        `${window.location.origin}${window.location.pathname}?share=${encodeURIComponent(shareCode)}`;
       const text =
         `RoomKhoj मा ${jobTitle} vacancy हेर्नुहोस्: ${url}`;
 
