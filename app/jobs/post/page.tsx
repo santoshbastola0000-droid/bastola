@@ -25,9 +25,14 @@ type FormState = {
   category: string;
   location: string;
   salary: string;
+  salaryMin: string;
+  salaryMax: string;
+  salaryNegotiable: boolean;
   experience: string;
   requiredEducation: string;
   requiredSkills: string;
+  requiresLicense: boolean;
+  licenseType: string;
   description: string;
   applicationDeadline: string;
   contactPhone: string;
@@ -39,9 +44,14 @@ const initialForm: FormState = {
   category: "",
   location: "",
   salary: "",
+  salaryMin: "",
+  salaryMax: "",
+  salaryNegotiable: false,
   experience: "",
   requiredEducation: "",
   requiredSkills: "",
+  requiresLicense: false,
+  licenseType: "",
   description: "",
   applicationDeadline: "",
   contactPhone: "",
@@ -74,6 +84,21 @@ const steps = [
     subtitle: "Enter monthly salary in NPR",
   },
   {
+    key: "salaryMin",
+    title: "What is the minimum salary?",
+    subtitle: "Optional monthly minimum salary in NPR",
+  },
+  {
+    key: "salaryMax",
+    title: "What is the maximum salary?",
+    subtitle: "Optional monthly maximum salary in NPR",
+  },
+  {
+    key: "salaryNegotiable",
+    title: "Is the salary negotiable?",
+    subtitle: "Turn this on if salary can be discussed",
+  },
+  {
     key: "experience",
     title: "How much experience is required?",
     subtitle: "Example: Fresher accepted, 1 year, 2 years preferred",
@@ -87,6 +112,16 @@ const steps = [
     key: "requiredSkills",
     title: "What skills should the candidate have?",
     subtitle: "Separate skills with commas",
+  },
+  {
+    key: "requiresLicense",
+    title: "Does this job require a licence?",
+    subtitle: "For example: driving licence or professional licence",
+  },
+  {
+    key: "licenseType",
+    title: "Which licence is required?",
+    subtitle: "Optional. Example: Category B driving licence",
   },
   {
     key: "description",
@@ -140,11 +175,16 @@ export default function PostVacancyPage() {
     if (key === "requiredSkills") return true;
     if (key === "description") return true;
     if (key === "applicationDeadline") return true;
+    if (key === "salaryMin") return true;
+    if (key === "salaryMax") return true;
+    if (key === "salaryNegotiable") return true;
+    if (key === "requiresLicense") return true;
+    if (key === "licenseType") return true;
 
     return String(form[key] || "").trim().length > 0;
   }, [current, form, isPreview]);
 
-  const updateField = (value: string) => {
+  const updateField = (value: string | boolean) => {
     if (isPreview) return;
 
     setForm((prev) => ({
@@ -192,6 +232,16 @@ export default function PostVacancyPage() {
         ? Number(form.salary)
         : null,
 
+      salaryMin: form.salaryMin
+        ? Number(form.salaryMin)
+        : null,
+
+      salaryMax: form.salaryMax
+        ? Number(form.salaryMax)
+        : null,
+
+      salaryNegotiable: form.salaryNegotiable,
+
       experience:
         form.experience.trim() || undefined,
 
@@ -202,6 +252,12 @@ export default function PostVacancyPage() {
         .split(",")
         .map((v) => v.trim())
         .filter(Boolean),
+
+      requiresLicense: form.requiresLicense,
+      licenseType:
+        form.requiresLicense && form.licenseType.trim()
+          ? form.licenseType.trim()
+          : undefined,
 
       description:
         form.description.trim() || undefined,
@@ -367,7 +423,25 @@ export default function PostVacancyPage() {
                         }
                         className="w-full rounded-2xl border border-slate-200 p-4 outline-none transition focus:border-red-400 focus:ring-2 focus:ring-red-100"
                       />
-                    ) : current.key === "salary" ? (
+                    ) : current.key === "salaryNegotiable" ||
+                      current.key === "requiresLicense" ? (
+                      <label className="flex cursor-pointer items-center gap-3 rounded-2xl border border-slate-200 p-4">
+                        <input
+                          autoFocus
+                          type="checkbox"
+                          checked={Boolean(form[current.key])}
+                          onChange={(e) =>
+                            updateField(e.target.checked)
+                          }
+                          className="h-5 w-5 accent-red-600"
+                        />
+                        <span className="font-medium text-slate-800">
+                          {form[current.key] ? "Yes" : "No"}
+                        </span>
+                      </label>
+                    ) : current.key === "salary" ||
+                      current.key === "salaryMin" ||
+                      current.key === "salaryMax" ? (
                       <input
                         autoFocus
                         type="number"
@@ -424,12 +498,17 @@ export default function PostVacancyPage() {
                             ).toLocaleString()}`
                           : "",
                       ],
+                      ["Minimum salary", form.salaryMin ? `रु ${Number(form.salaryMin).toLocaleString()}` : ""],
+                      ["Maximum salary", form.salaryMax ? `रु ${Number(form.salaryMax).toLocaleString()}` : ""],
+                      ["Salary negotiable", form.salaryNegotiable ? "Yes" : "No"],
                       ["Experience", form.experience],
                       [
                         "Education",
                         form.requiredEducation,
                       ],
                       ["Skills", form.requiredSkills],
+                      ["Licence required", form.requiresLicense ? "Yes" : "No"],
+                      ["Licence type", form.licenseType],
                       ["Description", form.description],
                       [
                         "Deadline",
