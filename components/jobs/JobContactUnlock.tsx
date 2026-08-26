@@ -46,6 +46,8 @@ export default function JobContactUnlock({
     useState(false);
   const [showShareMenu, setShowShareMenu] =
     useState(false);
+  const [manualShareUrl, setManualShareUrl] =
+    useState("");
   const wasUnlockedRef = useRef(false);
 
   const messageEmployer = async () => {
