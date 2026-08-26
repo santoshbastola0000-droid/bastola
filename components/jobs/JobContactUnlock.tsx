@@ -40,6 +40,9 @@ export default function JobContactUnlock({
     useState(Boolean(token));
   const [sharing, setSharing] =
     useState(false);
+  const [showFlowerRain, setShowFlowerRain] =
+    useState(false);
+  const wasUnlockedRef = useRef(false);
 
   const messageEmployer = async () => {
     if (!token || openingMessage) return;
