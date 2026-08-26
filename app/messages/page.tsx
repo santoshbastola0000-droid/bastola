@@ -736,6 +736,31 @@ const user = useUserStore(
     };
   }, []);
 
+  const bindLocalVideo = (
+    element: HTMLVideoElement | null,
+  ) => {
+    localVideoRef.current = element;
+
+    if (element && localStreamRef.current) {
+      element.srcObject = localStreamRef.current;
+      void element.play().catch(() => {});
+    }
+  };
+
+  const bindRemoteVideo = (
+    element: HTMLVideoElement | null,
+  ) => {
+    remoteVideoRef.current = element;
+
+    const remoteStream =
+      remoteAudioRef.current?.srcObject;
+
+    if (element && remoteStream) {
+      element.srcObject = remoteStream;
+      void element.play().catch(() => {});
+    }
+  };
+
   const sendCallSignal = (targetUserId: string, callId: string, type: string, payload?: any, mode?: string) => {
     socket?.emit("call:signal", { targetUserId, callId, type, payload, mode });
   };
@@ -1540,13 +1565,13 @@ const user = useUserStore(
             {call.mode === "video" && (
               <div className="relative mt-5 overflow-hidden rounded-xl bg-black aspect-video">
                 <video
-                  ref={remoteVideoRef}
+                  ref={bindRemoteVideo}
                   autoPlay
                   playsInline
                   className="h-full w-full object-cover"
                 />
                 <video
-                  ref={localVideoRef}
+                  ref={bindLocalVideo}
                   autoPlay
                   muted
                   playsInline
