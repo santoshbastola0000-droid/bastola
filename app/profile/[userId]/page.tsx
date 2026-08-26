@@ -29,6 +29,7 @@ import {
   type PublicProfile,
 } from "@/http/services/profile.service";
 import { profileMediaUrl } from "@/lib/profile-media";
+import { messageService } from "@/http/services/message.service";
 
 type Tab =
   | "posts"
@@ -71,6 +72,9 @@ export default function PublicProfilePage() {
     useState(true);
 
   const [friendLoading, setFriendLoading] =
+    useState(false);
+
+  const [messageLoading, setMessageLoading] =
     useState(false);
 
   const load = async () => {
@@ -169,6 +173,36 @@ export default function PublicProfilePage() {
       );
     } finally {
       setFriendLoading(false);
+    }
+  };
+
+  const handleMessage = async () => {
+    if (messageLoading) return;
+
+    try {
+      setMessageLoading(true);
+      const result =
+        await messageService.startByUser(userId);
+      const conversationId =
+        result?.conversation?.id || result?.id;
+
+      if (!conversationId) {
+        throw new Error("Conversation could not be created");
+      }
+
+      router.push(
+        `/messages?conversation=${encodeURIComponent(
+          conversationId,
+        )}`,
+      );
+    } catch (error: any) {
+      toast.error(
+        error?.response?.data?.message ||
+          error?.message ||
+          "Message सुरु गर्न सकिएन।",
+      );
+    } finally {
+      setMessageLoading(false);
     }
   };
 
@@ -310,21 +344,14 @@ export default function PublicProfilePage() {
                   <Button
                     variant="secondary"
                     className="flex-1 gap-2 sm:flex-none"
-                    onClick={() => {
-                      /*
-                       * Next patch:
-                       * start conversation by
-                       * exact userId.
-                       */
-                      router.push(
-                        `/messages?user=${userId}`,
-                      );
-                    }}
+                    onClick={handleMessage}
+                    disabled={messageLoading}
                   >
                     <MessageCircle className="h-4 w-4" />
-                    Message
-                  </Button>
-                </div>
+                    {messageLoading
+                      ? "Opening..."
+                      : "Message"}
+                  </Button>               </div>
               )}
             </div>
 
