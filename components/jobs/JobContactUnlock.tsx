@@ -188,7 +188,7 @@ export default function JobContactUnlock({
       if (!shareCode) {
         const next =
           await jobPostingService.getShareStatus(jobId);
-        shareCode = shareCode;
+        shareCode = next.shareCode;
         setStatus(next);
       }
 
@@ -244,7 +244,6 @@ export default function JobContactUnlock({
         toast.success("Unique job link copied.");
       }
 
-      setStatus(next);
     } catch (error: any) {
       if (error?.name !== "AbortError") {
         // Keep the share UI friendly; technical backend errors are never shown.
