@@ -96,6 +96,11 @@ export const messageService = {
     return response.data;
   },
 
+  findProfileByContact: async (contact: string) => {
+    const response = await privateApi.post("/message/find-profile-by-contact", { contact });
+    return response.data as { id: string; name: string; phoneNumber: string };
+  },
+
   startByContact: async (
     contact: string,
   ) => {
