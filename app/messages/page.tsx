@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { io, Socket } from "socket.io-client";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -29,6 +29,7 @@ import { useUserStore } from "@/stores/user-store";
 import useTokenStore from "@/store";
 
 function MessagesContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const requestedConversationId = searchParams.get("conversation");
 
@@ -319,17 +320,14 @@ const user = useUserStore(
         setPhoneResult(null);
 
         const result =
-          await messageService.startByContact(
+          await messageService.findProfileByContact(
             contact,
           );
 
         setPhoneResult(result.user);
 
-        await loadConversations();
+        // Finding a number must never create a conversation.
 
-        await openConversation(
-          result.conversation,
-        );
       } catch (error: any) {
         toast.error(
           error?.response?.data?.message ||
@@ -797,14 +795,15 @@ const user = useUserStore(
               </div>
 
               {phoneResult && (
-                <div className="mt-3 rounded-lg bg-muted p-3">
-                  <p className="font-medium">
-                    {phoneResult.name}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    {phoneResult.phoneNumber}
-                  </p>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => router.push(`/profile/${phoneResult.id}`)}
+                  className="mt-3 w-full rounded-lg bg-muted p-3 text-left hover:bg-muted/80"
+                >
+                  <p className="font-medium">{phoneResult.name}</p>
+                  <p className="text-sm text-muted-foreground">{phoneResult.phoneNumber}</p>
+                  <p className="mt-1 text-xs font-semibold text-primary">Profile हेर्नुहोस् → त्यहाँबाट Message गर्नुहोस्</p>
+                </button>
               )}
             </div>
 
