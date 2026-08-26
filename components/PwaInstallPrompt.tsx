@@ -80,7 +80,7 @@ export function PwaInstallPrompt() {
     setInstallPrompt(null);
   };
 
-  if (dismissed || (!installPrompt && !isIos)) return null;
+  if (dismissed) return null;
 
   return (
     <div className="fixed bottom-20 left-3 right-3 z-[90] mx-auto max-w-md rounded-2xl border bg-background p-4 shadow-xl md:bottom-5">
@@ -105,12 +105,12 @@ export function PwaInstallPrompt() {
           <p className="font-medium">iPhone मा यसरी install गर्नुहोस्:</p>
           <p className="mt-1">Safari को Share (□↑) → Add to Home Screen → Add</p>
         </div>
-      ) : (
+      ) : installPrompt || isIos ? (
         <Button className="mt-4 w-full" onClick={install}>
           <Download className="mr-2 h-4 w-4" />
           Install RoomKhoj
         </Button>
-      )}
+      ) : null}
 
       {notificationPermission === "granted" ? (
         <p className="mt-3 text-center text-sm font-medium text-emerald-600">
