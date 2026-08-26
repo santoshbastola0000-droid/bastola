@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -112,6 +112,22 @@ export default function JobContactUnlock({
       document.removeEventListener("visibilitychange", refresh);
     };
   }, [loadStatus, status?.isFullyUnlocked, token]);
+
+  useEffect(() => {
+    if (!status) return;
+
+    if (status.isFullyUnlocked && !wasUnlockedRef.current) {
+      setShowFlowerRain(true);
+      const timer = window.setTimeout(
+        () => setShowFlowerRain(false),
+        5000,
+      );
+      wasUnlockedRef.current = true;
+      return () => window.clearTimeout(timer);
+    }
+
+    wasUnlockedRef.current = status.isFullyUnlocked;
+  }, [status]);
 
   const getBrowserId = () => {
     const key = "roomkhoj_browser_id";
@@ -268,7 +284,35 @@ export default function JobContactUnlock({
     status?.contactPhone || null;
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <>
+      {showFlowerRain && (
+        <div
+          aria-hidden="true"
+          className="pointer-events-none fixed inset-0 z-[100] overflow-hidden"
+        >
+          <style>{`
+            @keyframes job-flower-rain {
+              from { transform: translate3d(0, -12vh, 0) rotate(0deg); opacity: 0; }
+              8% { opacity: 1; }
+              to { transform: translate3d(12vw, 112vh, 0) rotate(540deg); opacity: 0; }
+            }
+          `}</style>
+          {Array.from({ length: 64 }, (_, index) => (
+            <span
+              key={index}
+              className="absolute text-3xl drop-shadow-sm"
+              style={{
+                left: `${(index * 37) % 100}%`,
+                animation: `job-flower-rain ${2.4 + (index % 5) * 0.35}s linear ${(index % 12) * 0.12}s forwards`,
+              }}
+            >
+              {index % 3 === 0 ? "🌸" : index % 3 === 1 ? "🌺" : "🌼"}
+            </span>
+          ))}
+        </div>
+      )}
+
+      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
       <div className="flex items-center justify-between gap-4">
         <div>
           <h2 className="text-xl font-bold text-slate-900">
@@ -349,6 +393,7 @@ export default function JobContactUnlock({
           Share vacancy
         </button>
       )}
-    </div>
+      </div>
+    </>
   );
 }
