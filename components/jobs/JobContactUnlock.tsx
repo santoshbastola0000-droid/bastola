@@ -146,6 +146,32 @@ export default function JobContactUnlock({
     return value;
   };
 
+  const copyShareText = async (value: string) => {
+    try {
+      if (navigator.clipboard?.writeText && window.isSecureContext) {
+        await navigator.clipboard.writeText(value);
+        return;
+      }
+    } catch {
+      // Fall back for browsers that deny Clipboard API access.
+    }
+
+    const textArea = document.createElement("textarea");
+    textArea.value = value;
+    textArea.setAttribute("readonly", "");
+    textArea.style.position = "fixed";
+    textArea.style.opacity = "0";
+    document.body.appendChild(textArea);
+    textArea.select();
+
+    const copied = document.execCommand("copy");
+    document.body.removeChild(textArea);
+
+    if (!copied) {
+      throw new Error("Clipboard unavailable");
+    }
+  };
+
   useEffect(() => {
     const shareCode =
       new URLSearchParams(window.location.search)
@@ -230,7 +256,7 @@ export default function JobContactUnlock({
           "noopener,noreferrer",
         );
       } else if (channel === "copy") {
-        await navigator.clipboard.writeText(text);
+        await copyShareText(text);
         toast.success(
           "Unique link copied. अरूले खोलेपछि progress बढ्छ।",
         );
@@ -241,7 +267,7 @@ export default function JobContactUnlock({
           url,
         });
       } else {
-        await navigator.clipboard.writeText(text);
+        await copyShareText(text);
         toast.success("Unique job link copied.");
       }
 
