@@ -19,6 +19,7 @@ import {
   MapPin,
   Phone,
   Save,
+  Share2,
   Trash2,
   UserRound,
   Users,
@@ -48,6 +49,7 @@ type ActivityTab =
   | "rooms"
   | "jobs"
   | "friends"
+  | "shares"
   | "about";
 
 export default function ProfilePage() {
@@ -73,6 +75,23 @@ export default function ProfilePage() {
 
   const [friends, setFriends] =
     useState<any[]>([]);
+
+  const [shareSummary, setShareSummary] =
+    useState<{
+      totalUniqueOpens: number;
+      items: Array<{
+        jobPostingId: string;
+        jobTitle: string;
+        companyName?: string | null;
+        shareCount: number;
+        requiredShares: number;
+        isUnlocked: boolean;
+        lastOpenedAt?: string | null;
+      }>;
+    }>({
+      totalUniqueOpens: 0,
+      items: [],
+    });
 
   const [profileLoading, setProfileLoading] =
     useState(true);
@@ -452,6 +471,25 @@ export default function ProfilePage() {
           );
         } catch {
           setFriends([]);
+        }
+
+        try {
+          const shareResponse =
+            await privateApi.get(
+              "/job-posting/share-summary",
+            );
+
+          setShareSummary(
+            shareResponse.data || {
+              totalUniqueOpens: 0,
+              items: [],
+            },
+          );
+        } catch {
+          setShareSummary({
+            totalUniqueOpens: 0,
+            items: [],
+          });
         }
       } catch (error: any) {
         console.error(
@@ -1308,6 +1346,10 @@ export default function ProfilePage() {
                   "Friends",
                 ],
                 [
+                  "shares",
+                  "Link Opens",
+                ],
+                [
                   "about",
                   "About",
                 ],
@@ -1526,6 +1568,68 @@ export default function ProfilePage() {
                         </button>
                       ),
                     )
+                  )}
+                </div>
+              )}
+
+              {tab ===
+                "shares" && (
+                <div className="space-y-3">
+                  <div className="rounded-2xl bg-emerald-50 p-4">
+                    <p className="text-sm text-emerald-700">
+                      Total unique link opens
+                    </p>
+                    <p className="mt-1 text-3xl font-bold text-emerald-900">
+                      {shareSummary.totalUniqueOpens}
+                    </p>
+                  </div>
+
+                  {shareSummary.items.length === 0 ? (
+                    <div className="py-10 text-center text-sm text-muted-foreground">
+                      अहिलेसम्म कसैले तपाईंको shared job link खोलेको छैन।
+                    </div>
+                  ) : (
+                    shareSummary.items.map((item) => (
+                      <div
+                        key={item.jobPostingId}
+                        className="rounded-2xl border p-4"
+                      >
+                        <div className="flex items-start gap-3">
+                          <Share2 className="mt-1 h-5 w-5 shrink-0 text-emerald-600" />
+                          <div className="min-w-0 flex-1">
+                            <h3 className="font-semibold">
+                              {item.jobTitle}
+                            </h3>
+                            <p className="text-sm text-muted-foreground">
+                              {item.companyName || "Company"}
+                            </p>
+                            <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted">
+                              <div
+                                className="h-full bg-emerald-600"
+                                style={{
+                                  width: `${Math.min(
+                                    (item.shareCount /
+                                      item.requiredShares) *
+                                      100,
+                                    100,
+                                  )}%`,
+                                }}
+                              />
+                            </div>
+                            <div className="mt-2 flex justify-between text-sm font-medium">
+                              <span>
+                                {item.shareCount}/{item.requiredShares} people opened
+                              </span>
+                              <span>
+                                {item.isUnlocked
+                                  ? "Unlocked"
+                                  : `${item.requiredShares - item.shareCount} remaining`}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))
                   )}
                 </div>
               )}
