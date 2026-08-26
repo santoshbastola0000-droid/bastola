@@ -724,8 +724,24 @@ const user = useUserStore(
   };
 
   const createPeer = async (targetUserId: string, callId: string, mode: "audio" | "video") => {
-    const credentials = await messageService.getCallCredentials();
-    const peer = new RTCPeerConnection({ iceServers: credentials.iceServers });
+    /*
+     * TURN credentials improve reliability, but a temporary TURN/API
+     * configuration error must never prevent the call popup or signaling.
+     */
+    let iceServers: RTCIceServer[] = [
+      { urls: ["stun:stun.l.google.com:19302"] },
+    ];
+
+    try {
+      const credentials = await messageService.getCallCredentials();
+      if (Array.isArray(credentials?.iceServers) && credentials.iceServers.length) {
+        iceServers = credentials.iceServers;
+      }
+    } catch (error) {
+      console.warn("TURN credentials unavailable; using STUN fallback.", error);
+    }
+
+    const peer = new RTCPeerConnection({ iceServers });
     peer.onicecandidate = (event) => {
       if (event.candidate) sendCallSignal(targetUserId, callId, "candidate", event.candidate, mode);
     };
