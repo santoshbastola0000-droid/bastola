@@ -2,7 +2,7 @@ import type { AxiosError, InternalAxiosRequestConfig } from "axios";
 import useTokenStore from "@/store";
 import { toast } from "sonner";
 import { useUserStore } from "@/stores/user-store";
-import { api } from "@/http/api/api";
+import { api, browserApiBaseUrl } from "@/http/api/api";
 
 const MANUAL_LOGOUT_KEY = "roomkhoj_manual_logout_at";
 
@@ -12,7 +12,7 @@ type RetriableRequest = InternalAxiosRequestConfig & {
 };
 
 export const privateApi = api.create({
-  baseURL: process.env.NEXT_PUBLIC_BACKEND_URL || "https://api.roomkhoj.com",
+  baseURL: browserApiBaseUrl,
   withCredentials: true,
 });
 
