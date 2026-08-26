@@ -428,8 +428,13 @@ useEffect(() => {
     const textToSend = customText || input;
     if ((!textToSend.trim() && !selectedFile) || isTyping) return;
 
-    if (loggedInUserId && balance < 1) {
-      alert("Your AI balance is finished! Please top-up to continue chatting.");
+    if (!token || !loggedInUserId) {
+      alert("RoomKhoj AI प्रयोग गर्न पहिले login गर्नुहोस्।");
+      return;
+    }
+
+    if (balance < 1) {
+      alert("AI चलाउन wallet balance आवश्यक छ। कृपया wallet top-up गर्नुहोस्।");
       return;
     }
 
