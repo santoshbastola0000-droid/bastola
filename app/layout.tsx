@@ -9,6 +9,7 @@ import { GlobalChatbot } from "@/components/GlobalChatbot";
 import { MobileBottomNav } from "@/components/MobileBottomNav";
 import { RoomKhojAIFloatingButton } from "@/components/RoomKhojAIFloatingButton";
 import { GuestLoginPopup } from "@/components/GuestLoginPopup";
+import { GlobalIncomingCall } from "@/components/GlobalIncomingCall";
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -102,6 +103,7 @@ export default function RootLayout({
         <QueryClientProviderWrapper>
           <TooltipProvider>
             <GuestLoginPopup />
+            <GlobalIncomingCall />
             {children}
 
           <RoomKhojAIFloatingButton />
