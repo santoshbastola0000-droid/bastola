@@ -18,6 +18,7 @@ import {
   Bot,
   BriefcaseBusiness,
   GitFork,
+  Bell,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -73,6 +74,11 @@ const navItems: NavItem[] = [
     title: "Users",
     href: "/admin/dashboard/users",
     icon: Users,
+  },
+  {
+    title: "Notifications",
+    href: "/admin/dashboard/notifications",
+    icon: Bell,
   },
   {
     title: "Vacancies",

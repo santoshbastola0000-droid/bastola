@@ -21,6 +21,37 @@ export function urlBase64ToUint8Array(
   );
 }
 
+function getApiUrl() {
+  const api = process.env.NEXT_PUBLIC_API_URL;
+
+  if (!api) {
+    throw new Error('NEXT_PUBLIC_API_URL missing');
+  }
+
+  return api;
+}
+
+export async function getPushStatus() {
+  const response = await fetch(
+    `${getApiUrl()}/push/public-key`,
+    { credentials: 'include' },
+  );
+
+  if (!response.ok) {
+    throw new Error('Web push server is not configured.');
+  }
+
+  const data = await response.json();
+  if (!data?.publicKey) {
+    throw new Error('Web push public key missing.');
+  }
+
+  return {
+    publicKey: String(data.publicKey),
+    testEnabled: data?.testEnabled === true,
+  };
+}
+
 export async function registerPush() {
   if (
     typeof window === 'undefined' ||
@@ -56,52 +87,27 @@ export async function registerPush() {
     return existing;
   }
 
-  const vapidKey =
-    process.env
-      .NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-
-  if (!vapidKey) {
-    throw new Error(
-      'NEXT_PUBLIC_VAPID_PUBLIC_KEY missing',
-    );
-  }
+  const { publicKey: vapidKey } = await getPushStatus();
 
   return registration.pushManager.subscribe({
     userVisibleOnly: true,
-
     applicationServerKey:
       urlBase64ToUint8Array(vapidKey),
   });
 }
 
 export async function subscribePush() {
-  const subscription =
-    await registerPush();
-
-  const api =
-    process.env.NEXT_PUBLIC_API_URL;
-
-  if (!api) {
-    throw new Error(
-      'NEXT_PUBLIC_API_URL missing',
-    );
-  }
+  const subscription = await registerPush();
 
   const response = await fetch(
-    `${api}/push/subscriptions`,
+    `${getApiUrl()}/push/subscriptions`,
     {
       method: 'POST',
-
       credentials: 'include',
-
       headers: {
-        'Content-Type':
-          'application/json',
+        'Content-Type': 'application/json',
       },
-
-      body: JSON.stringify(
-        subscription.toJSON(),
-      ),
+      body: JSON.stringify(subscription.toJSON()),
     },
   );
 
@@ -112,4 +118,28 @@ export async function subscribePush() {
   }
 
   return response.json();
+}
+
+export async function sendPushTest() {
+  await subscribePush();
+
+  const response = await fetch(
+    `${getApiUrl()}/push/test`,
+    {
+      method: 'POST',
+      credentials: 'include',
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      'Test notification send failed.',
+    );
+  }
+
+  return response.json() as Promise<{
+    attempted: number;
+    delivered: number;
+    failed: number;
+  }>;
 }

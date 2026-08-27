@@ -1,6 +1,7 @@
 'use client';
 
 import {
+  useEffect,
   useState,
 } from 'react';
 
@@ -10,6 +11,8 @@ import {
 } from 'lucide-react';
 
 import {
+  getPushStatus,
+  sendPushTest,
   subscribePush,
 } from '@/lib/web-push';
 
@@ -19,6 +22,15 @@ export default function PushNotificationSetup() {
 
   const [message, setMessage] =
     useState('');
+
+  const [testEnabled, setTestEnabled] =
+    useState(false);
+
+  useEffect(() => {
+    getPushStatus()
+      .then((status) => setTestEnabled(status.testEnabled))
+      .catch(() => setTestEnabled(false));
+  }, []);
 
   async function enable() {
     try {
@@ -41,6 +53,29 @@ export default function PushNotificationSetup() {
     }
   }
 
+  async function sendTest() {
+    try {
+      setLoading(true);
+      setMessage('');
+
+      const result = await sendPushTest();
+
+      setMessage(
+        result.delivered > 0
+          ? '“hii” test notification पठाइयो।'
+          : 'यस browser मा active subscription भेटिएन।',
+      );
+    } catch (error) {
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : 'Test notification पठाउन सकेन।',
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
     <div className="rounded-2xl border bg-white p-4 shadow-sm">
       <div className="flex items-start gap-3">
@@ -50,25 +85,38 @@ export default function PushNotificationSetup() {
 
         <div className="flex-1">
           <h3 className="font-semibold">
-            Job invitation notification
+            Browser notifications
           </h3>
 
           <p className="mt-1 text-sm text-slate-600">
-            Employer ले job invite पठाउँदा browser notification पाउनुहोस्।
+            RoomKhoj का नयाँ message र job invitation को browser notification पाउनुहोस्।
           </p>
 
-          <button
-            type="button"
-            onClick={enable}
-            disabled={loading}
-            className="mt-3 inline-flex items-center gap-2 rounded-xl bg-black px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
-          >
-            {loading && (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            )}
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={enable}
+              disabled={loading}
+              className="inline-flex items-center gap-2 rounded-xl bg-black px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
+            >
+              {loading && (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              )}
 
-            Enable notifications
-          </button>
+              Enable notifications
+            </button>
+
+{testEnabled && (
+              <button
+                type="button"
+                onClick={sendTest}
+                disabled={loading}
+                className="rounded-xl border px-4 py-2 text-sm font-medium disabled:opacity-60"
+              >
+                Test “hii”
+              </button>
+            )}
+          </div>
 
           {message && (
             <p className="mt-2 text-sm text-slate-600">
