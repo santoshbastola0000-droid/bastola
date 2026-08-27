@@ -14,6 +14,10 @@ export function AutoLocationUpdate() {
     privateApi.post('/user/location', { latitude: coords.latitude, longitude: coords.longitude }).catch(() => undefined);
     setLoading(false);
     window.dispatchEvent(new Event('roomkhoj-location-updated'));
+    if (!sessionStorage.getItem('roomkhoj-location-feed-refreshed')) {
+      sessionStorage.setItem('roomkhoj-location-feed-refreshed', '1');
+      window.location.reload();
+    }
   };
 
   const requestLocation = () => {
