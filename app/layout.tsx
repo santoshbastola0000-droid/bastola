@@ -13,6 +13,7 @@ import { GlobalIncomingCall } from "@/components/GlobalIncomingCall";
 import { PwaInstallPrompt } from "@/components/PwaInstallPrompt";
 import { LanguageProvider } from "@/components/providers/LanguageProvider";
 import { AutoPushPermission } from "@/components/AutoPushPermission";
+import { AutoLocationUpdate } from "@/components/AutoLocationUpdate";
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -105,6 +106,7 @@ export default function RootLayout({
         <LanguageProvider>
         <SessionChecker />
         <AutoPushPermission />
+        <AutoLocationUpdate />
         <QueryClientProviderWrapper>
           <TooltipProvider>
             <GuestLoginPopup />
