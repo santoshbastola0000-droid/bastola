@@ -377,6 +377,23 @@ function RoomsContent() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
+  const applySavedLocation = useCallback(() => {
+    try {
+      const saved = localStorage.getItem("roomkhoj-viewer-location");
+      if (!saved) return;
+      const location = JSON.parse(saved);
+      if (Number.isFinite(location?.latitude) && Number.isFinite(location?.longitude)) {
+        setFilters((current) => ({ ...current, lat: location.latitude, lng: location.longitude }));
+      }
+    } catch { /* ignore malformed saved location */ }
+  }, []);
+
+  useEffect(() => {
+    applySavedLocation();
+    window.addEventListener("roomkhoj-location-updated", applySavedLocation);
+    return () => window.removeEventListener("roomkhoj-location-updated", applySavedLocation);
+  }, [applySavedLocation]);
+
   const [filters, setFilters] = useState<FilterState>(() => {
     const cats = (searchParams?.getAll("cat") as RoomCategory[]) ?? [];
     return {
