@@ -33,6 +33,7 @@ import {
 import { useUserStore } from "@/stores/user-store";
 import { useLogout } from "@/hooks/useLogout";
 import { LogoutConfirmDialog } from "@/components/LogoutConfirmDialog";
+import { featureSettingsService } from "@/http/services/feature-settings.service";
 
 const navItems = [
   { title: "Dashboard", href: "/user/dashboard", icon: Home },
@@ -136,9 +137,14 @@ function SidebarBody({
   const { logout } = useLogout();
   const [showLogout, setShowLogout] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [peopleEnabled, setPeopleEnabled] = useState(false);
 
   useEffect(() => {
     setMounted(true);
+    featureSettingsService
+      .getPeople()
+      .then((setting) => setPeopleEnabled(setting.enabled))
+      .catch(() => setPeopleEnabled(false));
   }, []);
 
   const handleLogout = async () => {
@@ -205,7 +211,7 @@ function SidebarBody({
       {/* ── Nav items ── */}
       <nav className="flex-1 overflow-y-auto p-3 space-y-0.5 mt-2">
         <TooltipProvider delayDuration={0}>
-          {navItems.map((item) =>
+          {navItems.filter((item) => item.href !== "/user/dashboard/people" || peopleEnabled).map((item) =>
             collapsed && mounted ? (
               <Tooltip key={item.href}>
                 <TooltipTrigger asChild>
