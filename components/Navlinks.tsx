@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Home, Hotel, LayoutDashboard, Sparkles, Compass, BriefcaseBusiness } from "lucide-react";
+import { useLanguage } from "@/components/providers/LanguageProvider";
 
 interface NavLinksProps {
   variant?: "desktop" | "mobile";
@@ -20,6 +21,27 @@ export function NavLinks({
   onItemClick,
 }: NavLinksProps) {
   const pathname = usePathname();
+  const { language } = useLanguage();
+
+  const labels = language === "ne"
+    ? {
+        home: "होम",
+        rooms: "कोठा खोज्नुहोस्",
+        jobs: "जागिर खोज्नुहोस्",
+        about: "हाम्रो बारेमा",
+        contact: "सम्पर्क",
+        adminDashboard: "एडमिन ड्यासबोर्ड",
+        myDashboard: "मेरो ड्यासबोर्ड",
+      }
+    : {
+        home: "Home",
+        rooms: "Browse Rooms",
+        jobs: "Find Jobs",
+        about: "About",
+        contact: "Contact",
+        adminDashboard: "Admin Dashboard",
+        myDashboard: "My Dashboard",
+      };
 
   const isActive = (path: string) => pathname === path;
 
@@ -37,18 +59,18 @@ export function NavLinks({
   const getDashboardLabel = () => {
     switch (userRole) {
       case "ADMIN":
-        return "Admin Dashboard";
+        return labels.adminDashboard;
       case "USER":
-        return "My Dashboard";
+        return labels.myDashboard;
     }
   };
 
   const publicLinks = [
-    { href: "/", label: "Home", icon: Home },
-    { href: "/rooms", label: "Browse Rooms", icon: Compass },
-{ href: "/jobs", label: "Find Jobs", icon: BriefcaseBusiness },
-    { href: "/about", label: "About", icon: Sparkles },
-    { href: "/contact", label: "Contact", icon: Hotel },
+    { href: "/", label: labels.home, icon: Home },
+    { href: "/rooms", label: labels.rooms, icon: Compass },
+{ href: "/jobs", label: labels.jobs, icon: BriefcaseBusiness },
+    { href: "/about", label: labels.about, icon: Sparkles },
+    { href: "/contact", label: labels.contact, icon: Hotel },
   ];
 
   // Authenticated navigation items

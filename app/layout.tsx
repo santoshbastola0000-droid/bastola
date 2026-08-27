@@ -11,6 +11,7 @@ import { RoomKhojAIFloatingButton } from "@/components/RoomKhojAIFloatingButton"
 import { GuestLoginPopup } from "@/components/GuestLoginPopup";
 import { GlobalIncomingCall } from "@/components/GlobalIncomingCall";
 import { PwaInstallPrompt } from "@/components/PwaInstallPrompt";
+import { LanguageProvider } from "@/components/providers/LanguageProvider";
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -100,6 +101,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased pb-[calc(68px+env(safe-area-inset-bottom))] md:pb-0`}
       >
+        <LanguageProvider>
         <SessionChecker />
         <QueryClientProviderWrapper>
           <TooltipProvider>
@@ -114,6 +116,7 @@ export default function RootLayout({
           </TooltipProvider>
           <Toaster />
         </QueryClientProviderWrapper>
+        </LanguageProvider>
       </body>
     </html>
   );

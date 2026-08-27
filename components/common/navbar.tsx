@@ -27,6 +27,7 @@ import { Logo } from "@/components/Logo";
 import { NavLinks } from "@/components/Navlinks";
 import { UserMenu } from "@/components/UserMenu";
 import { AuthButtons } from "@/components/AuthButtons";
+import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 
 export function NavBar() {
   const [scrolled, setScrolled] = useState(false);
@@ -102,6 +103,8 @@ export function NavBar() {
               isAuthenticated={isAuthenticated}
               userRole={user?.role}
             />
+
+            <LanguageSwitcher />
 
             {isAuthenticated && (
               <Link
