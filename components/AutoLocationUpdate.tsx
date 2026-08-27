@@ -37,7 +37,7 @@ export function AutoLocationUpdate() {
   }, []);
 
   if (!open) return null;
-  return <div className="fixed inset-0 z-[100] flex items-end bg-black/45 p-4 sm:items-center sm:justify-center">
+  return <div className="fixed inset-0 z-[100] flex items-end bg-black/45 p-4 pb-20 sm:items-center sm:pb-4 sm:justify-center">
     <section className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl">
       <button onClick={() => setOpen(false)} className="float-right rounded-full p-1 text-slate-400"><X className="h-5 w-5" /></button>
       <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-red-50 text-red-600"><MapPin className="h-7 w-7" /></div>
