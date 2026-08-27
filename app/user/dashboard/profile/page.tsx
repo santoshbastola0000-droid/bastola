@@ -35,6 +35,7 @@ import {
   CardContent,
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import PushNotificationSetup from "@/components/PushNotificationSetup";
 
 import { privateApi } from "@/http/api/privateApi";
 import { jobPostingService } from "@/http/services/job-posting.service";
@@ -1679,7 +1680,8 @@ export default function ProfilePage() {
         </section>
 
         {/* RIGHT AI SIDE */}
-        <aside className="lg:sticky lg:top-20 lg:self-start">
+        <aside className="space-y-5 lg:sticky lg:top-20 lg:self-start">
+          <PushNotificationSetup />
           <Card className="overflow-hidden rounded-3xl border-0 shadow-sm">
             <div className="border-b bg-gradient-to-r from-violet-50 via-fuchsia-50 to-rose-50 p-4 dark:from-violet-950/30 dark:via-fuchsia-950/20 dark:to-rose-950/30">
               <div className="flex items-center justify-between gap-3">
