@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { privateApi } from "@/http/api/privateApi";
 import { profileMediaUrl } from "@/lib/profile-media";
+import { featureSettingsService } from "@/http/services/feature-settings.service";
 
 type Person = {
   id: string;
@@ -71,7 +72,16 @@ export default function PeoplePage() {
   };
 
   useEffect(() => {
-    loadPeople();
+    featureSettingsService
+      .getPeople()
+      .then((setting) => {
+        if (!setting.enabled) {
+          router.replace("/user/dashboard");
+          return;
+        }
+        loadPeople();
+      })
+      .catch(() => router.replace("/user/dashboard"));
   }, []);
 
   const submitSearch = (
