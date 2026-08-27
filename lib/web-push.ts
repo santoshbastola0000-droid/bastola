@@ -31,7 +31,7 @@ function getApiUrl() {
   return api;
 }
 
-async function getVapidPublicKey() {
+export async function getPushStatus() {
   const response = await fetch(
     `${getApiUrl()}/push/public-key`,
     { credentials: 'include' },
@@ -46,7 +46,10 @@ async function getVapidPublicKey() {
     throw new Error('Web push public key missing.');
   }
 
-  return String(data.publicKey);
+  return {
+    publicKey: String(data.publicKey),
+    testEnabled: data?.testEnabled === true,
+  };
 }
 
 export async function registerPush() {
@@ -84,7 +87,7 @@ export async function registerPush() {
     return existing;
   }
 
-  const vapidKey = await getVapidPublicKey();
+  const { publicKey: vapidKey } = await getPushStatus();
 
   return registration.pushManager.subscribe({
     userVisibleOnly: true,
