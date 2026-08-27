@@ -22,13 +22,17 @@ export function urlBase64ToUint8Array(
 }
 
 function getApiUrl() {
-  const api = process.env.NEXT_PUBLIC_API_URL;
-
-  if (!api) {
-    throw new Error('NEXT_PUBLIC_API_URL missing');
+  // Browser requests use the same-origin API proxy configured in next.config.ts.
+  // This keeps push setup working on Vercel without a separate public API env.
+  if (typeof window !== 'undefined') {
+    return '/api';
   }
 
-  return api;
+  return (
+    process.env.NEXT_PUBLIC_BACKEND_URL ||
+    process.env.NEXT_PUBLIC_API_URL ||
+    'https://api.roomkhoj.com'
+  );
 }
 
 export async function getPushStatus() {
