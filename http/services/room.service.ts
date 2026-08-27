@@ -72,7 +72,9 @@ export const roomService = {
   },
 
   getPublicRooms: async (params: RoomFilters = {}): Promise<RoomsResponse> => {
-    const response = await api.get("/rooms/public", { params });
+    const saved = typeof window === "undefined" ? null : localStorage.getItem("roomkhoj-viewer-location");
+    const location = saved ? JSON.parse(saved) : null;
+    const response = await api.get("/rooms/public", { params: { ...params, ...(location || {}) } });
     return normalizeRoomsResponse(response.data);
   },
 
