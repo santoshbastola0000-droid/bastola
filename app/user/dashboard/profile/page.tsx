@@ -1679,9 +1679,6 @@ export default function ProfilePage() {
 
         {/* RIGHT AI SIDE */}
         <aside className="space-y-5 lg:sticky lg:top-20 lg:self-start">
-          <div className="hidden lg:block">
-            <PushNotificationSetup />
-          </div>
           <Card className="overflow-hidden rounded-3xl border-0 shadow-sm">
             <div className="border-b bg-gradient-to-r from-violet-50 via-fuchsia-50 to-rose-50 p-4 dark:from-violet-950/30 dark:via-fuchsia-950/20 dark:to-rose-950/30">
               <div className="flex items-center justify-between gap-3">
