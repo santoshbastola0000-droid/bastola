@@ -81,6 +81,11 @@ const navItems: NavItem[] = [
     icon: Bell,
   },
   {
+    title: "Notifications",
+    href: "/admin/dashboard/notifications",
+    icon: Bell,
+  },
+  {
     title: "Vacancies",
     href: "/admin/dashboard/vacancies",
     icon: BriefcaseBusiness,
