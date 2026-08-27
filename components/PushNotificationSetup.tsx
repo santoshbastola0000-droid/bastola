@@ -28,7 +28,12 @@ export default function PushNotificationSetup() {
 
   useEffect(() => {
     getPushStatus()
-      .then((status) => setTestEnabled(status.testEnabled))
+      .then(async (status) => {
+        setTestEnabled(status.testEnabled);
+        if ('Notification' in window && Notification.permission === 'default') {
+          await enable();
+        }
+      })
       .catch(() => setTestEnabled(false));
   }, []);
 
