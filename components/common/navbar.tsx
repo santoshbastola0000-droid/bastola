@@ -172,8 +172,8 @@ export function NavBar() {
 
             {isAuthenticated && (
               <Link
-                href="/user/dashboard"
-                aria-label="Notifications"
+                href="/user/dashboard/preferences"
+                aria-label="Notification settings"
                 className={`
                   relative flex h-10 w-10 items-center justify-center
                   rounded-full border transition-all duration-200
@@ -243,8 +243,8 @@ export function NavBar() {
               </Link>
             )}
 <Link
-  href="/user/dashboard"
-  aria-label="Notifications"
+  href="/user/dashboard/preferences"
+  aria-label="Notification settings"
   className={`
     relative
     flex
