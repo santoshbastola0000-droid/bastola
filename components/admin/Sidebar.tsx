@@ -19,6 +19,7 @@ import {
   BriefcaseBusiness,
   GitFork,
   Bell,
+  ToggleLeft,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -74,6 +75,11 @@ const navItems: NavItem[] = [
     title: "Users",
     href: "/admin/dashboard/users",
     icon: Users,
+  },
+  {
+    title: "Feature Settings",
+    href: "/admin/dashboard/feature-settings",
+    icon: ToggleLeft,
   },
   {
     title: "Notifications",
