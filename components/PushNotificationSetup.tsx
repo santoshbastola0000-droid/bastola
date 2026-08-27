@@ -1,6 +1,7 @@
 'use client';
 
 import {
+  useEffect,
   useState,
 } from 'react';
 
@@ -10,6 +11,7 @@ import {
 } from 'lucide-react';
 
 import {
+  getPushStatus,
   sendPushTest,
   subscribePush,
 } from '@/lib/web-push';
@@ -20,6 +22,15 @@ export default function PushNotificationSetup() {
 
   const [message, setMessage] =
     useState('');
+
+  const [testEnabled, setTestEnabled] =
+    useState(false);
+
+  useEffect(() => {
+    getPushStatus()
+      .then((status) => setTestEnabled(status.testEnabled))
+      .catch(() => setTestEnabled(false));
+  }, []);
 
   async function enable() {
     try {
@@ -95,14 +106,16 @@ export default function PushNotificationSetup() {
               Enable notifications
             </button>
 
-            <button
-              type="button"
-              onClick={sendTest}
-              disabled={loading}
-              className="rounded-xl border px-4 py-2 text-sm font-medium disabled:opacity-60"
-            >
-              Test “hii”
-            </button>
+{testEnabled && (
+              <button
+                type="button"
+                onClick={sendTest}
+                disabled={loading}
+                className="rounded-xl border px-4 py-2 text-sm font-medium disabled:opacity-60"
+              >
+                Test “hii”
+              </button>
+            )}
           </div>
 
           {message && (
