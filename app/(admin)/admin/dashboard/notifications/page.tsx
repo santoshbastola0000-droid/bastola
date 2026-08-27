@@ -50,11 +50,13 @@ export default function AdminNotificationsPage() {
         },
       );
 
-      const delivered = Number(response.data?.push?.delivered || 0);
+      const channel = response.data?.channel;
       toast.success(
-        delivered > 0
-          ? "Notification selected user को device मा पठाइयो।"
-          : "Notification selected user को inbox मा पठाइयो। Push अनुमति छैन भने device मा देखिँदैन।",
+        channel === "push"
+          ? "Push notification पठाइयो।"
+          : channel === "email"
+            ? "Push नपुगेकाले email पठाइयो।"
+            : "Notification inbox मा पठाइयो।",
       );
       setMessage("");
     } catch (error: any) {
