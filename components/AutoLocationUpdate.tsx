@@ -12,8 +12,8 @@ export function AutoLocationUpdate() {
   const saveLocation = ({ coords }: GeolocationPosition) => {
     localStorage.setItem('roomkhoj-viewer-location', JSON.stringify({ latitude: coords.latitude, longitude: coords.longitude }));
     privateApi.post('/user/location', { latitude: coords.latitude, longitude: coords.longitude }).catch(() => undefined);
-    setOpen(false);
     setLoading(false);
+    window.dispatchEvent(new Event('roomkhoj-location-updated'));
   };
 
   const requestLocation = () => {
@@ -21,6 +21,7 @@ export function AutoLocationUpdate() {
     setLoading(true); setMessage('');
     navigator.geolocation.getCurrentPosition(saveLocation, () => {
       setLoading(false);
+      setOpen(true);
       setMessage('Location अनुमति browser settings बाट Allow गर्नुहोस्।');
     }, { enableHighAccuracy: false, maximumAge: 0, timeout: 10000 });
   };
