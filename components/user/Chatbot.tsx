@@ -44,6 +44,24 @@ interface RoomItem {
   mediaUrl?: string;
 }
 
+interface RoomPostingPreview {
+  title?: string;
+  type?: string;
+  city?: string;
+  area?: string;
+  rent?: number;
+  capacity?: number;
+  amenities?: string[];
+  availableFrom?: string;
+  contactPhone?: string;
+}
+
+interface RoomPostingResult {
+  id?: string;
+  title?: string;
+  approvalStatus?: string;
+}
+
 interface ChatMessage {
   id: string;
   role: "bot" | "user";
@@ -55,6 +73,10 @@ interface ChatMessage {
   roomsList?: RoomItem[];
   jobDetails?: JobItem;
   jobsList?: JobItem[];
+  nextAction?: string;
+  roomId?: string;
+  roomPostingPreview?: RoomPostingPreview;
+  roomPosting?: RoomPostingResult;
 }
 interface JobItem {
   id?: string;
@@ -513,6 +535,10 @@ useEffect(() => {
       let roomsList = undefined;
       let jobDetails: JobItem | undefined = undefined;
       let jobsList: JobItem[] | undefined = undefined;
+      let nextAction: string | undefined = undefined;
+      let roomId: string | undefined = undefined;
+      let roomPostingPreview: RoomPostingPreview | undefined = undefined;
+      let roomPosting: RoomPostingResult | undefined = undefined;
       let mediaUrl: string | undefined = undefined;
       let mediaType: "image" | "video" | "file" | undefined = undefined;
 
@@ -536,6 +562,11 @@ useEffect(() => {
           responseObj.jobs ||
           data?.jobsList ||
           data?.jobs;
+        nextAction = responseObj.nextAction || data?.nextAction;
+        roomId = responseObj.roomId || data?.roomId;
+        roomPostingPreview =
+          responseObj.roomPostingPreview || data?.roomPostingPreview;
+        roomPosting = responseObj.roomPosting || data?.roomPosting;
         mediaUrl = responseObj.mediaUrl || responseObj.image;
         mediaType = mediaUrl ? "image" : undefined;
       }
@@ -560,6 +591,10 @@ useEffect(() => {
         roomsList,
         jobDetails,
         jobsList,
+        nextAction,
+        roomId,
+        roomPostingPreview,
+        roomPosting,
         timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
       };
 
@@ -878,6 +913,74 @@ useEffect(() => {
                               View Room Details <ExternalLink className="w-3 h-3" />
                             </a>
                           )}
+                        </div>
+                      )}
+
+                      {msg.roomPostingPreview && (
+                        <div className="mb-3 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-slate-800 shadow-sm dark:border-amber-400/20 dark:bg-amber-400/10 dark:text-slate-100">
+                          <div className="mb-2 flex items-center gap-2 font-semibold">
+                            <Home className="h-4 w-4" />
+                            कोठा पोस्ट Preview
+                          </div>
+                          <div className="grid gap-1.5 text-xs sm:grid-cols-2">
+                            <span>Title: {msg.roomPostingPreview.title || "-"}</span>
+                            <span>Type: {msg.roomPostingPreview.type || "-"}</span>
+                            <span>Location: {[msg.roomPostingPreview.area, msg.roomPostingPreview.city].filter(Boolean).join(", ") || "-"}</span>
+                            <span>Rent: रु. {msg.roomPostingPreview.rent ?? "-"}</span>
+                            <span>Capacity: {msg.roomPostingPreview.capacity ?? "-"} जना</span>
+                            <span>Available: {msg.roomPostingPreview.availableFrom || "-"}</span>
+                          </div>
+                          {!!msg.roomPostingPreview.amenities?.length && (
+                            <p className="mt-2 text-xs">
+                              Facilities: {msg.roomPostingPreview.amenities.join(", ")}
+                            </p>
+                          )}
+                          <p className="mt-2 text-[11px] text-slate-500 dark:text-slate-400">
+                            Contact: {msg.roomPostingPreview.contactPhone || "-"}
+                          </p>
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            <button
+                              type="button"
+                              onClick={() => sendMessage("हो, post गर")}
+                              className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700"
+                            >
+                              हो, Post गर
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => inputRef.current?.focus()}
+                              className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold dark:border-white/20 dark:bg-white/5"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => sendMessage("cancel")}
+                              className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-600 dark:border-red-400/30 dark:text-red-300"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {msg.nextAction === "ROOM_POST_CREATED" && (
+                        <div className="mb-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-3 shadow-sm dark:border-emerald-400/20 dark:bg-emerald-400/10">
+                          <div className="flex items-center gap-2 font-semibold text-emerald-800 dark:text-emerald-200">
+                            <Home className="h-4 w-4" />
+                            तपाईंको कोठा review का लागि पठाइयो
+                          </div>
+                          {msg.roomPosting?.title && (
+                            <p className="mt-1 text-xs text-slate-600 dark:text-slate-300">
+                              {msg.roomPosting.title}
+                            </p>
+                          )}
+                          <a
+                            href="/user/dashboard/rooms"
+                            className="mt-3 inline-flex items-center gap-1 rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white dark:bg-white dark:text-slate-900"
+                          >
+                            View My Listings <ExternalLink className="h-3 w-3" />
+                          </a>
                         </div>
                       )}
 
