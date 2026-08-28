@@ -95,6 +95,8 @@ interface ChatMessage {
     type?: string;
     text?: string;
   };
+  quickReplies?: string[];
+  reviewEligible?: boolean;
 }
 interface JobItem {
   id?: string;
@@ -560,6 +562,8 @@ useEffect(() => {
       let roomRequestId: string | undefined = undefined;
       let roomRequestPreview: RoomRequestPreview | undefined = undefined;
       let confirmation: ChatMessage["confirmation"] = undefined;
+      let quickReplies: string[] | undefined = undefined;
+      let reviewEligible = false;
       let mediaUrl: string | undefined = undefined;
       let mediaType: "image" | "video" | "file" | undefined = undefined;
 
@@ -592,6 +596,13 @@ useEffect(() => {
         roomRequestPreview =
           responseObj.roomRequestPreview || data?.roomRequestPreview;
         confirmation = responseObj.confirmation || data?.confirmation;
+        quickReplies = Array.isArray(responseObj.quickReplies)
+          ? responseObj.quickReplies
+          : Array.isArray(data?.quickReplies)
+            ? data.quickReplies
+            : undefined;
+        reviewEligible =
+          responseObj.reviewEligible === true || data?.reviewEligible === true;
         mediaUrl = responseObj.mediaUrl || responseObj.image;
         mediaType = mediaUrl ? "image" : undefined;
       }
@@ -623,6 +634,8 @@ useEffect(() => {
         roomRequestId,
         roomRequestPreview,
         confirmation,
+        quickReplies,
+        reviewEligible,
         timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
       };
 
@@ -1275,6 +1288,33 @@ useEffect(() => {
                       )}
 
                       <p className="whitespace-pre-wrap break-words">{msg.text}</p>
+
+                      {!!msg.quickReplies?.length && (
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {msg.quickReplies.slice(0, 4).map((reply) => (
+                            <button
+                              key={reply}
+                              type="button"
+                              onClick={() => sendMessage(reply)}
+                              className="rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 dark:border-white/20 dark:bg-white/5 dark:text-slate-200 dark:hover:bg-white/10"
+                            >
+                              {reply}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+
+                      {msg.reviewEligible &&
+                        process.env.NEXT_PUBLIC_GOOGLE_REVIEW_URL && (
+                          <a
+                            href={process.env.NEXT_PUBLIC_GOOGLE_REVIEW_URL}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="mt-3 inline-flex items-center gap-1 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700"
+                          >
+                            Google Review <ExternalLink className="h-3 w-3" />
+                          </a>
+                        )}
                       
                       <span className="block text-[8px] text-right mt-0.5 opacity-60">
                         {msg.timestamp}
