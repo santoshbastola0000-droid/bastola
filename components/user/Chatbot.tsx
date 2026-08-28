@@ -44,6 +44,36 @@ interface RoomItem {
   mediaUrl?: string;
 }
 
+interface RoomPostingPreview {
+  title?: string;
+  type?: string;
+  city?: string;
+  area?: string;
+  rent?: number;
+  capacity?: number;
+  amenities?: string[];
+  availableFrom?: string;
+  contactPhone?: string;
+}
+
+interface RoomPostingResult {
+  id?: string;
+  title?: string;
+  approvalStatus?: string;
+}
+
+interface RoomRequestPreview {
+  fullName?: string;
+  contactPhone?: string;
+  city?: string;
+  preferredArea?: string;
+  budget?: number;
+  roomType?: string;
+  numberOfPeople?: number;
+  tenantType?: string;
+  moveInDate?: string;
+}
+
 interface ChatMessage {
   id: string;
   role: "bot" | "user";
@@ -55,6 +85,18 @@ interface ChatMessage {
   roomsList?: RoomItem[];
   jobDetails?: JobItem;
   jobsList?: JobItem[];
+  nextAction?: string;
+  roomId?: string;
+  roomPostingPreview?: RoomPostingPreview;
+  roomPosting?: RoomPostingResult;
+  roomRequestId?: string;
+  roomRequestPreview?: RoomRequestPreview;
+  confirmation?: {
+    type?: string;
+    text?: string;
+  };
+  quickReplies?: string[];
+  reviewEligible?: boolean;
 }
 interface JobItem {
   id?: string;
@@ -513,6 +555,15 @@ useEffect(() => {
       let roomsList = undefined;
       let jobDetails: JobItem | undefined = undefined;
       let jobsList: JobItem[] | undefined = undefined;
+      let nextAction: string | undefined = undefined;
+      let roomId: string | undefined = undefined;
+      let roomPostingPreview: RoomPostingPreview | undefined = undefined;
+      let roomPosting: RoomPostingResult | undefined = undefined;
+      let roomRequestId: string | undefined = undefined;
+      let roomRequestPreview: RoomRequestPreview | undefined = undefined;
+      let confirmation: ChatMessage["confirmation"] = undefined;
+      let quickReplies: string[] | undefined = undefined;
+      let reviewEligible = false;
       let mediaUrl: string | undefined = undefined;
       let mediaType: "image" | "video" | "file" | undefined = undefined;
 
@@ -536,6 +587,22 @@ useEffect(() => {
           responseObj.jobs ||
           data?.jobsList ||
           data?.jobs;
+        nextAction = responseObj.nextAction || data?.nextAction;
+        roomId = responseObj.roomId || data?.roomId;
+        roomPostingPreview =
+          responseObj.roomPostingPreview || data?.roomPostingPreview;
+        roomPosting = responseObj.roomPosting || data?.roomPosting;
+        roomRequestId = responseObj.roomRequestId || data?.roomRequestId;
+        roomRequestPreview =
+          responseObj.roomRequestPreview || data?.roomRequestPreview;
+        confirmation = responseObj.confirmation || data?.confirmation;
+        quickReplies = Array.isArray(responseObj.quickReplies)
+          ? responseObj.quickReplies
+          : Array.isArray(data?.quickReplies)
+            ? data.quickReplies
+            : undefined;
+        reviewEligible =
+          responseObj.reviewEligible === true || data?.reviewEligible === true;
         mediaUrl = responseObj.mediaUrl || responseObj.image;
         mediaType = mediaUrl ? "image" : undefined;
       }
@@ -560,6 +627,15 @@ useEffect(() => {
         roomsList,
         jobDetails,
         jobsList,
+        nextAction,
+        roomId,
+        roomPostingPreview,
+        roomPosting,
+        roomRequestId,
+        roomRequestPreview,
+        confirmation,
+        quickReplies,
+        reviewEligible,
         timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
       };
 
@@ -881,6 +957,158 @@ useEffect(() => {
                         </div>
                       )}
 
+                      {msg.roomPostingPreview && (
+                        <div className="mb-3 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-slate-800 shadow-sm dark:border-amber-400/20 dark:bg-amber-400/10 dark:text-slate-100">
+                          <div className="mb-2 flex items-center gap-2 font-semibold">
+                            <Home className="h-4 w-4" />
+                            कोठा पोस्ट Preview
+                          </div>
+                          <div className="grid gap-1.5 text-xs sm:grid-cols-2">
+                            <span>Title: {msg.roomPostingPreview.title || "-"}</span>
+                            <span>Type: {msg.roomPostingPreview.type || "-"}</span>
+                            <span>Location: {[msg.roomPostingPreview.area, msg.roomPostingPreview.city].filter(Boolean).join(", ") || "-"}</span>
+                            <span>Rent: रु. {msg.roomPostingPreview.rent ?? "-"}</span>
+                            <span>Capacity: {msg.roomPostingPreview.capacity ?? "-"} जना</span>
+                            <span>Available: {msg.roomPostingPreview.availableFrom || "-"}</span>
+                          </div>
+                          {!!msg.roomPostingPreview.amenities?.length && (
+                            <p className="mt-2 text-xs">
+                              Facilities: {msg.roomPostingPreview.amenities.join(", ")}
+                            </p>
+                          )}
+                          <p className="mt-2 text-[11px] text-slate-500 dark:text-slate-400">
+                            Contact: {msg.roomPostingPreview.contactPhone || "-"}
+                          </p>
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            <button
+                              type="button"
+                              onClick={() => sendMessage("हो, post गर")}
+                              className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700"
+                            >
+                              हो, Post गर
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => inputRef.current?.focus()}
+                              className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold dark:border-white/20 dark:bg-white/5"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => sendMessage("cancel")}
+                              className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-600 dark:border-red-400/30 dark:text-red-300"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {msg.confirmation?.type === "ROOM_REQUEST" &&
+                        !msg.roomRequestPreview && (
+                          <div className="mb-3 rounded-2xl border border-blue-200 bg-blue-50 p-3 dark:border-blue-400/20 dark:bg-blue-400/10">
+                            <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+                              {msg.confirmation.text || "Room requirement सुरक्षित गर्ने अनुमति दिनुहुन्छ?"}
+                            </p>
+                            <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
+                              Valid Nepal mobile चाहिन्छ; OTP verification चाहिँदैन। तपाईंको phone room owner लाई स्वतः दिइँदैन।
+                            </p>
+                            <div className="mt-3 flex gap-2">
+                              <button
+                                type="button"
+                                onClick={() => sendMessage("हो")}
+                                className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700"
+                              >
+                                हो
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => sendMessage("होइन")}
+                                className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold dark:border-white/20 dark:bg-white/5"
+                              >
+                                होइन
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
+                      {msg.roomRequestPreview && (
+                        <div className="mb-3 rounded-2xl border border-blue-200 bg-blue-50 p-3 dark:border-blue-400/20 dark:bg-blue-400/10">
+                          <div className="mb-2 flex items-center gap-2 font-semibold">
+                            <MapPin className="h-4 w-4" />
+                            Room Requirement Preview
+                          </div>
+                          <div className="grid gap-1.5 text-xs sm:grid-cols-2">
+                            <span>Name: {msg.roomRequestPreview.fullName || "-"}</span>
+                            <span>Mobile: {msg.roomRequestPreview.contactPhone || "-"}</span>
+                            <span>Location: {[msg.roomRequestPreview.preferredArea, msg.roomRequestPreview.city].filter(Boolean).join(", ") || "-"}</span>
+                            <span>Budget: रु. {msg.roomRequestPreview.budget ?? "-"}</span>
+                            <span>Type: {msg.roomRequestPreview.roomType || "-"}</span>
+                            <span>People: {msg.roomRequestPreview.numberOfPeople ?? "-"}</span>
+                            <span>Tenant: {msg.roomRequestPreview.tenantType || "-"}</span>
+                            <span>Move-in: {msg.roomRequestPreview.moveInDate || "-"}</span>
+                          </div>
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            <button
+                              type="button"
+                              onClick={() => sendMessage("हो")}
+                              className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700"
+                            >
+                              Requirement Save गर
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => inputRef.current?.focus()}
+                              className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold dark:border-white/20 dark:bg-white/5"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => sendMessage("cancel")}
+                              className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-semibold text-red-600 dark:border-red-400/30 dark:text-red-300"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {msg.nextAction === "ROOM_REQUEST_SAVED" && (
+                        <div className="mb-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-3 dark:border-emerald-400/20 dark:bg-emerald-400/10">
+                          <p className="font-semibold text-emerald-800 dark:text-emerald-200">
+                            Room requirement सुरक्षित भयो ✅
+                          </p>
+                          <a
+                            href="/user/dashboard/room-requests"
+                            className="mt-3 inline-flex items-center gap-1 rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white dark:bg-white dark:text-slate-900"
+                          >
+                            View Room Requests <ExternalLink className="h-3 w-3" />
+                          </a>
+                        </div>
+                      )}
+
+                      {msg.nextAction === "ROOM_POST_CREATED" && (
+                        <div className="mb-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-3 shadow-sm dark:border-emerald-400/20 dark:bg-emerald-400/10">
+                          <div className="flex items-center gap-2 font-semibold text-emerald-800 dark:text-emerald-200">
+                            <Home className="h-4 w-4" />
+                            तपाईंको कोठा review का लागि पठाइयो
+                          </div>
+                          {msg.roomPosting?.title && (
+                            <p className="mt-1 text-xs text-slate-600 dark:text-slate-300">
+                              {msg.roomPosting.title}
+                            </p>
+                          )}
+                          <a
+                            href="/user/dashboard/rooms"
+                            className="mt-3 inline-flex items-center gap-1 rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white dark:bg-white dark:text-slate-900"
+                          >
+                            View My Listings <ExternalLink className="h-3 w-3" />
+                          </a>
+                        </div>
+                      )}
+
                       {msg.jobDetails && (
                         <div className="mb-2 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm dark:border-white/10 dark:bg-[#2a2a2a]">
                           <div className="flex items-start justify-between gap-3">
@@ -1060,6 +1288,33 @@ useEffect(() => {
                       )}
 
                       <p className="whitespace-pre-wrap break-words">{msg.text}</p>
+
+                      {!!msg.quickReplies?.length && (
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {msg.quickReplies.slice(0, 4).map((reply) => (
+                            <button
+                              key={reply}
+                              type="button"
+                              onClick={() => sendMessage(reply)}
+                              className="rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 dark:border-white/20 dark:bg-white/5 dark:text-slate-200 dark:hover:bg-white/10"
+                            >
+                              {reply}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+
+                      {msg.reviewEligible &&
+                        process.env.NEXT_PUBLIC_GOOGLE_REVIEW_URL && (
+                          <a
+                            href={process.env.NEXT_PUBLIC_GOOGLE_REVIEW_URL}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="mt-3 inline-flex items-center gap-1 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700"
+                          >
+                            Google Review <ExternalLink className="h-3 w-3" />
+                          </a>
+                        )}
                       
                       <span className="block text-[8px] text-right mt-0.5 opacity-60">
                         {msg.timestamp}
