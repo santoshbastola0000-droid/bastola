@@ -15,6 +15,7 @@ import { LanguageProvider } from "@/components/providers/LanguageProvider";
 import { AutoPushPermission } from "@/components/AutoPushPermission";
 import { AutoLocationUpdate } from "@/components/AutoLocationUpdate";
 import { PermissionStatusSync } from "@/components/PermissionStatusSync";
+import { EngagementTracker } from "@/components/EngagementTracker";
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -109,6 +110,7 @@ export default function RootLayout({
         <AutoPushPermission />
         <AutoLocationUpdate />
         <PermissionStatusSync />
+        <EngagementTracker />
         <QueryClientProviderWrapper>
           <TooltipProvider>
             <GuestLoginPopup />
