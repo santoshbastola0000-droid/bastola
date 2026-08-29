@@ -247,13 +247,6 @@ export const TABS = [
     required: true,
   },
   {
-    value: "location",
-    label: "Location",
-    labelNp: "स्थान",
-    icon: MapPin,
-    required: true,
-  },
-  {
     value: "details",
     label: "Details",
     labelNp: "विवरण",
