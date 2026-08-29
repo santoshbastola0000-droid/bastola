@@ -1585,70 +1585,94 @@ const user = useUserStore(
                             }`}
                           >
                             {message.attachment?.type === "ROOM" && (
-                              <button
-                                type="button"
-                                onClick={(event) => {
-                                  event.stopPropagation();
-                                  router.push(message.attachment!.url);
-                                }}
-                                className={`mb-2 w-full overflow-hidden rounded-xl border text-left shadow-sm transition hover:shadow-md ${
+                              <div
+                                className={`mb-1 w-full overflow-hidden rounded-xl border text-left shadow-sm ${
                                   mine
                                     ? "border-white/25 bg-white/10"
                                     : "border-slate-200 bg-background"
                                 }`}
                               >
-                                <div className="flex items-stretch">
-                                  <div className="h-20 w-24 shrink-0 overflow-hidden bg-slate-100">
-                                    {message.attachment.image ? (
-                                      <img
-                                        src={resolveImageUrl(message.attachment.image)}
-                                        alt={message.attachment.title}
-                                        className="h-full w-full object-cover"
-                                      />
-                                    ) : (
-                                      <div className="flex h-full w-full items-center justify-center text-2xl">
-                                        🏠
-                                      </div>
-                                    )}
-                                  </div>
+                                <button
+                                  type="button"
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    router.push(message.attachment!.url);
+                                  }}
+                                  className="block w-full text-left transition hover:opacity-95"
+                                >
+                                  <div className="flex items-stretch">
+                                    <div className="h-24 w-28 shrink-0 overflow-hidden bg-slate-100">
+                                      {message.attachment.image ? (
+                                        <img
+                                          src={resolveImageUrl(message.attachment.image)}
+                                          alt={message.attachment.title}
+                                          className="h-full w-full object-cover"
+                                        />
+                                      ) : (
+                                        <div className="flex h-full w-full items-center justify-center text-2xl">
+                                          🏠
+                                        </div>
+                                      )}
+                                    </div>
 
-                                  <div className="min-w-0 flex-1 p-3">
-                                    <p className={`text-[10px] font-bold uppercase tracking-wide ${
-                                      mine
-                                        ? "text-white/70"
-                                        : "text-muted-foreground"
-                                    }`}>
-                                      Room attachment
-                                    </p>
-                                    <p className="mt-0.5 line-clamp-1 font-semibold">
-                                      {message.attachment.title}
-                                    </p>
-                                    <p className={`mt-1 text-xs ${
-                                      mine
-                                        ? "text-white/80"
-                                        : "text-muted-foreground"
-                                    }`}>
-                                      रु {Number(message.attachment.price).toLocaleString()} / month
-                                    </p>
-                                    {message.attachment.address && (
-                                      <p className={`mt-1 truncate text-[11px] ${
+                                    <div className="min-w-0 flex-1 p-3">
+                                      <p className={`text-[10px] font-bold uppercase tracking-wide ${
                                         mine
                                           ? "text-white/70"
                                           : "text-muted-foreground"
                                       }`}>
-                                        📍 {message.attachment.address}
+                                        Room
                                       </p>
-                                    )}
+                                      <p className="mt-0.5 line-clamp-2 font-semibold">
+                                        {message.attachment.title}
+                                      </p>
+                                      <p className={`mt-1 text-xs font-semibold ${
+                                        mine
+                                          ? "text-white/90"
+                                          : "text-red-600"
+                                      }`}>
+                                        रु {Number(message.attachment.price).toLocaleString()} / month
+                                      </p>
+                                      {message.attachment.address && (
+                                        <p className={`mt-1 truncate text-[11px] ${
+                                          mine
+                                            ? "text-white/70"
+                                            : "text-muted-foreground"
+                                        }`}>
+                                          📍 {message.attachment.address}
+                                        </p>
+                                      )}
+                                    </div>
                                   </div>
-                                </div>
-                                <div className={`border-t px-3 py-2 text-xs font-semibold ${
-                                  mine
-                                    ? "border-white/20 text-white"
-                                    : "border-slate-200 text-primary"
-                                }`}>
+                                </button>
+
+                                {message.content && (
+                                  <div className={`border-t px-3 py-3 text-sm ${
+                                    mine
+                                      ? "border-white/20 text-white"
+                                      : "border-slate-200 text-slate-900"
+                                  }`}>
+                                    <p className="whitespace-pre-wrap break-words">
+                                      {message.content}
+                                    </p>
+                                  </div>
+                                )}
+
+                                <button
+                                  type="button"
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    router.push(message.attachment!.url);
+                                  }}
+                                  className={`block w-full border-t px-3 py-2 text-left text-xs font-semibold ${
+                                    mine
+                                      ? "border-white/20 text-white"
+                                      : "border-slate-200 text-red-600"
+                                  }`}
+                                >
                                   View room details →
-                                </div>
-                              </button>
+                                </button>
+                              </div>
                             )}
 
                             {message.type ===
@@ -1688,13 +1712,12 @@ const user = useUserStore(
                                 />
                               )}
 
-                            {message.content && (
-                              <p className="whitespace-pre-wrap break-words">
-                                {
-                                  message.content
-                                }
-                              </p>
-                            )}
+                            {message.content &&
+                              message.attachment?.type !== "ROOM" && (
+                                <p className="whitespace-pre-wrap break-words">
+                                  {message.content}
+                                </p>
+                              )}
 
                             <p className="mt-1 text-[10px] opacity-70">
                               {new Date(
