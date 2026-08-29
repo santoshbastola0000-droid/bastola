@@ -195,7 +195,14 @@ export const messageService = {
 
     return response.data as {
       conversation: MessageConversation;
-      room: { id: string; title: string; price: string | number; images: string[] };
+      message?: ChatMessage | null;
+      room: {
+        id: string;
+        title: string;
+        price: string | number;
+        address?: string | null;
+        images: string[];
+      };
     };
   },
 
