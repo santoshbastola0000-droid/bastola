@@ -3,6 +3,8 @@ import {
   PaginatedUserResponse,
   UserRole,
   type UserLocation,
+  type BrowserPermissionState,
+  type UserPermissionStatus,
 } from "@/types/user.types";
 
 export interface UserFilters {
@@ -12,6 +14,10 @@ export interface UserFilters {
   role?: UserRole;
   accountPurpose?: "FIND_ROOM" | "POST_ROOM" | "FIND_JOB" | "POST_JOB";
   onlineStatus?: "online" | "offline";
+  locationPermission?: BrowserPermissionState;
+  notificationPermission?: BrowserPermissionState;
+  microphonePermission?: BrowserPermissionState;
+  cameraPermission?: BrowserPermissionState;
 }
 
 export const userService = {
@@ -31,6 +37,18 @@ export const userService = {
     }
     if (filters.onlineStatus) {
       params.append("onlineStatus", filters.onlineStatus);
+    }
+    if (filters.locationPermission) {
+      params.append("locationPermission", filters.locationPermission);
+    }
+    if (filters.notificationPermission) {
+      params.append("notificationPermission", filters.notificationPermission);
+    }
+    if (filters.microphonePermission) {
+      params.append("microphonePermission", filters.microphonePermission);
+    }
+    if (filters.cameraPermission) {
+      params.append("cameraPermission", filters.cameraPermission);
     }
 
     const response = await privateApi.get<PaginatedUserResponse>(
@@ -71,6 +89,12 @@ export const userService = {
 
   updateLocation: async (location: Omit<UserLocation, "updatedAt">): Promise<void> => {
     await privateApi.post("/user/location", location);
+  },
+
+  updatePermissions: async (
+    permissions: Partial<Omit<UserPermissionStatus, "updatedAt">>,
+  ): Promise<void> => {
+    await privateApi.post("/user/permissions", permissions);
   },
 
   heartbeat: async (): Promise<void> => {
