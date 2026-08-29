@@ -19,6 +19,8 @@ import {
   Paperclip,
   Image as ImageIcon,
   CheckCheck,
+  MoreVertical,
+  Smile,
 } from "lucide-react";
 import { toast } from "sonner";
 import { io, Socket } from "socket.io-client";
@@ -1378,24 +1380,24 @@ const user = useUserStore(
 
   return (
     <>
-    <main className="mx-auto h-[calc(100dvh-68px)] max-w-7xl overflow-hidden bg-slate-50 md:h-[calc(100dvh-24px)] md:p-4">
-      <div className="grid h-full min-h-0 overflow-hidden border border-slate-200/80 bg-white shadow-[0_18px_60px_rgba(15,23,42,0.08)] md:grid-cols-[330px_1fr] md:rounded-[28px]">
+    <main className="mx-auto h-[calc(100dvh-68px)] max-w-7xl overflow-hidden bg-slate-50 md:h-screen md:max-w-none md:bg-[#111b21] md:p-0">
+      <div className="grid h-full min-h-0 overflow-hidden border border-slate-200/80 bg-white shadow-[0_18px_60px_rgba(15,23,42,0.08)] md:grid-cols-[390px_1fr] md:border-0 md:bg-[#111b21] md:shadow-none">
         <aside
-          className={`border-r ${
+          className={`border-r border-slate-200 bg-white md:border-[#2a3942] md:bg-[#111b21] ${
             selected
               ? "hidden md:block"
               : "block"
           }`}
         >
-          <div className="border-b border-slate-200/80 bg-white p-4">
+          <div className="border-b border-slate-200/80 bg-white p-4 md:border-[#2a3942] md:bg-[#202c33] md:px-4 md:py-3">
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-red-500">
+              <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-red-500 md:text-[#00a884]">
                 RoomKhoj
               </p>
-              <h1 className="mt-0.5 text-2xl font-black tracking-tight text-slate-950">
+              <h1 className="mt-0.5 text-2xl font-black tracking-tight text-slate-950 md:text-[#e9edef]">
                 Messages
               </h1>
-              <p className="mt-1 text-xs text-slate-500">
+              <p className="mt-1 text-xs text-slate-500 md:text-[#8696a0]">
                 Your room conversations in one place
               </p>
             </div>
@@ -1417,7 +1419,7 @@ const user = useUserStore(
                   }
                 }}
                 placeholder="Search user by name, phone or email"
-                className="h-11 rounded-full border-slate-200 bg-slate-50 pl-11 pr-24 text-sm shadow-none focus-visible:border-red-300 focus-visible:ring-red-100"
+                className="h-11 rounded-full border-slate-200 bg-slate-50 pl-11 pr-24 text-sm shadow-none focus-visible:border-red-300 focus-visible:ring-red-100 md:border-0 md:bg-[#202c33] md:text-[#e9edef] md:placeholder:text-[#8696a0] md:focus-visible:ring-0"
               />
 
               <button
@@ -1426,7 +1428,7 @@ const user = useUserStore(
                 disabled={phoneSearching || !search.trim()}
                 aria-label="Search RoomKhoj user by phone number"
                 title="Search user"
-                className="absolute right-1.5 top-1/2 flex h-8 -translate-y-1/2 items-center justify-center gap-1.5 rounded-full bg-red-600 px-3 text-xs font-extrabold text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-40"
+                className="absolute right-1.5 top-1/2 flex h-8 -translate-y-1/2 items-center justify-center gap-1.5 rounded-full bg-red-600 px-3 text-xs font-extrabold text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-40 md:bg-[#00a884] md:hover:bg-[#06cf9c]"
               >
                 {phoneSearching ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -1448,7 +1450,7 @@ const user = useUserStore(
                         `/profile/${result.id}`,
                       )
                     }
-                    className="flex w-full items-center gap-3 rounded-2xl border border-red-100 bg-red-50/50 p-3 text-left transition hover:bg-red-50"
+                    className="flex w-full items-center gap-3 rounded-2xl border border-red-100 bg-red-50/50 md:border-[#2a3942] md:bg-[#111b21] p-3 text-left transition hover:bg-red-50 md:hover:bg-[#202c33]"
                   >
                     <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white text-sm font-black text-red-600 shadow-sm">
                       {(result.name || "U")
@@ -1478,8 +1480,8 @@ const user = useUserStore(
             </div>
           ) : filtered.length === 0 ? (
             <div className="p-10 text-center">
-              <MessageCircle className="mx-auto h-10 w-10 text-muted-foreground" />
-              <p className="mt-3 text-sm text-muted-foreground">
+              <MessageCircle className="mx-auto h-10 w-10 text-muted-foreground md:text-[#8696a0]" />
+              <p className="mt-3 text-sm text-muted-foreground md:text-[#8696a0]">
                 No conversations yet
               </p>
             </div>
@@ -1539,7 +1541,7 @@ const user = useUserStore(
                           )}
                         </div>
 
-                        <p className="mt-1 truncate text-sm text-muted-foreground">
+                        <p className="mt-1 truncate text-sm text-muted-foreground md:text-[#8696a0]">
                           {conversation.lastMessage?.content ||
                             (conversation.lastMessage?.type === "IMAGE"
                               ? "📷 Photo"
@@ -1559,29 +1561,29 @@ const user = useUserStore(
         </aside>
 
         <section
-          className={`flex min-h-0 flex-col ${
+          className={`flex min-h-0 flex-col bg-white md:bg-[#0b141a] ${
             !selected
               ? "hidden md:flex"
               : "flex"
           }`}
         >
           {!selected ? (
-            <div className="flex flex-1 items-center justify-center text-center">
+            <div className="flex flex-1 items-center justify-center text-center md:bg-[#222e35] md:text-[#e9edef]">
               <div>
-                <MessageCircle className="mx-auto h-14 w-14 text-muted-foreground" />
+                <MessageCircle className="mx-auto h-14 w-14 text-muted-foreground md:text-[#8696a0]" />
 
                 <h2 className="mt-4 text-lg font-semibold">
                   Select a conversation
                 </h2>
 
-                <p className="mt-1 text-sm text-muted-foreground">
+                <p className="mt-1 text-sm text-muted-foreground md:text-[#8696a0]">
                   Choose a chat to start messaging.
                 </p>
               </div>
             </div>
           ) : (
             <>
-              <header className="flex items-center gap-3 border-b border-slate-200/80 bg-white/95 px-4 py-3 shadow-sm backdrop-blur">
+              <header className="flex items-center gap-3 border-b border-slate-200/80 bg-white/95 px-4 py-3 shadow-sm backdrop-blur md:border-[#2a3942] md:bg-[#202c33] md:text-[#e9edef] md:shadow-none">
                 <button
                   type="button"
                   className="text-sm md:hidden"
@@ -1593,7 +1595,7 @@ const user = useUserStore(
                 </button>
 
                 <div className="relative shrink-0">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-red-50 to-rose-100 font-bold text-red-700 ring-1 ring-red-100">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-red-50 to-rose-100 font-bold text-red-700 ring-1 ring-red-100 md:bg-[#6a7175] md:text-white md:ring-0">
                     {otherUserId
                       .slice(0, 2)
                       .toUpperCase()}
@@ -1607,7 +1609,7 @@ const user = useUserStore(
                 </div>
 
                 <div className="flex-1">
-                  <p className="font-bold text-slate-900">
+                  <p className="font-bold text-slate-900 md:text-[#e9edef]">
                     {selected.otherUser?.name ||
                       selected.otherUser?.phoneNumber ||
                       "RoomKhoj user"}
@@ -1615,7 +1617,7 @@ const user = useUserStore(
 
                   {selected.otherUser?.name &&
                     selected.otherUser?.phoneNumber && (
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-xs text-muted-foreground md:text-[#8696a0]">
                         {selected.otherUser.phoneNumber}
                       </p>
                     )}
@@ -1624,7 +1626,7 @@ const user = useUserStore(
                     className={`text-xs font-medium ${
                       onlineUserIds.has(otherUserId)
                         ? "text-emerald-600"
-                        : "text-muted-foreground"
+                        : "text-muted-foreground md:text-[#8696a0]"
                     }`}
                   >
                     {onlineUserIds.has(otherUserId)
@@ -1633,8 +1635,8 @@ const user = useUserStore(
                   </p>
                 </div>
                 <div className="ml-auto flex gap-2">
-                  <Button type="button" size="icon" variant="outline" onClick={() => startCall("audio")} aria-label="Audio call"><Phone className="h-4 w-4" /></Button>
-                  <Button type="button" size="icon" variant="outline" onClick={() => startCall("video")} aria-label="Video call"><Video className="h-4 w-4" /></Button>
+                  <Button type="button" size="icon" variant="outline" className="md:border-0 md:bg-transparent md:text-[#aebac1] md:hover:bg-[#2a3942] md:hover:text-white" onClick={() => startCall("audio")} aria-label="Audio call"><Phone className="h-4 w-4" /></Button>
+                  <Button type="button" size="icon" variant="outline" className="md:border-0 md:bg-transparent md:text-[#aebac1] md:hover:bg-[#2a3942] md:hover:text-white" onClick={() => startCall("video")} aria-label="Video call"><Video className="h-4 w-4" /></Button>
                 </div>
               </header>
               <audio ref={remoteAudioRef} autoPlay playsInline />
@@ -1661,7 +1663,7 @@ const user = useUserStore(
                     </div>
 
                     <div className="min-w-0 flex-1">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground md:text-[#8696a0]">
                         {contextPost.type === "ROOM"
                           ? "Room post"
                           : "Job post"}
@@ -1672,7 +1674,7 @@ const user = useUserStore(
                       {(contextPost.subtitle ||
                         contextPost.price !== null &&
                           contextPost.price !== undefined) && (
-                        <p className="truncate text-xs text-muted-foreground">
+                        <p className="truncate text-xs text-muted-foreground md:text-[#8696a0]">
                           {contextPost.subtitle}
                           {contextPost.subtitle &&
                             contextPost.price !== null &&
@@ -1694,14 +1696,14 @@ const user = useUserStore(
                 </div>
               )}
 
-              <div className="min-h-0 flex-1 space-y-3 overflow-y-auto bg-[radial-gradient(circle_at_top,#fff7f7_0%,#f8fafc_42%,#f8fafc_100%)] px-3 py-4 pb-28 sm:px-5">
+              <div className="min-h-0 flex-1 space-y-3 overflow-y-auto bg-[radial-gradient(circle_at_top,#fff7f7_0%,#f8fafc_42%,#f8fafc_100%)] px-3 py-4 pb-28 sm:px-5 md:bg-[#0b141a] md:bg-[radial-gradient(circle_at_top,_rgba(32,44,51,0.16),_rgba(11,20,26,1)_45%)] md:px-[6%] md:py-5">
                 {messagesLoading ? (
                   <div className="flex justify-center p-10">
                     <Loader2 className="h-6 w-6 animate-spin" />
                   </div>
                 ) : messages.length ===
                   0 ? (
-                  <div className="py-10 text-center text-sm text-muted-foreground">
+                  <div className="py-10 text-center text-sm text-muted-foreground md:text-[#8696a0]">
                     No messages yet.
                   </div>
                 ) : (
@@ -1725,8 +1727,8 @@ const user = useUserStore(
                           <div
                             className={`max-w-[84%] rounded-[20px] px-3.5 py-2.5 text-sm shadow-sm sm:max-w-[72%] ${
                               mine
-                                ? "cursor-pointer select-none rounded-br-md bg-red-600 text-white"
-                                : "rounded-bl-md border border-slate-200/80 bg-white text-slate-800"
+                                ? "cursor-pointer select-none rounded-br-md bg-red-600 text-white md:bg-[#005c4b] md:text-[#e9edef]"
+                                : "rounded-bl-md border border-slate-200/80 bg-white text-slate-800 md:border-0 md:bg-[#202c33] md:text-[#e9edef]"
                             } ${
                               deletingMessageId === message.id
                                 ? "opacity-50"
@@ -1785,7 +1787,7 @@ const user = useUserStore(
                                       <p className={`text-[10px] font-bold uppercase tracking-wide ${
                                         mine
                                           ? "text-white/70"
-                                          : "text-muted-foreground"
+                                          : "text-muted-foreground md:text-[#8696a0]"
                                       }`}>
                                         Room
                                       </p>
@@ -1803,7 +1805,7 @@ const user = useUserStore(
                                         <p className={`mt-1 truncate text-[11px] ${
                                           mine
                                             ? "text-white/70"
-                                            : "text-muted-foreground"
+                                            : "text-muted-foreground md:text-[#8696a0]"
                                         }`}>
                                           📍 {message.attachment.address}
                                         </p>
@@ -1938,11 +1940,11 @@ const user = useUserStore(
                 <div ref={messagesEndRef} />
               </div>
 
-              <div className="sticky bottom-[68px] z-20 border-t border-slate-200/80 bg-white/95 p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur md:bottom-0">
+              <div className="sticky bottom-[68px] z-20 border-t border-slate-200/80 bg-white/95 p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur md:bottom-0 md:border-[#2a3942] md:bg-[#202c33] md:px-4 md:py-3">
 
                 {selectedMedia &&
                   mediaPreview && (
-                    <div className="mb-3 rounded-xl border bg-background p-2">
+                    <div className="mb-3 rounded-xl border bg-background p-2 md:border-[#3b4a54] md:bg-[#111b21] md:text-[#e9edef]">
                       <div className="relative inline-block max-w-full">
 
                         {selectedMedia.type.startsWith(
@@ -1977,7 +1979,7 @@ const user = useUserStore(
                         </button>
                       </div>
 
-                      <div className="mt-1 max-w-full truncate text-xs text-muted-foreground">
+                      <div className="mt-1 max-w-full truncate text-xs text-muted-foreground md:text-[#8696a0]">
                         {
                           selectedMedia.name
                         }
@@ -2002,7 +2004,7 @@ const user = useUserStore(
                   }
                 />
 
-                <div className="flex items-end gap-2 rounded-[24px] border border-slate-200 bg-white p-1.5 shadow-[0_10px_34px_rgba(15,23,42,0.10)] transition focus-within:border-red-300 focus-within:ring-4 focus-within:ring-red-50">
+                <div className="flex items-end gap-2 rounded-[24px] border border-slate-200 bg-white p-1.5 shadow-[0_10px_34px_rgba(15,23,42,0.10)] transition focus-within:border-red-300 focus-within:ring-4 focus-within:ring-red-50 md:border-0 md:bg-[#2a3942] md:shadow-none md:focus-within:ring-0">
                   <Button
                     type="button"
                     size="icon"
@@ -2015,10 +2017,18 @@ const user = useUserStore(
                       mediaSending
                     }
                     title="Photo or video"
-                    className="h-10 w-10 shrink-0 rounded-full text-slate-500 hover:bg-red-50 hover:text-red-600"
+                    className="h-10 w-10 shrink-0 rounded-full text-slate-500 hover:bg-red-50 md:hover:bg-[#202c33] hover:text-red-600"
                   >
                     <Paperclip className="h-4 w-4" />
                   </Button>
+                  <button
+                    type="button"
+                    className="hidden h-10 w-10 shrink-0 items-center justify-center rounded-full text-[#aebac1] hover:text-white md:flex"
+                    aria-label="Emoji"
+                    title="Emoji"
+                  >
+                    <Smile className="h-5 w-5" />
+                  </button>
                   <Input
                     value={draft}
                     onChange={(e) =>
@@ -2027,7 +2037,7 @@ const user = useUserStore(
                       )
                     }
                     placeholder="Message…"
-                    className="h-10 flex-1 border-0 bg-transparent px-1 shadow-none focus-visible:ring-0"
+                    className="h-10 flex-1 border-0 bg-transparent px-1 shadow-none focus-visible:ring-0 md:text-[#e9edef] md:placeholder:text-[#8696a0]"
                     onKeyDown={(e) => {
                       if (
                         e.key ===
@@ -2042,7 +2052,7 @@ const user = useUserStore(
 
                   <Button
                     size="icon"
-                    className="h-10 w-10 shrink-0 rounded-full bg-red-600 text-white shadow-[0_5px_14px_rgba(220,38,38,0.28)] hover:bg-red-700 disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none"
+                    className="h-10 w-10 shrink-0 rounded-full bg-red-600 text-white shadow-[0_5px_14px_rgba(220,38,38,0.28)] hover:bg-red-700 disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none md:bg-[#00a884] md:shadow-none md:hover:bg-[#06cf9c] md:disabled:bg-[#3b4a54] md:disabled:text-[#8696a0]"
                     onClick={
                       selectedMedia
                         ? sendSelectedMedia
@@ -2082,7 +2092,7 @@ const user = useUserStore(
                   ? "Ringing…"
                   : "Call connected"}
             </h2>
-            <p className="mt-1 text-sm text-muted-foreground">
+            <p className="mt-1 text-sm text-muted-foreground md:text-[#8696a0]">
               {call.mode === "video" ? "Video call" : "Audio call"}
             </p>
             {call.mode === "video" && (
@@ -2126,7 +2136,7 @@ const user = useUserStore(
       {callNotice && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
           <div className="w-full max-w-sm rounded-2xl bg-background p-6 text-center shadow-2xl">
-            <PhoneOff className="mx-auto h-10 w-10 text-muted-foreground" />
+            <PhoneOff className="mx-auto h-10 w-10 text-muted-foreground md:text-[#8696a0]" />
             <h2 className="mt-3 text-xl font-bold">{callNotice}</h2>
           </div>
         </div>
@@ -2138,7 +2148,7 @@ const user = useUserStore(
             <h2 className="mt-3 text-lg font-bold">
               {incomingCall.mode === "video" ? "Incoming video call" : "Incoming audio call"}
             </h2>
-            <p className="mt-1 text-sm text-muted-foreground">RoomKhoj user is calling you</p>
+            <p className="mt-1 text-sm text-muted-foreground md:text-[#8696a0]">RoomKhoj user is calling you</p>
             <div className="mt-6 flex gap-3">
               <Button className="flex-1" onClick={acceptCall}>Accept</Button>
               <Button className="flex-1" variant="destructive" onClick={declineIncomingCall}>Decline</Button>
@@ -2153,7 +2163,7 @@ const user = useUserStore(
 
 export default function MessagesPage() {
   return (
-    <Suspense fallback={<main className="p-8 text-center text-sm text-muted-foreground">Loading messages…</main>}>
+    <Suspense fallback={<main className="p-8 text-center text-sm text-muted-foreground md:text-[#8696a0]">Loading messages…</main>}>
       <MessagesContent />
     </Suspense>
   );
