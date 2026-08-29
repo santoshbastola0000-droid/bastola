@@ -490,46 +490,50 @@ function RoomsContent() {
         const userLng = f.lng!;
         const radiusKm = f.radius;
 
-        const withDistance = allRooms
-          .filter((room) => {
-            const rLat = Number(
-  (room as any).latitude ??
-  (room as any).lat ??
-  (room as any).location?.latitude
-);
+        const nearbyRooms: Room[] = [];
+        const roomsWithoutCoordinates: Room[] = [];
 
-const rLng = Number(
-  (room as any).longitude ??
-  (room as any).lng ??
-  (room as any).location?.longitude
-);
-            if (!rLat || !rLng || isNaN(rLat) || isNaN(rLng)) return false;
-            return haversineKm(userLat, userLng, rLat, rLng) <= radiusKm;
-          })
-          .map((room) => {
-            const rLat = Number(
-  (room as any).latitude ??
-  (room as any).lat ??
-  (room as any).location?.latitude
-);
+        for (const room of allRooms) {
+          const rawLat =
+            (room as any).latitude ??
+            (room as any).lat ??
+            (room as any).location?.latitude;
+          const rawLng =
+            (room as any).longitude ??
+            (room as any).lng ??
+            (room as any).location?.longitude;
 
-const rLng = Number(
-  (room as any).longitude ??
-  (room as any).lng ??
-  (room as any).location?.longitude
-);
-            return {
+          const rLat = Number(rawLat);
+          const rLng = Number(rawLng);
+          const hasCoordinates =
+            rawLat !== null &&
+            rawLat !== undefined &&
+            rawLng !== null &&
+            rawLng !== undefined &&
+            Number.isFinite(rLat) &&
+            Number.isFinite(rLng);
+
+          if (!hasCoordinates) {
+            // Keep approved rooms visible even when the owner did not share a pin.
+            roomsWithoutCoordinates.push(room);
+            continue;
+          }
+
+          const distanceKm = haversineKm(userLat, userLng, rLat, rLng);
+          if (distanceKm <= radiusKm) {
+            nearbyRooms.push({
               ...room,
-              _distanceKm: haversineKm(userLat, userLng, rLat, rLng),
-            };
-          });
+              _distanceKm: distanceKm,
+            } as Room);
+          }
+        }
 
-        withDistance.sort(
-          (a, b) => (a._distanceKm ?? 0) - (b._distanceKm ?? 0),
+        nearbyRooms.sort(
+          (a: any, b: any) => (a._distanceKm ?? 0) - (b._distanceKm ?? 0),
         );
 
-        totalCount = withDistance.length;
-        allRooms = withDistance as Room[];
+        allRooms = [...nearbyRooms, ...roomsWithoutCoordinates];
+        totalCount = allRooms.length;
       }
 
       if (f.sort === "price-asc")
@@ -720,6 +724,63 @@ const rLng = Number(
   }, [JSON.stringify(filters)]);
 
   useEffect(() => {
+    let cancelled = false;
+    let inFlight = false;
+
+    const pollLatestApproved = async () => {
+      if (inFlight || document.visibilityState !== "visible") return;
+      inFlight = true;
+
+      try {
+        const f = filtersRef.current;
+        const resp = await roomService.getPublicRooms({
+          page: 0,
+          take: PAGE_SIZE,
+          ...(f.search.trim() && { search: f.search.trim() }),
+          ...(f.minPrice > 0 && { minPrice: f.minPrice }),
+          ...(f.maxPrice < 50000 && { maxPrice: f.maxPrice }),
+          ...(f.allowsWomen !== null && { allowsWomen: f.allowsWomen }),
+          ...(f.categories.length === 1 && { category: f.categories[0] }),
+          approvalStatus: RoomStatus.APPROVED,
+        });
+
+        if (cancelled || !mountedRef.current) return;
+
+        const incoming =
+          f.categories.length > 1
+            ? resp.data.filter((room) => f.categories.includes(room.category))
+            : resp.data;
+
+        if (!incoming.length) return;
+
+        setRooms((prev) => {
+          const byId = new Map<string, Room>();
+          incoming.forEach((room) => byId.set(room.id, room));
+          prev.forEach((room) => {
+            if (!byId.has(room.id)) byId.set(room.id, room);
+          });
+          return Array.from(byId.values());
+        });
+
+        const incomingIds = new Set(incoming.map((room) => room.id));
+        setNewRoomIds(incomingIds);
+      } catch {
+        // Silent realtime refresh: normal page loading handles visible errors.
+      } finally {
+        inFlight = false;
+      }
+    };
+
+    void pollLatestApproved();
+    const timer = window.setInterval(pollLatestApproved, 1000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, []);
+
+  useEffect(() => {
     const sentinel = sentinelRef.current;
     if (!sentinel) return;
 
@@ -804,6 +865,15 @@ const rLng = Number(
     (locationActive ? 1 : 0);
 
   const premiumRooms = [...rooms].sort((a, b) => {
+    const approvedTime = (room: Room) => {
+      const value = (room as any).approvedAt || room.createdAt;
+      const time = new Date(value).getTime();
+      return Number.isNaN(time) ? 0 : time;
+    };
+
+    const approvedDiff = approvedTime(b) - approvedTime(a);
+    if (approvedDiff !== 0) return approvedDiff;
+
     const scoreRoom = (room: Room) => {
       let score = 0;
 
