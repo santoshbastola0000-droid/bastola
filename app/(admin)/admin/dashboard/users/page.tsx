@@ -26,7 +26,6 @@ import {
   Mic,
   Camera,
   Bell,
-  MousePointerClick,
   SendHorizontal,
   Activity,
 } from "lucide-react";
@@ -317,7 +316,7 @@ export default function UsersList() {
   const users = usersResponse?.data || [];
   const engagementUserIds = users.map((user) => user.id);
 
-  const { data: engagementByUserId = {}, isFetching: engagementLoading } =
+  const { data: engagementByUserId = {} } =
     useQuery({
       queryKey: ["admin-user-engagement", engagementUserIds],
       queryFn: () => userService.getEngagementSummary(engagementUserIds),
