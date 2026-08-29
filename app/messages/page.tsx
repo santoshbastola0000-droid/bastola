@@ -64,6 +64,11 @@ const user = useUserStore(
   const [socket, setSocket] =
     useState<Socket | null>(null);
 
+  const [onlineUserIds, setOnlineUserIds] =
+    useState<Set<string>>(
+      () => new Set(),
+    );
+
   const [conversations, setConversations] =
     useState<MessageConversation[]>([]);
 
@@ -272,6 +277,53 @@ const user = useUserStore(
     );
 
     nextSocket.on(
+      "presence:snapshot",
+      (
+        users: Array<{
+          userId: string;
+          online: boolean;
+        }>,
+      ) => {
+        setOnlineUserIds(() => {
+          const next = new Set<string>();
+
+          for (const item of Array.isArray(users) ? users : []) {
+            if (item?.online && item?.userId) {
+              next.add(String(item.userId));
+            }
+          }
+
+          return next;
+        });
+      },
+    );
+
+    nextSocket.on(
+      "presence:update",
+      (presence: {
+        userId: string;
+        online: boolean;
+      }) => {
+        const userId =
+          String(presence?.userId || "");
+
+        if (!userId) return;
+
+        setOnlineUserIds((current) => {
+          const next = new Set(current);
+
+          if (presence.online) {
+            next.add(userId);
+          } else {
+            next.delete(userId);
+          }
+
+          return next;
+        });
+      },
+    );
+
+    nextSocket.on(
       "message:new",
       (message: ChatMessage) => {
         if (
@@ -416,11 +468,46 @@ const user = useUserStore(
 
     return () => {
       nextSocket.off("message:status");
+      nextSocket.off("presence:snapshot");
+      nextSocket.off("presence:update");
       nextSocket.disconnect();
       setSocket(null);
     };
   }, [currentUserId, authToken]);
 
+
+  useEffect(() => {
+    if (!socket || !currentUserId) {
+      return;
+    }
+
+    const userIds = Array.from(
+      new Set(
+        conversations
+          .map((conversation) =>
+            conversation.otherUser?.id ||
+            conversation.otherUserId ||
+            (conversation.userOneId === currentUserId
+              ? conversation.userTwoId
+              : conversation.userOneId),
+          )
+          .filter(
+            (id): id is string =>
+              Boolean(id) &&
+              id !== currentUserId,
+          ),
+      ),
+    );
+
+    socket.emit(
+      "presence:subscribe",
+      { userIds },
+    );
+  }, [
+    socket,
+    currentUserId,
+    conversations,
+  ]);
 
   useEffect(() => {
     if (call?.mode !== "video") return;
@@ -1272,10 +1359,19 @@ const user = useUserStore(
                       }
                       className="flex w-full gap-3 p-4 text-left hover:bg-muted/50"
                     >
-                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-muted font-semibold">
-                        {otherId
-                          ?.slice(0, 2)
-                          .toUpperCase()}
+                      <div className="relative shrink-0">
+                        <div className="flex h-11 w-11 items-center justify-center rounded-full bg-muted font-semibold">
+                          {otherId
+                            ?.slice(0, 2)
+                            .toUpperCase()}
+                        </div>
+                        {onlineUserIds.has(otherId) && (
+                          <span
+                            className="absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-background bg-emerald-500"
+                            title="Online"
+                            aria-label="Online"
+                          />
+                        )}
                       </div>
 
                       <div className="min-w-0 flex-1">
@@ -1345,10 +1441,18 @@ const user = useUserStore(
                   ← Back
                 </button>
 
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted font-semibold">
-                  {otherUserId
-                    .slice(0, 2)
-                    .toUpperCase()}
+                <div className="relative shrink-0">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted font-semibold">
+                    {otherUserId
+                      .slice(0, 2)
+                      .toUpperCase()}
+                  </div>
+                  {onlineUserIds.has(otherUserId) && (
+                    <span
+                      className="absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-background bg-emerald-500"
+                      aria-label="Online"
+                    />
+                  )}
                 </div>
 
                 <div className="flex-1">
@@ -1364,8 +1468,16 @@ const user = useUserStore(
                     </p>
                   )}
 
-                  <p className="text-xs text-muted-foreground">
-                    {selected.contextType}
+                  <p
+                    className={`text-xs font-medium ${
+                      onlineUserIds.has(otherUserId)
+                        ? "text-emerald-600"
+                        : "text-muted-foreground"
+                    }`}
+                  >
+                    {onlineUserIds.has(otherUserId)
+                      ? "● Online"
+                      : "Offline"}
                   </p>
                 </div>
                 <div className="ml-auto flex gap-2">
