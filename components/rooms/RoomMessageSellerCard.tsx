@@ -37,10 +37,17 @@ export function RoomMessageSellerCard({
 
     try {
       setSending(true);
+      // First resolve the one canonical chat for this owner.
+      // Then send the text explicitly with roomId so the backend persists
+      // the room as a message-level attachment for the owner.
       const result =
-        await messageService.startForRoom(
-          roomId,
+        await messageService.startForRoom(roomId);
+
+      const sentMessage =
+        await messageService.sendMessage(
+          result.conversation.id,
           content,
+          roomId,
         );
 
       sessionStorage.setItem(
@@ -49,6 +56,8 @@ export function RoomMessageSellerCard({
           conversationId: result.conversation.id,
           room: result.room,
           sentText: content,
+          messageId: sentMessage.id,
+          attachment: sentMessage.attachment || null,
         }),
       );
 
