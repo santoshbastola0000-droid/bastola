@@ -188,6 +188,28 @@ export const messageService = {
     };
   },
 
+  sendRoomInquiry: async (
+    roomId: string,
+    content: string,
+  ) => {
+    const response = await privateApi.post(
+      `/message/rooms/${roomId}/send`,
+      { content },
+    );
+
+    return response.data as {
+      conversation: MessageConversation;
+      message: ChatMessage;
+      room: {
+        id: string;
+        title: string;
+        price: string | number;
+        address?: string | null;
+        images: string[];
+      };
+    };
+  },
+
   startForRoom: async (roomId: string, content?: string) => {
     const response = await privateApi.post(`/message/rooms/${roomId}`, {
       content,
