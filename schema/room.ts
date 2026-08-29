@@ -36,7 +36,7 @@ export const createRoomSchema = z.object({
   waterSupplyTimings: waterSupplyTimingsSchema,
   allowsWomen: z.boolean().default(true),
   roomCapacity: z.coerce.number().min(1),
-  roomArea: z.coerce.number().min(1).optional(),
+  roomArea: z.coerce.number().min(1, "Room area is required"),
   contactPerson: z.string().optional(),
   contactPhone: z.string().optional(),
   contactEmail: z.string().email().optional().or(z.literal("")),
