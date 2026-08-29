@@ -11,6 +11,7 @@ export interface UserFilters {
   search?: string;
   role?: UserRole;
   accountPurpose?: "FIND_ROOM" | "POST_ROOM" | "FIND_JOB" | "POST_JOB";
+  onlineStatus?: "online" | "offline";
 }
 
 export const userService = {
@@ -27,6 +28,9 @@ export const userService = {
     if (filters.role) params.append("role", filters.role);
     if (filters.accountPurpose) {
       params.append("accountPurpose", filters.accountPurpose);
+    }
+    if (filters.onlineStatus) {
+      params.append("onlineStatus", filters.onlineStatus);
     }
 
     const response = await privateApi.get<PaginatedUserResponse>(
