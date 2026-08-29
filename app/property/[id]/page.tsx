@@ -197,6 +197,8 @@ const ImageCarousel = ({
   const [current, setCurrent] = useState(0);
   const [showFullscreen, setShowFullscreen] = useState(false);
   const dragX = useMotionValue(0);
+  const isVideo = (src: string) =>
+    /\.(mp4|webm|mov|m4v)(\?.*)?$/i.test(src);
 
   const goTo = useCallback(
     (idx: number) => setCurrent(Math.max(0, Math.min(images.length - 1, idx))),
@@ -228,24 +230,39 @@ const ImageCarousel = ({
     <>
       <div className="relative h-[52vh] min-h-[360px] max-h-[620px] w-full overflow-hidden bg-slate-900 sm:h-[560px]">
         <AnimatePresence initial={false} mode="wait">
-          <motion.img
-            key={current}
-            src={resolveImageUrl(images[current])}
-            alt={`${title} — photo ${current + 1} of ${images.length}`}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.25 }}
-            className="absolute inset-0 w-full h-full object-cover"
-            onError={(e) => {
-              (e.target as HTMLImageElement).src = "/placeholder-image.jpg";
-            }}
-            drag="x"
-            dragConstraints={{ left: 0, right: 0 }}
-            dragElastic={0.2}
-            onDragEnd={handleDragEnd}
-            style={{ x: dragX, cursor: "grab", userSelect: "none" }}
-          />
+          {isVideo(images[current]) ? (
+            <motion.video
+              key={current}
+              src={resolveImageUrl(images[current])}
+              controls
+              playsInline
+              preload="metadata"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.25 }}
+              className="absolute inset-0 h-full w-full bg-black object-contain"
+            />
+          ) : (
+            <motion.img
+              key={current}
+              src={resolveImageUrl(images[current])}
+              alt={`${title} — photo ${current + 1} of ${images.length}`}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.25 }}
+              className="absolute inset-0 w-full h-full object-cover"
+              onError={(e) => {
+                (e.target as HTMLImageElement).src = "/placeholder-image.jpg";
+              }}
+              drag="x"
+              dragConstraints={{ left: 0, right: 0 }}
+              dragElastic={0.2}
+              onDragEnd={handleDragEnd}
+              style={{ x: dragX, cursor: "grab", userSelect: "none" }}
+            />
+          )}
         </AnimatePresence>
 
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/20 pointer-events-none" />
@@ -335,12 +352,23 @@ const ImageCarousel = ({
                   : "border-transparent opacity-60 hover:opacity-90",
               )}
             >
-              <img
-                src={resolveImageUrl(img)}
-                alt=""
-                className="w-full h-full object-cover"
-                aria-hidden
-              />
+              {isVideo(img) ? (
+                <video
+                  src={resolveImageUrl(img)}
+                  muted
+                  playsInline
+                  preload="metadata"
+                  className="h-full w-full object-cover"
+                  aria-hidden
+                />
+              ) : (
+                <img
+                  src={resolveImageUrl(img)}
+                  alt=""
+                  className="w-full h-full object-cover"
+                  aria-hidden
+                />
+              )}
             </button>
           ))}
         </div>
@@ -352,24 +380,39 @@ const ImageCarousel = ({
           <DialogTitle className="sr-only">Room Photos Fullscreen</DialogTitle>
           <div className="relative w-full h-full flex items-center justify-center">
             <AnimatePresence mode="wait">
-              <motion.img
-                key={`fs-${current}`}
-                src={resolveImageUrl(images[current])}
-                alt={`${title} fullscreen`}
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                transition={{ duration: 0.2 }}
-                className="max-w-full max-h-full object-contain"
-                drag="x"
-                dragConstraints={{ left: 0, right: 0 }}
-                dragElastic={0.15}
-                onDragEnd={(_: any, info: PanInfo) => {
-                  if (info.offset.x < -60) next();
-                  else if (info.offset.x > 60) prev();
-                }}
-                style={{ cursor: "grab", userSelect: "none" }}
-              />
+              {isVideo(images[current]) ? (
+                <motion.video
+                  key={`fs-${current}`}
+                  src={resolveImageUrl(images[current])}
+                  controls
+                  playsInline
+                  autoPlay
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  transition={{ duration: 0.2 }}
+                  className="max-h-full max-w-full object-contain"
+                />
+              ) : (
+                <motion.img
+                  key={`fs-${current}`}
+                  src={resolveImageUrl(images[current])}
+                  alt={`${title} fullscreen`}
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  transition={{ duration: 0.2 }}
+                  className="max-w-full max-h-full object-contain"
+                  drag="x"
+                  dragConstraints={{ left: 0, right: 0 }}
+                  dragElastic={0.15}
+                  onDragEnd={(_: any, info: PanInfo) => {
+                    if (info.offset.x < -60) next();
+                    else if (info.offset.x > 60) prev();
+                  }}
+                  style={{ cursor: "grab", userSelect: "none" }}
+                />
+              )}
             </AnimatePresence>
             <button
               onClick={() => setShowFullscreen(false)}
