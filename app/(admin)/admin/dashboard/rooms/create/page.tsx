@@ -7,9 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Building2,
-  MapPin,
   Loader2,
-  AlertCircle,
   ChevronLeft,
   Save,
   Image as ImageIcon,
@@ -19,7 +17,6 @@ import {
   Droplets,
   User,
   Phone,
-  CheckCircle2,
   XCircle,
   Wifi,
   Sun,
@@ -77,10 +74,7 @@ import { useCreateRoomMutation } from "@/http/mutations/room.mutation";
 import { createRoomSchema, CreateRoomFormValues } from "@/schema/room";
 import { UserRole } from "@/types/user.types";
 import { useUserRole } from "@/stores/user-store";
-import MapPicker from "@/components/admin/rooms/MapPicker";
 import {
-  DEFAULT_LAT,
-  DEFAULT_LNG,
   FAILURETOAST,
   SUCCESSTOAST,
 } from "@/lib/constants/app.constants";
@@ -289,16 +283,7 @@ export default function CreateRoomPage() {
         evening: "17:00-19:00",
         notes: "",
       },
-      location: {
-        name: "",
-        formattedAddress: "",
-        latitude: DEFAULT_LAT,
-        longitude: DEFAULT_LNG,
-        city: "",
-        state: "",
-        country: "",
-        postalCode: "",
-      },
+      location: undefined,
       tenantTypes: [],
       genderPreference: GenderPreference.NO_PREFERENCE,
       smokingAllowed: null,
@@ -321,10 +306,6 @@ export default function CreateRoomPage() {
   });
 
   const formErrors = form.formState.errors;
-  const currentLat = form.watch("location.latitude");
-  const currentLng = form.watch("location.longitude");
-  const isValidLocation =
-    currentLat !== DEFAULT_LAT || currentLng !== DEFAULT_LNG;
   const ownerLivesInHouse = form.watch("ownerLivesInHouse");
   const gateClosingTimeRaw = form.watch("gateClosingTime");
 
@@ -336,6 +317,76 @@ export default function CreateRoomPage() {
     }
   }, [gateClosingTimeRaw]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const applyCoordinates = (latitude: number, longitude: number) => {
+      if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return;
+
+      form.setValue(
+        "location",
+        {
+          name: "Current location",
+          formattedAddress: "",
+          latitude,
+          longitude,
+          city: "",
+          state: "",
+          country: "",
+          postalCode: "",
+        },
+        { shouldValidate: false, shouldDirty: false },
+      );
+    };
+
+    try {
+      const saved = localStorage.getItem("roomkhoj-viewer-location");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (
+          Number.isFinite(parsed?.latitude) &&
+          Number.isFinite(parsed?.longitude)
+        ) {
+          applyCoordinates(parsed.latitude, parsed.longitude);
+        }
+      }
+    } catch {
+      // Ignore malformed saved location.
+    }
+
+    if (!navigator.geolocation) return;
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const latitude = position.coords.latitude;
+        const longitude = position.coords.longitude;
+
+        applyCoordinates(latitude, longitude);
+
+        try {
+          localStorage.setItem(
+            "roomkhoj-viewer-location",
+            JSON.stringify({
+              latitude,
+              longitude,
+              updatedAt: Date.now(),
+            }),
+          );
+        } catch {
+          // Location capture must never block room posting.
+        }
+      },
+      () => {
+        // Location is optional. User can still post a room if permission is denied.
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 5 * 60 * 1000,
+      },
+    );
+  }, [form]);
+
   const getTabStatus = (tab: string) => {
     switch (tab) {
       case "basic":
@@ -344,8 +395,6 @@ export default function CreateRoomPage() {
           form.getValues("description") &&
           form.getValues("price")
         );
-      case "location":
-        return isValidLocation;
       case "details":
         return !!form.getValues("roomArea");
       case "amenities":
@@ -370,7 +419,6 @@ export default function CreateRoomPage() {
   };
 
   const requiredFieldByTab: Record<string, string> = {
-    location: "room-location-picker",
     details: "room-area",
     photos: "room-photos",
     contact: "contact-person",
@@ -400,7 +448,6 @@ export default function CreateRoomPage() {
   const showMissingRequiredTab = (tab: string) => {
     const messages: Record<string, string> = {
       basic: "Room title, description, and monthly rent are required.",
-      location: "Allow location access and use your current room location, or pin it on the map.",
       details: "Room area (m²) is required.",
       photos: "Upload at least one room photo.",
       contact: "Owner name and phone number are required.",
@@ -474,35 +521,8 @@ export default function CreateRoomPage() {
     });
   };
 
-  const handleLocationSelect = (location: {
-    lat: number;
-    lng: number;
-    name?: string;
-    formattedAddress?: string;
-    city?: string;
-    state?: string;
-    country?: string;
-    postalCode?: string;
-  }) => {
-    const extractedName = location.formattedAddress
-      ? extractLocationName(location.formattedAddress)
-      : location.name || "Selected Location";
-    form.setValue("location.latitude", location.lat);
-    form.setValue("location.longitude", location.lng);
-    form.setValue("location.name", extractedName);
-    form.setValue("location.formattedAddress", location.formattedAddress || "");
-    form.setValue("location.city", location.city || "");
-    form.setValue("location.state", location.state || "");
-    form.setValue("location.country", location.country || "");
-    form.setValue("location.postalCode", location.postalCode || "");
-    if (location.formattedAddress)
-      form.setValue("address", location.formattedAddress);
-    form.trigger("location");
-    toast.success("📍 Location selected!", {
-      description: extractedName,
-      duration: 2500,
-    });
-  };
+  // Room location is captured automatically in the background when browser permission is available.
+
 
   // ── Simplified image upload: single input, up to 10 total ─────────────────
   const processImageFiles = (files: File[]) => {
@@ -1120,245 +1140,6 @@ export default function CreateRoomPage() {
                                 />
                               </div>
                             </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {/* ══ LOCATION ══ */}
-                {activeTab === "location" && (
-                  <div className="space-y-5">
-                    <SectionHeader
-                      icon={MapPin}
-                      title="Location & Map"
-                      subtitle="Pin your room on the map — नक्सामा स्थान चिन्ह लगाउनुहोस्"
-                    />
-
-                    {!isValidLocation && (
-                      <Alert variant="destructive" className="rounded-xl">
-                        <AlertCircle className="h-4 w-4" />
-                        <AlertTitle>
-                          Location required / स्थान आवश्यक
-                        </AlertTitle>
-                        <AlertDescription>
-                          Tap “Use current location” below, then choose Allow in
-                          your browser. We use it only for this room listing.
-                          You can also pin the room on the map.
-                        </AlertDescription>
-                      </Alert>
-                    )}
-
-                    {isValidLocation && (
-                      <div className="flex items-center gap-2 p-3 bg-green-50 rounded-xl border border-green-200">
-                        <CheckCircle2
-                          className="w-4 h-4 text-green-600 flex-shrink-0"
-                          aria-hidden
-                        />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold text-green-700">
-                            Location Set / स्थान सेट भयो
-                          </p>
-                          <p className="text-xs text-green-600 truncate">
-                            {form.getValues("location.formattedAddress") ||
-                              (typeof currentLat === "number" && typeof currentLng === "number"
-                                ? `${currentLat.toFixed(4)}, ${currentLng.toFixed(4)}`
-                                : "Location selected")}
-                          </p>
-                        </div>
-                        <Badge
-                          variant="outline"
-                          className="text-xs border-green-300 text-green-700 flex-shrink-0"
-                        >
-                          ✓ Pinned
-                        </Badge>
-                      </div>
-                    )}
-
-                    <div
-                      id="room-location-picker"
-                      tabIndex={-1}
-                      className="rounded-2xl overflow-hidden border border-slate-200 shadow-sm outline-none"
-                    >
-                      <MapPicker
-                        onLocationSelect={handleLocationSelect}
-                        initialLocation={
-                          typeof currentLat === "number" &&
-                          typeof currentLng === "number"
-                            ? { lat: currentLat, lng: currentLng }
-                            : null
-                        }
-                      />
-                    </div>
-
-                    <div className="space-y-4">
-                      <p className="text-sm font-semibold text-slate-700">
-                        Auto-filled location details / स्वतः भरिएको ठेगाना
-                      </p>
-
-                      <FormField
-                        control={form.control}
-                        name="location.formattedAddress"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-sm text-slate-700 font-semibold flex items-center gap-1.5">
-                              <Edit3 className="w-3.5 h-3.5" aria-hidden /> Full
-                              Address / पूरा ठेगाना
-                              <Badge
-                                variant="outline"
-                                className="text-[10px] px-1.5 py-0 border-amber-300 text-amber-600"
-                              >
-                                Optional edit
-                              </Badge>
-                            </FormLabel>
-                            <FormControl>
-                              <Textarea
-                                placeholder="Auto-filled after location is selected — edit only if needed"
-                                className="rounded-xl border-slate-200 resize-y min-h-[80px] text-base p-4 focus:border-primary"
-                                {...field}
-                              />
-                            </FormControl>
-                            <FormDescription className="text-xs">
-                              GPS वा map ले भरिदिन्छ। आवश्यक परेमा मात्र
-                              सम्पादन गर्नुहोस्।
-                            </FormDescription>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <FormField
-                          control={form.control}
-                          name="location.name"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-sm text-slate-600">
-                                Location Name / स्थानको नाम
-                              </FormLabel>
-                              <FormControl>
-                                <Input
-                                  placeholder="e.g. Lakeside, Srijana Chowk"
-                                  {...field}
-                                  className="h-11 rounded-xl border-slate-200 px-4"
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="location.city"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-sm text-slate-600">
-                                City / शहर
-                              </FormLabel>
-                              <FormControl>
-                                <Input
-                                  placeholder="e.g. Pokhara"
-                                  {...field}
-                                  className="h-11 rounded-xl border-slate-200 px-4"
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="location.state"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-sm text-slate-600">
-                                Province / प्रदेश
-                              </FormLabel>
-                              <FormControl>
-                                <Input
-                                  placeholder="e.g. Gandaki"
-                                  {...field}
-                                  className="h-11 rounded-xl border-slate-200 px-4"
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="location.postalCode"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-sm text-slate-600">
-                                Postal Code / हुलाक नम्बर
-                              </FormLabel>
-                              <FormControl>
-                                <Input
-                                  placeholder="e.g. 33700"
-                                  {...field}
-                                  className="h-11 rounded-xl border-slate-200 px-4"
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-
-                      <FormField
-                        control={form.control}
-                        name="distanceHighwayM"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-sm text-slate-700 font-semibold flex items-center gap-1.5">
-                              🛣️ Distance from Highway / राजमार्गबाट दूरी
-                              <Badge
-                                variant="outline"
-                                className="text-[10px] px-1.5 py-0 border-slate-300 text-slate-400"
-                              >
-                                Optional
-                              </Badge>
-                            </FormLabel>
-                            <FormControl>
-                              <div className="relative">
-                                <Input
-                                  type="number"
-                                  inputMode="numeric"
-                                  min="0"
-                                  step="10"
-                                  placeholder="e.g. 200"
-                                  className="h-11 pr-20 rounded-xl border-slate-200 focus:border-primary px-4"
-                                  value={field.value ?? ""}
-                                  onChange={(e) =>
-                                    field.onChange(
-                                      e.target.value === ""
-                                        ? null
-                                        : Number(e.target.value),
-                                    )
-                                  }
-                                />
-                                <span
-                                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-400 pointer-events-none select-none"
-                                  aria-hidden
-                                >
-                                  metres
-                                </span>
-                              </div>
-                            </FormControl>
-                            {field.value !== null &&
-                              field.value !== undefined &&
-                              Number(field.value) > 0 && (
-                                <p className="text-xs text-slate-500 mt-1">
-                                  ≈{" "}
-                                  {Number(field.value) >= 1000
-                                    ? `${(Number(field.value) / 1000).toFixed(2)} km`
-                                    : `${field.value} m`}{" "}
-                                  — राजमार्गबाट
-                                </p>
-                              )}
                             <FormMessage />
                           </FormItem>
                         )}
