@@ -28,8 +28,14 @@ interface LocationTabProps {
 export function LocationTab({ form }: LocationTabProps) {
   const currentLat = form.watch("location.latitude");
   const currentLng = form.watch("location.longitude");
+  const selectedLocation =
+    typeof currentLat === "number" && typeof currentLng === "number"
+      ? { lat: currentLat, lng: currentLng }
+      : null;
   const isValidLocation =
-    currentLat !== DEFAULT_LAT || currentLng !== DEFAULT_LNG;
+    selectedLocation !== null &&
+    (selectedLocation.lat !== DEFAULT_LAT ||
+      selectedLocation.lng !== DEFAULT_LNG);
   const distanceVal = form.watch("distanceHighwayM");
 
   const handleLocationSelect = (location: {
@@ -76,7 +82,9 @@ export function LocationTab({ form }: LocationTabProps) {
           />
           <p className="text-sm font-semibold text-green-700 truncate flex-1">
             {form.getValues("location.formattedAddress") ||
-              `${currentLat.toFixed(5)}, ${currentLng.toFixed(5)}`}
+              (selectedLocation
+                ? `${selectedLocation.lat.toFixed(5)}, ${selectedLocation.lng.toFixed(5)}`
+                : "Location not selected")}
           </p>
           <Badge
             variant="outline"
@@ -91,9 +99,7 @@ export function LocationTab({ form }: LocationTabProps) {
       <div className="rounded-2xl overflow-hidden border border-slate-200 shadow-sm">
         <MapPicker
           onLocationSelect={handleLocationSelect}
-          initialLocation={
-            isValidLocation ? { lat: currentLat, lng: currentLng } : null
-          }
+          initialLocation={isValidLocation ? selectedLocation : null}
         />
       </div>
 
@@ -205,10 +211,10 @@ export function LocationTab({ form }: LocationTabProps) {
       </div>
 
       {/* Coordinates display */}
-      {isValidLocation && (
+      {isValidLocation && selectedLocation && (
         <div className="flex gap-4 p-3 bg-primary/5 rounded-xl border border-primary/20 text-xs font-mono text-slate-600">
-          <span>Lat: {currentLat.toFixed(6)}</span>
-          <span>Lng: {currentLng.toFixed(6)}</span>
+          <span>Lat: {selectedLocation.lat.toFixed(6)}</span>
+          <span>Lng: {selectedLocation.lng.toFixed(6)}</span>
         </div>
       )}
 
