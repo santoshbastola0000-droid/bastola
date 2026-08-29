@@ -222,7 +222,7 @@ const ImageCarousel = ({
 
   return (
     <>
-      <div className="relative h-72 sm:h-[420px] w-full overflow-hidden bg-slate-900">
+      <div className="relative h-[52vh] min-h-[360px] max-h-[620px] w-full overflow-hidden bg-slate-900 sm:h-[560px]">
         <AnimatePresence initial={false} mode="wait">
           <motion.img
             key={current}
@@ -1259,12 +1259,16 @@ export default function PropertyDetailsPage() {
   return (
     <>
       <NavBar />
-      <div className="min-h-screen bg-slate-50 pt-16">
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+      <div className="min-h-screen bg-[#f7f8fa] pt-16">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="mx-auto w-full max-w-5xl bg-white sm:mt-4 sm:overflow-hidden sm:rounded-[28px] sm:border sm:border-slate-200 sm:shadow-[0_14px_45px_rgba(15,23,42,0.10)]"
+        >
           <ImageCarousel images={room.images || []} title={room.title} />
         </motion.div>
 
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-32">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-5 pb-32">
           {/* Top row */}
           <div className="flex items-center justify-between mb-5">
             <Link
@@ -1368,6 +1372,18 @@ export default function PropertyDetailsPage() {
                 <Lock className="w-4 h-4 mr-1.5" aria-hidden /> Unlock
               </Button>
             )}
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.11 }}
+            className="mb-5"
+          >
+            <RoomMessageSellerCard
+              roomId={room.id}
+              roomTitle={room.title}
+            />
           </motion.div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
@@ -1549,17 +1565,6 @@ export default function PropertyDetailsPage() {
                 transition={{ delay: 0.27 }}
               >
                 <TenantPreferencesSection room={room} />
-              </motion.div>
-
-              <motion.div
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.275 }}
-              >
-                <RoomMessageSellerCard
-                  roomId={room.id}
-                  roomTitle={room.title}
-                />
               </motion.div>
 
               {/* Location & Contact */}
