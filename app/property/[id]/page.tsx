@@ -91,6 +91,7 @@ import { cn } from "@/lib/utils";
 import { isObjectRecord, isRoomLike } from "@/lib/room-guards";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { RoomActionCenter } from "@/components/rooms/RoomActionCenter";
+import { RoomMessageSellerCard } from "@/components/rooms/RoomMessageSellerCard";
 
 // ── Amenity icon map ──
 const amenityIcons: Record<string, any> = {
@@ -1548,6 +1549,17 @@ export default function PropertyDetailsPage() {
                 transition={{ delay: 0.27 }}
               >
                 <TenantPreferencesSection room={room} />
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.275 }}
+              >
+                <RoomMessageSellerCard
+                  roomId={room.id}
+                  roomTitle={room.title}
+                />
               </motion.div>
 
               {/* Location & Contact */}
