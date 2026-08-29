@@ -336,7 +336,7 @@ export function PropertyCard({
                 <span className="truncate text-[11px] font-extrabold text-slate-800">
                   {ownerName}
                 </span>
-                {room.user?.role === UserRole.ADMIN && (
+                {room.user?.role === "ADMIN" && (
                   <CheckCircle
                     className="h-3 w-3 shrink-0 fill-sky-500 text-white"
                     aria-label="RoomKhoj"
