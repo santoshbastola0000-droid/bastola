@@ -23,6 +23,9 @@ import {
   Wallet,
   Radio,
   Clock,
+  Mic,
+  Camera,
+  Bell,
 } from "lucide-react";
 
 import {
@@ -70,7 +73,7 @@ import {
 } from "@/components/ui/alert-dialog";
 
 import { userService, type UserFilters } from "@/http/services/user.service";
-import { UserRole } from "@/types/user.types";
+import { UserRole, type BrowserPermissionState } from "@/types/user.types";
 import {
   SUCCESSTOAST,
   FAILURETOAST,
@@ -94,6 +97,18 @@ export default function UsersList() {
   >("all");
   const [onlineFilter, setOnlineFilter] = useState<
     "all" | "online" | "offline"
+  >("all");
+  const [locationPermissionFilter, setLocationPermissionFilter] = useState<
+    BrowserPermissionState | "all"
+  >("all");
+  const [notificationPermissionFilter, setNotificationPermissionFilter] = useState<
+    BrowserPermissionState | "all"
+  >("all");
+  const [microphonePermissionFilter, setMicrophonePermissionFilter] = useState<
+    BrowserPermissionState | "all"
+  >("all");
+  const [cameraPermissionFilter, setCameraPermissionFilter] = useState<
+    BrowserPermissionState | "all"
   >("all");
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(10);
@@ -128,6 +143,14 @@ export default function UsersList() {
       purposeFilter !== "all" ? purposeFilter : undefined,
     onlineStatus:
       onlineFilter !== "all" ? onlineFilter : undefined,
+    locationPermission:
+      locationPermissionFilter !== "all" ? locationPermissionFilter : undefined,
+    notificationPermission:
+      notificationPermissionFilter !== "all" ? notificationPermissionFilter : undefined,
+    microphonePermission:
+      microphonePermissionFilter !== "all" ? microphonePermissionFilter : undefined,
+    cameraPermission:
+      cameraPermissionFilter !== "all" ? cameraPermissionFilter : undefined,
   };
 
   const getPurposeLabel = (purpose?: string | null) => {
@@ -351,6 +374,38 @@ export default function UsersList() {
     );
   };
 
+  const permissionOptions: Array<{ value: BrowserPermissionState | "all"; label: string }> = [
+    { value: "all", label: "All" },
+    { value: "granted", label: "Allowed" },
+    { value: "denied", label: "Blocked" },
+    { value: "prompt", label: "Not decided" },
+    { value: "unsupported", label: "Unsupported" },
+    { value: "unknown", label: "Unknown" },
+  ];
+
+  const getPermissionBadge = (
+    label: string,
+    state: BrowserPermissionState | undefined,
+    icon: React.ReactNode,
+  ) => {
+    const value = state ?? "unknown";
+    const styles =
+      value === "granted"
+        ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+        : value === "denied"
+          ? "border-rose-200 bg-rose-50 text-rose-700"
+          : value === "prompt"
+            ? "border-amber-200 bg-amber-50 text-amber-700"
+            : "border-slate-200 bg-slate-50 text-slate-500";
+
+    return (
+      <Badge variant="outline" className={`gap-1 text-[10px] ${styles}`}>
+        {icon}
+        {label}: {value}
+      </Badge>
+    );
+  };
+
   const MobileUserCard = ({ user }: { user: any }) => (
     <div className="bg-white rounded-lg border p-4 space-y-3">
       <div className="flex items-start justify-between">
@@ -412,6 +467,15 @@ export default function UsersList() {
         <div className="col-span-2 flex items-center justify-between gap-2">
           {getLocationText(user)}
           {getOnlineBadge(user.isOnline, user.lastActiveAt)}
+        </div>
+        <div className="col-span-2 rounded-lg border bg-slate-50 p-2">
+          <p className="mb-2 text-xs font-semibold text-slate-600">RoomKhoj access</p>
+          <div className="flex flex-wrap gap-1.5">
+            {getPermissionBadge("Location", user.permissions?.location, <MapPin className="h-3 w-3" />)}
+            {getPermissionBadge("Notification", user.permissions?.notification, <Bell className="h-3 w-3" />)}
+            {getPermissionBadge("Audio", user.permissions?.microphone, <Mic className="h-3 w-3" />)}
+            {getPermissionBadge("Video", user.permissions?.camera, <Camera className="h-3 w-3" />)}
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <Wallet className="h-3 w-3 text-primary" />
@@ -495,6 +559,10 @@ export default function UsersList() {
                 setRoleFilter("all");
                 setPurposeFilter("all");
                 setOnlineFilter("all");
+                setLocationPermissionFilter("all");
+                setNotificationPermissionFilter("all");
+                setMicrophonePermissionFilter("all");
+                setCameraPermissionFilter("all");
                 setPage(0);
                 refetch();
               }}
@@ -542,7 +610,7 @@ export default function UsersList() {
       {/* Filters Card */}
       <Card className="shadow-sm">
         <CardContent className="pt-6">
-          <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex flex-col sm:flex-row sm:flex-wrap gap-4">
             {/* Search */}
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -655,6 +723,86 @@ export default function UsersList() {
               </SelectContent>
             </Select>
 
+            <Select
+              value={locationPermissionFilter}
+              onValueChange={(value) => {
+                setLocationPermissionFilter(value as BrowserPermissionState | "all");
+                setPage(0);
+              }}
+            >
+              <SelectTrigger className="w-full sm:w-[170px] cursor-pointer">
+                <MapPin className="mr-1 h-4 w-4" />
+                <SelectValue placeholder="Location access" />
+              </SelectTrigger>
+              <SelectContent>
+                {permissionOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    Location: {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select
+              value={notificationPermissionFilter}
+              onValueChange={(value) => {
+                setNotificationPermissionFilter(value as BrowserPermissionState | "all");
+                setPage(0);
+              }}
+            >
+              <SelectTrigger className="w-full sm:w-[185px] cursor-pointer">
+                <Bell className="mr-1 h-4 w-4" />
+                <SelectValue placeholder="Notification access" />
+              </SelectTrigger>
+              <SelectContent>
+                {permissionOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    Notification: {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select
+              value={microphonePermissionFilter}
+              onValueChange={(value) => {
+                setMicrophonePermissionFilter(value as BrowserPermissionState | "all");
+                setPage(0);
+              }}
+            >
+              <SelectTrigger className="w-full sm:w-[165px] cursor-pointer">
+                <Mic className="mr-1 h-4 w-4" />
+                <SelectValue placeholder="Audio access" />
+              </SelectTrigger>
+              <SelectContent>
+                {permissionOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    Audio: {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select
+              value={cameraPermissionFilter}
+              onValueChange={(value) => {
+                setCameraPermissionFilter(value as BrowserPermissionState | "all");
+                setPage(0);
+              }}
+            >
+              <SelectTrigger className="w-full sm:w-[165px] cursor-pointer">
+                <Camera className="mr-1 h-4 w-4" />
+                <SelectValue placeholder="Video access" />
+              </SelectTrigger>
+              <SelectContent>
+                {permissionOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    Video: {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
             <Button
               onClick={() => {
                 setSearchTerm("");
@@ -717,6 +865,7 @@ export default function UsersList() {
                   <TableHead className="w-[180px]">Contact</TableHead>
                   <TableHead className="w-[140px]">Balance</TableHead>
                   <TableHead className="w-[160px]">Location</TableHead>
+                  <TableHead className="w-[320px]">RoomKhoj Access</TableHead>
                   <TableHead className="w-[120px]">Role</TableHead>
                   <TableHead className="w-[170px]">Account Purpose</TableHead>
                   <TableHead className="w-[120px]">Status</TableHead>
@@ -789,6 +938,19 @@ export default function UsersList() {
                         </div>
                       </TableCell>
                       <TableCell>
+                        <div className="flex min-w-[300px] flex-wrap gap-1.5">
+                          {getPermissionBadge("Location", user.permissions?.location, <MapPin className="h-3 w-3" />)}
+                          {getPermissionBadge("Notification", user.permissions?.notification, <Bell className="h-3 w-3" />)}
+                          {getPermissionBadge("Audio", user.permissions?.microphone, <Mic className="h-3 w-3" />)}
+                          {getPermissionBadge("Video", user.permissions?.camera, <Camera className="h-3 w-3" />)}
+                        </div>
+                        {user.permissions?.updatedAt && (
+                          <p className="mt-1 text-[10px] text-slate-400">
+                            Checked {timeAgo(user.permissions.updatedAt)}
+                          </p>
+                        )}
+                      </TableCell>
+                      <TableCell>
                         <div className="min-w-[100px]">
                           {getRoleBadge(user.role)}
                         </div>
@@ -857,23 +1019,42 @@ export default function UsersList() {
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={8} className="h-32 text-center">
+                    <TableCell colSpan={9} className="h-32 text-center">
                       <div className="flex flex-col items-center justify-center gap-3">
                         <UsersIcon className="h-12 w-12 text-muted-foreground opacity-50" />
                         <div>
                           <p className="font-medium">No users found</p>
                           <p className="text-sm text-muted-foreground">
-                            {debouncedSearch || roleFilter !== "all" || purposeFilter !== "all"
+                            {debouncedSearch ||
+                              roleFilter !== "all" ||
+                              purposeFilter !== "all" ||
+                              onlineFilter !== "all" ||
+                              locationPermissionFilter !== "all" ||
+                              notificationPermissionFilter !== "all" ||
+                              microphonePermissionFilter !== "all" ||
+                              cameraPermissionFilter !== "all"
                               ? "Try adjusting your search or filters"
                               : "No users registered yet"}
                           </p>
                         </div>
-                        {(debouncedSearch || roleFilter !== "all" || purposeFilter !== "all") && (
+                        {(debouncedSearch ||
+                              roleFilter !== "all" ||
+                              purposeFilter !== "all" ||
+                              onlineFilter !== "all" ||
+                              locationPermissionFilter !== "all" ||
+                              notificationPermissionFilter !== "all" ||
+                              microphonePermissionFilter !== "all" ||
+                              cameraPermissionFilter !== "all") && (
                           <Button
                             onClick={() => {
                               setSearchTerm("");
                               setRoleFilter("all");
-                setPurposeFilter("all");
+                              setPurposeFilter("all");
+                              setOnlineFilter("all");
+                              setLocationPermissionFilter("all");
+                              setNotificationPermissionFilter("all");
+                              setMicrophonePermissionFilter("all");
+                              setCameraPermissionFilter("all");
                             }}
                             variant="outline"
                             className="mt-2 cursor-pointer"
@@ -898,16 +1079,35 @@ export default function UsersList() {
                 <UsersIcon className="h-12 w-12 text-muted-foreground opacity-50 mx-auto mb-3" />
                 <p className="font-medium">No users found</p>
                 <p className="text-sm text-muted-foreground">
-                  {debouncedSearch || roleFilter !== "all" || purposeFilter !== "all"
+                  {debouncedSearch ||
+                              roleFilter !== "all" ||
+                              purposeFilter !== "all" ||
+                              onlineFilter !== "all" ||
+                              locationPermissionFilter !== "all" ||
+                              notificationPermissionFilter !== "all" ||
+                              microphonePermissionFilter !== "all" ||
+                              cameraPermissionFilter !== "all"
                     ? "Try adjusting your search or filters"
                     : "No users registered yet"}
                 </p>
-                {(debouncedSearch || roleFilter !== "all" || purposeFilter !== "all") && (
+                {(debouncedSearch ||
+                              roleFilter !== "all" ||
+                              purposeFilter !== "all" ||
+                              onlineFilter !== "all" ||
+                              locationPermissionFilter !== "all" ||
+                              notificationPermissionFilter !== "all" ||
+                              microphonePermissionFilter !== "all" ||
+                              cameraPermissionFilter !== "all") && (
                   <Button
                     onClick={() => {
                       setSearchTerm("");
                       setRoleFilter("all");
-                setPurposeFilter("all");
+                      setPurposeFilter("all");
+                      setOnlineFilter("all");
+                      setLocationPermissionFilter("all");
+                      setNotificationPermissionFilter("all");
+                      setMicrophonePermissionFilter("all");
+                      setCameraPermissionFilter("all");
                     }}
                     variant="outline"
                     className="mt-4 cursor-pointer"
