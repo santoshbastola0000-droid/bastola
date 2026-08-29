@@ -628,7 +628,7 @@ export default function CreateRoomPage() {
     append("description", values.description);
     append("category", values.category);
     append("price", values.price);
-    append("address", values.address);
+    if (isValidLocation && values.address) append("address", values.address);
     append("bathroomCapacity", values.bathroomCapacity);
     append("floorNumber", values.floorNumber);
     append("ownerLivesInHouse", values.ownerLivesInHouse);
@@ -647,7 +647,7 @@ export default function CreateRoomPage() {
     append("roomArea", values.roomArea);
     append("contactPerson", values.contactPerson);
     append("contactPhone", values.contactPhone);
-    append("location", values.location);
+    if (isValidLocation) append("location", values.location);
     if (values.tiktokUrl) append("tiktokUrl", values.tiktokUrl);
     formData.append("amenities", JSON.stringify(selectedAmenities));
 
