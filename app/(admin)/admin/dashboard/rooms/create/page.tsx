@@ -38,6 +38,7 @@ import {
   Sun as SunIcon,
   Edit3,
   Upload,
+  Video,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -245,6 +246,8 @@ export default function CreateRoomPage() {
   const [selectedAmenities, setSelectedAmenities] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState("basic");
   const [images, setImages] = useState<ImageWithCategory[]>([]);
+  const [roomVideo, setRoomVideo] = useState<File | null>(null);
+  const [roomVideoPreview, setRoomVideoPreview] = useState<string | null>(null);
   const [waterSupplyType, setWaterSupplyType] = useState("morning-evening");
   const [selectedTenantTypes, setSelectedTenantTypes] = useState<TenantType[]>(
     [],
@@ -254,6 +257,7 @@ export default function CreateRoomPage() {
   const [gateClosingTimeDisplay, setGateClosingTimeDisplay] = useState("");
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const videoInputRef = useRef<HTMLInputElement>(null);
   const tabsRef = useRef<HTMLDivElement>(null);
   const { user } = useUserRole();
   const isAdmin = user?.role === UserRole.ADMIN;
@@ -569,6 +573,48 @@ export default function CreateRoomPage() {
     setImages((prev) => prev.filter((img) => img.id !== id));
   };
 
+  const handleVideoInputChange = (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+
+    const allowedTypes = [
+      "video/mp4",
+      "video/webm",
+      "video/quicktime",
+      "video/x-m4v",
+    ];
+
+    if (!allowedTypes.includes(file.type)) {
+      toast.error("Video must be MP4, WEBM, MOV, or M4V");
+      return;
+    }
+
+    if (file.size > 100 * 1024 * 1024) {
+      toast.error("Room video must be 100 MB or smaller");
+      return;
+    }
+
+    if (roomVideoPreview) {
+      URL.revokeObjectURL(roomVideoPreview);
+    }
+
+    const preview = URL.createObjectURL(file);
+    setRoomVideo(file);
+    setRoomVideoPreview(preview);
+    toast.success("Room video added");
+  };
+
+  const removeRoomVideo = () => {
+    if (roomVideoPreview) {
+      URL.revokeObjectURL(roomVideoPreview);
+    }
+    setRoomVideo(null);
+    setRoomVideoPreview(null);
+  };
+
   const navigateTab = (direction: "next" | "prev") => {
     const idx = TABS.findIndex((t) => t.value === activeTab);
     if (direction === "next") {
@@ -695,6 +741,9 @@ export default function CreateRoomPage() {
     }
 
     images.forEach((img) => formData.append("images", img.file));
+    if (roomVideo) {
+      formData.append("images", roomVideo);
+    }
 
     const tid = toast.loading("Creating room listing...");
     createRoomMutation.mutate(
@@ -2403,6 +2452,69 @@ export default function CreateRoomPage() {
                     </div>
 
                     {/* ── Photo grid ── */}
+                    <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+                      <div className="mb-3 flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-2">
+                          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-red-50 text-red-600">
+                            <Video className="h-4 w-4" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-bold text-slate-900">
+                              Room video
+                            </p>
+                            <p className="text-xs text-slate-500">
+                              Optional · 1 video · up to 100 MB
+                            </p>
+                          </div>
+                        </div>
+
+                        {roomVideo && (
+                          <button
+                            type="button"
+                            onClick={removeRoomVideo}
+                            className="rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-bold text-red-600 hover:bg-red-50"
+                          >
+                            Remove
+                          </button>
+                        )}
+                      </div>
+
+                      <input
+                        ref={videoInputRef}
+                        type="file"
+                        accept="video/mp4,video/webm,video/quicktime,video/x-m4v"
+                        className="sr-only"
+                        aria-label="Upload room video"
+                        onChange={handleVideoInputChange}
+                      />
+
+                      {roomVideoPreview ? (
+                        <div className="overflow-hidden rounded-xl border border-slate-200 bg-black">
+                          <video
+                            src={roomVideoPreview}
+                            controls
+                            playsInline
+                            className="max-h-[360px] w-full object-contain"
+                          />
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => videoInputRef.current?.click()}
+                          className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-300 bg-white px-4 py-8 text-sm font-bold text-slate-700 transition hover:border-red-300 hover:bg-red-50/40 hover:text-red-600"
+                        >
+                          <Upload className="h-4 w-4" />
+                          Add room video
+                        </button>
+                      )}
+
+                      {roomVideo && (
+                        <p className="mt-2 truncate text-xs text-slate-500">
+                          {roomVideo.name}
+                        </p>
+                      )}
+                    </div>
+
                     {images.length > 0 && (
                       <div className="space-y-3">
                         <div className="flex items-center justify-between">
