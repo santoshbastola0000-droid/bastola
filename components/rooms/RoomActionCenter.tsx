@@ -41,7 +41,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 
-const REQUEST_META: Record<RoomRequestIntent, { title: string; description: string }> = {
+const REQUEST_META = {
   [RoomRequestIntent.REQUEST_VISIT]: {
     title: "Request room visit",
     description: "Ask the owner for an on-site or virtual visit.",
@@ -54,7 +54,7 @@ const REQUEST_META: Record<RoomRequestIntent, { title: string; description: stri
     title: "Send booking interest",
     description: "Let the owner know you want to reserve this room.",
   },
-};
+} satisfies Record<RoomRequestIntent, { title: string; description: string }>;
 
 const REPORT_TYPE_LABELS: Record<ReportType, string> = {
   [ReportType.FAKE_ROOM]: "Fake room",
