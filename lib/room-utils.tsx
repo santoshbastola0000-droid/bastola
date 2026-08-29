@@ -251,14 +251,14 @@ export const TABS = [
     label: "Location",
     labelNp: "स्थान",
     icon: MapPin,
-    required: true,
+    required: false,
   },
   {
     value: "details",
     label: "Details",
     labelNp: "विवरण",
     icon: Bed,
-    required: true,
+    required: false,
   },
   {
     value: "amenities",
