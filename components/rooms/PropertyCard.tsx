@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 
 import type { Room } from "@/types/room.types";
+import { UserRole } from "@/types/user.types";
 import { formatPriceNPR, resolveImageUrl } from "@/lib/utils";
 import { amenityIcons, categoryConfig } from "@/lib/room-utils";
 import { toast } from "sonner";
@@ -336,7 +337,7 @@ export function PropertyCard({
                 <span className="truncate text-[11px] font-extrabold text-slate-800">
                   {ownerName}
                 </span>
-                {room.user?.role === "ADMIN" && (
+                {room.user?.role === UserRole.ADMIN && (
                   <CheckCircle
                     className="h-3 w-3 shrink-0 fill-sky-500 text-white"
                     aria-label="RoomKhoj"
