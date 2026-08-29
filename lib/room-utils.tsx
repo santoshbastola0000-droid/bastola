@@ -258,7 +258,7 @@ export const TABS = [
     label: "Details",
     labelNp: "विवरण",
     icon: Bed,
-    required: true,
+    required: false,
   },
   {
     value: "amenities",
