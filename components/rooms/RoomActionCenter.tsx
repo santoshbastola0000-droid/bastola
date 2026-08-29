@@ -46,6 +46,10 @@ const REQUEST_META: Record<RoomRequestIntent, { title: string; description: stri
     title: "Request room visit",
     description: "Ask the owner for an on-site or virtual visit.",
   },
+  [RoomRequestIntent.CONTACT_OWNER]: {
+    title: "Contact owner",
+    description: "Send a direct message to the room owner about this listing.",
+  },
   [RoomRequestIntent.BOOKING_INTEREST]: {
     title: "Send booking interest",
     description: "Let the owner know you want to reserve this room.",
@@ -61,6 +65,7 @@ const REPORT_TYPE_LABELS: Record<ReportType, string> = {
 
 const REQUEST_PLACEHOLDERS: Record<RoomRequestIntent, string> = {
   [RoomRequestIntent.REQUEST_VISIT]: "Hi, I would like to schedule a room visit for this listing.",
+  [RoomRequestIntent.CONTACT_OWNER]: "Hi, I would like to contact the owner about this room.",
   [RoomRequestIntent.BOOKING_INTEREST]: "Hi, I am interested in booking this room. Please share the next steps.",
 };
 
