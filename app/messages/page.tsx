@@ -1220,11 +1220,14 @@ const user = useUserStore(
 
       return conversations.filter(
         (conversation) =>
-          conversation.contextType
+          conversation.otherUser?.name
             ?.toLowerCase()
             .includes(q) ||
-          conversation.id
-            .toLowerCase()
+          conversation.otherUser?.phoneNumber
+            ?.toLowerCase()
+            .includes(q) ||
+          conversation.contextType
+            ?.toLowerCase()
             .includes(q),
       );
     }, [conversations, search]);
@@ -1335,10 +1338,10 @@ const user = useUserStore(
 
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center justify-between gap-3">
-                          <p className="truncate font-medium">
-                            {conversation.otherUser
-                              ?.phoneNumber ||
-                              otherId}
+                          <p className="truncate font-semibold text-slate-900">
+                            {conversation.otherUser?.name ||
+                              conversation.otherUser?.phoneNumber ||
+                              "RoomKhoj user"}
                           </p>
 
                           {conversation.unreadCount >
@@ -1416,16 +1419,17 @@ const user = useUserStore(
 
                 <div className="flex-1">
                   <p className="font-semibold">
-                    {selected.otherUser
-                      ?.phoneNumber ||
-                      otherUserId}
+                    {selected.otherUser?.name ||
+                      selected.otherUser?.phoneNumber ||
+                      "RoomKhoj user"}
                   </p>
 
-                  {selected.otherUser?.name && (
-                    <p className="text-xs text-muted-foreground">
-                      {selected.otherUser.name}
-                    </p>
-                  )}
+                  {selected.otherUser?.name &&
+                    selected.otherUser?.phoneNumber && (
+                      <p className="text-xs text-muted-foreground">
+                        {selected.otherUser.phoneNumber}
+                      </p>
+                    )}
 
                   <p
                     className={`text-xs font-medium ${
