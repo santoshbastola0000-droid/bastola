@@ -26,6 +26,9 @@ import {
   Mic,
   Camera,
   Bell,
+  MousePointerClick,
+  SendHorizontal,
+  Activity,
 } from "lucide-react";
 
 import {
@@ -72,7 +75,11 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-import { userService, type UserFilters } from "@/http/services/user.service";
+import {
+  userService,
+  type UserFilters,
+  type UserEngagementSummary,
+} from "@/http/services/user.service";
 import { UserRole, type BrowserPermissionState } from "@/types/user.types";
 import {
   SUCCESSTOAST,
@@ -308,6 +315,39 @@ export default function UsersList() {
   };
 
   const users = usersResponse?.data || [];
+  const engagementUserIds = users.map((user) => user.id);
+
+  const { data: engagementByUserId = {}, isFetching: engagementLoading } =
+    useQuery({
+      queryKey: ["admin-user-engagement", engagementUserIds],
+      queryFn: () => userService.getEngagementSummary(engagementUserIds),
+      enabled: engagementUserIds.length > 0,
+      staleTime: 30_000,
+    });
+
+  const getEngagement = (userId: string): UserEngagementSummary =>
+    engagementByUserId[userId] || {
+      emailSent: 0,
+      emailClicked: 0,
+      pushSent: 0,
+      pushDeliveredDevices: 0,
+      pushClicked: 0,
+      inAppNotifications: 0,
+      totalOutbound: 0,
+      lastSource: null,
+      lastVisitAt: null,
+      lastClickedAt: null,
+    };
+
+  const getSourceLabel = (source?: string | null) => {
+    const value = String(source || "").toUpperCase();
+    if (value === "EMAIL") return "Email";
+    if (value === "PUSH") return "Web Push";
+    if (value === "REFERRAL") return "Referral";
+    if (value === "DIRECT") return "Direct";
+    return "Unknown";
+  };
+
   const pagination = usersResponse?.pagination || {
     page: 0,
     take: pageSize,
@@ -476,6 +516,53 @@ export default function UsersList() {
             {getPermissionBadge("Audio", user.permissions?.microphone, <Mic className="h-3 w-3" />)}
             {getPermissionBadge("Video", user.permissions?.camera, <Camera className="h-3 w-3" />)}
           </div>
+        </div>
+        <div className="col-span-2 rounded-lg border bg-white p-2.5">
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <p className="text-xs font-semibold text-slate-700">Engagement</p>
+            <Badge variant="outline" className="text-[10px]">
+              Came via {getSourceLabel(getEngagement(user.id).lastSource)}
+            </Badge>
+          </div>
+          <div className="grid grid-cols-2 gap-2 text-xs">
+            <div className="rounded-md bg-slate-50 p-2">
+              <div className="flex items-center gap-1 text-slate-500">
+                <Mail className="h-3 w-3" /> Email
+              </div>
+              <p className="mt-1 font-semibold">
+                {getEngagement(user.id).emailSent} sent · {getEngagement(user.id).emailClicked} clicked
+              </p>
+            </div>
+            <div className="rounded-md bg-slate-50 p-2">
+              <div className="flex items-center gap-1 text-slate-500">
+                <Bell className="h-3 w-3" /> Web push
+              </div>
+              <p className="mt-1 font-semibold">
+                {getEngagement(user.id).pushSent} sent · {getEngagement(user.id).pushClicked} clicked
+              </p>
+            </div>
+            <div className="rounded-md bg-slate-50 p-2">
+              <div className="flex items-center gap-1 text-slate-500">
+                <Activity className="h-3 w-3" /> In-app
+              </div>
+              <p className="mt-1 font-semibold">
+                {getEngagement(user.id).inAppNotifications} notifications
+              </p>
+            </div>
+            <div className="rounded-md bg-slate-50 p-2">
+              <div className="flex items-center gap-1 text-slate-500">
+                <SendHorizontal className="h-3 w-3" /> Total outbound
+              </div>
+              <p className="mt-1 font-semibold">
+                {getEngagement(user.id).totalOutbound}
+              </p>
+            </div>
+          </div>
+          {getEngagement(user.id).lastVisitAt && (
+            <p className="mt-2 text-[10px] text-slate-400">
+              Last visit {timeAgo(getEngagement(user.id).lastVisitAt!)}
+            </p>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <Wallet className="h-3 w-3 text-primary" />
@@ -866,6 +953,7 @@ export default function UsersList() {
                   <TableHead className="w-[140px]">Balance</TableHead>
                   <TableHead className="w-[160px]">Location</TableHead>
                   <TableHead className="w-[320px]">RoomKhoj Access</TableHead>
+                  <TableHead className="w-[280px]">Engagement</TableHead>
                   <TableHead className="w-[120px]">Role</TableHead>
                   <TableHead className="w-[170px]">Account Purpose</TableHead>
                   <TableHead className="w-[120px]">Status</TableHead>
@@ -951,6 +1039,35 @@ export default function UsersList() {
                         )}
                       </TableCell>
                       <TableCell>
+                        <div className="min-w-[250px] space-y-1.5 text-xs">
+                          <div className="flex flex-wrap gap-1.5">
+                            <Badge variant="outline" className="gap-1 border-blue-200 bg-blue-50 text-blue-700">
+                              <Mail className="h-3 w-3" />
+                              {getEngagement(user.id).emailSent} sent / {getEngagement(user.id).emailClicked} click
+                            </Badge>
+                            <Badge variant="outline" className="gap-1 border-violet-200 bg-violet-50 text-violet-700">
+                              <Bell className="h-3 w-3" />
+                              {getEngagement(user.id).pushSent} push / {getEngagement(user.id).pushClicked} click
+                            </Badge>
+                          </div>
+                          <div className="flex items-center gap-2 text-slate-500">
+                            <Activity className="h-3 w-3" />
+                            <span>Online via {getSourceLabel(getEngagement(user.id).lastSource)}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-slate-500">
+                            <SendHorizontal className="h-3 w-3" />
+                            <span>
+                              Total sent {getEngagement(user.id).totalOutbound} · In-app {getEngagement(user.id).inAppNotifications}
+                            </span>
+                          </div>
+                          {getEngagement(user.id).lastVisitAt && (
+                            <p className="text-[10px] text-slate-400">
+                              Last visit {timeAgo(getEngagement(user.id).lastVisitAt!)}
+                            </p>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
                         <div className="min-w-[100px]">
                           {getRoleBadge(user.role)}
                         </div>
@@ -1019,7 +1136,7 @@ export default function UsersList() {
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={9} className="h-32 text-center">
+                    <TableCell colSpan={10} className="h-32 text-center">
                       <div className="flex flex-col items-center justify-center gap-3">
                         <UsersIcon className="h-12 w-12 text-muted-foreground opacity-50" />
                         <div>
