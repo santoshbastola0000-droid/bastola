@@ -31,6 +31,7 @@ import {
 } from "@/http/services/message.service";
 import { useUserStore } from "@/stores/user-store";
 import useTokenStore from "@/store";
+import { resolveImageUrl } from "@/lib/utils";
 
 function MessagesContent() {
   const router = useRouter();
@@ -1503,7 +1504,7 @@ const user = useUserStore(
                     <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-muted text-xl">
                       {contextPost.image ? (
                         <img
-                          src={contextPost.image}
+                          src={resolveImageUrl(contextPost.image)}
                           alt=""
                           className="h-full w-full object-cover"
                         />
@@ -1600,7 +1601,7 @@ const user = useUserStore(
                                   <div className="h-20 w-24 shrink-0 overflow-hidden bg-slate-100">
                                     {message.attachment.image ? (
                                       <img
-                                        src={message.attachment.image}
+                                        src={resolveImageUrl(message.attachment.image)}
                                         alt={message.attachment.title}
                                         className="h-full w-full object-cover"
                                       />
