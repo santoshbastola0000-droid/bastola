@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { AlertTriangle, CalendarClock, MessageCircle, SendHorizontal } from "lucide-react";
+import { AlertTriangle, CalendarClock, SendHorizontal } from "lucide-react";
 import { createRoomRequestSchema, type CreateRoomRequestValues } from "@/schema/room-request.schema";
 import { createReportSchema, type CreateReportValues } from "@/schema/report.schema";
 import { useCreateRoomRequestMutation } from "@/http/mutations/room-request.mutations";
@@ -46,10 +46,6 @@ const REQUEST_META: Record<RoomRequestIntent, { title: string; description: stri
     title: "Request room visit",
     description: "Ask the owner for an on-site or virtual visit.",
   },
-  [RoomRequestIntent.CONTACT_OWNER]: {
-    title: "Contact owner",
-    description: "Start a conversation directly with the owner from RoomKhoj.",
-  },
   [RoomRequestIntent.BOOKING_INTEREST]: {
     title: "Send booking interest",
     description: "Let the owner know you want to reserve this room.",
@@ -65,7 +61,6 @@ const REPORT_TYPE_LABELS: Record<ReportType, string> = {
 
 const REQUEST_PLACEHOLDERS: Record<RoomRequestIntent, string> = {
   [RoomRequestIntent.REQUEST_VISIT]: "Hi, I would like to schedule a room visit for this listing.",
-  [RoomRequestIntent.CONTACT_OWNER]: "Hi, I am interested in this listing and would like to talk with you.",
   [RoomRequestIntent.BOOKING_INTEREST]: "Hi, I am interested in booking this room. Please share the next steps.",
 };
 
@@ -178,11 +173,11 @@ export function RoomActionCenter({
         <CardHeader>
           <CardTitle className="text-base">Action center</CardTitle>
           <CardDescription>
-            Request a visit, contact the owner, send booking interest, or report a safety issue for <span className="font-medium text-slate-900">{roomTitle}</span>.
+            Request a visit, send booking interest, or report a safety issue for <span className="font-medium text-slate-900">{roomTitle}</span>.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <div className="grid gap-3 md:grid-cols-3">
             <Button
               type="button"
               variant="outline"
@@ -190,14 +185,6 @@ export function RoomActionCenter({
               onClick={() => openRequestDialog(RoomRequestIntent.REQUEST_VISIT)}
             >
               <CalendarClock className="w-4 h-4 text-red-500" /> Request visit
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              className="justify-start rounded-2xl h-auto p-4"
-              onClick={() => openRequestDialog(RoomRequestIntent.CONTACT_OWNER)}
-            >
-              <MessageCircle className="w-4 h-4 text-red-500" /> Contact owner
             </Button>
             <Button
               type="button"
