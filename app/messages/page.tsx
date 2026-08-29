@@ -1248,46 +1248,6 @@ const user = useUserStore(
       });
     }, [conversations, search]);
 
-  useEffect(() => {
-    const raw = search.trim();
-    const digits = raw.replace(/\D/g, "");
-    const looksLikePhone = digits.length === 10;
-    const looksLikeEmail =
-      /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(raw);
-
-    if (!looksLikePhone && !looksLikeEmail) {
-      setPhoneResult(null);
-      setPhoneSearching(false);
-      return;
-    }
-
-    let cancelled = false;
-    const timer = window.setTimeout(async () => {
-      try {
-        setPhoneSearching(true);
-        const result =
-          await messageService.findProfileByContact(raw);
-
-        if (!cancelled) {
-          setPhoneResult(result);
-        }
-      } catch {
-        if (!cancelled) {
-          setPhoneResult(null);
-        }
-      } finally {
-        if (!cancelled) {
-          setPhoneSearching(false);
-        }
-      }
-    }, 250);
-
-    return () => {
-      cancelled = true;
-      window.clearTimeout(timer);
-    };
-  }, [search]);
-
   const otherUserId =
     selected?.otherUser?.id ||
     selected?.otherUserId ||
@@ -1345,22 +1305,23 @@ const user = useUserStore(
                   }
                 }}
                 placeholder="Name, phone number or Gmail"
-                className="h-11 rounded-full border-slate-200 bg-slate-50 pl-11 pr-12 text-sm shadow-none focus-visible:border-red-300 focus-visible:ring-red-100"
+                className="h-11 rounded-full border-slate-200 bg-slate-50 pl-11 pr-24 text-sm shadow-none focus-visible:border-red-300 focus-visible:ring-red-100"
               />
 
               <button
                 type="button"
                 onClick={() => void searchByContact()}
                 disabled={phoneSearching || !search.trim()}
-                aria-label="Find user profile"
-                title="Find user profile"
-                className="absolute right-1.5 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-red-600 text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-40"
+                aria-label="Search RoomKhoj user"
+                title="Search RoomKhoj user"
+                className="absolute right-1.5 top-1/2 flex h-8 -translate-y-1/2 items-center justify-center gap-1.5 rounded-full bg-red-600 px-3 text-xs font-extrabold text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 {phoneSearching ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
                 ) : (
-                  <Search className="h-4 w-4" />
+                  <Search className="h-3.5 w-3.5" />
                 )}
+                <span>Search</span>
               </button>
             </div>
 
