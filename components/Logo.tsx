@@ -1,4 +1,3 @@
-import Image from "next/image";
 import Link from "next/link";
 
 interface LogoProps {
@@ -16,22 +15,21 @@ export function Logo({
     <Link
       href="/rooms"
       aria-label="RoomKhoj"
-      className="group inline-flex items-center gap-2"
+      className="group inline-flex items-center"
     >
-      <Image
-        src="/roomkhoj-logo.png"
-        alt="RoomKhoj logo"
-        width={64}
-        height={64}
-        priority
-        className="h-12 w-12 rounded-full object-cover transition-transform duration-300 group-hover:scale-105 md:h-14 md:w-14"
-      />
-
       <span
-className={`text-base font-extrabold tracking-tight sm:text-xl ${
-  isLight ? "text-white" : "text-slate-900"
-}`}      >
-        Room<span className="text-red-600">Khoj</span>
+        className={`relative inline-flex items-baseline text-[22px] font-black tracking-[-0.045em] transition-transform duration-300 group-hover:scale-[1.02] sm:text-[26px] ${
+          isLight ? "text-white" : "text-slate-950"
+        }`}
+      >
+        <span>Room</span>
+        <span className="text-red-600">Khoj</span>
+        <span
+          className={`absolute -bottom-1 left-0 h-[3px] w-8 rounded-full ${
+            isLight ? "bg-white/90" : "bg-red-600"
+          }`}
+          aria-hidden
+        />
       </span>
     </Link>
   );
