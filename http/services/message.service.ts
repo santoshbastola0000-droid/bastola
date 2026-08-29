@@ -119,6 +119,29 @@ export const messageService = {
     return response.data;
   },
 
+  searchMessages: async (
+    query: string,
+  ) => {
+    const response = await privateApi.get(
+      "/message/search-messages",
+      {
+        params: { q: query },
+      },
+    );
+
+    return response.data as Array<{
+      id: string;
+      conversationId: string;
+      content: string;
+      createdAt: string;
+      otherUser: {
+        id: string;
+        name: string;
+        phoneNumber: string;
+      } | null;
+    }>;
+  },
+
   searchUsersByPhone: async (
     phone: string,
   ) => {
