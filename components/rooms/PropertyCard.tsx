@@ -340,9 +340,6 @@ export function PropertyCard({
                   <CheckCircle className="h-3 w-3 shrink-0 fill-sky-500 text-white" />
                 )}
               </span>
-              <span className="block text-[9px] font-medium text-slate-400">
-                Room owner
-              </span>
             </span>
           </button>
 
