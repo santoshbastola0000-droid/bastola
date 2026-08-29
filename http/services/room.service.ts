@@ -119,11 +119,10 @@ export const roomService = {
   },
 
   createRoom: async (data: FormData): Promise<{ data: Room }> => {
-    const response = await privateApi.post("/rooms", data, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    });
+    // Do not set multipart Content-Type manually in the browser.
+    // Axios/the browser must add the multipart boundary; forcing the header
+    // can make Nest/Multer fail to parse Add Room submissions.
+    const response = await privateApi.post("/rooms", data);
     return response.data;
   },
 
@@ -131,12 +130,7 @@ export const roomService = {
     id: string,
     data: UpdateRoomDTO | FormData,
   ): Promise<{ data: Room }> => {
-    const isFormData = data instanceof FormData;
-    const response = await privateApi.patch(`/rooms/${id}`, data, {
-      headers: isFormData
-        ? { "Content-Type": "multipart/form-data" }
-        : undefined,
-    });
+    const response = await privateApi.patch(`/rooms/${id}`, data);
     return response.data;
   },
 
