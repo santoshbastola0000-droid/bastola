@@ -14,6 +14,7 @@ import { PwaInstallPrompt } from "@/components/PwaInstallPrompt";
 import { LanguageProvider } from "@/components/providers/LanguageProvider";
 import { AutoPushPermission } from "@/components/AutoPushPermission";
 import { AutoLocationUpdate } from "@/components/AutoLocationUpdate";
+import { PermissionStatusSync } from "@/components/PermissionStatusSync";
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -107,6 +108,7 @@ export default function RootLayout({
         <SessionChecker />
         <AutoPushPermission />
         <AutoLocationUpdate />
+        <PermissionStatusSync />
         <QueryClientProviderWrapper>
           <TooltipProvider>
             <GuestLoginPopup />
