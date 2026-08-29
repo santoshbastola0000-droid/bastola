@@ -95,6 +95,20 @@ const user = useUserStore(
   const [draft, setDraft] =
     useState("");
 
+  useEffect(() => {
+    const raw = sessionStorage.getItem("roomkhoj_room_message_draft");
+    if (!raw) return;
+    try {
+      const pending = JSON.parse(raw);
+      if (pending.conversationId === requestedConversationId) {
+        setDraft(String(pending.text || "Hello, is this still available?"));
+        sessionStorage.removeItem("roomkhoj_room_message_draft");
+      }
+    } catch {
+      sessionStorage.removeItem("roomkhoj_room_message_draft");
+    }
+  }, [requestedConversationId]);
+
   const [selectedMedia, setSelectedMedia] =
     useState<File | null>(null);
 

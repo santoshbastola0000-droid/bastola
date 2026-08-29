@@ -22,6 +22,8 @@ import {
 import type { Room } from "@/types/room.types";
 import { formatPriceNPR, resolveImageUrl } from "@/lib/utils";
 import { amenityIcons, categoryConfig } from "@/lib/room-utils";
+import { messageService } from "@/http/services/message.service";
+import { toast } from "sonner";
 
 interface PropertyCardProps {
   room: Room;
@@ -106,6 +108,30 @@ export function PropertyCard({
       await navigator.clipboard.writeText(url);
     } catch {
       // User cancelled
+    }
+  };
+
+  const handleMessage = async (event: React.MouseEvent) => {
+    event.stopPropagation();
+    if (!isLoaded || !user) {
+      sessionStorage.setItem("roomkhoj_post_auth_redirect", `/property/${room.id}`);
+      router.push("/auth/login");
+      return;
+    }
+
+    try {
+      const result = await messageService.startForRoom(room.id);
+      sessionStorage.setItem(
+        "roomkhoj_room_message_draft",
+        JSON.stringify({
+          conversationId: result.conversation.id,
+          text: "Hello, is this still available?",
+          room: result.room,
+        }),
+      );
+      router.push(`/messages?conversation=${encodeURIComponent(result.conversation.id)}`);
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || "Message सुरु गर्न सकिएन।");
     }
   };
 
@@ -283,7 +309,7 @@ export function PropertyCard({
             type="button"
             onClick={(e) => {
               e.stopPropagation();
-              router.push(`/property/${room.id}#comments`);
+              void handleMessage(e);
             }}
             className="flex flex-col items-center gap-1 text-white"
           >
@@ -571,6 +597,13 @@ export function PropertyCard({
             </span>
           </div>
         </div>
+        <button
+          type="button"
+          onClick={handleMessage}
+          className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-red-700"
+        >
+          <MessageCircle className="h-4 w-4" /> Message
+        </button>
       </div>
     </motion.article>
   );
