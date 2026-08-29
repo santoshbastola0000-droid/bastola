@@ -577,19 +577,20 @@ const user = useUserStore(
   }, [call?.callId, call?.mode]);
 
   const searchByContact =
-    async () => {
-      const raw = search.trim();
+    async (options?: { silent?: boolean; query?: string }) => {
+      const raw = (options?.query ?? search).trim();
 
       if (raw.length < 2) {
-        toast.error(
-          "कम्तीमा 2 अक्षर वा phone digits राख्नुहोस्.",
-        );
+        if (!options?.silent) {
+          toast.error(
+            "कम्तीमा 2 अक्षर, phone digits वा email राख्नुहोस्.",
+          );
+        }
         return;
       }
 
       try {
         setPhoneSearching(true);
-        setPhoneResults([]);
 
         const results =
           await messageService.searchUsersByPhone(
@@ -598,20 +599,52 @@ const user = useUserStore(
 
         setPhoneResults(results);
 
-        if (!results.length) {
+        if (!results.length && !options?.silent) {
           toast.error(
-            "यो number भएको RoomKhoj user भेटिएन.",
+            "यो search मिल्ने RoomKhoj user भेटिएन.",
           );
         }
       } catch (error: any) {
-        toast.error(
-          error?.response?.data?.message ||
-            "User search गर्न सकिएन.",
-        );
+        if (!options?.silent) {
+          toast.error(
+            error?.response?.data?.message ||
+              "User search गर्न सकिएन.",
+          );
+        }
       } finally {
         setPhoneSearching(false);
       }
     };
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const isMobile = window.matchMedia("(max-width: 767px)").matches;
+    if (!isMobile) return;
+
+    const raw = search.trim();
+
+    if (!raw) {
+      setPhoneResults([]);
+      setPhoneSearching(false);
+      return;
+    }
+
+    if (raw.length < 2) {
+      setPhoneResults([]);
+      setPhoneSearching(false);
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      void searchByContact({
+        silent: true,
+        query: raw,
+      });
+    }, 300);
+
+    return () => window.clearTimeout(timer);
+  }, [search]);
 
   const openConversation =
     async (
