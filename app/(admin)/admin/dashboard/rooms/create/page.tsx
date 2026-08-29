@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useForm } from "react-hook-form";
+import type { FieldErrors } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -344,7 +345,7 @@ export default function CreateRoomPage() {
       case "details":
         return !!form.getValues("roomArea");
       case "amenities":
-        return selectedAmenities.length > 0;
+        return true;
       case "preferences":
         return true;
       case "photos":
@@ -362,6 +363,50 @@ export default function CreateRoomPage() {
     return TABS.filter((tab) => tab.required && !getTabStatus(tab.value)).map(
       (tab) => tab.value,
     );
+  };
+
+  const requiredFieldByTab: Record<string, string> = {
+    location: "room-location-picker",
+    details: "room-area",
+    photos: "room-photos",
+    contact: "contact-person",
+  };
+
+  const getMissingFieldId = (tab: string) => {
+    if (tab === "basic") {
+      if (!form.getValues("title")) return "room-title";
+      if (!form.getValues("description")) return "room-description";
+      return "room-price";
+    }
+    if (tab === "contact") {
+      return form.getValues("contactPerson") ? "contact-phone" : "contact-person";
+    }
+    return requiredFieldByTab[tab];
+  };
+
+  const focusRequiredTab = (tab: string) => {
+    setActiveTab(tab);
+    window.setTimeout(() => {
+      const target = document.getElementById(getMissingFieldId(tab));
+      target?.scrollIntoView({ behavior: "smooth", block: "center" });
+      if (target instanceof HTMLElement) target.focus({ preventScroll: true });
+    }, 250);
+  };
+
+  const showMissingRequiredTab = (tab: string) => {
+    const messages: Record<string, string> = {
+      basic: "Room title, description, and monthly rent are required.",
+      location: "Allow location access and use your current room location, or pin it on the map.",
+      details: "Room area (m²) is required.",
+      photos: "Upload at least one room photo.",
+      contact: "Owner name and phone number are required.",
+    };
+    const meta = TABS.find((item) => item.value === tab);
+    toast.error(`⚠️ ${meta?.label ?? "Required section"} incomplete`, {
+      description: messages[tab],
+      duration: 4500,
+    });
+    focusRequiredTab(tab);
   };
 
   // Water supply effect
@@ -529,10 +574,7 @@ export default function CreateRoomPage() {
     if (direction === "next") {
       if (idx < TABS.length - 1) {
         if (TABS[idx].required && !getTabStatus(activeTab)) {
-          toast.warning(
-            `Please complete the ${TABS[idx].label} section first`,
-            { duration: 3000 },
-          );
+          showMissingRequiredTab(activeTab);
           return;
         }
         setActiveTab(TABS[idx + 1].value);
@@ -543,6 +585,22 @@ export default function CreateRoomPage() {
     }
   };
 
+  const onInvalid = (errors: FieldErrors<CreateRoomFormValues>) => {
+    if (errors.title || errors.description || errors.price || errors.category) {
+      showMissingRequiredTab("basic");
+      return;
+    }
+    if (errors.location || errors.address) {
+      showMissingRequiredTab("location");
+      return;
+    }
+    if (errors.roomArea) {
+      showMissingRequiredTab("details");
+      return;
+    }
+    if (errors.contactPerson || errors.contactPhone) showMissingRequiredTab("contact");
+  };
+
   const onSubmit = async (values: CreateRoomFormValues) => {
     // Validate all required fields and show friendly toasts for each missing section
     const missingTabs = getMissingRequiredTabs();
@@ -550,44 +608,7 @@ export default function CreateRoomPage() {
       const firstMissing = missingTabs[0];
       const tab = TABS.find((t) => t.value === firstMissing);
 
-      // Show a toast for EACH missing required section
-      missingTabs.forEach((tabValue, i) => {
-        const t = TABS.find((x) => x.value === tabValue);
-        if (!t) return;
-        let description = "";
-        switch (tabValue) {
-          case "basic":
-            description = "Title, description, and price are required.";
-            break;
-          case "location":
-            description = "Please pin your room on the map.";
-            break;
-          case "details":
-            description = "Room area (m²) is required.";
-            break;
-          case "amenities":
-            description = "Select at least one amenity.";
-            break;
-          case "photos":
-            description = "Upload at least one photo.";
-            break;
-          case "contact":
-            description = "Owner name and phone number are required.";
-            break;
-        }
-        setTimeout(() => {
-          toast.error(`⚠️ ${t.label} incomplete`, {
-            description,
-            duration: 5000,
-            action: {
-              label: "Go there",
-              onClick: () => setActiveTab(tabValue),
-            },
-          });
-        }, i * 400);
-      });
-
-      setActiveTab(firstMissing);
+      showMissingRequiredTab(firstMissing);
       return;
     }
 
@@ -845,7 +866,7 @@ export default function CreateRoomPage() {
       {/* ── Form Body ── */}
       <main className="max-w-3xl mx-auto px-4 py-6 md:px-6 pb-40">
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} noValidate>
+          <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} noValidate>
             <AnimatePresence mode="wait">
               <motion.div
                 key={activeTab}
@@ -876,6 +897,7 @@ export default function CreateRoomPage() {
                           </FormLabel>
                           <FormControl>
                             <Input
+                              id="room-title"
                               placeholder="e.g. Cozy Room with AC & WiFi near Lakeside"
                               {...field}
                               className={cn(
@@ -902,6 +924,7 @@ export default function CreateRoomPage() {
                           </FormLabel>
                           <FormControl>
                             <Textarea
+                              id="room-description"
                               placeholder="Describe your room — छिमेक, नजिकैका सुविधाहरू, र कोठाको विशेषता उल्लेख गर्नुहोस्..."
                               className={cn(
                                 "min-h-[120px] text-base rounded-xl border-slate-200 focus:border-primary resize-none p-4",
@@ -1029,6 +1052,7 @@ export default function CreateRoomPage() {
                                   रु.
                                 </span>
                                 <Input
+                                  id="room-price"
                                   type="number"
                                   placeholder="8000"
                                   inputMode="numeric"
@@ -1071,7 +1095,9 @@ export default function CreateRoomPage() {
                           Location required / स्थान आवश्यक
                         </AlertTitle>
                         <AlertDescription>
-                          Click on the map below to set the exact location.
+                          Tap “Use current location” below, then choose Allow in
+                          your browser. We use it only for this room listing.
+                          You can also pin the room on the map.
                         </AlertDescription>
                       </Alert>
                     )}
@@ -1100,7 +1126,11 @@ export default function CreateRoomPage() {
                       </div>
                     )}
 
-                    <div className="rounded-2xl overflow-hidden border border-slate-200 shadow-sm">
+                    <div
+                      id="room-location-picker"
+                      tabIndex={-1}
+                      className="rounded-2xl overflow-hidden border border-slate-200 shadow-sm outline-none"
+                    >
                       <MapPicker
                         onLocationSelect={handleLocationSelect}
                         initialLocation={
@@ -1113,7 +1143,7 @@ export default function CreateRoomPage() {
 
                     <div className="space-y-4">
                       <p className="text-sm font-semibold text-slate-700">
-                        Address Details / ठेगानाको विवरण
+                        Auto-filled location details / स्वतः भरिएको ठेगाना
                       </p>
 
                       <FormField
@@ -1128,19 +1158,19 @@ export default function CreateRoomPage() {
                                 variant="outline"
                                 className="text-[10px] px-1.5 py-0 border-amber-300 text-amber-600"
                               >
-                                Editable
+                                Optional edit
                               </Badge>
                             </FormLabel>
                             <FormControl>
                               <Textarea
-                                placeholder="Auto-filled from map — or edit manually here / नक्साबाट स्वत: भरिन्छ वा यहाँ सम्पादन गर्नुहोस्"
+                                placeholder="Auto-filled after location is selected — edit only if needed"
                                 className="rounded-xl border-slate-200 resize-y min-h-[80px] text-base p-4 focus:border-primary"
                                 {...field}
                               />
                             </FormControl>
                             <FormDescription className="text-xs">
-                              तपाईं यो ठेगाना सीधै सम्पादन गर्न सक्नुहुन्छ — You
-                              can edit this address manually.
+                              GPS वा map ले भरिदिन्छ। आवश्यक परेमा मात्र
+                              सम्पादन गर्नुहोस्।
                             </FormDescription>
                             <FormMessage />
                           </FormItem>
@@ -1393,6 +1423,7 @@ export default function CreateRoomPage() {
                             <FormControl>
                               <div className="relative">
                                 <Input
+                                  id="room-area"
                                   type="number"
                                   inputMode="decimal"
                                   min="1"
@@ -1682,19 +1713,14 @@ export default function CreateRoomPage() {
                       subtitle="Select everything available in your room"
                     />
 
-                    {selectedAmenities.length === 0 && (
-                      <Alert variant="destructive" className="rounded-xl">
-                        <AlertCircle className="h-4 w-4" />
-                        <AlertTitle>
-                          Select at least one amenity / कम्तीमा एउटा सुविधा चयन
-                          गर्नुहोस्
-                        </AlertTitle>
-                        <AlertDescription className="text-xs mt-1">
-                          Listings with amenities get significantly more views.
-                          Don't skip this!
-                        </AlertDescription>
-                      </Alert>
-                    )}
+                    <Alert className="rounded-xl border-slate-200 bg-slate-50">
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertTitle>Optional / वैकल्पिक</AlertTitle>
+                      <AlertDescription className="text-xs mt-1">
+                        उपलब्ध सुविधा भए मात्र छान्नुहोस्। कुनै पनि सुविधा नभए
+                        यो चरण खाली छोडेर अगाडि बढ्न सक्नुहुन्छ।
+                      </AlertDescription>
+                    </Alert>
 
                     <div
                       className="grid grid-cols-2 sm:grid-cols-3 gap-3"
@@ -2311,7 +2337,7 @@ export default function CreateRoomPage() {
                     )}
 
                     {/* ── Single unified upload zone ── */}
-                    <div>
+                    <div id="room-photos" tabIndex={-1} className="outline-none">
                       <input
                         ref={fileInputRef}
                         type="file"
@@ -2492,6 +2518,7 @@ export default function CreateRoomPage() {
                           </FormLabel>
                           <FormControl>
                             <Input
+                              id="contact-person"
                               placeholder="e.g. Ram Prasad Sharma"
                               {...field}
                               className={cn(
@@ -2523,6 +2550,7 @@ export default function CreateRoomPage() {
                           <FormControl>
                             <div className="relative">
                               <Input
+                                id="contact-phone"
                                 type="tel"
                                 inputMode="tel"
                                 placeholder="+977 98XXXXXXXX"
@@ -2626,7 +2654,7 @@ export default function CreateRoomPage() {
             {currentTabIdx === TABS.length - 1 ? (
               <button
                 type="button"
-                onClick={form.handleSubmit(onSubmit)}
+                onClick={form.handleSubmit(onSubmit, onInvalid)}
                 disabled={createRoomMutation.isPending}
                 className="flex items-center gap-2 px-5 h-11 rounded-xl bg-primary hover:bg-primary/90 text-white font-semibold text-sm disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer shadow-lg shadow-primary/20"
               >
