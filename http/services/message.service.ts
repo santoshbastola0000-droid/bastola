@@ -170,6 +170,17 @@ export const messageService = {
     };
   },
 
+  startForRoom: async (roomId: string, content?: string) => {
+    const response = await privateApi.post(`/message/rooms/${roomId}`, {
+      content,
+    });
+
+    return response.data as {
+      conversation: MessageConversation;
+      room: { id: string; title: string; price: string | number; images: string[] };
+    };
+  },
+
   getUnreadCount: async () => {
     const response = await privateApi.get(
       "/message/unread-count",
