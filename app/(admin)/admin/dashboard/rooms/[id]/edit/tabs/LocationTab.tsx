@@ -84,7 +84,7 @@ export function LocationTab({ form }: LocationTabProps) {
             {form.getValues("location.formattedAddress") ||
               (selectedLocation
                 ? `${selectedLocation.lat.toFixed(5)}, ${selectedLocation.lng.toFixed(5)}`
-                : "Location not selected")}
+                : "Coordinates unavailable")}
           </p>
           <Badge
             variant="outline"
