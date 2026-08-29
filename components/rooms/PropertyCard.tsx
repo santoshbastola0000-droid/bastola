@@ -47,9 +47,12 @@ export function PropertyCard({
   };
 
   const images = room.images ?? [];
+  const currentMedia = images[imageIndex] ?? images[0] ?? "";
+  const isVideo =
+    /\.(mp4|webm|mov|m4v)(\?.*)?$/i.test(currentMedia);
   const imageUrl =
-    !imgError && images.length
-      ? resolveImageUrl(images[imageIndex] ?? images[0])
+    !imgError && currentMedia
+      ? resolveImageUrl(currentMedia)
       : null;
 
   const topAmenities = (room.amenities ?? []).slice(0, 2);
@@ -163,19 +166,31 @@ export function PropertyCard({
         )}
 
         {imageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={imageUrl}
-            alt={room.title}
-            onLoad={() => setImgLoaded(true)}
-            onError={() => {
-              setImgError(true);
-              setImgLoaded(true);
-            }}
-            className={`h-full w-full object-cover transition duration-500 ease-out group-hover:scale-[1.025] ${
-              imgLoaded ? "opacity-100" : "opacity-0"
-            }`}
-          />
+          isVideo ? (
+            <video
+              src={imageUrl}
+              controls
+              muted
+              playsInline
+              preload="metadata"
+              onLoadedData={() => setImgLoaded(true)}
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={imageUrl}
+              alt={room.title}
+              onLoad={() => setImgLoaded(true)}
+              onError={() => {
+                setImgError(true);
+                setImgLoaded(true);
+              }}
+              className={`h-full w-full object-cover transition duration-500 ease-out group-hover:scale-[1.025] ${
+                imgLoaded ? "opacity-100" : "opacity-0"
+              }`}
+            />
+          )
         ) : (
           <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-rose-50 via-white to-slate-100">
             <Home className="h-14 w-14 text-red-200" />
