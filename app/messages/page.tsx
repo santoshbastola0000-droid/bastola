@@ -86,13 +86,12 @@ const user = useUserStore(
   const [contactSearch, setContactSearch] =
     useState("");
 
-  const [phoneResult, setPhoneResult] =
-    useState<{
+  const [phoneResults, setPhoneResults] =
+    useState<Array<{
       id: string;
       name: string;
-      email?: string;
       phoneNumber: string;
-    } | null>(null);
+    }>>([]);
 
   const [phoneSearching, setPhoneSearching] =
     useState(false);
@@ -549,33 +548,36 @@ const user = useUserStore(
 
   const searchByContact =
     async () => {
-      const contact =
-        contactSearch.trim();
+      const raw = search.trim();
+      const digits = raw.replace(/\D/g, "");
 
-      if (!contact) {
+      if (digits.length < 4) {
         toast.error(
-          "Phone number वा email राख्नुहोस्.",
+          "कम्तीमा 4 वटा phone digits राख्नुहोस्.",
         );
         return;
       }
 
       try {
         setPhoneSearching(true);
-        setPhoneResult(null);
+        setPhoneResults([]);
 
-        const result =
-          await messageService.findProfileByContact(
-            contact,
+        const results =
+          await messageService.searchUsersByPhone(
+            raw,
           );
 
-        setPhoneResult(result);
+        setPhoneResults(results);
 
-        // Finding a number must never create a conversation.
-
+        if (!results.length) {
+          toast.error(
+            "यो number भएको RoomKhoj user भेटिएन.",
+          );
+        }
       } catch (error: any) {
         toast.error(
           error?.response?.data?.message ||
-            "यो phone number वा Gmail भएको user भेटिएन.",
+            "User search गर्न सकिएन.",
         );
       } finally {
         setPhoneSearching(false);
@@ -1352,7 +1354,7 @@ const user = useUserStore(
                   const value = e.target.value;
                   setSearch(value);
                   setContactSearch(value);
-                  setPhoneResult(null);
+                  setPhoneResults([]);
                 }}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
@@ -1360,7 +1362,7 @@ const user = useUserStore(
                     void searchByContact();
                   }
                 }}
-                placeholder="Search user by phone or Gmail"
+                placeholder="Search user by phone number"
                 className="h-11 rounded-full border-slate-200 bg-slate-50 pl-11 pr-24 text-sm shadow-none focus-visible:border-red-300 focus-visible:ring-red-100"
               />
 
@@ -1368,7 +1370,7 @@ const user = useUserStore(
                 type="button"
                 onClick={() => void searchByContact()}
                 disabled={phoneSearching || !search.trim()}
-                aria-label="Search RoomKhoj user by phone or Gmail"
+                aria-label="Search RoomKhoj user by phone number"
                 title="Search user"
                 className="absolute right-1.5 top-1/2 flex h-8 -translate-y-1/2 items-center justify-center gap-1.5 rounded-full bg-red-600 px-3 text-xs font-extrabold text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-40"
               >
@@ -1381,38 +1383,40 @@ const user = useUserStore(
               </button>
             </div>
 
-            {phoneResult && (
-              <button
-                type="button"
-                onClick={() =>
-                  router.push(
-                    `/profile/${phoneResult.id}`,
-                  )
-                }
-                className="mt-3 flex w-full items-center gap-3 rounded-2xl border border-red-100 bg-red-50/60 p-3 text-left transition-colors hover:bg-red-50"
-              >
-                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-red-600 font-black text-white">
-                  {(phoneResult.name || "U")
-                    .slice(0, 1)
-                    .toUpperCase()}
-                </span>
+            {phoneResults.length > 0 && (
+              <div className="mt-3 space-y-2">
+                {phoneResults.map((result) => (
+                  <button
+                    key={result.id}
+                    type="button"
+                    onClick={() =>
+                      router.push(
+                        `/profile/${result.id}`,
+                      )
+                    }
+                    className="flex w-full items-center gap-3 rounded-2xl border border-red-100 bg-red-50/50 p-3 text-left transition hover:bg-red-50"
+                  >
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white text-sm font-black text-red-600 shadow-sm">
+                      {(result.name || "U")
+                        .slice(0, 2)
+                        .toUpperCase()}
+                    </div>
 
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-bold text-slate-900">
-                    {phoneResult.name || "RoomKhoj User"}
-                  </span>
-                  <span className="block truncate text-xs text-slate-500">
-                    {phoneResult.email ||
-                      phoneResult.phoneNumber}
-                  </span>
-                </span>
-
-                <span className="shrink-0 text-xs font-bold text-red-600">
-                  View profile
-                </span>
-              </button>
-            )}
-          </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-bold text-slate-900">
+                        {result.name}
+                      </p>
+                      <p className="truncate text-xs text-slate-500">
+                        {result.phoneNumber}
+                      </p>
+                      <p className="mt-1 text-[11px] font-semibold text-red-600">
+                        View profile →
+                      </p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}          </div>
 
           {search.trim() && (
             <div className="border-b border-slate-100 bg-white px-4 py-3">
