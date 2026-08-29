@@ -550,7 +550,7 @@ const user = useUserStore(
       } catch (error: any) {
         toast.error(
           error?.response?.data?.message ||
-            "यो नम्बर भएको user भेटिएन.",
+            "यो phone number वा Gmail भएको user भेटिएन.",
         );
       } finally {
         setPhoneSearching(false);
@@ -1276,15 +1276,69 @@ const user = useUserStore(
 
               <Input
                 value={search}
-                onChange={(e) =>
-                  setSearch(
-                    e.target.value,
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setSearch(value);
+                  setContactSearch(value);
+                  setPhoneResult(null);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    void searchByContact();
+                  }
+                }}
+                placeholder="Name, phone number or Gmail"
+                className="h-11 rounded-full border-slate-200 bg-slate-50 pl-11 pr-12 text-sm shadow-none focus-visible:border-red-300 focus-visible:ring-red-100"
+              />
+
+              <button
+                type="button"
+                onClick={() => void searchByContact()}
+                disabled={phoneSearching || !search.trim()}
+                aria-label="Find user profile"
+                title="Find user profile"
+                className="absolute right-1.5 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-red-600 text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {phoneSearching ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Search className="h-4 w-4" />
+                )}
+              </button>
+            </div>
+
+            {phoneResult && (
+              <button
+                type="button"
+                onClick={() =>
+                  router.push(
+                    `/profile/${phoneResult.id}`,
                   )
                 }
-                placeholder="Search conversations"
-                className="h-11 rounded-full border-slate-200 bg-slate-50 pl-11 pr-4 text-sm shadow-none focus-visible:border-red-300 focus-visible:ring-red-100"
-              />
-            </div>
+                className="mt-3 flex w-full items-center gap-3 rounded-2xl border border-red-100 bg-red-50/60 p-3 text-left transition-colors hover:bg-red-50"
+              >
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-red-600 font-black text-white">
+                  {(phoneResult.name || "U")
+                    .slice(0, 1)
+                    .toUpperCase()}
+                </span>
+
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-bold text-slate-900">
+                    {phoneResult.name || "RoomKhoj User"}
+                  </span>
+                  <span className="block truncate text-xs text-slate-500">
+                    {phoneResult.email ||
+                      phoneResult.phoneNumber}
+                  </span>
+                </span>
+
+                <span className="shrink-0 text-xs font-bold text-red-600">
+                  View profile
+                </span>
+              </button>
+            )}
           </div>
 
           {loading ? (
