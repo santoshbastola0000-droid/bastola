@@ -275,6 +275,20 @@ export const messageService = {
     return response.data;
   },
 
+  deleteMessage: async (
+    messageId: string,
+  ): Promise<{
+    success: boolean;
+    messageId: string;
+    conversationId: string;
+  }> => {
+    const response = await privateApi.delete(
+      `/message/messages/${messageId}`,
+    );
+
+    return response.data;
+  },
+
   recordMissedCall: async (
     conversationId: string,
     mode: "audio" | "video",
