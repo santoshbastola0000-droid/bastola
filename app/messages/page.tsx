@@ -1178,10 +1178,16 @@ const user = useUserStore(
       try {
         setSending(true);
 
+        const roomAttachmentId =
+          contextPost?.type === "ROOM"
+            ? contextPost.id
+            : undefined;
+
         const message =
           await messageService.sendMessage(
             selected.id,
             text,
+            roomAttachmentId,
           );
 
         setMessages((prev) => [
@@ -1577,6 +1583,73 @@ const user = useUserStore(
                                 : "bg-muted"
                             }`}
                           >
+                            {message.attachment?.type === "ROOM" && (
+                              <button
+                                type="button"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  router.push(message.attachment!.url);
+                                }}
+                                className={`mb-2 w-full overflow-hidden rounded-xl border text-left shadow-sm transition hover:shadow-md ${
+                                  mine
+                                    ? "border-white/25 bg-white/10"
+                                    : "border-slate-200 bg-background"
+                                }`}
+                              >
+                                <div className="flex items-stretch">
+                                  <div className="h-20 w-24 shrink-0 overflow-hidden bg-slate-100">
+                                    {message.attachment.image ? (
+                                      <img
+                                        src={message.attachment.image}
+                                        alt={message.attachment.title}
+                                        className="h-full w-full object-cover"
+                                      />
+                                    ) : (
+                                      <div className="flex h-full w-full items-center justify-center text-2xl">
+                                        🏠
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  <div className="min-w-0 flex-1 p-3">
+                                    <p className={`text-[10px] font-bold uppercase tracking-wide ${
+                                      mine
+                                        ? "text-white/70"
+                                        : "text-muted-foreground"
+                                    }`}>
+                                      Room attachment
+                                    </p>
+                                    <p className="mt-0.5 line-clamp-1 font-semibold">
+                                      {message.attachment.title}
+                                    </p>
+                                    <p className={`mt-1 text-xs ${
+                                      mine
+                                        ? "text-white/80"
+                                        : "text-muted-foreground"
+                                    }`}>
+                                      रु {Number(message.attachment.price).toLocaleString()} / month
+                                    </p>
+                                    {message.attachment.address && (
+                                      <p className={`mt-1 truncate text-[11px] ${
+                                        mine
+                                          ? "text-white/70"
+                                          : "text-muted-foreground"
+                                      }`}>
+                                        📍 {message.attachment.address}
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className={`border-t px-3 py-2 text-xs font-semibold ${
+                                  mine
+                                    ? "border-white/20 text-white"
+                                    : "border-slate-200 text-primary"
+                                }`}>
+                                  View room details →
+                                </div>
+                              </button>
+                            )}
+
                             {message.type ===
                               "IMAGE" &&
                               mediaObjectUrls[
