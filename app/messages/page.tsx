@@ -95,6 +95,9 @@ const user = useUserStore(
   const [draft, setDraft] =
     useState("");
 
+  const [pendingContextPost, setPendingContextPost] =
+    useState<MessageConversation["contextPost"]>(null);
+
   useEffect(() => {
     const raw = sessionStorage.getItem("roomkhoj_room_message_draft");
     if (!raw) return;
@@ -102,6 +105,22 @@ const user = useUserStore(
       const pending = JSON.parse(raw);
       if (pending.conversationId === requestedConversationId) {
         setDraft(String(pending.text || "Hello, is this still available?"));
+
+        if (pending.room?.id) {
+          setPendingContextPost({
+            type: "ROOM",
+            id: String(pending.room.id),
+            title: String(pending.room.title || "Room post"),
+            price:
+              pending.room.price === null ||
+              pending.room.price === undefined
+                ? null
+                : Number(pending.room.price),
+            image: pending.room.images?.[0] || null,
+            url: `/property/${pending.room.id}`,
+          });
+        }
+
         sessionStorage.removeItem("roomkhoj_room_message_draft");
       }
     } catch {
@@ -1125,6 +1144,12 @@ const user = useUserStore(
         : selected.userOneId
       : "");
 
+  const contextPost =
+    selected?.contextPost ||
+    (selected?.id === requestedConversationId
+      ? pendingContextPost
+      : null);
+
   return (
     <>
     <main className="mx-auto h-[calc(100dvh-68px)] max-w-7xl overflow-hidden bg-background md:h-[calc(100dvh-24px)] md:p-4">
@@ -1350,6 +1375,60 @@ const user = useUserStore(
               </header>
               <audio ref={remoteAudioRef} autoPlay playsInline />
 
+              {contextPost && (
+                <div className="border-b bg-muted/30 px-4 py-3">
+                  <button
+                    type="button"
+                    onClick={() => router.push(contextPost.url)}
+                    className="flex w-full items-center gap-3 rounded-xl border bg-background p-3 text-left shadow-sm transition-colors hover:bg-muted/50"
+                  >
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-muted text-xl">
+                      {contextPost.image ? (
+                        <img
+                          src={contextPost.image}
+                          alt=""
+                          className="h-full w-full object-cover"
+                        />
+                      ) : contextPost.type === "ROOM" ? (
+                        "🏠"
+                      ) : (
+                        "💼"
+                      )}
+                    </div>
+
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        {contextPost.type === "ROOM"
+                          ? "Room post"
+                          : "Job post"}
+                      </p>
+                      <p className="truncate font-semibold">
+                        {contextPost.title}
+                      </p>
+                      {(contextPost.subtitle ||
+                        contextPost.price !== null &&
+                          contextPost.price !== undefined) && (
+                        <p className="truncate text-xs text-muted-foreground">
+                          {contextPost.subtitle}
+                          {contextPost.subtitle &&
+                            contextPost.price !== null &&
+                            contextPost.price !== undefined
+                            ? " · "
+                            : ""}
+                          {contextPost.price !== null &&
+                            contextPost.price !== undefined
+                            ? `रु ${Number(contextPost.price).toLocaleString()}`
+                            : ""}
+                        </p>
+                      )}
+                    </div>
+
+                    <span className="shrink-0 text-xs font-semibold text-primary">
+                      View post
+                    </span>
+                  </button>
+                </div>
+              )}
 
               <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4 pb-24">
                 {messagesLoading ? (
