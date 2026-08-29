@@ -16,6 +16,9 @@ import {
   MicOff,
   Search,
   Send,
+  Paperclip,
+  Image as ImageIcon,
+  CheckCheck,
 } from "lucide-react";
 import { toast } from "sonner";
 import { io, Socket } from "socket.io-client";
@@ -144,6 +147,9 @@ const user = useUserStore(
 
   const mediaInputRef =
     useRef<HTMLInputElement | null>(null);
+
+  const messagesEndRef =
+    useRef<HTMLDivElement | null>(null);
 
   const deleteHoldTimerRef =
     useRef<number | null>(null);
@@ -1534,10 +1540,14 @@ const user = useUserStore(
                         </div>
 
                         <p className="mt-1 truncate text-sm text-muted-foreground">
-                          {conversation
-                            .lastMessage
-                            ?.content ||
-                            "Start conversation"}
+                          {conversation.lastMessage?.content ||
+                            (conversation.lastMessage?.type === "IMAGE"
+                              ? "📷 Photo"
+                              : conversation.lastMessage?.type === "VIDEO"
+                                ? "🎥 Video"
+                                : conversation.lastMessage?.attachment?.type === "ROOM"
+                                  ? "🏠 Room attachment"
+                                  : "Start conversation")}
                         </p>
                       </div>
                     </button>
@@ -1571,7 +1581,7 @@ const user = useUserStore(
             </div>
           ) : (
             <>
-              <header className="flex items-center gap-3 border-b p-4">
+              <header className="flex items-center gap-3 border-b border-slate-200/80 bg-white/95 px-4 py-3 shadow-sm backdrop-blur">
                 <button
                   type="button"
                   className="text-sm md:hidden"
@@ -1583,7 +1593,7 @@ const user = useUserStore(
                 </button>
 
                 <div className="relative shrink-0">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted font-semibold">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-red-50 to-rose-100 font-bold text-red-700 ring-1 ring-red-100">
                     {otherUserId
                       .slice(0, 2)
                       .toUpperCase()}
@@ -1597,7 +1607,7 @@ const user = useUserStore(
                 </div>
 
                 <div className="flex-1">
-                  <p className="font-semibold">
+                  <p className="font-bold text-slate-900">
                     {selected.otherUser?.name ||
                       selected.otherUser?.phoneNumber ||
                       "RoomKhoj user"}
@@ -1684,7 +1694,7 @@ const user = useUserStore(
                 </div>
               )}
 
-              <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4 pb-24">
+              <div className="min-h-0 flex-1 space-y-3 overflow-y-auto bg-[radial-gradient(circle_at_top,#fff7f7_0%,#f8fafc_42%,#f8fafc_100%)] px-3 py-4 pb-28 sm:px-5">
                 {messagesLoading ? (
                   <div className="flex justify-center p-10">
                     <Loader2 className="h-6 w-6 animate-spin" />
@@ -1713,10 +1723,10 @@ const user = useUserStore(
                           }`}
                         >
                           <div
-                            className={`max-w-[80%] rounded-2xl px-4 py-2 text-sm ${
+                            className={`max-w-[84%] rounded-[20px] px-3.5 py-2.5 text-sm shadow-sm sm:max-w-[72%] ${
                               mine
-                                ? "cursor-pointer select-none bg-primary text-primary-foreground"
-                                : "bg-muted"
+                                ? "cursor-pointer select-none rounded-br-md bg-red-600 text-white"
+                                : "rounded-bl-md border border-slate-200/80 bg-white text-slate-800"
                             } ${
                               deletingMessageId === message.id
                                 ? "opacity-50"
@@ -1831,6 +1841,15 @@ const user = useUserStore(
                               </div>
                             )}
 
+                            {(message.type === "IMAGE" ||
+                              message.type === "VIDEO") &&
+                              !mediaObjectUrls[message.id] && (
+                                <div className="mb-2 flex min-h-28 min-w-44 items-center justify-center rounded-xl border border-dashed border-slate-300/80 bg-slate-50/70 px-4 text-xs text-slate-500">
+                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                  Loading attachment…
+                                </div>
+                              )}
+
                             {message.type ===
                               "IMAGE" &&
                               mediaObjectUrls[
@@ -1916,9 +1935,10 @@ const user = useUserStore(
                     },
                   )
                 )}
+                <div ref={messagesEndRef} />
               </div>
 
-              <div className="sticky bottom-[68px] z-20 border-t bg-background md:bottom-0 p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
+              <div className="sticky bottom-[68px] z-20 border-t border-slate-200/80 bg-white/95 p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur md:bottom-0">
 
                 {selectedMedia &&
                   mediaPreview && (
@@ -1982,7 +2002,7 @@ const user = useUserStore(
                   }
                 />
 
-                <div className="flex items-center gap-2 rounded-[22px] border border-slate-200 bg-white p-1.5 shadow-[0_8px_30px_rgba(15,23,42,0.08)]">
+                <div className="flex items-end gap-2 rounded-[24px] border border-slate-200 bg-white p-1.5 shadow-[0_10px_34px_rgba(15,23,42,0.10)] transition focus-within:border-red-300 focus-within:ring-4 focus-within:ring-red-50">
                   <Button
                     type="button"
                     size="icon"
@@ -1997,7 +2017,7 @@ const user = useUserStore(
                     title="Photo or video"
                     className="h-10 w-10 shrink-0 rounded-full text-slate-500 hover:bg-red-50 hover:text-red-600"
                   >
-                    📎
+                    <Paperclip className="h-4 w-4" />
                   </Button>
                   <Input
                     value={draft}
@@ -2006,8 +2026,8 @@ const user = useUserStore(
                         e.target.value,
                       )
                     }
-                    placeholder="Write a message..."
-                    className="h-10 flex-1 border-0 bg-transparent shadow-none focus-visible:ring-0"
+                    placeholder="Message…"
+                    className="h-10 flex-1 border-0 bg-transparent px-1 shadow-none focus-visible:ring-0"
                     onKeyDown={(e) => {
                       if (
                         e.key ===
@@ -2022,7 +2042,7 @@ const user = useUserStore(
 
                   <Button
                     size="icon"
-                    className="h-10 w-10 shrink-0 rounded-full bg-red-600 text-white shadow-[0_5px_14px_rgba(220,38,38,0.28)] hover:bg-red-700"
+                    className="h-10 w-10 shrink-0 rounded-full bg-red-600 text-white shadow-[0_5px_14px_rgba(220,38,38,0.28)] hover:bg-red-700 disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none"
                     onClick={
                       selectedMedia
                         ? sendSelectedMedia
