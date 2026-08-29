@@ -1246,8 +1246,8 @@ const user = useUserStore(
 
   return (
     <>
-    <main className="mx-auto h-[calc(100dvh-68px)] max-w-7xl overflow-hidden bg-background md:h-[calc(100dvh-24px)] md:p-4">
-      <div className="grid h-full min-h-0 overflow-hidden border bg-background md:grid-cols-[340px_1fr] md:rounded-2xl">
+    <main className="mx-auto h-[calc(100dvh-68px)] max-w-7xl overflow-hidden bg-slate-50 md:h-[calc(100dvh-24px)] md:p-4">
+      <div className="grid h-full min-h-0 overflow-hidden border border-slate-200/80 bg-white shadow-[0_18px_60px_rgba(15,23,42,0.08)] md:grid-cols-[330px_1fr] md:rounded-[28px]">
         <aside
           className={`border-r ${
             selected
@@ -1255,69 +1255,21 @@ const user = useUserStore(
               : "block"
           }`}
         >
-          <div className="border-b p-4">
-            <h1 className="text-xl font-bold">
-              Messages
-            </h1>
-
-            <div className="mt-4 rounded-xl border p-3">
-              <p className="mb-2 text-sm font-medium">
-                Start chat by phone number
+          <div className="border-b border-slate-200/80 bg-white p-4">
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-red-500">
+                RoomKhoj
               </p>
-
-              <div className="flex gap-2">
-                <div className="relative flex-1">
-                  <Phone className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-
-                  <Input
-                    value={contactSearch}
-                    onChange={(e) =>
-                      setContactSearch(
-                        e.target.value
-                          ,
-                      )
-                    }
-                    placeholder="Phone number or email"
-                    inputMode="text"
-                    className="pl-9"
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        searchByContact();
-                      }
-                    }}
-                  />
-                </div>
-
-                <Button
-                  onClick={searchByContact}
-                  disabled={
-                    phoneSearching ||
-                    !contactSearch.trim()
-                  }
-                >
-                  {phoneSearching ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    "Search"
-                  )}
-                </Button>
-              </div>
-
-              {phoneResult && (
-                <button
-                  type="button"
-                  onClick={() => router.push(`/profile/${phoneResult.id}`)}
-                  className="mt-3 w-full rounded-lg bg-muted p-3 text-left hover:bg-muted/80"
-                >
-                  <p className="font-medium">{phoneResult.name}</p>
-                  <p className="text-sm text-muted-foreground">{phoneResult.phoneNumber}</p>
-                  <p className="mt-1 text-xs font-semibold text-primary">Profile हेर्नुहोस् → त्यहाँबाट Message गर्नुहोस्</p>
-                </button>
-              )}
+              <h1 className="mt-0.5 text-2xl font-black tracking-tight text-slate-950">
+                Messages
+              </h1>
+              <p className="mt-1 text-xs text-slate-500">
+                Your room conversations in one place
+              </p>
             </div>
 
             <div className="relative mt-4">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
 
               <Input
                 value={search}
@@ -1326,8 +1278,8 @@ const user = useUserStore(
                     e.target.value,
                   )
                 }
-                placeholder="Search chats"
-                className="pl-9"
+                placeholder="Search conversations"
+                className="h-11 rounded-full border-slate-200 bg-slate-50 pl-11 pr-4 text-sm shadow-none focus-visible:border-red-300 focus-visible:ring-red-100"
               />
             </div>
           </div>
@@ -1826,11 +1778,11 @@ const user = useUserStore(
                   }
                 />
 
-                <div className="flex gap-2">
+                <div className="flex items-center gap-2 rounded-[22px] border border-slate-200 bg-white p-1.5 shadow-[0_8px_30px_rgba(15,23,42,0.08)]">
                   <Button
                     type="button"
                     size="icon"
-                    variant="outline"
+                    variant="ghost"
                     onClick={() =>
                       mediaInputRef.current
                         ?.click()
@@ -1839,6 +1791,7 @@ const user = useUserStore(
                       mediaSending
                     }
                     title="Photo or video"
+                    className="h-10 w-10 shrink-0 rounded-full text-slate-500 hover:bg-red-50 hover:text-red-600"
                   >
                     📎
                   </Button>
@@ -1849,7 +1802,8 @@ const user = useUserStore(
                         e.target.value,
                       )
                     }
-                    placeholder="Type a message..."
+                    placeholder="Write a message..."
+                    className="h-10 flex-1 border-0 bg-transparent shadow-none focus-visible:ring-0"
                     onKeyDown={(e) => {
                       if (
                         e.key ===
@@ -1864,6 +1818,7 @@ const user = useUserStore(
 
                   <Button
                     size="icon"
+                    className="h-10 w-10 shrink-0 rounded-full bg-red-600 text-white shadow-[0_5px_14px_rgba(220,38,38,0.28)] hover:bg-red-700"
                     onClick={
                       selectedMedia
                         ? sendSelectedMedia
