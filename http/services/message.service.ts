@@ -6,6 +6,15 @@ export interface MessageConversation {
   userTwoId: string;
   contextType: string;
   contextId?: string | null;
+  contextPost?: {
+    type: "ROOM" | "JOB";
+    id: string;
+    title: string;
+    subtitle?: string | null;
+    price?: number | null;
+    image?: string | null;
+    url: string;
+  } | null;
   otherUserId?: string;
 
   otherUser?: {
