@@ -1211,25 +1211,41 @@ const user = useUserStore(
 
   const filtered =
     useMemo(() => {
-      const q =
-        search.trim().toLowerCase();
+      const q = search.trim().toLowerCase();
+      const digitsOnly = q.replace(/\D/g, "");
 
       if (!q) {
         return conversations;
       }
 
-      return conversations.filter(
-        (conversation) =>
-          conversation.otherUser?.name
-            ?.toLowerCase()
-            .includes(q) ||
-          conversation.otherUser?.phoneNumber
-            ?.toLowerCase()
-            .includes(q) ||
-          conversation.contextType
-            ?.toLowerCase()
-            .includes(q),
-      );
+      return conversations.filter((conversation) => {
+        const name = String(
+          conversation.otherUser?.name || "",
+        ).toLowerCase();
+
+        const phone = String(
+          conversation.otherUser?.phoneNumber || "",
+        ).toLowerCase();
+
+        const phoneDigits = phone.replace(/\D/g, "");
+
+        const lastMessage = String(
+          conversation.lastMessage?.content || "",
+        ).toLowerCase();
+
+        const context = String(
+          conversation.contextType || "",
+        ).toLowerCase();
+
+        return (
+          name.includes(q) ||
+          phone.includes(q) ||
+          (digitsOnly.length > 0 &&
+            phoneDigits.includes(digitsOnly)) ||
+          lastMessage.includes(q) ||
+          context.includes(q)
+        );
+      });
     }, [conversations, search]);
 
   const otherUserId =
