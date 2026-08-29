@@ -265,7 +265,7 @@ export const TABS = [
     label: "Amenities",
     labelNp: "सुविधा",
     icon: Wifi,
-    required: true,
+    required: false,
   },
   {
     value: "preferences",
