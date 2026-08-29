@@ -17,6 +17,7 @@ import {
   Droplets,
   User,
   Phone,
+  CheckCircle2,
   XCircle,
   Wifi,
   Sun,
