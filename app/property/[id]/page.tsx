@@ -53,6 +53,10 @@ import {
   Clock3,
   AlertTriangle,
   MessageSquare,
+  Bell,
+  Bookmark,
+  HandCoins,
+  Share2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -246,10 +250,12 @@ const ImageCarousel = ({
 
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/20 pointer-events-none" />
 
-        {/* Counter */}
-        <div className="absolute top-4 left-4 bg-black/60 backdrop-blur-sm text-white text-xs font-semibold px-3 py-1.5 rounded-full flex items-center gap-1.5">
-          <ImageIcon className="w-3 h-3" />
-          {current + 1} / {images.length}
+        {/* Marketplace-style verified badge + photo counter */}
+        <div className="absolute left-4 top-4 rounded-full bg-red-600 px-3 py-1.5 text-xs font-extrabold text-white shadow-lg">
+          ✓ Verified Room
+        </div>
+        <div className="absolute bottom-4 right-4 rounded-full bg-black/70 px-3 py-1.5 text-xs font-bold text-white backdrop-blur-sm">
+          {current + 1}/{images.length}
         </div>
 
         {/* Fullscreen */}
@@ -1129,6 +1135,7 @@ export default function PropertyDetailsPage() {
     useState<CommissionSettings | null>(null);
   const [showUnlockDialog, setShowUnlockDialog] = useState(false);
   const [showTopUpDialog, setShowTopUpDialog] = useState(false);
+  const [savedListing, setSavedListing] = useState(false);
 
   useEffect(() => {
     if (!roomId) return;
@@ -1293,97 +1300,124 @@ export default function PropertyDetailsPage() {
             </div>
           </div>
 
-          {/* Title + address */}
+          {/* Marketplace-style listing summary */}
           <motion.div
-            initial={{ opacity: 0, y: 15 }}
+            initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.05 }}
             className="mb-5"
           >
-            <Badge className="mb-3 bg-red-50 text-red-600 border-0 font-semibold px-3 py-1 capitalize">
-              {room.category}
-            </Badge>
-            <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight leading-tight">
+            <h1 className="text-[28px] font-black leading-tight tracking-[-0.025em] text-slate-950 sm:text-[34px]">
               {room.title}
             </h1>
-            <div className="flex items-center flex-wrap gap-x-4 gap-y-1 mt-2">
-              <div className="flex items-center gap-1 text-slate-500 text-sm">
-                <MapPin
-                  className="w-4 h-4 text-red-400 flex-shrink-0"
-                  aria-hidden
-                />
-                <span>{shortAddress}</span>
-                {!unlockedData && (
-                  <Badge
-                    variant="outline"
-                    className="ml-1 text-[10px] gap-0.5 py-0"
-                  >
-                    <Lock className="w-2.5 h-2.5" aria-hidden /> Exact hidden
-                  </Badge>
-                )}
-              </div>
-              {/* Highway distance — shown publicly */}
-              {room.distanceHighwayM !== null &&
-                room.distanceHighwayM !== undefined && (
-                  <span className="flex items-center gap-1 text-xs text-slate-500">
-                    🛣️{" "}
-                    {room.distanceHighwayM >= 1000
-                      ? `${(room.distanceHighwayM / 1000).toFixed(1)} km`
-                      : `${room.distanceHighwayM} m`}{" "}
-                    from highway
-                  </span>
-                )}
-              <span className="text-xs text-slate-400 flex items-center gap-1">
-                <Clock className="w-3.5 h-3.5" aria-hidden /> Added{" "}
-                {timeAgo(room.createdAt)}
+
+            <div className="mt-2 flex items-baseline gap-2">
+              <span className="text-[28px] font-black tracking-[-0.03em] text-red-600 sm:text-[32px]">
+                {formatPriceNPR(Number(room.price))}
+              </span>
+              <span className="text-sm font-medium text-slate-500">/month</span>
+            </div>
+
+            <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-slate-500">
+              <span className="inline-flex items-center gap-1.5">
+                <MapPin className="h-4 w-4 text-red-500" aria-hidden />
+                {shortAddress}
+              </span>
+              <span className="inline-flex items-center gap-1.5 text-xs">
+                <Clock className="h-3.5 w-3.5" aria-hidden />
+                Listed {timeAgo(room.createdAt)}
               </span>
             </div>
-          </motion.div>
 
-          {/* Mobile price bar */}
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="flex items-center justify-between p-4 bg-white rounded-2xl border border-slate-100 shadow-sm mb-5 lg:hidden"
-          >
-            <div>
-              <p className="text-xs text-slate-400 font-medium">Monthly Rent</p>
-              <p className="text-2xl font-bold text-slate-900 flex items-center gap-1">
-                <Landmark className="w-5 h-5 text-red-500" aria-hidden />{" "}
-                {formatPriceNPR(Number(room.price))}
-              </p>
-              <p className="text-xs text-slate-400">per month</p>
+            <div className="mt-4 flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+              <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700">
+                <Home className="h-3.5 w-3.5 text-red-500" />
+                {room.category}
+              </span>
+              <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700">
+                <Users className="h-3.5 w-3.5 text-red-500" />
+                {room.roomCapacity} People
+              </span>
+              <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700">
+                <Bath className="h-3.5 w-3.5 text-red-500" />
+                {room.bathroomCapacity} Bath
+              </span>
+              <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700">
+                <Square className="h-3.5 w-3.5 text-red-500" />
+                {Number(room.roomArea || 0).toFixed(0)} m²
+              </span>
+              <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700">
+                <Building2 className="h-3.5 w-3.5 text-red-500" />
+                Floor {room.floorNumber}
+              </span>
             </div>
-            {unlockedData?.room?.contactPhone ? (
-              <a
-                href={`https://wa.me/${unlockedData.room.user?.phoneNumber?.replace(/\D/g, "")}?text=${encodeURIComponent(`Hi! Interested in: ${room.title}`)}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-2 px-4 py-3 bg-green-600 hover:bg-green-700 text-white font-bold text-sm rounded-xl transition-colors cursor-pointer shadow-lg shadow-green-100"
-              >
-                <WhatsAppIcon /> <span>Chat</span>
-              </a>
-            ) : (
-              <Button
-                onClick={() => setShowUnlockDialog(true)}
-                className="bg-red-500 hover:bg-red-600 text-white rounded-xl font-bold px-4 cursor-pointer shadow-lg shadow-red-100"
-              >
-                <Lock className="w-4 h-4 mr-1.5" aria-hidden /> Unlock
-              </Button>
-            )}
           </motion.div>
 
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.11 }}
-            className="mb-5"
+            transition={{ delay: 0.1 }}
+            className="mb-4"
           >
-            <RoomMessageSellerCard
-              roomId={room.id}
-              roomTitle={room.title}
-            />
+            <RoomMessageSellerCard roomId={room.id} roomTitle={room.title} />
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.12 }}
+            className="mb-6 grid grid-cols-4 gap-2 border-b border-slate-200 pb-5"
+          >
+            <button
+              type="button"
+              onClick={() => toast.success("Room alerts enabled")}
+              className="group flex flex-col items-center gap-2"
+            >
+              <span className="flex h-12 w-12 items-center justify-center rounded-full border border-slate-200 bg-slate-100 text-slate-800 transition group-hover:border-red-200 group-hover:bg-red-50 group-hover:text-red-600">
+                <Bell className="h-5 w-5" />
+              </span>
+              <span className="text-[11px] font-bold text-slate-800 sm:text-xs">Alerts</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => toast.info("Send your offer from Message seller")}
+              className="group flex flex-col items-center gap-2"
+            >
+              <span className="flex h-12 w-12 items-center justify-center rounded-full border border-slate-200 bg-slate-100 text-slate-800 transition group-hover:border-red-200 group-hover:bg-red-50 group-hover:text-red-600">
+                <HandCoins className="h-5 w-5" />
+              </span>
+              <span className="text-[11px] font-bold text-slate-800 sm:text-xs">Send offer</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={copyLink}
+              className="group flex flex-col items-center gap-2"
+            >
+              <span className="flex h-12 w-12 items-center justify-center rounded-full border border-slate-200 bg-slate-100 text-slate-800 transition group-hover:border-red-200 group-hover:bg-red-50 group-hover:text-red-600">
+                <Share2 className="h-5 w-5" />
+              </span>
+              <span className="text-[11px] font-bold text-slate-800 sm:text-xs">Share</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setSavedListing((value) => !value)}
+              className="group flex flex-col items-center gap-2"
+            >
+              <span className={cn(
+                "flex h-12 w-12 items-center justify-center rounded-full border transition",
+                savedListing
+                  ? "border-red-200 bg-red-50 text-red-600"
+                  : "border-slate-200 bg-slate-100 text-slate-800 group-hover:border-red-200 group-hover:bg-red-50 group-hover:text-red-600",
+              )}>
+                <Bookmark className={cn("h-5 w-5", savedListing && "fill-red-600")} />
+              </span>
+              <span className="text-[11px] font-bold text-slate-800 sm:text-xs">
+                {savedListing ? "Saved" : "Save"}
+              </span>
+            </button>
           </motion.div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
