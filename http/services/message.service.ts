@@ -143,18 +143,19 @@ export const messageService = {
   },
 
   searchUsersByPhone: async (
-    phone: string,
+    query: string,
   ) => {
     const response = await privateApi.get(
       "/message/search-users",
       {
-        params: { phone },
+        params: { q: query },
       },
     );
 
     return response.data as Array<{
       id: string;
       name: string;
+      email?: string | null;
       phoneNumber: string;
     }>;
   },
