@@ -6,6 +6,21 @@ export interface UserLocation {
   updatedAt: string;
 }
 
+export type BrowserPermissionState =
+  | "granted"
+  | "denied"
+  | "prompt"
+  | "unsupported"
+  | "unknown";
+
+export interface UserPermissionStatus {
+  location: BrowserPermissionState;
+  notification: BrowserPermissionState;
+  microphone: BrowserPermissionState;
+  camera: BrowserPermissionState;
+  updatedAt?: string | null;
+}
+
 export interface UserDetail {
   id: string;
   createdAt: string;
@@ -21,6 +36,7 @@ export interface UserDetail {
   location?: UserLocation | null;
   isOnline?: boolean;
   lastActiveAt?: string;
+  permissions?: UserPermissionStatus;
 }
 
 export enum UserRole {
