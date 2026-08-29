@@ -8,7 +8,7 @@ export const waterSupplyTimingsSchema = z.object({
 });
 
 export const locationSchema = z.object({
-  name: z.string().min(1, "Location name is required"),
+  name: z.string().optional(),
   formattedAddress: z.string().optional(),
   latitude: z.number().min(-90).max(90),
   longitude: z.number().min(-180).max(180),
@@ -24,7 +24,7 @@ export const createRoomSchema = z.object({
   description: z.string().min(10, "Description must be at least 10 characters"),
   category: z.nativeEnum(RoomCategory),
   price: z.coerce.number().min(1, "Price must be greater than 0"),
-  address: z.string().min(5, "Address must be at least 5 characters"),
+  address: z.string().optional(),
   amenities: z.array(z.string()).default([]),
   bathroomCapacity: z.coerce.number().min(1).max(10),
   floorNumber: z.coerce.number().min(0),
