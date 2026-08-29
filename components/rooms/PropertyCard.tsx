@@ -12,7 +12,6 @@ import {
   CheckCircle,
   Home,
   Heart,
-  MessageCircle,
   Bookmark,
   Share2,
   ShieldCheck,
@@ -22,7 +21,6 @@ import {
 import type { Room } from "@/types/room.types";
 import { formatPriceNPR, resolveImageUrl } from "@/lib/utils";
 import { amenityIcons, categoryConfig } from "@/lib/room-utils";
-import { messageService } from "@/http/services/message.service";
 import { toast } from "sonner";
 
 interface PropertyCardProps {
@@ -105,43 +103,6 @@ export function PropertyCard({
       toast.success("Room link copied");
     } catch {
       // Share sheet cancelled.
-    }
-  };
-
-  const handleMessage = async (event: React.MouseEvent) => {
-    event.stopPropagation();
-
-    if (!isLoaded || !user) {
-      sessionStorage.setItem(
-        "roomkhoj_post_auth_redirect",
-        `/property/${room.id}`,
-      );
-      router.push("/auth/login");
-      return;
-    }
-
-    try {
-      const result = await messageService.startForRoom(room.id);
-
-      sessionStorage.setItem(
-        "roomkhoj_room_message_draft",
-        JSON.stringify({
-          conversationId: result.conversation.id,
-          text: "Hello, is this still available?",
-          room: result.room,
-        }),
-      );
-
-      router.push(
-        `/messages?conversation=${encodeURIComponent(
-          result.conversation.id,
-        )}`,
-      );
-    } catch (error: any) {
-      toast.error(
-        error?.response?.data?.message ||
-          "Message सुरु गर्न सकिएन।",
-      );
     }
   };
 
@@ -383,25 +344,16 @@ export function PropertyCard({
           </div>
         )}
 
-        <div className="mt-4 flex gap-2">
-          <button
-            type="button"
-            onClick={handleMessage}
-            className="flex h-11 flex-1 items-center justify-center gap-2 rounded-2xl bg-red-600 px-4 text-sm font-bold text-white shadow-[0_8px_18px_rgba(220,38,38,0.22)] transition hover:bg-red-700 hover:shadow-[0_10px_24px_rgba(220,38,38,0.3)]"
-          >
-            <MessageCircle className="h-4 w-4" />
-            Message
-          </button>
-
+        <div className="mt-4">
           <button
             type="button"
             onClick={(event) => {
               event.stopPropagation();
               openRoom();
             }}
-            className="flex h-11 items-center justify-center gap-1.5 rounded-2xl border border-slate-200 bg-white px-4 text-xs font-bold text-slate-700 transition hover:border-red-200 hover:bg-red-50 hover:text-red-600"
+            className="flex h-11 w-full items-center justify-center gap-1.5 rounded-2xl border border-slate-200 bg-white px-4 text-xs font-bold text-slate-700 transition hover:border-red-200 hover:bg-red-50 hover:text-red-600"
           >
-            View
+            View room
             <ArrowUpRight className="h-3.5 w-3.5" />
           </button>
         </div>
