@@ -92,6 +92,9 @@ export default function UsersList() {
   const [purposeFilter, setPurposeFilter] = useState<
     "all" | "FIND_ROOM" | "POST_ROOM" | "FIND_JOB" | "POST_JOB"
   >("all");
+  const [onlineFilter, setOnlineFilter] = useState<
+    "all" | "online" | "offline"
+  >("all");
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(10);
   const [selectedUser, setSelectedUser] = useState<{
@@ -123,6 +126,8 @@ export default function UsersList() {
     role: roleFilter !== "all" ? roleFilter : undefined,
     accountPurpose:
       purposeFilter !== "all" ? purposeFilter : undefined,
+    onlineStatus:
+      onlineFilter !== "all" ? onlineFilter : undefined,
   };
 
   const getPurposeLabel = (purpose?: string | null) => {
@@ -489,6 +494,7 @@ export default function UsersList() {
                 setSearchTerm("");
                 setRoleFilter("all");
                 setPurposeFilter("all");
+                setOnlineFilter("all");
                 setPage(0);
                 refetch();
               }}
@@ -620,11 +626,41 @@ export default function UsersList() {
               </SelectContent>
             </Select>
 
+            {/* Online Status Filter */}
+            <Select
+              value={onlineFilter}
+              onValueChange={(value) => {
+                setOnlineFilter(
+                  value as "all" | "online" | "offline",
+                );
+                setPage(0);
+              }}
+            >
+              <SelectTrigger
+                className="w-full sm:w-[160px] cursor-pointer"
+                aria-label="Filter by online status"
+              >
+                <SelectValue placeholder="Online status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all" className="cursor-pointer">
+                  All status
+                </SelectItem>
+                <SelectItem value="online" className="cursor-pointer">
+                  ● Online
+                </SelectItem>
+                <SelectItem value="offline" className="cursor-pointer">
+                  ○ Offline
+                </SelectItem>
+              </SelectContent>
+            </Select>
+
             <Button
               onClick={() => {
                 setSearchTerm("");
                 setRoleFilter("all");
                 setPurposeFilter("all");
+                setOnlineFilter("all");
                 setPage(0);
               }}
               variant="outline"
@@ -660,6 +696,13 @@ export default function UsersList() {
               <Badge variant="outline" className="text-xs">
                 <User className="h-3 w-3 mr-1 text-green-600" />
                 {users.filter((u) => u.role === UserRole.USER).length} User
+              </Badge>
+              <Badge
+                variant="outline"
+                className="text-xs border-emerald-200 bg-emerald-50 text-emerald-700"
+              >
+                <Radio className="h-3 w-3 mr-1 fill-emerald-500 text-emerald-500" />
+                {users.filter((u) => u.isOnline).length} Online now
               </Badge>
             </div>
           </div>
