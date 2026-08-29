@@ -43,6 +43,15 @@ export interface ChatMessage {
   mediaMimeType?: string | null;
   mediaSize?: number | null;
   mediaStorage?: string | null;
+  attachment?: {
+    type: "ROOM";
+    id: string;
+    title: string;
+    price: number;
+    address?: string | null;
+    image?: string | null;
+    url: string;
+  } | null;
 }
 
 export const messageService = {
@@ -224,10 +233,14 @@ export const messageService = {
   sendMessage: async (
     conversationId: string,
     content: string,
+    roomId?: string,
   ): Promise<ChatMessage> => {
     const response = await privateApi.post(
       `/message/conversations/${conversationId}/messages`,
-      { content },
+      {
+        content,
+        roomId: roomId || undefined,
+      },
     );
 
     return response.data;
