@@ -37,21 +37,20 @@ export function RoomMessageSellerCard({
 
     try {
       setSending(true);
-      // This is the ONLY in-app room message flow:
-      // resolve the canonical chat, then send this exact roomId with the text.
-      // Using the explicit message endpoint makes the room attachment part of
-      // the actual message record instead of only conversation context.
+      // This exact Message seller box now uses a dedicated room-inquiry
+      // endpoint where roomId is part of the route, so a plain text message
+      // cannot be created accidentally. The backend always creates a ROOM
+      // message with the selected listing attached.
       const result =
-        await messageService.startForRoom(roomId);
-
-      const sentMessage =
-        await messageService.sendMessage(
-          result.conversation.id,
-          content,
+        await messageService.sendRoomInquiry(
           roomId,
+          content,
         );
 
-      if (!sentMessage.attachment?.id) {
+      if (
+        result.message.type !== "ROOM" ||
+        !result.message.attachment?.id
+      ) {
         throw new Error(
           "Room attachment was not returned by the server",
         );
@@ -63,8 +62,8 @@ export function RoomMessageSellerCard({
           conversationId: result.conversation.id,
           room: result.room,
           sentText: content,
-          messageId: sentMessage.id,
-          attachment: sentMessage.attachment,
+          messageId: result.message.id,
+          attachment: result.message.attachment,
         }),
       );
 
