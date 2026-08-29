@@ -4,7 +4,6 @@ import {
   useEffect,
   useRef,
   useState,
-  useMemo,
   Suspense,
 } from "react";
 import {
@@ -1301,44 +1300,9 @@ const user = useUserStore(
       }
     };
 
-  const filtered =
-    useMemo(() => {
-      const q = search.trim().toLowerCase();
-      const digitsOnly = q.replace(/\D/g, "");
-
-      if (!q) {
-        return conversations;
-      }
-
-      return conversations.filter((conversation) => {
-        const name = String(
-          conversation.otherUser?.name || "",
-        ).toLowerCase();
-
-        const phone = String(
-          conversation.otherUser?.phoneNumber || "",
-        ).toLowerCase();
-
-        const phoneDigits = phone.replace(/\D/g, "");
-
-        const lastMessage = String(
-          conversation.lastMessage?.content || "",
-        ).toLowerCase();
-
-        const context = String(
-          conversation.contextType || "",
-        ).toLowerCase();
-
-        return (
-          name.includes(q) ||
-          phone.includes(q) ||
-          (digitsOnly.length > 0 &&
-            phoneDigits.includes(digitsOnly)) ||
-          lastMessage.includes(q) ||
-          context.includes(q)
-        );
-      });
-    }, [conversations, search]);
+  // The box above is strictly for finding RoomKhoj users.
+  // It must never hide/filter the existing conversation list.
+  const filtered = conversations;
 
   const otherUserId =
     selected?.otherUser?.id ||
@@ -1396,7 +1360,7 @@ const user = useUserStore(
                     void searchByContact();
                   }
                 }}
-                placeholder="Name, phone number or Gmail"
+                placeholder="Search user by phone or Gmail"
                 className="h-11 rounded-full border-slate-200 bg-slate-50 pl-11 pr-24 text-sm shadow-none focus-visible:border-red-300 focus-visible:ring-red-100"
               />
 
@@ -1404,8 +1368,8 @@ const user = useUserStore(
                 type="button"
                 onClick={() => void searchByContact()}
                 disabled={phoneSearching || !search.trim()}
-                aria-label="Search RoomKhoj user"
-                title="Search RoomKhoj user"
+                aria-label="Search RoomKhoj user by phone or Gmail"
+                title="Search user"
                 className="absolute right-1.5 top-1/2 flex h-8 -translate-y-1/2 items-center justify-center gap-1.5 rounded-full bg-red-600 px-3 text-xs font-extrabold text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 {phoneSearching ? (
