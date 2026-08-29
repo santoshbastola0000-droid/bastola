@@ -7,6 +7,19 @@ import {
   type UserPermissionStatus,
 } from "@/types/user.types";
 
+export interface UserEngagementSummary {
+  emailSent: number;
+  emailClicked: number;
+  pushSent: number;
+  pushDeliveredDevices: number;
+  pushClicked: number;
+  inAppNotifications: number;
+  totalOutbound: number;
+  lastSource: string | null;
+  lastVisitAt: string | null;
+  lastClickedAt: string | null;
+}
+
 export interface UserFilters {
   page?: number;
   take?: number;
@@ -95,6 +108,21 @@ export const userService = {
     permissions: Partial<Omit<UserPermissionStatus, "updatedAt">>,
   ): Promise<void> => {
     await privateApi.post("/user/permissions", permissions);
+  },
+
+  getEngagementSummary: async (
+    userIds: string[],
+  ): Promise<Record<string, UserEngagementSummary>> => {
+    if (!userIds.length) return {};
+    const response = await privateApi.get(
+      "/notifications/admin/engagement-summary",
+      {
+        params: {
+          userIds: userIds.join(","),
+        },
+      },
+    );
+    return response.data || {};
   },
 
   heartbeat: async (): Promise<void> => {
