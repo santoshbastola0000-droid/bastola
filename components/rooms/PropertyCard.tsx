@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useUserStore } from "@/stores/user-store";
 import { motion } from "framer-motion";
@@ -37,7 +37,8 @@ export function PropertyCard({
   const [imgLoaded, setImgLoaded] = useState(false);
   const [saved, setSaved] = useState(false);
   const [imageIndex, setImageIndex] = useState(0);
-  const [touchStartX, setTouchStartX] = useState<number | null>(null);
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+  const touchGestureRef = useRef<"horizontal" | "vertical" | null>(null);
 
   const catCfg = categoryConfig[room.category] ?? {
     label: room.category,
@@ -126,6 +127,73 @@ export function PropertyCard({
     setImageIndex((current) => (current - 1 + images.length) % images.length);
   };
 
+  const handleMediaTouchStart = (
+    event: React.TouchEvent<HTMLDivElement>,
+  ) => {
+    const touch = event.touches[0];
+    if (!touch) return;
+
+    touchStartRef.current = {
+      x: touch.clientX,
+      y: touch.clientY,
+    };
+    touchGestureRef.current = null;
+  };
+
+  const handleMediaTouchMove = (
+    event: React.TouchEvent<HTMLDivElement>,
+  ) => {
+    const start = touchStartRef.current;
+    const touch = event.touches[0];
+    if (!start || !touch) return;
+
+    const dx = touch.clientX - start.x;
+    const dy = touch.clientY - start.y;
+
+    if (
+      !touchGestureRef.current &&
+      (Math.abs(dx) > 8 || Math.abs(dy) > 8)
+    ) {
+      touchGestureRef.current =
+        Math.abs(dx) > Math.abs(dy)
+          ? "horizontal"
+          : "vertical";
+    }
+
+    if (touchGestureRef.current === "horizontal") {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+  };
+
+  const handleMediaTouchEnd = (
+    event: React.TouchEvent<HTMLDivElement>,
+  ) => {
+    const start = touchStartRef.current;
+    const touch = event.changedTouches[0];
+
+    touchStartRef.current = null;
+    const gesture = touchGestureRef.current;
+    touchGestureRef.current = null;
+
+    if (!start || !touch || gesture !== "horizontal") {
+      return;
+    }
+
+    const dx = touch.clientX - start.x;
+    const dy = touch.clientY - start.y;
+
+    if (
+      Math.abs(dx) < 42 ||
+      Math.abs(dx) <= Math.abs(dy)
+    ) {
+      return;
+    }
+
+    if (dx < 0) showNextImage();
+    else showPreviousImage();
+  };
+
   return (
     <motion.article
       initial={{ opacity: 0, y: 14 }}
@@ -142,23 +210,21 @@ export function PropertyCard({
       }}
       role="link"
       tabIndex={0}
-      className="group relative cursor-pointer overflow-hidden rounded-[24px] border border-slate-200/80 bg-white shadow-[0_8px_26px_rgba(15,23,42,0.07)] transition-all duration-300 hover:-translate-y-1 hover:border-red-200 hover:shadow-[0_18px_45px_rgba(15,23,42,0.12)] focus:outline-none focus:ring-2 focus:ring-red-500/30"
+      className="group relative isolate cursor-pointer overflow-hidden rounded-[24px] border border-slate-200/80 bg-white shadow-[0_8px_26px_rgba(15,23,42,0.07)] transition-all duration-300 md:hover:-translate-y-1 hover:border-red-200 hover:shadow-[0_18px_45px_rgba(15,23,42,0.12)] focus:outline-none focus:ring-2 focus:ring-red-500/30 [contain:paint]"
     >
       <div
-        className="relative aspect-[4/3] overflow-hidden bg-slate-100"
-        onClick={(event) => event.stopPropagation()}
-        onTouchStart={(event) => {
-          setTouchStartX(event.touches[0]?.clientX ?? null);
+        className="relative z-0 aspect-[4/3] w-full overflow-hidden bg-slate-100"
+        style={{
+          touchAction: "pan-y",
+          overscrollBehaviorX: "contain",
         }}
-        onTouchEnd={(event) => {
-          if (touchStartX === null) return;
-          const endX = event.changedTouches[0]?.clientX ?? touchStartX;
-          const delta = endX - touchStartX;
-          setTouchStartX(null);
-
-          if (Math.abs(delta) < 35) return;
-          if (delta < 0) showNextImage();
-          else showPreviousImage();
+        onClick={(event) => event.stopPropagation()}
+        onTouchStart={handleMediaTouchStart}
+        onTouchMove={handleMediaTouchMove}
+        onTouchEnd={handleMediaTouchEnd}
+        onTouchCancel={() => {
+          touchStartRef.current = null;
+          touchGestureRef.current = null;
         }}
       >
         {!imgLoaded && (
@@ -186,7 +252,7 @@ export function PropertyCard({
                 setImgError(true);
                 setImgLoaded(true);
               }}
-              className={`h-full w-full object-cover transition duration-500 ease-out group-hover:scale-[1.025] ${
+              className={`h-full w-full object-cover transition duration-500 ease-out md:group-hover:scale-[1.025] ${
                 imgLoaded ? "opacity-100" : "opacity-0"
               }`}
             />
@@ -239,7 +305,7 @@ export function PropertyCard({
         )}
       </div>
 
-      <div className="p-2.5 sm:p-3">
+      <div className="relative z-10 bg-white p-2.5 sm:p-3">
         <div className="flex items-center justify-between gap-2">
           <button
             type="button"
