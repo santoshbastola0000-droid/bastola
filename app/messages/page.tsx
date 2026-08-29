@@ -1248,6 +1248,46 @@ const user = useUserStore(
       });
     }, [conversations, search]);
 
+  useEffect(() => {
+    const raw = search.trim();
+    const digits = raw.replace(/\D/g, "");
+    const looksLikePhone = digits.length === 10;
+    const looksLikeEmail =
+      /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(raw);
+
+    if (!looksLikePhone && !looksLikeEmail) {
+      setPhoneResult(null);
+      setPhoneSearching(false);
+      return;
+    }
+
+    let cancelled = false;
+    const timer = window.setTimeout(async () => {
+      try {
+        setPhoneSearching(true);
+        const result =
+          await messageService.findProfileByContact(raw);
+
+        if (!cancelled) {
+          setPhoneResult(result);
+        }
+      } catch {
+        if (!cancelled) {
+          setPhoneResult(null);
+        }
+      } finally {
+        if (!cancelled) {
+          setPhoneSearching(false);
+        }
+      }
+    }, 250);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [search]);
+
   const otherUserId =
     selected?.otherUser?.id ||
     selected?.otherUserId ||
@@ -1356,6 +1396,42 @@ const user = useUserStore(
               </button>
             )}
           </div>
+
+          {search.trim() && (
+            <div className="border-b border-slate-100 bg-white px-4 py-3">
+              {phoneSearching ? (
+                <div className="flex items-center gap-2 rounded-2xl bg-slate-50 px-3 py-3 text-sm text-slate-500">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Searching RoomKhoj users...
+                </div>
+              ) : phoneResult ? (
+                <button
+                  type="button"
+                  onClick={() =>
+                    router.push(`/profile/${phoneResult.id}`)
+                  }
+                  className="flex w-full items-center gap-3 rounded-2xl border border-red-100 bg-red-50/50 p-3 text-left transition hover:bg-red-50"
+                >
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white text-sm font-black text-red-600 shadow-sm">
+                    {(phoneResult.name || "U")
+                      .slice(0, 2)
+                      .toUpperCase()}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-bold text-slate-900">
+                      {phoneResult.name}
+                    </p>
+                    <p className="truncate text-xs text-slate-500">
+                      {phoneResult.phoneNumber}
+                    </p>
+                    <p className="mt-1 text-[11px] font-semibold text-red-600">
+                      View profile →
+                    </p>
+                  </div>
+                </button>
+              ) : null}
+            </div>
+          )}
 
           {loading ? (
             <div className="flex justify-center p-10">
