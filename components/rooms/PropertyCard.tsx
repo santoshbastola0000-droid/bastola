@@ -11,7 +11,6 @@ import {
   Square,
   CheckCircle,
   Home,
-  Heart,
   Bookmark,
   Share2,
   ShieldCheck,
@@ -36,7 +35,6 @@ export function PropertyCard({
   const isLoaded = useUserStore((state) => state.isLoaded);
   const [imgError, setImgError] = useState(false);
   const [imgLoaded, setImgLoaded] = useState(false);
-  const [liked, setLiked] = useState(false);
   const [saved, setSaved] = useState(false);
   const [imageIndex, setImageIndex] = useState(0);
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
@@ -62,6 +60,19 @@ export function PropertyCard({
     "";
   const shortAddress =
     city || formattedAddress.split(",")[0];
+
+  const ownerName =
+    room.user?.name ||
+    room.contactPerson ||
+    "RoomKhoj Owner";
+
+  const ownerInitial =
+    ownerName.trim().charAt(0).toUpperCase() || "R";
+
+  const ownerPhotoUrl =
+    room.user?.profilePhotoUrl
+      ? resolveImageUrl(room.user.profilePhotoUrl)
+      : null;
 
   const openRoom = () => {
     const propertyPath = `/property/${room.id}`;
@@ -171,26 +182,9 @@ export function PropertyCard({
           </div>
         )}
 
-        <div className="absolute left-3 top-3 z-20 flex flex-wrap gap-2">
-          <span
-            className="rounded-full bg-white/95 px-2.5 py-1 text-[10px] font-extrabold shadow-sm backdrop-blur-md"
-            style={{ color: catCfg.color }}
-          >
-            {catCfg.label}
-          </span>
-          {room.user?.isVerified && (
-            <span className="flex items-center gap-1 rounded-full bg-slate-950/65 px-2.5 py-1 text-[9px] font-semibold text-white backdrop-blur-md">
-              <ShieldCheck className="h-3 w-3 text-sky-300" />
-              Verified
-            </span>
-          )}
+        <div className="pointer-events-none absolute left-1/2 top-5 z-20 -translate-x-1/2 rounded-full bg-black/45 px-3 py-1 text-[10px] font-extrabold tracking-wide text-white shadow-sm backdrop-blur-sm">
+          www.roomkhoj.com
         </div>
-
-        {room.allowsWomen && (
-          <span className="absolute right-3 top-3 z-20 rounded-full bg-pink-500 px-2.5 py-1 text-[9px] font-bold text-white shadow">
-            Women OK
-          </span>
-        )}
 
         {images.length > 1 && (
           <>
@@ -231,57 +225,113 @@ export function PropertyCard({
       </div>
 
       <div className="p-2.5 sm:p-3">
-        <div className="flex items-start gap-2">
-          <div className="min-w-0 flex-1">
-            <h3 className="line-clamp-1 text-[15px] font-extrabold leading-tight text-slate-950">
-              {room.title}
-            </h3>
-            <div className="mt-1 flex min-w-0 items-center gap-1 text-[10px] text-slate-500">
-              <MapPin className="h-3 w-3 shrink-0 text-red-500" />
-              <span className="truncate">{shortAddress}</span>
-            </div>
-          </div>
-
+        <div className="flex items-center justify-between gap-2">
           <button
             type="button"
             onClick={(event) => {
               event.stopPropagation();
-              setLiked((value) => !value);
+              if (room.user?.id) {
+                router.push(`/profile/${room.user.id}`);
+              }
             }}
-            aria-label="Favorite"
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white transition hover:border-red-200 hover:bg-red-50"
+            className="flex min-w-0 items-center gap-2 text-left"
           >
-            <Heart
-              className={`h-4 w-4 ${
-                liked ? "fill-red-500 text-red-500" : "text-slate-500"
-              }`}
-            />
+            <span className="flex h-8 w-8 shrink-0 overflow-hidden rounded-full border border-slate-200 bg-slate-100">
+              {ownerPhotoUrl ? (
+                <img
+                  src={ownerPhotoUrl}
+                  alt={ownerName}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <span className="flex h-full w-full items-center justify-center text-[11px] font-black text-red-600">
+                  {ownerInitial}
+                </span>
+              )}
+            </span>
+
+            <span className="min-w-0">
+              <span className="flex items-center gap-1">
+                <span className="truncate text-[11px] font-extrabold text-slate-800">
+                  {ownerName}
+                </span>
+                {room.user?.isVerified && (
+                  <CheckCircle className="h-3 w-3 shrink-0 fill-sky-500 text-white" />
+                )}
+              </span>
+              <span className="block text-[9px] font-medium text-slate-400">
+                Room owner
+              </span>
+            </span>
           </button>
+
+          <div
+            className="flex shrink-0 items-center gap-1.5"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setSaved((value) => !value)}
+              aria-label="Favorite room"
+              title="Favorite"
+              className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white shadow-sm transition hover:border-red-200 hover:bg-red-50"
+            >
+              <Bookmark
+                className={`h-3.5 w-3.5 ${
+                  saved
+                    ? "fill-red-500 text-red-500"
+                    : "text-slate-600"
+                }`}
+              />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => void handleShare()}
+              aria-label="Share room"
+              title="Share"
+              className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white shadow-sm transition hover:border-red-200 hover:bg-red-50 hover:text-red-600"
+            >
+              <Share2 className="h-3.5 w-3.5" />
+            </button>
+          </div>
         </div>
 
-        <div className="mt-2 flex items-center justify-between gap-2">
-          <div className="flex items-baseline gap-1">
-            <span className="text-[18px] font-black tracking-[-0.03em] text-red-600">
-              {formatPriceNPR(Number(room.price))}
-            </span>
-            <span className="text-[9px] font-medium text-slate-400">/month</span>
-          </div>
-
-          <button
-            type="button"
-            onClick={(event) => {
-              event.stopPropagation();
-              setSaved((value) => !value);
-            }}
-            aria-label="Save"
-            className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-slate-50 transition hover:border-red-200 hover:bg-red-50"
+        <div className="mt-2 flex flex-wrap gap-1">
+          <span
+            className="rounded-full bg-red-50 px-2 py-0.5 text-[8px] font-extrabold"
+            style={{ color: catCfg.color }}
           >
-            <Bookmark
-              className={`h-3.5 w-3.5 ${
-                saved ? "fill-red-500 text-red-500" : "text-slate-500"
-              }`}
-            />
-          </button>
+            {catCfg.label}
+          </span>
+
+          {room.user?.isVerified && (
+            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[8px] font-bold text-slate-600">
+              Verified
+            </span>
+          )}
+
+          {room.allowsWomen && (
+            <span className="rounded-full bg-pink-50 px-2 py-0.5 text-[8px] font-bold text-pink-600">
+              Women OK
+            </span>
+          )}
+        </div>
+
+        <h3 className="mt-2 line-clamp-1 text-[15px] font-extrabold leading-tight text-slate-950">
+          {room.title}
+        </h3>
+
+        <div className="mt-1 flex min-w-0 items-center gap-1 text-[10px] text-slate-500">
+          <MapPin className="h-3 w-3 shrink-0 text-red-500" />
+          <span className="truncate">{shortAddress}</span>
+        </div>
+
+        <div className="mt-1.5 flex items-baseline gap-1">
+          <span className="text-[18px] font-black tracking-[-0.03em] text-red-600">
+            {formatPriceNPR(Number(room.price))}
+          </span>
+          <span className="text-[9px] font-medium text-slate-400">/month</span>
         </div>
 
         <div className="mt-2 grid grid-cols-3 divide-x divide-slate-200 rounded-xl border border-slate-200 bg-slate-50/80">
@@ -318,26 +368,14 @@ export function PropertyCard({
           </div>
         )}
 
-        <div className="mt-2.5 flex gap-2">
-          <button
-            type="button"
-            onClick={(event) => {
-              event.stopPropagation();
-              void handleShare();
-            }}
-            className="flex h-9 flex-1 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white text-[10px] font-bold text-slate-700 transition hover:border-red-200 hover:bg-red-50 hover:text-red-600"
-          >
-            <Share2 className="h-3.5 w-3.5" />
-            Share
-          </button>
-
+        <div className="mt-2.5">
           <button
             type="button"
             onClick={(event) => {
               event.stopPropagation();
               openRoom();
             }}
-            className="flex h-9 flex-1 items-center justify-center rounded-xl bg-red-600 px-3 text-[10px] font-bold text-white transition hover:bg-red-700"
+            className="flex h-9 w-full items-center justify-center rounded-xl bg-red-600 px-3 text-[10px] font-bold text-white transition hover:bg-red-700"
           >
             View room
           </button>
