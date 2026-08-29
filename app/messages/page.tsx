@@ -195,6 +195,28 @@ const user = useUserStore(
   }, [requestedConversationId]);
 
   useEffect(() => {
+    let cancelled = false;
+
+    const syncConversations = async () => {
+      try {
+        const data = await messageService.getConversations();
+        if (!cancelled) {
+          setConversations(data);
+        }
+      } catch {
+        // Socket.IO is primary; this keeps inbox delivery working if realtime is blocked.
+      }
+    };
+
+    const intervalId = window.setInterval(syncConversations, 5000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+    };
+  }, []);
+
+  useEffect(() => {
     if (!requestedIncomingCallId) return;
 
     const raw = sessionStorage.getItem(
