@@ -37,14 +37,25 @@ export function RoomMessageSellerCard({
 
     try {
       setSending(true);
-      // Send the text and the selected room together in ONE backend
-      // request. The backend stores this message as type ROOM, with roomId in
-      // the message record, so the owner receives an actual attached room card.
+      // This is the ONLY in-app room message flow:
+      // resolve the canonical chat, then send this exact roomId with the text.
+      // Using the explicit message endpoint makes the room attachment part of
+      // the actual message record instead of only conversation context.
       const result =
-        await messageService.startForRoom(
-          roomId,
+        await messageService.startForRoom(roomId);
+
+      const sentMessage =
+        await messageService.sendMessage(
+          result.conversation.id,
           content,
+          roomId,
         );
+
+      if (!sentMessage.attachment?.id) {
+        throw new Error(
+          "Room attachment was not returned by the server",
+        );
+      }
 
       sessionStorage.setItem(
         "roomkhoj_last_room_message_context",
@@ -52,9 +63,8 @@ export function RoomMessageSellerCard({
           conversationId: result.conversation.id,
           room: result.room,
           sentText: content,
-          messageId: result.message?.id || null,
-          attachment:
-            result.message?.attachment || null,
+          messageId: sentMessage.id,
+          attachment: sentMessage.attachment,
         }),
       );
 
