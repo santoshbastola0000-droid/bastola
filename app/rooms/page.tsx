@@ -873,103 +873,142 @@ const rLng = Number(
 
       <div className="min-h-screen bg-gradient-to-b from-white via-[#fafafa] to-[#f5f5f7] pb-24 md:pb-0">
         {/* Header */}
-        <header className="relative overflow-hidden border-b border-slate-200/70 bg-gradient-to-br from-white via-red-50/40 to-white pt-24 pb-8 shadow-sm">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <header className="relative overflow-hidden border-b border-slate-200/70 bg-gradient-to-br from-white via-red-50/30 to-white pt-[76px] pb-8 shadow-sm">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            {/* Professional marketplace-style search: directly below nav */}
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: -8 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-              className="relative z-10 max-w-3xl mx-auto text-center mb-7"
+              transition={{
+                duration: 0.4,
+                ease: [0.22, 1, 0.36, 1],
+              }}
+              className="relative z-20 mx-auto mb-7 max-w-4xl"
             >
-              <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-950 tracking-tight">
+              <div className="flex items-center gap-1.5 rounded-[22px] border border-slate-200 bg-white p-1.5 shadow-[0_12px_35px_rgba(15,23,42,0.10)] sm:rounded-full sm:p-2">
+                <div className="group relative min-w-0 flex-1">
+                  <Search className="pointer-events-none absolute left-4 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-red-500" />
+                  <Input
+                    type="search"
+                    placeholder="Search location, area or property..."
+                    value={searchInput}
+                    onChange={(e) => handleSearch(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        updateFilters({ search: searchInput.trim() });
+                      }
+                    }}
+                    className="h-12 border-0 bg-transparent pl-11 pr-10 text-[15px] font-medium shadow-none outline-none placeholder:text-slate-400 focus-visible:ring-0 sm:h-13"
+                  />
+                  <AnimatePresence>
+                    {searchInput && (
+                      <motion.button
+                        type="button"
+                        initial={{ opacity: 0, scale: 0.75 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.75 }}
+                        transition={{ duration: 0.15 }}
+                        onClick={() => {
+                          setSearchInput("");
+                          updateFilters({ search: "" });
+                        }}
+                        className="absolute right-2.5 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+                        aria-label="Clear search"
+                      >
+                        <X className="h-4 w-4" />
+                      </motion.button>
+                    )}
+                  </AnimatePresence>
+                </div>
+
+                <div className="hidden h-8 w-px bg-slate-200 sm:block" />
+
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={locationActive ? clearLocation : handleLocateClick}
+                  disabled={locLoading}
+                  title={
+                    locationActive
+                      ? "Clear location filter"
+                      : "Search near my location"
+                  }
+                  className={cn(
+                    "hidden h-11 shrink-0 items-center gap-2 rounded-full px-4 text-sm font-semibold sm:flex",
+                    locationActive
+                      ? "bg-red-50 text-red-600 hover:bg-red-100"
+                      : "text-slate-600 hover:bg-slate-100 hover:text-red-600",
+                  )}
+                >
+                  {locLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : locationActive ? (
+                    <X className="h-4 w-4" />
+                  ) : (
+                    <Navigation className="h-4 w-4" />
+                  )}
+                  <span>{locationActive ? "Clear area" : "Near me"}</span>
+                </Button>
+
+                <Button
+                  type="button"
+                  onClick={() =>
+                    updateFilters({
+                      search: searchInput.trim(),
+                    })
+                  }
+                  className="h-11 shrink-0 rounded-[16px] bg-red-600 px-4 font-bold text-white shadow-[0_6px_16px_rgba(220,38,38,0.25)] hover:bg-red-700 sm:h-12 sm:rounded-full sm:px-6"
+                  aria-label="Search rooms"
+                >
+                  <Search className="h-4 w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Search</span>
+                </Button>
+              </div>
+
+              <button
+                type="button"
+                onClick={locationActive ? clearLocation : handleLocateClick}
+                disabled={locLoading}
+                className={cn(
+                  "mt-2 flex h-9 items-center gap-2 rounded-full border px-3 text-xs font-semibold sm:hidden",
+                  locationActive
+                    ? "border-red-200 bg-red-50 text-red-600"
+                    : "border-slate-200 bg-white text-slate-600",
+                )}
+              >
+                {locLoading ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : locationActive ? (
+                  <X className="h-3.5 w-3.5" />
+                ) : (
+                  <Navigation className="h-3.5 w-3.5" />
+                )}
+                {locationActive ? "Clear nearby filter" : "Rooms near me"}
+              </button>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 14 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
+              className="relative z-10 mx-auto mb-2 max-w-3xl text-center"
+            >
+              <h1 className="text-3xl font-extrabold tracking-tight text-slate-950 sm:text-4xl">
                 Find Your{" "}
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-red-500 to-rose-600">
+                <span className="bg-gradient-to-r from-red-500 to-rose-600 bg-clip-text text-transparent">
                   Perfect Room
                 </span>
               </h1>
               <motion.p
-                className="text-slate-500 text-sm sm:text-base mt-2 max-w-xl mx-auto"
+                className="mx-auto mt-2 max-w-xl text-sm text-slate-500 sm:text-base"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                transition={{ delay: 0.2 }}
+                transition={{ delay: 0.15 }}
               >
                 {total > 0
                   ? `${total.toLocaleString()} verified ${locationActive ? `properties within ${filters.radius} km` : "properties available"}`
                   : "Browse verified listings across Nepal"}
               </motion.p>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{
-                delay: 0.1,
-                duration: 0.45,
-                ease: [0.22, 1, 0.36, 1],
-              }}
-              className="relative z-10 max-w-2xl mx-auto flex gap-2 rounded-2xl bg-white/80 backdrop-blur-xl p-2 shadow-lg shadow-slate-200/50 border border-white"
-            >
-              <div className="relative flex-1 group">
-                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none transition-colors group-focus-within:text-red-400" />
-                <Input
-                  type="search"
-                  placeholder="Search by location or property name…"
-                  value={searchInput}
-                  onChange={(e) => handleSearch(e.target.value)}
-                  className="pl-10 pr-9 h-12 rounded-xl border-slate-200 bg-white shadow-sm focus:border-red-400 focus:ring-2 focus:ring-red-100 transition-all"
-                />
-                <AnimatePresence>
-                  {searchInput && (
-                    <motion.button
-                      type="button"
-                      initial={{ opacity: 0, scale: 0.7 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.7 }}
-                      transition={{ duration: 0.15 }}
-                      onClick={() => {
-                        setSearchInput("");
-                        updateFilters({ search: "" });
-                      }}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 cursor-pointer"
-                      aria-label="Clear search"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </motion.button>
-                  )}
-                </AnimatePresence>
-              </div>
-
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                onClick={locationActive ? clearLocation : handleLocateClick}
-                disabled={locLoading}
-                title={
-                  locationActive
-                    ? "Clear location filter"
-                    : "Search near my location"
-                }
-                aria-label={
-                  locationActive
-                    ? "Clear location filter"
-                    : "Search near my location"
-                }
-                className={cn(
-                  "h-11 w-11 rounded-xl border-slate-200 shrink-0 transition-all cursor-pointer",
-                  locationActive
-                    ? "bg-red-50 border-red-300 text-red-600 hover:bg-red-100 shadow-sm shadow-red-100"
-                    : "hover:border-red-300 hover:text-red-600",
-                )}
-              >
-                {locLoading ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : locationActive ? (
-                  <X className="w-4 h-4" />
-                ) : (
-                  <Navigation className="w-4 h-4" />
-                )}
-              </Button>
             </motion.div>
 
             <AnimatePresence>
