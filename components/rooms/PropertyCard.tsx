@@ -15,7 +15,6 @@ import {
   Bookmark,
   Share2,
   ShieldCheck,
-  ArrowUpRight,
 } from "lucide-react";
 
 import type { Room } from "@/types/room.types";
@@ -39,6 +38,8 @@ export function PropertyCard({
   const [imgLoaded, setImgLoaded] = useState(false);
   const [liked, setLiked] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [imageIndex, setImageIndex] = useState(0);
+  const [touchStartX, setTouchStartX] = useState<number | null>(null);
 
   const catCfg = categoryConfig[room.category] ?? {
     label: room.category,
@@ -47,12 +48,13 @@ export function PropertyCard({
     bg: "#fff1f2",
   };
 
+  const images = room.images ?? [];
   const imageUrl =
-    !imgError && room.images?.length
-      ? resolveImageUrl(room.images[0])
+    !imgError && images.length
+      ? resolveImageUrl(images[imageIndex] ?? images[0])
       : null;
 
-  const topAmenities = (room.amenities ?? []).slice(0, 3);
+  const topAmenities = (room.amenities ?? []).slice(0, 2);
   const city = room.location?.city ?? "";
   const formattedAddress =
     room.location?.formattedAddress ??
@@ -60,14 +62,6 @@ export function PropertyCard({
     "";
   const shortAddress =
     city || formattedAddress.split(",")[0];
-
-  const ownerName =
-    room.user?.name ||
-    room.contactPerson ||
-    "RoomKhoj";
-
-  const ownerInitial =
-    ownerName.trim().charAt(0).toUpperCase() || "R";
 
   const openRoom = () => {
     const propertyPath = `/property/${room.id}`;
@@ -91,9 +85,7 @@ export function PropertyCard({
       if (navigator.share) {
         await navigator.share({
           title: room.title,
-          text: `${room.title} - ${formatPriceNPR(
-            Number(room.price),
-          )}`,
+          text: `${room.title} - ${formatPriceNPR(Number(room.price))}`,
           url,
         });
         return;
@@ -104,6 +96,20 @@ export function PropertyCard({
     } catch {
       // Share sheet cancelled.
     }
+  };
+
+  const showNextImage = () => {
+    if (images.length <= 1) return;
+    setImgLoaded(false);
+    setImgError(false);
+    setImageIndex((current) => (current + 1) % images.length);
+  };
+
+  const showPreviousImage = () => {
+    if (images.length <= 1) return;
+    setImgLoaded(false);
+    setImgError(false);
+    setImageIndex((current) => (current - 1 + images.length) % images.length);
   };
 
   return (
@@ -122,17 +128,25 @@ export function PropertyCard({
       }}
       role="link"
       tabIndex={0}
-      className="
-        group relative cursor-pointer overflow-hidden rounded-[28px]
-        border border-slate-200/80 bg-white
-        shadow-[0_10px_35px_rgba(15,23,42,0.07)]
-        transition-all duration-300
-        hover:-translate-y-1.5 hover:border-red-200
-        hover:shadow-[0_24px_60px_rgba(15,23,42,0.15)]
-        focus:outline-none focus:ring-2 focus:ring-red-500/30
-      "
+      className="group relative cursor-pointer overflow-hidden rounded-[24px] border border-slate-200/80 bg-white shadow-[0_8px_26px_rgba(15,23,42,0.07)] transition-all duration-300 hover:-translate-y-1 hover:border-red-200 hover:shadow-[0_18px_45px_rgba(15,23,42,0.12)] focus:outline-none focus:ring-2 focus:ring-red-500/30"
     >
-      <div className="relative aspect-[4/3] overflow-hidden bg-slate-100">
+      <div
+        className="relative aspect-[4/3] overflow-hidden bg-slate-100"
+        onClick={(event) => event.stopPropagation()}
+        onTouchStart={(event) => {
+          setTouchStartX(event.touches[0]?.clientX ?? null);
+        }}
+        onTouchEnd={(event) => {
+          if (touchStartX === null) return;
+          const endX = event.changedTouches[0]?.clientX ?? touchStartX;
+          const delta = endX - touchStartX;
+          setTouchStartX(null);
+
+          if (Math.abs(delta) < 35) return;
+          if (delta < 0) showNextImage();
+          else showPreviousImage();
+        }}
+      >
         {!imgLoaded && (
           <div className="absolute inset-0 animate-pulse bg-slate-200" />
         )}
@@ -147,123 +161,84 @@ export function PropertyCard({
               setImgError(true);
               setImgLoaded(true);
             }}
-            className={`
-              h-full w-full object-cover
-              transition duration-700 ease-out
-              group-hover:scale-[1.055]
-              ${imgLoaded ? "opacity-100" : "opacity-0"}
-            `}
+            className={`h-full w-full object-cover transition duration-500 ease-out group-hover:scale-[1.025] ${
+              imgLoaded ? "opacity-100" : "opacity-0"
+            }`}
           />
         ) : (
           <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-rose-50 via-white to-slate-100">
-            <Home className="h-16 w-16 text-red-200" />
+            <Home className="h-14 w-14 text-red-200" />
           </div>
         )}
 
-        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/10 to-slate-950/20" />
-
         <div className="absolute left-3 top-3 z-20 flex flex-wrap gap-2">
           <span
-            className="rounded-full bg-white/95 px-3 py-1.5 text-[11px] font-extrabold shadow-sm backdrop-blur-md"
+            className="rounded-full bg-white/95 px-2.5 py-1 text-[10px] font-extrabold shadow-sm backdrop-blur-md"
             style={{ color: catCfg.color }}
           >
             {catCfg.label}
           </span>
-
           {room.user?.isVerified && (
-            <span className="flex items-center gap-1 rounded-full bg-slate-950/65 px-2.5 py-1.5 text-[10px] font-semibold text-white backdrop-blur-md">
-              <ShieldCheck className="h-3.5 w-3.5 text-sky-300" />
+            <span className="flex items-center gap-1 rounded-full bg-slate-950/65 px-2.5 py-1 text-[9px] font-semibold text-white backdrop-blur-md">
+              <ShieldCheck className="h-3 w-3 text-sky-300" />
               Verified
             </span>
           )}
         </div>
 
-        <div
-          className="absolute right-3 top-3 z-30 flex gap-2"
-          onClick={(event) => event.stopPropagation()}
-        >
-          <button
-            type="button"
-            onClick={(event) => {
-              event.stopPropagation();
-              setSaved((value) => !value);
-            }}
-            aria-label="Save"
-            className="flex h-9 w-9 items-center justify-center rounded-full border border-white/40 bg-white/90 text-slate-800 shadow-md backdrop-blur-md transition hover:scale-105"
-          >
-            <Bookmark
-              className={`h-4 w-4 ${
-                saved
-                  ? "fill-red-500 text-red-500"
-                  : ""
-              }`}
-            />
-          </button>
-
-          <button
-            type="button"
-            onClick={(event) => {
-              event.stopPropagation();
-              void handleShare();
-            }}
-            aria-label="Share"
-            className="flex h-9 w-9 items-center justify-center rounded-full border border-white/40 bg-white/90 text-slate-800 shadow-md backdrop-blur-md transition hover:scale-105"
-          >
-            <Share2 className="h-4 w-4" />
-          </button>
-        </div>
-
         {room.allowsWomen && (
-          <span className="absolute right-3 top-[58px] z-20 rounded-full bg-pink-500 px-2.5 py-1.5 text-[10px] font-bold text-white shadow">
+          <span className="absolute right-3 top-3 z-20 rounded-full bg-pink-500 px-2.5 py-1 text-[9px] font-bold text-white shadow">
             Women OK
           </span>
         )}
 
-        <div className="absolute inset-x-0 bottom-0 z-20 p-4 text-white">
-          <div className="mb-2 flex items-center gap-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded-full border border-white/70 bg-red-600 text-[10px] font-black shadow">
-              {ownerInitial}
+        {images.length > 1 && (
+          <>
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                showPreviousImage();
+              }}
+              aria-label="Previous room photo"
+              className="absolute left-2 top-1/2 z-20 hidden h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-slate-800 shadow md:flex"
+            >
+              ‹
+            </button>
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                showNextImage();
+              }}
+              aria-label="Next room photo"
+              className="absolute right-2 top-1/2 z-20 hidden h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-slate-800 shadow md:flex"
+            >
+              ›
+            </button>
+            <div className="absolute bottom-2 left-1/2 z-20 flex -translate-x-1/2 gap-1.5">
+              {images.slice(0, 5).map((_, dotIndex) => (
+                <span
+                  key={dotIndex}
+                  className={`h-1.5 w-1.5 rounded-full ${
+                    dotIndex === imageIndex ? "bg-white" : "bg-white/50"
+                  }`}
+                />
+              ))}
             </div>
-            <span className="max-w-[150px] truncate text-[11px] font-semibold text-white/90">
-              {ownerName}
-            </span>
-            {room.user?.isVerified && (
-              <CheckCircle className="h-3.5 w-3.5 fill-sky-500 text-white" />
-            )}
-          </div>
-
-          <h3 className="line-clamp-2 min-h-[44px] text-[19px] font-black leading-[1.15] tracking-[-0.02em]">
-            {room.title}
-          </h3>
-
-          <div className="mt-2 flex items-center justify-between gap-3">
-            <div className="flex min-w-0 items-center gap-1.5 text-white/85">
-              <MapPin className="h-3.5 w-3.5 shrink-0 text-red-300" />
-              <span className="truncate text-[11px] font-medium">
-                {shortAddress}
-              </span>
-            </div>
-
-            <span className="shrink-0 rounded-full bg-white/15 px-2.5 py-1 text-[10px] font-semibold backdrop-blur-md">
-              {room.listingStatus}
-            </span>
-          </div>
-        </div>
+          </>
+        )}
       </div>
 
-      <div className="p-4">
-        <div className="mb-4 flex items-end justify-between gap-3">
-          <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">
-              Monthly rent
-            </p>
-            <div className="mt-0.5 flex items-baseline gap-1">
-              <span className="text-[24px] font-black tracking-[-0.03em] text-slate-950">
-                {formatPriceNPR(Number(room.price))}
-              </span>
-              <span className="text-[10px] font-medium text-slate-400">
-                /month
-              </span>
+      <div className="p-2.5 sm:p-3">
+        <div className="flex items-start gap-2">
+          <div className="min-w-0 flex-1">
+            <h3 className="line-clamp-1 text-[15px] font-extrabold leading-tight text-slate-950">
+              {room.title}
+            </h3>
+            <div className="mt-1 flex min-w-0 items-center gap-1 text-[10px] text-slate-500">
+              <MapPin className="h-3 w-3 shrink-0 text-red-500" />
+              <span className="truncate">{shortAddress}</span>
             </div>
           </div>
 
@@ -273,70 +248,69 @@ export function PropertyCard({
               event.stopPropagation();
               setLiked((value) => !value);
             }}
-            aria-label="Like"
-            className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-slate-50 transition hover:border-red-200 hover:bg-red-50"
+            aria-label="Favorite"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white transition hover:border-red-200 hover:bg-red-50"
           >
             <Heart
-              className={`h-[18px] w-[18px] ${
-                liked
-                  ? "fill-red-500 text-red-500"
-                  : "text-slate-500"
+              className={`h-4 w-4 ${
+                liked ? "fill-red-500 text-red-500" : "text-slate-500"
               }`}
             />
           </button>
         </div>
 
-        <div className="grid grid-cols-3 divide-x divide-slate-200 rounded-2xl border border-slate-200 bg-slate-50/80">
-          <div className="flex items-center justify-center gap-2 px-2 py-3">
-            <Users className="h-4 w-4 text-red-500" />
-            <div>
-              <p className="text-sm font-extrabold leading-none text-slate-900">
-                {room.roomCapacity}
-              </p>
-              <p className="mt-1 text-[9px] font-medium text-slate-500">
-                People
-              </p>
-            </div>
+        <div className="mt-2 flex items-center justify-between gap-2">
+          <div className="flex items-baseline gap-1">
+            <span className="text-[18px] font-black tracking-[-0.03em] text-red-600">
+              {formatPriceNPR(Number(room.price))}
+            </span>
+            <span className="text-[9px] font-medium text-slate-400">/month</span>
           </div>
 
-          <div className="flex items-center justify-center gap-2 px-2 py-3">
-            <Bath className="h-4 w-4 text-red-500" />
-            <div>
-              <p className="text-sm font-extrabold leading-none text-slate-900">
-                {room.bathroomCapacity}
-              </p>
-              <p className="mt-1 text-[9px] font-medium text-slate-500">
-                Bath
-              </p>
-            </div>
-          </div>
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              setSaved((value) => !value);
+            }}
+            aria-label="Save"
+            className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-slate-50 transition hover:border-red-200 hover:bg-red-50"
+          >
+            <Bookmark
+              className={`h-3.5 w-3.5 ${
+                saved ? "fill-red-500 text-red-500" : "text-slate-500"
+              }`}
+            />
+          </button>
+        </div>
 
-          <div className="flex items-center justify-center gap-2 px-2 py-3">
-            <Square className="h-4 w-4 text-red-500" />
-            <div>
-              <p className="text-sm font-extrabold leading-none text-slate-900">
-                {Number(room.roomArea || 0).toFixed(0)}
-              </p>
-              <p className="mt-1 text-[9px] font-medium text-slate-500">
-                m²
-              </p>
-            </div>
+        <div className="mt-2 grid grid-cols-3 divide-x divide-slate-200 rounded-xl border border-slate-200 bg-slate-50/80">
+          <div className="flex items-center justify-center gap-1.5 px-1.5 py-2">
+            <Users className="h-3.5 w-3.5 text-red-500" />
+            <span className="text-[10px] font-bold text-slate-700">{room.roomCapacity}</span>
+          </div>
+          <div className="flex items-center justify-center gap-1.5 px-1.5 py-2">
+            <Bath className="h-3.5 w-3.5 text-red-500" />
+            <span className="text-[10px] font-bold text-slate-700">{room.bathroomCapacity}</span>
+          </div>
+          <div className="flex items-center justify-center gap-1.5 px-1.5 py-2">
+            <Square className="h-3.5 w-3.5 text-red-500" />
+            <span className="text-[10px] font-bold text-slate-700">
+              {Number(room.roomArea || 0).toFixed(0)}m²
+            </span>
           </div>
         </div>
 
         {topAmenities.length > 0 && (
-          <div className="mt-3 flex min-h-[30px] flex-wrap gap-1.5">
+          <div className="mt-2 flex gap-1.5 overflow-hidden">
             {topAmenities.map((amenity) => {
-              const Icon =
-                amenityIcons[amenity.toLowerCase()] ??
-                CheckCircle;
-
+              const Icon = amenityIcons[amenity.toLowerCase()] ?? CheckCircle;
               return (
                 <span
                   key={amenity}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2.5 py-1.5 text-[10px] font-semibold text-slate-600 shadow-sm"
+                  className="inline-flex shrink-0 items-center gap-1 rounded-full border border-slate-200 bg-white px-2 py-1 text-[9px] font-semibold text-slate-600"
                 >
-                  <Icon className="h-3 w-3 text-red-500" />
+                  <Icon className="h-2.5 w-2.5 text-red-500" />
                   {amenity}
                 </span>
               );
@@ -344,17 +318,28 @@ export function PropertyCard({
           </div>
         )}
 
-        <div className="mt-4">
+        <div className="mt-2.5 flex gap-2">
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              void handleShare();
+            }}
+            className="flex h-9 flex-1 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white text-[10px] font-bold text-slate-700 transition hover:border-red-200 hover:bg-red-50 hover:text-red-600"
+          >
+            <Share2 className="h-3.5 w-3.5" />
+            Share
+          </button>
+
           <button
             type="button"
             onClick={(event) => {
               event.stopPropagation();
               openRoom();
             }}
-            className="flex h-11 w-full items-center justify-center gap-1.5 rounded-2xl border border-slate-200 bg-white px-4 text-xs font-bold text-slate-700 transition hover:border-red-200 hover:bg-red-50 hover:text-red-600"
+            className="flex h-9 flex-1 items-center justify-center rounded-xl bg-red-600 px-3 text-[10px] font-bold text-white transition hover:bg-red-700"
           >
             View room
-            <ArrowUpRight className="h-3.5 w-3.5" />
           </button>
         </div>
       </div>
