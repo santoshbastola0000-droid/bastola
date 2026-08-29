@@ -83,9 +83,6 @@ const user = useUserStore(
   const [search, setSearch] =
     useState("");
 
-  const [contactSearch, setContactSearch] =
-    useState("");
-
   const [phoneResults, setPhoneResults] =
     useState<Array<{
       id: string;
@@ -233,7 +230,7 @@ const user = useUserStore(
     const nextSocket = io(
       "https://api.roomkhoj.com/messages",
       {
-        transports: ["websocket"],
+        transports: ["polling", "websocket"],
         withCredentials: true,
         auth: {
           token: authToken,
@@ -549,11 +546,10 @@ const user = useUserStore(
   const searchByContact =
     async () => {
       const raw = search.trim();
-      const digits = raw.replace(/\D/g, "");
 
-      if (digits.length < 4) {
+      if (raw.length < 2) {
         toast.error(
-          "कम्तीमा 4 वटा phone digits राख्नुहोस्.",
+          "कम्तीमा 2 अक्षर वा phone digits राख्नुहोस्.",
         );
         return;
       }
@@ -1257,6 +1253,38 @@ const user = useUserStore(
       }, 650);
   };
 
+  useEffect(() => {
+    if (!selected?.id) return;
+
+    let cancelled = false;
+
+    const syncMessages = async () => {
+      try {
+        const data = await messageService.getMessages(selected.id);
+        if (!cancelled) {
+          setMessages(data);
+        }
+      } catch {
+        // Realtime socket remains primary; polling is only a delivery fallback.
+      }
+    };
+
+    const intervalId = window.setInterval(syncMessages, 4000);
+
+    const handleFocus = () => {
+      void syncMessages();
+      void loadConversations();
+    };
+
+    window.addEventListener("focus", handleFocus);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+      window.removeEventListener("focus", handleFocus);
+    };
+  }, [selected?.id]);
+
   const sendMessage =
     async () => {
       const text = draft.trim();
@@ -1302,9 +1330,8 @@ const user = useUserStore(
       }
     };
 
-  // The box above is strictly for finding RoomKhoj users.
-  // It must never hide/filter the existing conversation list.
-  const filtered = conversations;
+  // Search results must show RoomKhoj users, not old conversation names.
+  const filtered = search.trim() ? [] : conversations;
 
   const otherUserId =
     selected?.otherUser?.id ||
@@ -1353,7 +1380,6 @@ const user = useUserStore(
                 onChange={(e) => {
                   const value = e.target.value;
                   setSearch(value);
-                  setContactSearch(value);
                   setPhoneResults([]);
                 }}
                 onKeyDown={(e) => {
@@ -1362,7 +1388,7 @@ const user = useUserStore(
                     void searchByContact();
                   }
                 }}
-                placeholder="Search user by phone number"
+                placeholder="Search user by name, phone or email"
                 className="h-11 rounded-full border-slate-200 bg-slate-50 pl-11 pr-24 text-sm shadow-none focus-visible:border-red-300 focus-visible:ring-red-100"
               />
 
@@ -1417,42 +1443,6 @@ const user = useUserStore(
                 ))}
               </div>
             )}          </div>
-
-          {search.trim() && (
-            <div className="border-b border-slate-100 bg-white px-4 py-3">
-              {phoneSearching ? (
-                <div className="flex items-center gap-2 rounded-2xl bg-slate-50 px-3 py-3 text-sm text-slate-500">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Searching RoomKhoj users...
-                </div>
-              ) : phoneResult ? (
-                <button
-                  type="button"
-                  onClick={() =>
-                    router.push(`/profile/${phoneResult.id}`)
-                  }
-                  className="flex w-full items-center gap-3 rounded-2xl border border-red-100 bg-red-50/50 p-3 text-left transition hover:bg-red-50"
-                >
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white text-sm font-black text-red-600 shadow-sm">
-                    {(phoneResult.name || "U")
-                      .slice(0, 2)
-                      .toUpperCase()}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-bold text-slate-900">
-                      {phoneResult.name}
-                    </p>
-                    <p className="truncate text-xs text-slate-500">
-                      {phoneResult.phoneNumber}
-                    </p>
-                    <p className="mt-1 text-[11px] font-semibold text-red-600">
-                      View profile →
-                    </p>
-                  </div>
-                </button>
-              ) : null}
-            </div>
-          )}
 
           {loading ? (
             <div className="flex justify-center p-10">
