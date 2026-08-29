@@ -150,6 +150,12 @@ const user = useUserStore(
   const mediaInputRef =
     useRef<HTMLInputElement | null>(null);
 
+  const deleteHoldTimerRef =
+    useRef<number | null>(null);
+
+  const [deletingMessageId, setDeletingMessageId] =
+    useState<string | null>(null);
+
 
   const [loading, setLoading] =
     useState(true);
@@ -379,6 +385,25 @@ const user = useUserStore(
     );
 
     nextSocket.on(
+      "message:deleted",
+      (payload: {
+        messageId: string;
+        conversationId: string;
+      }) => {
+        if (!payload?.messageId) return;
+
+        setMessages((prev) =>
+          prev.filter(
+            (message) =>
+              message.id !== payload.messageId,
+          ),
+        );
+
+        loadConversations();
+      },
+    );
+
+    nextSocket.on(
       "message:seen",
       (payload: {
         conversationId: string;
@@ -469,6 +494,7 @@ const user = useUserStore(
 
     return () => {
       nextSocket.off("message:status");
+      nextSocket.off("message:deleted");
       nextSocket.off("presence:snapshot");
       nextSocket.off("presence:update");
       nextSocket.disconnect();
@@ -1164,6 +1190,72 @@ const user = useUserStore(
     endCall(false, "Call declined");
   };
 
+  const clearDeleteHoldTimer = () => {
+    if (deleteHoldTimerRef.current !== null) {
+      window.clearTimeout(
+        deleteHoldTimerRef.current,
+      );
+      deleteHoldTimerRef.current = null;
+    }
+  };
+
+  const deleteOwnMessage = async (
+    message: ChatMessage,
+  ) => {
+    if (
+      message.senderId !== currentUserId ||
+      deletingMessageId === message.id
+    ) {
+      return;
+    }
+
+    const confirmed = window.confirm(
+      "Delete this message for everyone?",
+    );
+
+    if (!confirmed) return;
+
+    try {
+      setDeletingMessageId(message.id);
+
+      await messageService.deleteMessage(
+        message.id,
+      );
+
+      setMessages((prev) =>
+        prev.filter(
+          (item) => item.id !== message.id,
+        ),
+      );
+
+      await loadConversations();
+      toast.success("Message deleted");
+    } catch (error: any) {
+      toast.error(
+        error?.response?.data?.message ||
+          "Message delete गर्न सकिएन.",
+      );
+    } finally {
+      setDeletingMessageId(null);
+    }
+  };
+
+  const startDeleteHold = (
+    message: ChatMessage,
+  ) => {
+    if (message.senderId !== currentUserId) {
+      return;
+    }
+
+    clearDeleteHoldTimer();
+
+    deleteHoldTimerRef.current =
+      window.setTimeout(() => {
+        deleteHoldTimerRef.current = null;
+        void deleteOwnMessage(message);
+      }, 650);
+  };
+
   const sendMessage =
     async () => {
       const text = draft.trim();
@@ -1643,9 +1735,30 @@ const user = useUserStore(
                           <div
                             className={`max-w-[80%] rounded-2xl px-4 py-2 text-sm ${
                               mine
-                                ? "bg-primary text-primary-foreground"
+                                ? "cursor-pointer select-none bg-primary text-primary-foreground"
                                 : "bg-muted"
+                            } ${
+                              deletingMessageId === message.id
+                                ? "opacity-50"
+                                : ""
                             }`}
+                            onPointerDown={() =>
+                              startDeleteHold(message)
+                            }
+                            onPointerUp={clearDeleteHoldTimer}
+                            onPointerCancel={clearDeleteHoldTimer}
+                            onPointerLeave={clearDeleteHoldTimer}
+                            onContextMenu={(event) => {
+                              if (!mine) return;
+                              event.preventDefault();
+                              clearDeleteHoldTimer();
+                              void deleteOwnMessage(message);
+                            }}
+                            title={
+                              mine
+                                ? "Press and hold to delete"
+                                : undefined
+                            }
                           >
                             {message.attachment?.type === "ROOM" && (
                               <div
