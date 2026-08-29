@@ -24,6 +24,8 @@ export interface MessageConversation {
   } | null;
 
   lastMessageAt?: string | null;
+  unreadCount?: number;
+  lastMessage?: ChatMessage | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -83,12 +85,6 @@ export const messageService = {
       await privateApi.post(
         `/message/conversations/${conversationId}/media`,
         formData,
-        {
-          headers: {
-            "Content-Type":
-              "multipart/form-data",
-          },
-        },
       );
 
     return response.data;
