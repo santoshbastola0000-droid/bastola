@@ -1114,7 +1114,9 @@ export default function CreateRoomPage() {
                           </p>
                           <p className="text-xs text-green-600 truncate">
                             {form.getValues("location.formattedAddress") ||
-                              `${currentLat.toFixed(4)}, ${currentLng.toFixed(4)}`}
+                              (typeof currentLat === "number" && typeof currentLng === "number"
+                                ? `${currentLat.toFixed(4)}, ${currentLng.toFixed(4)}`
+                                : "Location selected")}
                           </p>
                         </div>
                         <Badge
