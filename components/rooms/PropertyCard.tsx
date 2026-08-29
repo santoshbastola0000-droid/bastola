@@ -55,14 +55,11 @@ export function PropertyCard({
       : null;
 
   const topAmenities = (room.amenities ?? []).slice(0, 3);
-
   const city = room.location?.city ?? "";
-
   const formattedAddress =
     room.location?.formattedAddress ??
     room.address ??
     "";
-
   const shortAddress =
     city || formattedAddress.split(",")[0];
 
@@ -97,30 +94,35 @@ export function PropertyCard({
         await navigator.share({
           title: room.title,
           text: `${room.title} - ${formatPriceNPR(
-            Number(room.price)
+            Number(room.price),
           )}`,
           url,
         });
-
         return;
       }
 
       await navigator.clipboard.writeText(url);
+      toast.success("Room link copied");
     } catch {
-      // User cancelled
+      // Share sheet cancelled.
     }
   };
 
   const handleMessage = async (event: React.MouseEvent) => {
     event.stopPropagation();
+
     if (!isLoaded || !user) {
-      sessionStorage.setItem("roomkhoj_post_auth_redirect", `/property/${room.id}`);
+      sessionStorage.setItem(
+        "roomkhoj_post_auth_redirect",
+        `/property/${room.id}`,
+      );
       router.push("/auth/login");
       return;
     }
 
     try {
       const result = await messageService.startForRoom(room.id);
+
       sessionStorage.setItem(
         "roomkhoj_room_message_draft",
         JSON.stringify({
@@ -129,62 +131,47 @@ export function PropertyCard({
           room: result.room,
         }),
       );
-      router.push(`/messages?conversation=${encodeURIComponent(result.conversation.id)}`);
+
+      router.push(
+        `/messages?conversation=${encodeURIComponent(
+          result.conversation.id,
+        )}`,
+      );
     } catch (error: any) {
-      toast.error(error?.response?.data?.message || "Message सुरु गर्न सकिएन।");
+      toast.error(
+        error?.response?.data?.message ||
+          "Message सुरु गर्न सकिएन।",
+      );
     }
   };
 
   return (
     <motion.article
-      initial={{ opacity: 0, y: 18 }}
+      initial={{ opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{
-        duration: 0.35,
-        delay: Math.min(index, 8) * 0.035,
+        duration: 0.32,
+        delay: Math.min(index, 8) * 0.03,
       }}
       onClick={openRoom}
-      onKeyDown={(e) => {
-        if (e.key === "Enter") {
+      onKeyDown={(event) => {
+        if (event.key === "Enter") {
           openRoom();
         }
       }}
       role="link"
       tabIndex={0}
       className="
-        group
-        relative
-        cursor-pointer
-        overflow-hidden
-        rounded-[24px]
-        border
-        border-slate-200/80
-        bg-white
-        shadow-[0_6px_24px_rgba(15,23,42,0.06)]
-        transition-all
-        duration-300
-
-        hover:-translate-y-1
-        hover:border-slate-300
-        hover:shadow-[0_20px_50px_rgba(15,23,42,0.14)]
-
-        focus:outline-none
-        focus:ring-2
-        focus:ring-red-500/30
+        group relative cursor-pointer overflow-hidden rounded-[28px]
+        border border-slate-200/80 bg-white
+        shadow-[0_10px_35px_rgba(15,23,42,0.07)]
+        transition-all duration-300
+        hover:-translate-y-1.5 hover:border-red-200
+        hover:shadow-[0_24px_60px_rgba(15,23,42,0.15)]
+        focus:outline-none focus:ring-2 focus:ring-red-500/30
       "
     >
-      {/* IMAGE */}
-      <div
-        className="
-          relative
-          overflow-hidden
-          bg-slate-100
-
-          aspect-[4/5]
-          sm:aspect-[4/3]
-          lg:aspect-[16/11]
-        "
-      >
+      <div className="relative aspect-[4/3] overflow-hidden bg-slate-100">
         {!imgLoaded && (
           <div className="absolute inset-0 animate-pulse bg-slate-200" />
         )}
@@ -200,208 +187,52 @@ export function PropertyCard({
               setImgLoaded(true);
             }}
             className={`
-              h-full
-              w-full
-              object-cover
-              transition-all
-              duration-700
-              group-hover:scale-[1.04]
-              ${
-                imgLoaded
-                  ? "opacity-100"
-                  : "opacity-0"
-              }
+              h-full w-full object-cover
+              transition duration-700 ease-out
+              group-hover:scale-[1.055]
+              ${imgLoaded ? "opacity-100" : "opacity-0"}
             `}
           />
         ) : (
-          <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-red-50 via-white to-rose-100">
-            <Home className="h-20 w-20 text-red-200" />
+          <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-rose-50 via-white to-slate-100">
+            <Home className="h-16 w-16 text-red-200" />
           </div>
         )}
 
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/5 to-black/20" />
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-950/10 to-slate-950/20" />
 
-        {/* BADGES */}
-        <div className="absolute left-3 top-3 z-20 flex gap-2">
+        <div className="absolute left-3 top-3 z-20 flex flex-wrap gap-2">
           <span
-            className="
-              rounded-full
-              bg-white/95
-              px-3
-              py-1.5
-              text-[11px]
-              font-bold
-              shadow
-              backdrop-blur-lg
-            "
-            style={{
-              color: catCfg.color,
-            }}
+            className="rounded-full bg-white/95 px-3 py-1.5 text-[11px] font-extrabold shadow-sm backdrop-blur-md"
+            style={{ color: catCfg.color }}
           >
             {catCfg.label}
           </span>
 
           {room.user?.isVerified && (
-            <span className="flex items-center gap-1 rounded-full bg-black/55 px-2.5 py-1.5 text-[10px] font-semibold text-white backdrop-blur-lg">
-              <ShieldCheck className="h-3.5 w-3.5" />
+            <span className="flex items-center gap-1 rounded-full bg-slate-950/65 px-2.5 py-1.5 text-[10px] font-semibold text-white backdrop-blur-md">
+              <ShieldCheck className="h-3.5 w-3.5 text-sky-300" />
               Verified
             </span>
           )}
         </div>
 
-        {room.allowsWomen && (
-          <span className="absolute right-3 top-3 z-20 rounded-full bg-pink-500 px-2.5 py-1.5 text-[10px] font-bold text-white shadow">
-            Women OK
-          </span>
-        )}
-
-        {/* MOBILE SOCIAL ACTIONS */}
         <div
-          className="
-            absolute
-            bottom-[96px]
-            right-3
-            z-30
-            flex
-            flex-col
-            items-center
-            gap-3
-            sm:hidden
-          "
-          onClick={(e) => e.stopPropagation()}
+          className="absolute right-3 top-3 z-30 flex gap-2"
+          onClick={(event) => event.stopPropagation()}
         >
-          <div className="relative">
-            <div className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-white bg-red-600 text-sm font-bold text-white shadow-lg">
-              {ownerInitial}
-            </div>
-
-            {room.user?.isVerified && (
-              <div className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full border-2 border-white bg-blue-500">
-                <CheckCircle className="h-3 w-3 text-white" />
-              </div>
-            )}
-          </div>
-
           <button
             type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              setLiked((value) => !value);
-            }}
-            className="flex flex-col items-center gap-1 text-white"
-          >
-            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-black/35 backdrop-blur-md">
-              <Heart
-                className={`h-6 w-6 ${
-                  liked
-                    ? "fill-red-500 text-red-500"
-                    : "text-white"
-                }`}
-              />
-            </span>
-
-            <span className="text-[10px] font-medium">
-              Like
-            </span>
-          </button>
-
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              void handleMessage(e);
-            }}
-            className="flex flex-col items-center gap-1 text-white"
-          >
-            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-black/35 backdrop-blur-md">
-              <MessageCircle className="h-6 w-6" />
-            </span>
-
-            <span className="text-[10px] font-medium">
-              Comment
-            </span>
-          </button>
-
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
+            onClick={(event) => {
+              event.stopPropagation();
               setSaved((value) => !value);
             }}
-            className="flex flex-col items-center gap-1 text-white"
+            aria-label="Save"
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-white/40 bg-white/90 text-slate-800 shadow-md backdrop-blur-md transition hover:scale-105"
           >
-            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-black/35 backdrop-blur-md">
-              <Bookmark
-                className={`h-6 w-6 ${
-                  saved
-                    ? "fill-yellow-400 text-yellow-400"
-                    : "text-white"
-                }`}
-              />
-            </span>
-
-            <span className="text-[10px] font-medium">
-              Save
-            </span>
-          </button>
-
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              void handleShare();
-            }}
-            className="flex flex-col items-center gap-1 text-white"
-          >
-            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-black/35 backdrop-blur-md">
-              <Share2 className="h-6 w-6" />
-            </span>
-
-            <span className="text-[10px] font-medium">
-              Share
-            </span>
-          </button>
-        </div>
-
-        {/* DESKTOP ACTIONS */}
-        <div
-          className="
-            absolute
-            bottom-3
-            right-3
-            z-30
-            hidden
-            items-center
-            gap-2
-            sm:flex
-          "
-          onClick={(e) => e.stopPropagation()}
-        >
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              setLiked((value) => !value);
-            }}
-            aria-label="Like"
-            className="
-              flex
-              h-9
-              w-9
-              items-center
-              justify-center
-              rounded-full
-              bg-white/95
-              text-slate-700
-              shadow-lg
-              backdrop-blur-md
-              transition
-              hover:scale-105
-            "
-          >
-            <Heart
-              className={`h-4.5 w-4.5 ${
-                liked
+            <Bookmark
+              className={`h-4 w-4 ${
+                saved
                   ? "fill-red-500 text-red-500"
                   : ""
               }`}
@@ -410,145 +241,130 @@ export function PropertyCard({
 
           <button
             type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              setSaved((value) => !value);
-            }}
-            aria-label="Save"
-            className="
-              flex
-              h-9
-              w-9
-              items-center
-              justify-center
-              rounded-full
-              bg-white/95
-              text-slate-700
-              shadow-lg
-              backdrop-blur-md
-              transition
-              hover:scale-105
-            "
-          >
-            <Bookmark
-              className={`h-4.5 w-4.5 ${
-                saved
-                  ? "fill-yellow-400 text-yellow-500"
-                  : ""
-              }`}
-            />
-          </button>
-
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
+            onClick={(event) => {
+              event.stopPropagation();
               void handleShare();
             }}
             aria-label="Share"
-            className="
-              flex
-              h-9
-              w-9
-              items-center
-              justify-center
-              rounded-full
-              bg-white/95
-              text-slate-700
-              shadow-lg
-              backdrop-blur-md
-              transition
-              hover:scale-105
-            "
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-white/40 bg-white/90 text-slate-800 shadow-md backdrop-blur-md transition hover:scale-105"
           >
-            <Share2 className="h-4.5 w-4.5" />
+            <Share2 className="h-4 w-4" />
           </button>
         </div>
 
-        {/* IMAGE BOTTOM TEXT */}
-        <div
-          className="
-            absolute
-            bottom-0
-            left-0
-            z-20
-            p-4
-            pr-16
-            text-white
+        {room.allowsWomen && (
+          <span className="absolute right-3 top-[58px] z-20 rounded-full bg-pink-500 px-2.5 py-1.5 text-[10px] font-bold text-white shadow">
+            Women OK
+          </span>
+        )}
 
-            sm:right-[130px]
-          "
-        >
-          <div className="mb-1.5 flex items-center gap-1.5">
-            <span className="text-xs font-semibold">
+        <div className="absolute inset-x-0 bottom-0 z-20 p-4 text-white">
+          <div className="mb-2 flex items-center gap-2">
+            <div className="flex h-7 w-7 items-center justify-center rounded-full border border-white/70 bg-red-600 text-[10px] font-black shadow">
+              {ownerInitial}
+            </div>
+            <span className="max-w-[150px] truncate text-[11px] font-semibold text-white/90">
               {ownerName}
             </span>
-
             {room.user?.isVerified && (
-              <CheckCircle className="h-3.5 w-3.5 fill-blue-500 text-white" />
+              <CheckCircle className="h-3.5 w-3.5 fill-sky-500 text-white" />
             )}
           </div>
 
-          <h3 className="line-clamp-2 text-[17px] font-bold leading-snug sm:text-lg">
+          <h3 className="line-clamp-2 min-h-[44px] text-[19px] font-black leading-[1.15] tracking-[-0.02em]">
             {room.title}
           </h3>
 
-          <div className="mt-1.5 flex items-center gap-1 text-white/85">
-            <MapPin className="h-3.5 w-3.5 shrink-0" />
+          <div className="mt-2 flex items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-1.5 text-white/85">
+              <MapPin className="h-3.5 w-3.5 shrink-0 text-red-300" />
+              <span className="truncate text-[11px] font-medium">
+                {shortAddress}
+              </span>
+            </div>
 
-            <span className="truncate text-xs">
-              {shortAddress}
-            </span>
-          </div>
-
-          <div className="mt-2 flex items-end gap-1">
-            <span className="text-xl font-extrabold sm:text-2xl">
-              {formatPriceNPR(Number(room.price))}
-            </span>
-
-            <span className="pb-1 text-[10px] text-white/70">
-              / month
+            <span className="shrink-0 rounded-full bg-white/15 px-2.5 py-1 text-[10px] font-semibold backdrop-blur-md">
+              {room.listingStatus}
             </span>
           </div>
         </div>
       </div>
 
-      {/* DETAILS */}
-      <div className="p-4 sm:p-5">
-        <div className="grid grid-cols-3 overflow-hidden rounded-2xl border border-slate-100 bg-slate-50/80">
-          <div className="flex flex-col items-center gap-1 py-3">
+      <div className="p-4">
+        <div className="mb-4 flex items-end justify-between gap-3">
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+              Monthly rent
+            </p>
+            <div className="mt-0.5 flex items-baseline gap-1">
+              <span className="text-[24px] font-black tracking-[-0.03em] text-slate-950">
+                {formatPriceNPR(Number(room.price))}
+              </span>
+              <span className="text-[10px] font-medium text-slate-400">
+                /month
+              </span>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              setLiked((value) => !value);
+            }}
+            aria-label="Like"
+            className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-slate-50 transition hover:border-red-200 hover:bg-red-50"
+          >
+            <Heart
+              className={`h-[18px] w-[18px] ${
+                liked
+                  ? "fill-red-500 text-red-500"
+                  : "text-slate-500"
+              }`}
+            />
+          </button>
+        </div>
+
+        <div className="grid grid-cols-3 divide-x divide-slate-200 rounded-2xl border border-slate-200 bg-slate-50/80">
+          <div className="flex items-center justify-center gap-2 px-2 py-3">
             <Users className="h-4 w-4 text-red-500" />
-            <span className="text-sm font-bold text-slate-900">
-              {room.roomCapacity}
-            </span>
-            <span className="text-[10px] text-slate-500">
-              People
-            </span>
+            <div>
+              <p className="text-sm font-extrabold leading-none text-slate-900">
+                {room.roomCapacity}
+              </p>
+              <p className="mt-1 text-[9px] font-medium text-slate-500">
+                People
+              </p>
+            </div>
           </div>
 
-          <div className="flex flex-col items-center gap-1 border-x border-slate-200 py-3">
+          <div className="flex items-center justify-center gap-2 px-2 py-3">
             <Bath className="h-4 w-4 text-red-500" />
-            <span className="text-sm font-bold text-slate-900">
-              {room.bathroomCapacity}
-            </span>
-            <span className="text-[10px] text-slate-500">
-              Bath
-            </span>
+            <div>
+              <p className="text-sm font-extrabold leading-none text-slate-900">
+                {room.bathroomCapacity}
+              </p>
+              <p className="mt-1 text-[9px] font-medium text-slate-500">
+                Bath
+              </p>
+            </div>
           </div>
 
-          <div className="flex flex-col items-center gap-1 py-3">
+          <div className="flex items-center justify-center gap-2 px-2 py-3">
             <Square className="h-4 w-4 text-red-500" />
-            <span className="text-sm font-bold text-slate-900">
-              {Number(room.roomArea || 0).toFixed(0)}
-            </span>
-            <span className="text-[10px] text-slate-500">
-              m²
-            </span>
+            <div>
+              <p className="text-sm font-extrabold leading-none text-slate-900">
+                {Number(room.roomArea || 0).toFixed(0)}
+              </p>
+              <p className="mt-1 text-[9px] font-medium text-slate-500">
+                m²
+              </p>
+            </div>
           </div>
         </div>
 
         {topAmenities.length > 0 && (
-          <div className="mt-3 flex flex-wrap gap-2">
+          <div className="mt-3 flex min-h-[30px] flex-wrap gap-1.5">
             {topAmenities.map((amenity) => {
               const Icon =
                 amenityIcons[amenity.toLowerCase()] ??
@@ -557,20 +373,7 @@ export function PropertyCard({
               return (
                 <span
                   key={amenity}
-                  className="
-                    inline-flex
-                    items-center
-                    gap-1.5
-                    rounded-full
-                    border
-                    border-slate-200
-                    bg-white
-                    px-2.5
-                    py-1.5
-                    text-[10px]
-                    font-medium
-                    text-slate-600
-                  "
+                  className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2.5 py-1.5 text-[10px] font-semibold text-slate-600 shadow-sm"
                 >
                   <Icon className="h-3 w-3 text-red-500" />
                   {amenity}
@@ -580,30 +383,28 @@ export function PropertyCard({
           </div>
         )}
 
-        <div className="mt-4 flex items-center justify-between">
-          <span className="inline-flex items-center gap-1 text-xs font-medium text-slate-500">
-            {room.category}
-          </span>
+        <div className="mt-4 flex gap-2">
+          <button
+            type="button"
+            onClick={handleMessage}
+            className="flex h-11 flex-1 items-center justify-center gap-2 rounded-2xl bg-red-600 px-4 text-sm font-bold text-white shadow-[0_8px_18px_rgba(220,38,38,0.22)] transition hover:bg-red-700 hover:shadow-[0_10px_24px_rgba(220,38,38,0.3)]"
+          >
+            <MessageCircle className="h-4 w-4" />
+            Message
+          </button>
 
-          <div className="flex items-center gap-3">
-            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-semibold text-emerald-700">
-              <CheckCircle className="h-3 w-3" />
-              {room.listingStatus}
-            </span>
-
-            <span className="hidden items-center gap-1 text-xs font-semibold text-red-600 sm:flex">
-              View
-              <ArrowUpRight className="h-3.5 w-3.5" />
-            </span>
-          </div>
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              openRoom();
+            }}
+            className="flex h-11 items-center justify-center gap-1.5 rounded-2xl border border-slate-200 bg-white px-4 text-xs font-bold text-slate-700 transition hover:border-red-200 hover:bg-red-50 hover:text-red-600"
+          >
+            View
+            <ArrowUpRight className="h-3.5 w-3.5" />
+          </button>
         </div>
-        <button
-          type="button"
-          onClick={handleMessage}
-          className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-red-700"
-        >
-          <MessageCircle className="h-4 w-4" /> Message
-        </button>
       </div>
     </motion.article>
   );
