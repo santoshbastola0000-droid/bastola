@@ -40,7 +40,11 @@ export function RoomMessageSellerCard({
       setSending(true);
 
       const result = await messageService.startForRoom(roomId);
-      await messageService.sendMessage(result.conversation.id, content);
+      await messageService.sendMessage(
+        result.conversation.id,
+        content,
+        roomId,
+      );
 
       sessionStorage.setItem(
         "roomkhoj_last_room_message_context",
