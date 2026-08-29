@@ -21,6 +21,9 @@ import {
   CheckCheck,
   MoreVertical,
   Smile,
+  Camera,
+  ChevronLeft,
+  Plus,
 } from "lucide-react";
 import { toast } from "sonner";
 import { io, Socket } from "socket.io-client";
@@ -1001,10 +1004,6 @@ const user = useUserStore(
   };
 
   const createPeer = async (targetUserId: string, callId: string, mode: "audio" | "video") => {
-    /*
-     * TURN credentials improve reliability, but a temporary TURN/API
-     * configuration error must never prevent the call popup or signaling.
-     */
     let iceServers: RTCIceServer[] = [
       { urls: ["stun:stun.l.google.com:19302"] },
     ];
@@ -1380,30 +1379,36 @@ const user = useUserStore(
 
   return (
     <>
-    <main className="mx-auto h-[calc(100dvh-68px)] max-w-7xl overflow-hidden bg-slate-50 md:h-screen md:max-w-none md:bg-[#111b21] md:p-0">
-      <div className="grid h-full min-h-0 overflow-hidden border border-slate-200/80 bg-white shadow-[0_18px_60px_rgba(15,23,42,0.08)] md:grid-cols-[390px_1fr] md:border-0 md:bg-[#111b21] md:shadow-none">
+    <main className="mx-auto h-[calc(100dvh-68px)] max-w-7xl overflow-hidden bg-[#0b141a] text-[#e9edef] md:h-screen md:max-w-none md:bg-[#111b21] md:p-0">
+      <div className="grid h-full min-h-0 overflow-hidden border border-[#202c33] bg-[#0b141a] shadow-none md:grid-cols-[390px_1fr] md:border-0 md:bg-[#111b21]">
         <aside
-          className={`border-r border-slate-200 bg-white md:border-[#2a3942] md:bg-[#111b21] ${
+          className={`border-r border-[#202c33] bg-[#111b21] ${
             selected
               ? "hidden md:block"
               : "block"
           }`}
         >
-          <div className="border-b border-slate-200/80 bg-white p-4 md:border-[#2a3942] md:bg-[#202c33] md:px-4 md:py-3">
-            <div>
-              <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-red-500 md:text-[#00a884]">
-                RoomKhoj
-              </p>
-              <h1 className="mt-0.5 text-2xl font-black tracking-tight text-slate-950 md:text-[#e9edef]">
-                Messages
-              </h1>
-              <p className="mt-1 text-xs text-slate-500 md:text-[#8696a0]">
-                Your room conversations in one place
-              </p>
+          <div className="border-b border-[#202c33] bg-[#111b21] px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))] md:bg-[#202c33] md:px-4 md:py-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="hidden text-[11px] font-bold uppercase tracking-[0.18em] text-[#00a884] md:block">
+                  RoomKhoj
+                </p>
+                <h1 className="text-[28px] font-black tracking-tight text-[#e9edef] md:text-2xl">
+                  Chats
+                </h1>
+              </div>
+              <button
+                type="button"
+                className="flex h-10 w-10 items-center justify-center rounded-full text-[#aebac1] hover:bg-[#202c33]"
+                aria-label="More options"
+              >
+                <MoreVertical className="h-5 w-5" />
+              </button>
             </div>
 
-            <div className="relative mt-4">
-              <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <div className="relative mt-3">
+              <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8696a0]" />
 
               <Input
                 value={search}
@@ -1418,25 +1423,15 @@ const user = useUserStore(
                     void searchByContact();
                   }
                 }}
-                placeholder="Search user by name, phone or email"
-                className="h-11 rounded-full border-slate-200 bg-slate-50 pl-11 pr-24 text-sm shadow-none focus-visible:border-red-300 focus-visible:ring-red-100 md:border-0 md:bg-[#202c33] md:text-[#e9edef] md:placeholder:text-[#8696a0] md:focus-visible:ring-0"
+                placeholder="Search or start new chat"
+                className="h-11 rounded-[14px] border-0 bg-[#202c33] pl-11 pr-4 text-sm text-[#e9edef] shadow-none placeholder:text-[#8696a0] focus-visible:ring-0"
               />
+            </div>
 
-              <button
-                type="button"
-                onClick={() => void searchByContact()}
-                disabled={phoneSearching || !search.trim()}
-                aria-label="Search RoomKhoj user by phone number"
-                title="Search user"
-                className="absolute right-1.5 top-1/2 flex h-8 -translate-y-1/2 items-center justify-center gap-1.5 rounded-full bg-red-600 px-3 text-xs font-extrabold text-white transition-colors hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-40 md:bg-[#00a884] md:hover:bg-[#06cf9c]"
-              >
-                {phoneSearching ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <Search className="h-3.5 w-3.5" />
-                )}
-                <span>Search</span>
-              </button>
+            <div className="mt-3 flex gap-2 md:hidden">
+              <span className="rounded-full bg-[#005c4b] px-4 py-2 text-xs font-semibold text-white">All</span>
+              <span className="rounded-full border border-[#2a3942] bg-[#182229] px-4 py-2 text-xs text-[#d1d7db]">Unread</span>
+              <span className="rounded-full border border-[#2a3942] bg-[#182229] px-4 py-2 text-xs text-[#d1d7db]">Favorites</span>
             </div>
 
             {phoneResults.length > 0 && (
@@ -1450,23 +1445,20 @@ const user = useUserStore(
                         `/profile/${result.id}`,
                       )
                     }
-                    className="flex w-full items-center gap-3 rounded-2xl border border-red-100 bg-red-50/50 md:border-[#2a3942] md:bg-[#111b21] p-3 text-left transition hover:bg-red-50 md:hover:bg-[#202c33]"
+                    className="flex w-full items-center gap-3 rounded-2xl border border-[#2a3942] bg-[#111b21] p-3 text-left transition hover:bg-[#202c33]"
                   >
-                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white text-sm font-black text-red-600 shadow-sm">
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#202c33] text-sm font-black text-[#00a884]">
                       {(result.name || "U")
                         .slice(0, 2)
                         .toUpperCase()}
                     </div>
 
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-bold text-slate-900">
+                      <p className="truncate text-sm font-bold text-[#e9edef]">
                         {result.name}
                       </p>
-                      <p className="truncate text-xs text-slate-500">
+                      <p className="truncate text-xs text-[#8696a0]">
                         {result.phoneNumber}
-                      </p>
-                      <p className="mt-1 text-[11px] font-semibold text-red-600">
-                        View profile →
                       </p>
                     </div>
                   </button>
@@ -1476,17 +1468,17 @@ const user = useUserStore(
 
           {loading ? (
             <div className="flex justify-center p-10">
-              <Loader2 className="h-6 w-6 animate-spin" />
+              <Loader2 className="h-6 w-6 animate-spin text-[#00a884]" />
             </div>
           ) : filtered.length === 0 ? (
             <div className="p-10 text-center">
-              <MessageCircle className="mx-auto h-10 w-10 text-muted-foreground md:text-[#8696a0]" />
-              <p className="mt-3 text-sm text-muted-foreground md:text-[#8696a0]">
+              <MessageCircle className="mx-auto h-10 w-10 text-[#8696a0]" />
+              <p className="mt-3 text-sm text-[#8696a0]">
                 No conversations yet
               </p>
             </div>
           ) : (
-            <div className="divide-y">
+            <div className="divide-y divide-[#202c33] overflow-y-auto">
               {filtered.map(
                 (conversation: any) => {
                   const otherId =
@@ -1506,26 +1498,26 @@ const user = useUserStore(
                           conversation,
                         )
                       }
-                      className="flex w-full gap-3 p-4 text-left hover:bg-muted/50"
+                      className="flex w-full gap-3 px-4 py-3.5 text-left transition hover:bg-[#202c33]"
                     >
                       <div className="relative shrink-0">
-                        <div className="flex h-11 w-11 items-center justify-center rounded-full bg-muted font-semibold">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#202c33] font-semibold text-[#e9edef]">
                           {otherId
                             ?.slice(0, 2)
                             .toUpperCase()}
                         </div>
                         {onlineUserIds.has(otherId) && (
                           <span
-                            className="absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-background bg-emerald-500"
+                            className="absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-[#111b21] bg-[#00a884]"
                             title="Online"
                             aria-label="Online"
                           />
                         )}
                       </div>
 
-                      <div className="min-w-0 flex-1">
+                      <div className="min-w-0 flex-1 border-b border-[#202c33] pb-3">
                         <div className="flex items-center justify-between gap-3">
-                          <p className="truncate font-semibold text-slate-900">
+                          <p className="truncate font-semibold text-[#e9edef]">
                             {conversation.otherUser?.name ||
                               conversation.otherUser?.phoneNumber ||
                               "RoomKhoj user"}
@@ -1533,7 +1525,7 @@ const user = useUserStore(
 
                           {conversation.unreadCount >
                             0 && (
-                            <span className="rounded-full bg-primary px-2 py-0.5 text-xs text-primary-foreground">
+                            <span className="rounded-full bg-[#00a884] px-2 py-0.5 text-xs font-bold text-[#0b141a]">
                               {
                                 conversation.unreadCount
                               }
@@ -1541,14 +1533,14 @@ const user = useUserStore(
                           )}
                         </div>
 
-                        <p className="mt-1 truncate text-sm text-muted-foreground md:text-[#8696a0]">
+                        <p className="mt-1 truncate text-sm text-[#8696a0]">
                           {conversation.lastMessage?.content ||
                             (conversation.lastMessage?.type === "IMAGE"
-                              ? "📷 Photo"
+                              ? "Photo"
                               : conversation.lastMessage?.type === "VIDEO"
-                                ? "🎥 Video"
+                                ? "Video"
                                 : conversation.lastMessage?.attachment?.type === "ROOM"
-                                  ? "🏠 Room attachment"
+                                  ? "Room attachment"
                                   : "Start conversation")}
                         </p>
                       </div>
@@ -1561,94 +1553,86 @@ const user = useUserStore(
         </aside>
 
         <section
-          className={`flex min-h-0 flex-col bg-white md:bg-[#0b141a] ${
+          className={`flex min-h-0 flex-col bg-[#0b141a] ${
             !selected
               ? "hidden md:flex"
               : "flex"
           }`}
         >
           {!selected ? (
-            <div className="flex flex-1 items-center justify-center text-center md:bg-[#222e35] md:text-[#e9edef]">
+            <div className="flex flex-1 items-center justify-center bg-[#222e35] text-center text-[#e9edef]">
               <div>
-                <MessageCircle className="mx-auto h-14 w-14 text-muted-foreground md:text-[#8696a0]" />
+                <MessageCircle className="mx-auto h-14 w-14 text-[#8696a0]" />
 
                 <h2 className="mt-4 text-lg font-semibold">
                   Select a conversation
                 </h2>
 
-                <p className="mt-1 text-sm text-muted-foreground md:text-[#8696a0]">
+                <p className="mt-1 text-sm text-[#8696a0]">
                   Choose a chat to start messaging.
                 </p>
               </div>
             </div>
           ) : (
             <>
-              <header className="flex items-center gap-3 border-b border-slate-200/80 bg-white/95 px-4 py-3 shadow-sm backdrop-blur md:border-[#2a3942] md:bg-[#202c33] md:text-[#e9edef] md:shadow-none">
+              <header className="flex min-h-[70px] items-center gap-2 border-b border-[#202c33] bg-[#111b21] px-2.5 pb-2 pt-[calc(0.5rem+env(safe-area-inset-top))] text-[#e9edef] shadow-none md:min-h-0 md:bg-[#202c33] md:px-4 md:py-3">
                 <button
                   type="button"
-                  className="text-sm md:hidden"
+                  className="flex h-10 items-center gap-0.5 rounded-full px-1 text-[#e9edef] md:hidden"
                   onClick={() =>
                     setSelected(null)
                   }
                 >
-                  ← Back
+                  <ChevronLeft className="h-7 w-7" />
                 </button>
 
-                <div className="relative shrink-0">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-red-50 to-rose-100 font-bold text-red-700 ring-1 ring-red-100 md:bg-[#6a7175] md:text-white md:ring-0">
+                <button
+                  type="button"
+                  onClick={() => otherUserId && router.push(`/profile/${otherUserId}`)}
+                  className="relative shrink-0"
+                  aria-label="Open profile"
+                >
+                  <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#6a7175] font-bold text-white">
                     {otherUserId
                       .slice(0, 2)
                       .toUpperCase()}
                   </div>
                   {onlineUserIds.has(otherUserId) && (
                     <span
-                      className="absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-background bg-emerald-500"
+                      className="absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-[#111b21] bg-[#00a884]"
                       aria-label="Online"
                     />
                   )}
-                </div>
+                </button>
 
-                <div className="flex-1">
-                  <p className="font-bold text-slate-900 md:text-[#e9edef]">
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[17px] font-bold text-[#e9edef]">
                     {selected.otherUser?.name ||
                       selected.otherUser?.phoneNumber ||
                       "RoomKhoj user"}
                   </p>
 
-                  {selected.otherUser?.name &&
-                    selected.otherUser?.phoneNumber && (
-                      <p className="text-xs text-muted-foreground md:text-[#8696a0]">
-                        {selected.otherUser.phoneNumber}
-                      </p>
-                    )}
-
-                  <p
-                    className={`text-xs font-medium ${
-                      onlineUserIds.has(otherUserId)
-                        ? "text-emerald-600"
-                        : "text-muted-foreground md:text-[#8696a0]"
-                    }`}
-                  >
+                  <p className="truncate text-xs text-[#8696a0]">
                     {onlineUserIds.has(otherUserId)
-                      ? "● Online"
-                      : "Offline"}
+                      ? "online"
+                      : selected.otherUser?.phoneNumber || "offline"}
                   </p>
                 </div>
-                <div className="ml-auto flex gap-2">
-                  <Button type="button" size="icon" variant="outline" className="md:border-0 md:bg-transparent md:text-[#aebac1] md:hover:bg-[#2a3942] md:hover:text-white" onClick={() => startCall("audio")} aria-label="Audio call"><Phone className="h-4 w-4" /></Button>
-                  <Button type="button" size="icon" variant="outline" className="md:border-0 md:bg-transparent md:text-[#aebac1] md:hover:bg-[#2a3942] md:hover:text-white" onClick={() => startCall("video")} aria-label="Video call"><Video className="h-4 w-4" /></Button>
+                <div className="ml-auto flex items-center gap-1.5">
+                  <Button type="button" size="icon" variant="ghost" className="h-10 w-10 rounded-full text-[#e9edef] hover:bg-[#202c33]" onClick={() => startCall("video")} aria-label="Video call"><Video className="h-5 w-5" /></Button>
+                  <Button type="button" size="icon" variant="ghost" className="h-10 w-10 rounded-full text-[#e9edef] hover:bg-[#202c33]" onClick={() => startCall("audio")} aria-label="Audio call"><Phone className="h-5 w-5" /></Button>
                 </div>
               </header>
               <audio ref={remoteAudioRef} autoPlay playsInline />
 
               {contextPost && (
-                <div className="border-b bg-muted/30 px-4 py-3">
+                <div className="border-b border-[#202c33] bg-[#111b21] px-3 py-2 md:px-4 md:py-3">
                   <button
                     type="button"
                     onClick={() => router.push(contextPost.url)}
-                    className="flex w-full items-center gap-3 rounded-xl border bg-background p-3 text-left shadow-sm transition-colors hover:bg-muted/50"
+                    className="flex w-full items-center gap-3 rounded-xl border border-[#2a3942] bg-[#202c33] p-3 text-left shadow-sm transition-colors hover:bg-[#26363f]"
                   >
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-muted text-xl">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-[#111b21] text-xl">
                       {contextPost.image ? (
                         <img
                           src={resolveImageUrl(contextPost.image)}
@@ -1663,18 +1647,18 @@ const user = useUserStore(
                     </div>
 
                     <div className="min-w-0 flex-1">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground md:text-[#8696a0]">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-[#8696a0]">
                         {contextPost.type === "ROOM"
                           ? "Room post"
                           : "Job post"}
                       </p>
-                      <p className="truncate font-semibold">
+                      <p className="truncate font-semibold text-[#e9edef]">
                         {contextPost.title}
                       </p>
                       {(contextPost.subtitle ||
                         contextPost.price !== null &&
                           contextPost.price !== undefined) && (
-                        <p className="truncate text-xs text-muted-foreground md:text-[#8696a0]">
+                        <p className="truncate text-xs text-[#8696a0]">
                           {contextPost.subtitle}
                           {contextPost.subtitle &&
                             contextPost.price !== null &&
@@ -1689,21 +1673,21 @@ const user = useUserStore(
                       )}
                     </div>
 
-                    <span className="shrink-0 text-xs font-semibold text-primary">
-                      View post
+                    <span className="shrink-0 text-xs font-semibold text-[#00a884]">
+                      View
                     </span>
                   </button>
                 </div>
               )}
 
-              <div className="min-h-0 flex-1 space-y-3 overflow-y-auto bg-[radial-gradient(circle_at_top,#fff7f7_0%,#f8fafc_42%,#f8fafc_100%)] px-3 py-4 pb-28 sm:px-5 md:bg-[#0b141a] md:bg-[radial-gradient(circle_at_top,_rgba(32,44,51,0.16),_rgba(11,20,26,1)_45%)] md:px-[6%] md:py-5">
+              <div className="min-h-0 flex-1 space-y-2 overflow-y-auto bg-[#0b141a] bg-[radial-gradient(circle_at_top,_rgba(32,44,51,0.15),_rgba(11,20,26,1)_45%)] px-2.5 py-3 pb-28 sm:px-5 md:px-[6%] md:py-5">
                 {messagesLoading ? (
                   <div className="flex justify-center p-10">
-                    <Loader2 className="h-6 w-6 animate-spin" />
+                    <Loader2 className="h-6 w-6 animate-spin text-[#00a884]" />
                   </div>
                 ) : messages.length ===
                   0 ? (
-                  <div className="py-10 text-center text-sm text-muted-foreground md:text-[#8696a0]">
+                  <div className="py-10 text-center text-sm text-[#8696a0]">
                     No messages yet.
                   </div>
                 ) : (
@@ -1725,10 +1709,10 @@ const user = useUserStore(
                           }`}
                         >
                           <div
-                            className={`max-w-[84%] rounded-[20px] px-3.5 py-2.5 text-sm shadow-sm sm:max-w-[72%] ${
+                            className={`max-w-[86%] rounded-[14px] px-3 py-2 text-[15px] leading-snug shadow-sm sm:max-w-[72%] ${
                               mine
-                                ? "cursor-pointer select-none rounded-br-md bg-red-600 text-white md:bg-[#005c4b] md:text-[#e9edef]"
-                                : "rounded-bl-md border border-slate-200/80 bg-white text-slate-800 md:border-0 md:bg-[#202c33] md:text-[#e9edef]"
+                                ? "cursor-pointer select-none rounded-br-[4px] bg-[#005c4b] text-[#e9edef]"
+                                : "rounded-bl-[4px] bg-[#202c33] text-[#e9edef]"
                             } ${
                               deletingMessageId === message.id
                                 ? "opacity-50"
@@ -1756,8 +1740,8 @@ const user = useUserStore(
                               <div
                                 className={`mb-1 w-full overflow-hidden rounded-xl border text-left shadow-sm ${
                                   mine
-                                    ? "border-white/25 bg-white/10"
-                                    : "border-slate-200 bg-background"
+                                    ? "border-white/20 bg-black/10"
+                                    : "border-[#2a3942] bg-[#111b21]"
                                 }`}
                               >
                                 <button
@@ -1769,7 +1753,7 @@ const user = useUserStore(
                                   className="block w-full text-left transition hover:opacity-95"
                                 >
                                   <div className="flex items-stretch">
-                                    <div className="h-24 w-28 shrink-0 overflow-hidden bg-slate-100">
+                                    <div className="h-24 w-28 shrink-0 overflow-hidden bg-[#111b21]">
                                       {message.attachment.image ? (
                                         <img
                                           src={resolveImageUrl(message.attachment.image)}
@@ -1784,29 +1768,17 @@ const user = useUserStore(
                                     </div>
 
                                     <div className="min-w-0 flex-1 p-3">
-                                      <p className={`text-[10px] font-bold uppercase tracking-wide ${
-                                        mine
-                                          ? "text-white/70"
-                                          : "text-muted-foreground md:text-[#8696a0]"
-                                      }`}>
+                                      <p className="text-[10px] font-bold uppercase tracking-wide text-[#8696a0]">
                                         Room
                                       </p>
                                       <p className="mt-0.5 line-clamp-2 font-semibold">
                                         {message.attachment.title}
                                       </p>
-                                      <p className={`mt-1 text-xs font-semibold ${
-                                        mine
-                                          ? "text-white/90"
-                                          : "text-red-600"
-                                      }`}>
+                                      <p className="mt-1 text-xs font-semibold text-[#00a884]">
                                         रु {Number(message.attachment.price).toLocaleString()} / month
                                       </p>
                                       {message.attachment.address && (
-                                        <p className={`mt-1 truncate text-[11px] ${
-                                          mine
-                                            ? "text-white/70"
-                                            : "text-muted-foreground md:text-[#8696a0]"
-                                        }`}>
+                                        <p className="mt-1 truncate text-[11px] text-[#8696a0]">
                                           📍 {message.attachment.address}
                                         </p>
                                       )}
@@ -1815,11 +1787,7 @@ const user = useUserStore(
                                 </button>
 
                                 {message.content && (
-                                  <div className={`border-t px-3 py-3 text-sm ${
-                                    mine
-                                      ? "border-white/20 text-white"
-                                      : "border-slate-200 text-slate-900"
-                                  }`}>
+                                  <div className="border-t border-white/10 px-3 py-3 text-sm text-[#e9edef]">
                                     <p className="whitespace-pre-wrap break-words">
                                       {message.content}
                                     </p>
@@ -1832,11 +1800,7 @@ const user = useUserStore(
                                     event.stopPropagation();
                                     router.push(message.attachment!.url);
                                   }}
-                                  className={`block w-full border-t px-3 py-2 text-left text-xs font-semibold ${
-                                    mine
-                                      ? "border-white/20 text-white"
-                                      : "border-slate-200 text-red-600"
-                                  }`}
+                                  className="block w-full border-t border-white/10 px-3 py-2 text-left text-xs font-semibold text-[#00a884]"
                                 >
                                   View room details →
                                 </button>
@@ -1846,7 +1810,7 @@ const user = useUserStore(
                             {(message.type === "IMAGE" ||
                               message.type === "VIDEO") &&
                               !mediaObjectUrls[message.id] && (
-                                <div className="mb-2 flex min-h-28 min-w-44 items-center justify-center rounded-xl border border-dashed border-slate-300/80 bg-slate-50/70 px-4 text-xs text-slate-500">
+                                <div className="mb-2 flex min-h-28 min-w-44 items-center justify-center rounded-xl bg-[#111b21] px-4 text-xs text-[#8696a0]">
                                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                                   Loading attachment…
                                 </div>
@@ -1867,7 +1831,7 @@ const user = useUserStore(
                                     message.mediaOriginalName ||
                                     "Photo"
                                   }
-                                  className="mb-2 max-h-[420px] w-auto max-w-full rounded-xl object-contain"
+                                  className="mb-2 max-h-[68vh] w-auto max-w-full rounded-[10px] object-contain"
                                 />
                               )}
 
@@ -1885,7 +1849,7 @@ const user = useUserStore(
                                   controls
                                   playsInline
                                   preload="metadata"
-                                  className="mb-2 max-h-[420px] w-full rounded-xl"
+                                  className="mb-2 max-h-[68vh] w-full rounded-[10px] bg-black"
                                 />
                               )}
 
@@ -1896,7 +1860,7 @@ const user = useUserStore(
                                 </p>
                               )}
 
-                            <p className="mt-1 text-[10px] opacity-70">
+                            <p className="mt-1 text-right text-[10px] text-[#8696a0]">
                               {new Date(
                                 message.createdAt,
                               ).toLocaleTimeString(
@@ -1912,8 +1876,8 @@ const user = useUserStore(
                                 <span
                                   className={`ml-1 font-semibold ${
                                     message.seenAt
-                                      ? "text-sky-300"
-                                      : ""
+                                      ? "text-[#53bdeb]"
+                                      : "text-[#8696a0]"
                                   }`}
                                   title={
                                     message.seenAt
@@ -1940,11 +1904,11 @@ const user = useUserStore(
                 <div ref={messagesEndRef} />
               </div>
 
-              <div className="sticky bottom-[68px] z-20 border-t border-slate-200/80 bg-white/95 p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur md:bottom-0 md:border-[#2a3942] md:bg-[#202c33] md:px-4 md:py-3">
+              <div className="sticky bottom-0 z-20 border-t border-[#202c33] bg-[#111b21] px-2.5 pb-[calc(0.45rem+env(safe-area-inset-bottom))] pt-2 md:bg-[#202c33] md:px-4 md:py-3">
 
                 {selectedMedia &&
                   mediaPreview && (
-                    <div className="mb-3 rounded-xl border bg-background p-2 md:border-[#3b4a54] md:bg-[#111b21] md:text-[#e9edef]">
+                    <div className="mb-2 rounded-xl border border-[#2a3942] bg-[#111b21] p-2 text-[#e9edef]">
                       <div className="relative inline-block max-w-full">
 
                         {selectedMedia.type.startsWith(
@@ -1979,7 +1943,7 @@ const user = useUserStore(
                         </button>
                       </div>
 
-                      <div className="mt-1 max-w-full truncate text-xs text-muted-foreground md:text-[#8696a0]">
+                      <div className="mt-1 max-w-full truncate text-xs text-[#8696a0]">
                         {
                           selectedMedia.name
                         }
@@ -2004,7 +1968,7 @@ const user = useUserStore(
                   }
                 />
 
-                <div className="flex items-end gap-2 rounded-[24px] border border-slate-200 bg-white p-1.5 shadow-[0_10px_34px_rgba(15,23,42,0.10)] transition focus-within:border-red-300 focus-within:ring-4 focus-within:ring-red-50 md:border-0 md:bg-[#2a3942] md:shadow-none md:focus-within:ring-0">
+                <div className="flex items-center gap-2">
                   <Button
                     type="button"
                     size="icon"
@@ -2017,42 +1981,51 @@ const user = useUserStore(
                       mediaSending
                     }
                     title="Photo or video"
-                    className="h-10 w-10 shrink-0 rounded-full text-slate-500 hover:bg-red-50 md:hover:bg-[#202c33] hover:text-red-600"
+                    className="h-11 w-11 shrink-0 rounded-full text-[#e9edef] hover:bg-[#202c33]"
                   >
-                    <Paperclip className="h-4 w-4" />
+                    <Plus className="h-7 w-7" />
                   </Button>
-                  <button
-                    type="button"
-                    className="hidden h-10 w-10 shrink-0 items-center justify-center rounded-full text-[#aebac1] hover:text-white md:flex"
-                    aria-label="Emoji"
-                    title="Emoji"
-                  >
-                    <Smile className="h-5 w-5" />
-                  </button>
-                  <Input
-                    value={draft}
-                    onChange={(e) =>
-                      setDraft(
-                        e.target.value,
-                      )
-                    }
-                    placeholder="Message…"
-                    className="h-10 flex-1 border-0 bg-transparent px-1 shadow-none focus-visible:ring-0 md:text-[#e9edef] md:placeholder:text-[#8696a0]"
-                    onKeyDown={(e) => {
-                      if (
-                        e.key ===
-                          "Enter" &&
-                        !e.shiftKey
-                      ) {
-                        e.preventDefault();
-                        sendMessage();
+
+                  <div className="flex min-w-0 flex-1 items-center rounded-[23px] bg-[#202c33] px-3">
+                    <Input
+                      value={draft}
+                      onChange={(e) =>
+                        setDraft(
+                          e.target.value,
+                        )
                       }
-                    }}
-                  />
+                      placeholder="Type a message"
+                      className="h-11 min-w-0 flex-1 border-0 bg-transparent px-1 text-[#e9edef] shadow-none placeholder:text-[#8696a0] focus-visible:ring-0"
+                      onKeyDown={(e) => {
+                        if (
+                          e.key ===
+                            "Enter" &&
+                          !e.shiftKey
+                        ) {
+                          e.preventDefault();
+                          selectedMedia
+                            ? sendSelectedMedia()
+                            : sendMessage();
+                        }
+                      }}
+                    />
+                    <Smile className="h-5 w-5 shrink-0 text-[#aebac1]" />
+                  </div>
+
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    onClick={() => mediaInputRef.current?.click()}
+                    className="h-11 w-11 shrink-0 rounded-full text-[#e9edef] hover:bg-[#202c33]"
+                    aria-label="Camera or media"
+                  >
+                    <Camera className="h-6 w-6" />
+                  </Button>
 
                   <Button
                     size="icon"
-                    className="h-10 w-10 shrink-0 rounded-full bg-red-600 text-white shadow-[0_5px_14px_rgba(220,38,38,0.28)] hover:bg-red-700 disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none md:bg-[#00a884] md:shadow-none md:hover:bg-[#06cf9c] md:disabled:bg-[#3b4a54] md:disabled:text-[#8696a0]"
+                    className="h-11 w-11 shrink-0 rounded-full bg-[#00a884] text-[#0b141a] shadow-none hover:bg-[#06cf9c] disabled:bg-[#202c33] disabled:text-[#8696a0]"
                     onClick={
                       selectedMedia
                         ? sendSelectedMedia
@@ -2070,8 +2043,10 @@ const user = useUserStore(
                     {sending ||
                     mediaSending ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
+                    ) : draft.trim() || selectedMedia ? (
                       <Send className="h-4 w-4" />
+                    ) : (
+                      <Mic className="h-5 w-5" />
                     )}
                   </Button>
                 </div>
