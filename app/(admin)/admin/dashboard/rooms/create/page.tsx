@@ -1136,7 +1136,8 @@ export default function CreateRoomPage() {
                       <MapPicker
                         onLocationSelect={handleLocationSelect}
                         initialLocation={
-                          isValidLocation
+                          typeof currentLat === "number" &&
+                          typeof currentLng === "number"
                             ? { lat: currentLat, lng: currentLng }
                             : null
                         }
