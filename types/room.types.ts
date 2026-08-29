@@ -92,6 +92,7 @@ export interface Room {
     phoneNumber: string;
     isVerified: boolean;
     role: UserRole;
+    profilePhotoUrl?: string | null;
   };
   location?: Location;
   tiktokUrl?: string;
