@@ -24,7 +24,7 @@ export const createRoomSchema = z.object({
   description: z.string().min(10, "Description must be at least 10 characters"),
   category: z.nativeEnum(RoomCategory),
   price: z.coerce.number().min(1, "Price must be greater than 0"),
-  address: z.string().min(5, "Address must be at least 5 characters"),
+  address: z.string().optional(),
   amenities: z.array(z.string()).default([]),
   bathroomCapacity: z.coerce.number().min(1).max(10),
   floorNumber: z.coerce.number().min(0),
@@ -41,7 +41,7 @@ export const createRoomSchema = z.object({
   contactPhone: z.string().optional(),
   contactEmail: z.string().email().optional().or(z.literal("")),
   contactWhatsapp: z.string().optional(),
-  location: locationSchema,
+  location: locationSchema.optional(),
   tiktokUrl: z
     .string()
     .url("Please provide a valid TikTok URL")
