@@ -490,7 +490,7 @@ function RoomsContent() {
         const userLng = f.lng!;
         const radiusKm = f.radius;
 
-        const nearbyRooms: Room[] = [];
+        const roomsWithCoordinates: Room[] = [];
         const roomsWithoutCoordinates: Room[] = [];
 
         for (const room of allRooms) {
@@ -514,25 +514,25 @@ function RoomsContent() {
             Number.isFinite(rLng);
 
           if (!hasCoordinates) {
-            // Keep approved rooms visible even when the owner did not share a pin.
             roomsWithoutCoordinates.push(room);
             continue;
           }
 
           const distanceKm = haversineKm(userLat, userLng, rLat, rLng);
-          if (distanceKm <= radiusKm) {
-            nearbyRooms.push({
-              ...room,
-              _distanceKm: distanceKm,
-            } as Room);
-          }
+          roomsWithCoordinates.push({
+            ...room,
+            _distanceKm: distanceKm,
+            _isWithinRadius: distanceKm <= radiusKm,
+          } as Room);
         }
 
-        nearbyRooms.sort(
-          (a: any, b: any) => (a._distanceKm ?? 0) - (b._distanceKm ?? 0),
+        // Location should rank the feed, not hide valid approved listings.
+        // Nearest rooms stay first; farther rooms remain visible afterwards.
+        roomsWithCoordinates.sort(
+          (a: any, b: any) => (a._distanceKm ?? Infinity) - (b._distanceKm ?? Infinity),
         );
 
-        allRooms = [...nearbyRooms, ...roomsWithoutCoordinates];
+        allRooms = [...roomsWithCoordinates, ...roomsWithoutCoordinates];
         totalCount = allRooms.length;
       }
 
