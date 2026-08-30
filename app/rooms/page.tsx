@@ -528,9 +528,16 @@ function RoomsContent() {
 
         // Location should rank the feed, not hide valid approved listings.
         // Nearest rooms stay first; farther rooms remain visible afterwards.
-        roomsWithCoordinates.sort(
-          (a: any, b: any) => (a._distanceKm ?? Infinity) - (b._distanceKm ?? Infinity),
-        );
+        roomsWithCoordinates.sort((a: any, b: any) => {
+          // Newly created/approved rooms must be visible immediately at the
+          // front of the feed; use distance as the secondary ranking signal.
+          const aTime = new Date(a.approvedAt || a.createdAt || 0).getTime();
+          const bTime = new Date(b.approvedAt || b.createdAt || 0).getTime();
+
+          if (bTime !== aTime) return bTime - aTime;
+
+          return (a._distanceKm ?? Infinity) - (b._distanceKm ?? Infinity);
+        });
 
         allRooms = [...roomsWithCoordinates, ...roomsWithoutCoordinates];
         totalCount = allRooms.length;
