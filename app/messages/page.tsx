@@ -20,6 +20,8 @@ import {
   Image as ImageIcon,
   CheckCheck,
   MoreVertical,
+  Sun,
+  Moon,
   Smile,
   Camera,
   ChevronLeft,
@@ -90,6 +92,21 @@ const user = useUserStore(
 
   const [search, setSearch] =
     useState("");
+
+  const [isDarkMode, setIsDarkMode] = useState(false);
+
+  useEffect(() => {
+    const savedTheme = localStorage.getItem("roomkhoj:messages-theme");
+    setIsDarkMode(savedTheme === "dark");
+  }, []);
+
+  const toggleChatTheme = () => {
+    setIsDarkMode((current) => {
+      const next = !current;
+      localStorage.setItem("roomkhoj:messages-theme", next ? "dark" : "light");
+      return next;
+    });
+  };
 
   const [phoneResults, setPhoneResults] =
     useState<Array<{
@@ -1412,36 +1429,38 @@ const user = useUserStore(
 
   return (
     <>
-    <main className="mx-auto h-[calc(100dvh-68px)] max-w-7xl overflow-hidden bg-[#0b141a] text-[#e9edef] md:h-screen md:max-w-none md:bg-[#111b21] md:p-0">
-      <div className="grid h-full min-h-0 overflow-hidden border border-[#202c33] bg-[#0b141a] shadow-none md:grid-cols-[390px_1fr] md:border-0 md:bg-[#111b21]">
+    <main className={`${isDarkMode ? "dark" : ""} mx-auto h-[calc(100dvh-68px)] max-w-7xl overflow-hidden bg-background text-foreground md:h-screen md:max-w-none md:p-0`}>
+      <div className="grid h-full min-h-0 overflow-hidden border border-border bg-background shadow-none md:grid-cols-[390px_1fr] md:border-0 md:bg-card">
         <aside
-          className={`border-r border-[#202c33] bg-[#111b21] ${
+          className={`border-r border-border bg-card ${
             selected
               ? "hidden md:block"
               : "block"
           }`}
         >
-          <div className="border-b border-[#202c33] bg-[#111b21] px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))] md:bg-[#202c33] md:px-4 md:py-3">
+          <div className="border-b border-border bg-card px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))] md:bg-muted md:px-4 md:py-3">
             <div className="flex items-center justify-between">
               <div>
-                <p className="hidden text-[11px] font-bold uppercase tracking-[0.18em] text-[#00a884] md:block">
+                <p className="hidden text-[11px] font-bold uppercase tracking-[0.18em] text-primary md:block">
                   RoomKhoj
                 </p>
-                <h1 className="text-[28px] font-black tracking-tight text-[#e9edef] md:text-2xl">
+                <h1 className="text-[28px] font-black tracking-tight text-foreground md:text-2xl">
                   Chats
                 </h1>
               </div>
               <button
                 type="button"
-                className="flex h-10 w-10 items-center justify-center rounded-full text-[#aebac1] hover:bg-[#202c33]"
-                aria-label="More options"
+                onClick={toggleChatTheme}
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-background text-primary transition hover:bg-primary/10"
+                aria-label={isDarkMode ? "Switch to light mode" : "Switch to dark mode"}
+                title={isDarkMode ? "Light mode" : "Dark mode"}
               >
-                <MoreVertical className="h-5 w-5" />
+                {isDarkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
               </button>
             </div>
 
             <div className="relative mt-3">
-              <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8696a0]" />
+              <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
 
               <Input
                 value={search}
@@ -1457,14 +1476,14 @@ const user = useUserStore(
                   }
                 }}
                 placeholder="Search or start new chat"
-                className="h-11 rounded-[14px] border-0 bg-[#202c33] pl-11 pr-4 text-sm text-[#e9edef] shadow-none placeholder:text-[#8696a0] focus-visible:ring-0"
+                className="h-11 rounded-[14px] border-0 bg-muted pl-11 pr-4 text-sm text-foreground shadow-none placeholder:text-muted-foreground focus-visible:ring-0"
               />
             </div>
 
             <div className="mt-3 flex gap-2 md:hidden">
-              <span className="rounded-full bg-[#005c4b] px-4 py-2 text-xs font-semibold text-white">All</span>
-              <span className="rounded-full border border-[#2a3942] bg-[#182229] px-4 py-2 text-xs text-[#d1d7db]">Unread</span>
-              <span className="rounded-full border border-[#2a3942] bg-[#182229] px-4 py-2 text-xs text-[#d1d7db]">Favorites</span>
+              <span className="rounded-full bg-primary px-4 py-2 text-xs font-semibold text-white">All</span>
+              <span className="rounded-full border border-border bg-secondary px-4 py-2 text-xs text-foreground">Unread</span>
+              <span className="rounded-full border border-border bg-secondary px-4 py-2 text-xs text-foreground">Favorites</span>
             </div>
 
             {phoneResults.length > 0 && (
@@ -1478,19 +1497,19 @@ const user = useUserStore(
                         `/profile/${result.id}`,
                       )
                     }
-                    className="flex w-full items-center gap-3 rounded-2xl border border-[#2a3942] bg-[#111b21] p-3 text-left transition hover:bg-[#202c33]"
+                    className="flex w-full items-center gap-3 rounded-2xl border border-border bg-card p-3 text-left transition hover:bg-muted"
                   >
-                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#202c33] text-sm font-black text-[#00a884]">
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-black text-primary">
                       {(result.name || "U")
                         .slice(0, 2)
                         .toUpperCase()}
                     </div>
 
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-bold text-[#e9edef]">
+                      <p className="truncate text-sm font-bold text-foreground">
                         {result.name}
                       </p>
-                      <p className="truncate text-xs text-[#8696a0]">
+                      <p className="truncate text-xs text-muted-foreground">
                         {result.phoneNumber}
                       </p>
                     </div>
@@ -1501,12 +1520,12 @@ const user = useUserStore(
 
           {loading ? (
             <div className="flex justify-center p-10">
-              <Loader2 className="h-6 w-6 animate-spin text-[#00a884]" />
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
             </div>
           ) : filtered.length === 0 ? (
             <div className="p-10 text-center">
-              <MessageCircle className="mx-auto h-10 w-10 text-[#8696a0]" />
-              <p className="mt-3 text-sm text-[#8696a0]">
+              <MessageCircle className="mx-auto h-10 w-10 text-muted-foreground" />
+              <p className="mt-3 text-sm text-muted-foreground">
                 No conversations yet
               </p>
             </div>
@@ -1531,26 +1550,26 @@ const user = useUserStore(
                           conversation,
                         )
                       }
-                      className="flex w-full gap-3 px-4 py-3.5 text-left transition hover:bg-[#202c33]"
+                      className="flex w-full gap-3 px-4 py-3.5 text-left transition hover:bg-muted"
                     >
                       <div className="relative shrink-0">
-                        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#202c33] font-semibold text-[#e9edef]">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted font-semibold text-foreground">
                           {otherId
                             ?.slice(0, 2)
                             .toUpperCase()}
                         </div>
                         {onlineUserIds.has(otherId) && (
                           <span
-                            className="absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-[#111b21] bg-[#00a884]"
+                            className="absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-[#111b21] bg-primary"
                             title="Online"
                             aria-label="Online"
                           />
                         )}
                       </div>
 
-                      <div className="min-w-0 flex-1 border-b border-[#202c33] pb-3">
+                      <div className="min-w-0 flex-1 border-b border-border pb-3">
                         <div className="flex items-center justify-between gap-3">
-                          <p className="truncate font-semibold text-[#e9edef]">
+                          <p className="truncate font-semibold text-foreground">
                             {conversation.otherUser?.name ||
                               conversation.otherUser?.phoneNumber ||
                               "RoomKhoj user"}
@@ -1558,7 +1577,7 @@ const user = useUserStore(
 
                           {conversation.unreadCount >
                             0 && (
-                            <span className="rounded-full bg-[#00a884] px-2 py-0.5 text-xs font-bold text-[#0b141a]">
+                            <span className="rounded-full bg-primary px-2 py-0.5 text-xs font-bold text-primary-foreground">
                               {
                                 conversation.unreadCount
                               }
@@ -1566,7 +1585,7 @@ const user = useUserStore(
                           )}
                         </div>
 
-                        <p className="mt-1 truncate text-sm text-[#8696a0]">
+                        <p className="mt-1 truncate text-sm text-muted-foreground">
                           {conversation.lastMessage?.content ||
                             (conversation.lastMessage?.type === "IMAGE"
                               ? "Photo"
@@ -1586,32 +1605,32 @@ const user = useUserStore(
         </aside>
 
         <section
-          className={`flex min-h-0 flex-col bg-[#0b141a] ${
+          className={`flex min-h-0 flex-col bg-background ${
             !selected
               ? "hidden md:flex"
               : "flex"
           }`}
         >
           {!selected ? (
-            <div className="flex flex-1 items-center justify-center bg-[#222e35] text-center text-[#e9edef]">
+            <div className="flex flex-1 items-center justify-center bg-[#222e35] text-center text-foreground">
               <div>
-                <MessageCircle className="mx-auto h-14 w-14 text-[#8696a0]" />
+                <MessageCircle className="mx-auto h-14 w-14 text-muted-foreground" />
 
                 <h2 className="mt-4 text-lg font-semibold">
                   Select a conversation
                 </h2>
 
-                <p className="mt-1 text-sm text-[#8696a0]">
+                <p className="mt-1 text-sm text-muted-foreground">
                   Choose a chat to start messaging.
                 </p>
               </div>
             </div>
           ) : (
             <>
-              <header className="flex min-h-[70px] items-center gap-2 border-b border-[#202c33] bg-[#111b21] px-2.5 pb-2 pt-[calc(0.5rem+env(safe-area-inset-top))] text-[#e9edef] shadow-none md:min-h-0 md:bg-[#202c33] md:px-4 md:py-3">
+              <header className="flex min-h-[70px] items-center gap-2 border-b border-border bg-card px-2.5 pb-2 pt-[calc(0.5rem+env(safe-area-inset-top))] text-foreground shadow-none md:min-h-0 md:bg-muted md:px-4 md:py-3">
                 <button
                   type="button"
-                  className="flex h-10 items-center gap-0.5 rounded-full px-1 text-[#e9edef] md:hidden"
+                  className="flex h-10 items-center gap-0.5 rounded-full px-1 text-foreground md:hidden"
                   onClick={() =>
                     setSelected(null)
                   }
@@ -1632,40 +1651,40 @@ const user = useUserStore(
                   </div>
                   {onlineUserIds.has(otherUserId) && (
                     <span
-                      className="absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-[#111b21] bg-[#00a884]"
+                      className="absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-[#111b21] bg-primary"
                       aria-label="Online"
                     />
                   )}
                 </button>
 
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-[17px] font-bold text-[#e9edef]">
+                  <p className="truncate text-[17px] font-bold text-foreground">
                     {selected.otherUser?.name ||
                       selected.otherUser?.phoneNumber ||
                       "RoomKhoj user"}
                   </p>
 
-                  <p className="truncate text-xs text-[#8696a0]">
+                  <p className="truncate text-xs text-muted-foreground">
                     {onlineUserIds.has(otherUserId)
                       ? "online"
                       : selected.otherUser?.phoneNumber || "offline"}
                   </p>
                 </div>
                 <div className="ml-auto flex items-center gap-1.5">
-                  <Button type="button" size="icon" variant="ghost" className="h-10 w-10 rounded-full text-[#e9edef] hover:bg-[#202c33]" onClick={() => startCall("video")} aria-label="Video call"><Video className="h-5 w-5" /></Button>
-                  <Button type="button" size="icon" variant="ghost" className="h-10 w-10 rounded-full text-[#e9edef] hover:bg-[#202c33]" onClick={() => startCall("audio")} aria-label="Audio call"><Phone className="h-5 w-5" /></Button>
+                  <Button type="button" size="icon" variant="ghost" className="h-10 w-10 rounded-full text-foreground hover:bg-muted" onClick={() => startCall("video")} aria-label="Video call"><Video className="h-5 w-5" /></Button>
+                  <Button type="button" size="icon" variant="ghost" className="h-10 w-10 rounded-full text-foreground hover:bg-muted" onClick={() => startCall("audio")} aria-label="Audio call"><Phone className="h-5 w-5" /></Button>
                 </div>
               </header>
               <audio ref={remoteAudioRef} autoPlay playsInline />
 
               {contextPost && (
-                <div className="border-b border-[#202c33] bg-[#111b21] px-3 py-2 md:px-4 md:py-3">
+                <div className="border-b border-border bg-card px-3 py-2 md:px-4 md:py-3">
                   <button
                     type="button"
                     onClick={() => router.push(contextPost.url)}
-                    className="flex w-full items-center gap-3 rounded-xl border border-[#2a3942] bg-[#202c33] p-3 text-left shadow-sm transition-colors hover:bg-[#26363f]"
+                    className="flex w-full items-center gap-3 rounded-xl border border-border bg-muted p-3 text-left shadow-sm transition-colors hover:bg-accent/10"
                   >
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-[#111b21] text-xl">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-card text-xl">
                       {contextPost.image ? (
                         <img
                           src={resolveImageUrl(contextPost.image)}
@@ -1680,18 +1699,18 @@ const user = useUserStore(
                     </div>
 
                     <div className="min-w-0 flex-1">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-[#8696a0]">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                         {contextPost.type === "ROOM"
                           ? "Room post"
                           : "Job post"}
                       </p>
-                      <p className="truncate font-semibold text-[#e9edef]">
+                      <p className="truncate font-semibold text-foreground">
                         {contextPost.title}
                       </p>
                       {(contextPost.subtitle ||
                         contextPost.price !== null &&
                           contextPost.price !== undefined) && (
-                        <p className="truncate text-xs text-[#8696a0]">
+                        <p className="truncate text-xs text-muted-foreground">
                           {contextPost.subtitle}
                           {contextPost.subtitle &&
                             contextPost.price !== null &&
@@ -1706,21 +1725,21 @@ const user = useUserStore(
                       )}
                     </div>
 
-                    <span className="shrink-0 text-xs font-semibold text-[#00a884]">
+                    <span className="shrink-0 text-xs font-semibold text-primary">
                       View
                     </span>
                   </button>
                 </div>
               )}
 
-              <div className="min-h-0 flex-1 space-y-2 overflow-y-auto bg-[#0b141a] bg-[radial-gradient(circle_at_top,_rgba(32,44,51,0.15),_rgba(11,20,26,1)_45%)] px-2.5 py-3 pb-28 sm:px-5 md:px-[6%] md:py-5">
+              <div className="min-h-0 flex-1 space-y-2 overflow-y-auto bg-background bg-[radial-gradient(circle_at_top,_rgba(32,44,51,0.15),_rgba(11,20,26,1)_45%)] px-2.5 py-3 pb-28 sm:px-5 md:px-[6%] md:py-5">
                 {messagesLoading ? (
                   <div className="flex justify-center p-10">
-                    <Loader2 className="h-6 w-6 animate-spin text-[#00a884]" />
+                    <Loader2 className="h-6 w-6 animate-spin text-primary" />
                   </div>
                 ) : messages.length ===
                   0 ? (
-                  <div className="py-10 text-center text-sm text-[#8696a0]">
+                  <div className="py-10 text-center text-sm text-muted-foreground">
                     No messages yet.
                   </div>
                 ) : (
@@ -1744,8 +1763,8 @@ const user = useUserStore(
                           <div
                             className={`max-w-[86%] rounded-[14px] px-3 py-2 text-[15px] leading-snug shadow-sm sm:max-w-[72%] ${
                               mine
-                                ? "cursor-pointer select-none rounded-br-[4px] bg-[#005c4b] text-[#e9edef]"
-                                : "rounded-bl-[4px] bg-[#202c33] text-[#e9edef]"
+                                ? "cursor-pointer select-none rounded-br-[4px] bg-primary text-foreground"
+                                : "rounded-bl-[4px] bg-muted text-foreground"
                             } ${
                               deletingMessageId === message.id
                                 ? "opacity-50"
@@ -1774,7 +1793,7 @@ const user = useUserStore(
                                 className={`mb-1 w-full overflow-hidden rounded-xl border text-left shadow-sm ${
                                   mine
                                     ? "border-white/20 bg-black/10"
-                                    : "border-[#2a3942] bg-[#111b21]"
+                                    : "border-border bg-card"
                                 }`}
                               >
                                 <button
@@ -1786,7 +1805,7 @@ const user = useUserStore(
                                   className="block w-full text-left transition hover:opacity-95"
                                 >
                                   <div className="flex items-stretch">
-                                    <div className="h-24 w-28 shrink-0 overflow-hidden bg-[#111b21]">
+                                    <div className="h-24 w-28 shrink-0 overflow-hidden bg-card">
                                       {message.attachment.image ? (
                                         <img
                                           src={resolveImageUrl(message.attachment.image)}
@@ -1801,17 +1820,17 @@ const user = useUserStore(
                                     </div>
 
                                     <div className="min-w-0 flex-1 p-3">
-                                      <p className="text-[10px] font-bold uppercase tracking-wide text-[#8696a0]">
+                                      <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
                                         Room
                                       </p>
                                       <p className="mt-0.5 line-clamp-2 font-semibold">
                                         {message.attachment.title}
                                       </p>
-                                      <p className="mt-1 text-xs font-semibold text-[#00a884]">
+                                      <p className="mt-1 text-xs font-semibold text-primary">
                                         रु {Number(message.attachment.price).toLocaleString()} / month
                                       </p>
                                       {message.attachment.address && (
-                                        <p className="mt-1 truncate text-[11px] text-[#8696a0]">
+                                        <p className="mt-1 truncate text-[11px] text-muted-foreground">
                                           📍 {message.attachment.address}
                                         </p>
                                       )}
@@ -1820,7 +1839,7 @@ const user = useUserStore(
                                 </button>
 
                                 {message.content && (
-                                  <div className="border-t border-white/10 px-3 py-3 text-sm text-[#e9edef]">
+                                  <div className="border-t border-white/10 px-3 py-3 text-sm text-foreground">
                                     <p className="whitespace-pre-wrap break-words">
                                       {message.content}
                                     </p>
@@ -1833,7 +1852,7 @@ const user = useUserStore(
                                     event.stopPropagation();
                                     router.push(message.attachment!.url);
                                   }}
-                                  className="block w-full border-t border-white/10 px-3 py-2 text-left text-xs font-semibold text-[#00a884]"
+                                  className="block w-full border-t border-white/10 px-3 py-2 text-left text-xs font-semibold text-primary"
                                 >
                                   View room details →
                                 </button>
@@ -1843,7 +1862,7 @@ const user = useUserStore(
                             {(message.type === "IMAGE" ||
                               message.type === "VIDEO") &&
                               !mediaObjectUrls[message.id] && (
-                                <div className="mb-2 flex min-h-28 min-w-44 items-center justify-center rounded-xl bg-[#111b21] px-4 text-xs text-[#8696a0]">
+                                <div className="mb-2 flex min-h-28 min-w-44 items-center justify-center rounded-xl bg-card px-4 text-xs text-muted-foreground">
                                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                                   Loading attachment…
                                 </div>
@@ -1893,7 +1912,7 @@ const user = useUserStore(
                                 </p>
                               )}
 
-                            <p className="mt-1 text-right text-[10px] text-[#8696a0]">
+                            <p className="mt-1 text-right text-[10px] text-muted-foreground">
                               {new Date(
                                 message.createdAt,
                               ).toLocaleTimeString(
@@ -1910,7 +1929,7 @@ const user = useUserStore(
                                   className={`ml-1 font-semibold ${
                                     message.seenAt
                                       ? "text-[#53bdeb]"
-                                      : "text-[#8696a0]"
+                                      : "text-muted-foreground"
                                   }`}
                                   title={
                                     message.seenAt
@@ -1937,11 +1956,11 @@ const user = useUserStore(
                 <div ref={messagesEndRef} />
               </div>
 
-              <div className="sticky bottom-0 z-20 border-t border-[#202c33] bg-[#111b21] px-2.5 pb-[calc(0.45rem+env(safe-area-inset-bottom))] pt-2 md:bg-[#202c33] md:px-4 md:py-3">
+              <div className="sticky bottom-0 z-20 border-t border-border bg-card px-2.5 pb-[calc(0.45rem+env(safe-area-inset-bottom))] pt-2 md:bg-muted md:px-4 md:py-3">
 
                 {selectedMedia &&
                   mediaPreview && (
-                    <div className="mb-2 rounded-xl border border-[#2a3942] bg-[#111b21] p-2 text-[#e9edef]">
+                    <div className="mb-2 rounded-xl border border-border bg-card p-2 text-foreground">
                       <div className="relative inline-block max-w-full">
 
                         {selectedMedia.type.startsWith(
@@ -1976,7 +1995,7 @@ const user = useUserStore(
                         </button>
                       </div>
 
-                      <div className="mt-1 max-w-full truncate text-xs text-[#8696a0]">
+                      <div className="mt-1 max-w-full truncate text-xs text-muted-foreground">
                         {
                           selectedMedia.name
                         }
@@ -2014,12 +2033,12 @@ const user = useUserStore(
                       mediaSending
                     }
                     title="Photo or video"
-                    className="h-11 w-11 shrink-0 rounded-full text-[#e9edef] hover:bg-[#202c33]"
+                    className="h-11 w-11 shrink-0 rounded-full text-foreground hover:bg-muted"
                   >
                     <Plus className="h-7 w-7" />
                   </Button>
 
-                  <div className="flex min-w-0 flex-1 items-center rounded-[23px] bg-[#202c33] px-3">
+                  <div className="flex min-w-0 flex-1 items-center rounded-[23px] bg-muted px-3">
                     <Input
                       value={draft}
                       onChange={(e) =>
@@ -2028,7 +2047,7 @@ const user = useUserStore(
                         )
                       }
                       placeholder="Type a message"
-                      className="h-11 min-w-0 flex-1 border-0 bg-transparent px-1 text-[#e9edef] shadow-none placeholder:text-[#8696a0] focus-visible:ring-0"
+                      className="h-11 min-w-0 flex-1 border-0 bg-transparent px-1 text-foreground shadow-none placeholder:text-muted-foreground focus-visible:ring-0"
                       onKeyDown={(e) => {
                         if (
                           e.key ===
@@ -2042,7 +2061,7 @@ const user = useUserStore(
                         }
                       }}
                     />
-                    <Smile className="h-5 w-5 shrink-0 text-[#aebac1]" />
+                    <Smile className="h-5 w-5 shrink-0 text-muted-foreground" />
                   </div>
 
                   <Button
@@ -2050,7 +2069,7 @@ const user = useUserStore(
                     size="icon"
                     variant="ghost"
                     onClick={() => mediaInputRef.current?.click()}
-                    className="h-11 w-11 shrink-0 rounded-full text-[#e9edef] hover:bg-[#202c33]"
+                    className="h-11 w-11 shrink-0 rounded-full text-foreground hover:bg-muted"
                     aria-label="Camera or media"
                   >
                     <Camera className="h-6 w-6" />
@@ -2058,7 +2077,7 @@ const user = useUserStore(
 
                   <Button
                     size="icon"
-                    className="h-11 w-11 shrink-0 rounded-full bg-[#00a884] text-[#0b141a] shadow-none hover:bg-[#06cf9c] disabled:bg-[#202c33] disabled:text-[#8696a0]"
+                    className="h-11 w-11 shrink-0 rounded-full bg-primary text-primary-foreground shadow-none hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground"
                     onClick={
                       selectedMedia
                         ? sendSelectedMedia
@@ -2100,7 +2119,7 @@ const user = useUserStore(
                   ? "Ringing…"
                   : "Call connected"}
             </h2>
-            <p className="mt-1 text-sm text-muted-foreground md:text-[#8696a0]">
+            <p className="mt-1 text-sm text-muted-foreground md:text-muted-foreground">
               {call.mode === "video" ? "Video call" : "Audio call"}
             </p>
             {call.mode === "video" && (
@@ -2144,7 +2163,7 @@ const user = useUserStore(
       {callNotice && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
           <div className="w-full max-w-sm rounded-2xl bg-background p-6 text-center shadow-2xl">
-            <PhoneOff className="mx-auto h-10 w-10 text-muted-foreground md:text-[#8696a0]" />
+            <PhoneOff className="mx-auto h-10 w-10 text-muted-foreground md:text-muted-foreground" />
             <h2 className="mt-3 text-xl font-bold">{callNotice}</h2>
           </div>
         </div>
@@ -2156,7 +2175,7 @@ const user = useUserStore(
             <h2 className="mt-3 text-lg font-bold">
               {incomingCall.mode === "video" ? "Incoming video call" : "Incoming audio call"}
             </h2>
-            <p className="mt-1 text-sm text-muted-foreground md:text-[#8696a0]">RoomKhoj user is calling you</p>
+            <p className="mt-1 text-sm text-muted-foreground md:text-muted-foreground">RoomKhoj user is calling you</p>
             <div className="mt-6 flex gap-3">
               <Button className="flex-1" onClick={acceptCall}>Accept</Button>
               <Button className="flex-1" variant="destructive" onClick={declineIncomingCall}>Decline</Button>
@@ -2171,7 +2190,7 @@ const user = useUserStore(
 
 export default function MessagesPage() {
   return (
-    <Suspense fallback={<main className="p-8 text-center text-sm text-muted-foreground md:text-[#8696a0]">Loading messages…</main>}>
+    <Suspense fallback={<main className="p-8 text-center text-sm text-muted-foreground md:text-muted-foreground">Loading messages…</main>}>
       <MessagesContent />
     </Suspense>
   );
