@@ -19,7 +19,6 @@ import {
   Paperclip,
   Image as ImageIcon,
   CheckCheck,
-  MoreVertical,
   Sun,
   Moon,
   Smile,
@@ -1530,7 +1529,7 @@ const user = useUserStore(
               </p>
             </div>
           ) : (
-            <div className="divide-y divide-[#202c33] overflow-y-auto">
+            <div className="divide-y divide-border overflow-y-auto">
               {filtered.map(
                 (conversation: any) => {
                   const otherId =
@@ -1560,7 +1559,7 @@ const user = useUserStore(
                         </div>
                         {onlineUserIds.has(otherId) && (
                           <span
-                            className="absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-[#111b21] bg-primary"
+                            className="absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-card bg-primary"
                             title="Online"
                             aria-label="Online"
                           />
@@ -1651,7 +1650,7 @@ const user = useUserStore(
                   </div>
                   {onlineUserIds.has(otherUserId) && (
                     <span
-                      className="absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-[#111b21] bg-primary"
+                      className="absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-card bg-primary"
                       aria-label="Online"
                     />
                   )}
