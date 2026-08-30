@@ -71,6 +71,11 @@ export const roomService = {
     return normalizeRoomsResponse(response.data);
   },
 
+  getAdminRooms: async (params: RoomFilters = {}): Promise<RoomsResponse> => {
+    const response = await privateApi.get("/rooms/admin", { params });
+    return normalizeRoomsResponse(response.data);
+  },
+
   getPublicRooms: async (params: RoomFilters = {}): Promise<RoomsResponse> => {
     const response = await api.get("/rooms/public", { params });
     return normalizeRoomsResponse(response.data);
