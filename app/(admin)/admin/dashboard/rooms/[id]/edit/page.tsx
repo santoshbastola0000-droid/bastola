@@ -76,7 +76,7 @@ export default function EditRoomPage() {
 
   const { data, isLoading } = useQuery({
     queryKey: ["room", id],
-    queryFn: () => roomService.getRoomById(id),
+    queryFn: () => roomService.getAdminRoomById(id),
     enabled: !!id,
   });
 
