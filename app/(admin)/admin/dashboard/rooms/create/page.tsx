@@ -325,17 +325,18 @@ export default function CreateRoomPage() {
     const applyCoordinates = (latitude: number, longitude: number) => {
       if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return;
 
+      const currentLocation = form.getValues("location");
       form.setValue(
         "location",
         {
-          name: "Current location",
-          formattedAddress: "",
+          name: currentLocation?.name || "Current location",
+          formattedAddress: currentLocation?.formattedAddress || "",
           latitude,
           longitude,
-          city: "",
-          state: "",
-          country: "",
-          postalCode: "",
+          city: currentLocation?.city || "",
+          state: currentLocation?.state || "",
+          country: currentLocation?.country || "",
+          postalCode: currentLocation?.postalCode || "",
         },
         { shouldValidate: false, shouldDirty: false },
       );
@@ -682,6 +683,22 @@ export default function CreateRoomPage() {
 
     values.amenities = selectedAmenities;
     values.tenantTypes = selectedTenantTypes;
+
+    // Location fallback: GPS coordinates are captured automatically when
+    // permission is available. If not, preserve the manually-entered
+    // address/city in the location object so it is still saved in DB.
+    if (values.address?.trim()) {
+      values.location = {
+        ...(values.location || {}),
+        name:
+          values.location?.name?.trim() ||
+          values.location?.city?.trim() ||
+          values.address.trim(),
+        formattedAddress:
+          values.location?.formattedAddress?.trim() ||
+          values.address.trim(),
+      };
+    }
 
     const formData = new FormData();
     const append = (key: string, value: unknown) => {
@@ -1146,6 +1163,140 @@ export default function CreateRoomPage() {
                           </FormItem>
                         )}
                       />
+                    </div>
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-4">
+                      <div className="flex items-start gap-3">
+                        <MapPin className="mt-0.5 h-5 w-5 text-primary flex-shrink-0" />
+                        <div>
+                          <p className="font-semibold text-slate-800">
+                            Room Location / कोठाको स्थान
+                          </p>
+                          <p className="text-xs text-slate-500 mt-1">
+                            GPS permission मिले latitude/longitude automatically save हुन्छ।
+                            GPS नआए तलको location manually भर्नुहोस्।
+                          </p>
+                        </div>
+                      </div>
+
+                      <FormField
+                        control={form.control}
+                        name="address"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-slate-700 font-semibold">
+                              Full Address / पूरा ठेगाना
+                            </FormLabel>
+                            <FormControl>
+                              <Input
+                                id="room-address"
+                                placeholder="e.g. Lakeside-6, Pokhara"
+                                {...field}
+                                className="h-11 rounded-xl border-slate-200"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <FormField
+                          control={form.control}
+                          name="location.city"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-slate-700 font-semibold">
+                                City / शहर
+                              </FormLabel>
+                              <FormControl>
+                                <Input
+                                  placeholder="e.g. Pokhara"
+                                  value={field.value || ""}
+                                  onChange={field.onChange}
+                                  className="h-11 rounded-xl border-slate-200"
+                                />
+                              </FormControl>
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="location.formattedAddress"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-slate-700 font-semibold">
+                                Area / Landmark
+                              </FormLabel>
+                              <FormControl>
+                                <Input
+                                  placeholder="e.g. Nadipur, near Bhatbhateni"
+                                  value={field.value || ""}
+                                  onChange={field.onChange}
+                                  className="h-11 rounded-xl border-slate-200"
+                                />
+                              </FormControl>
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <FormField
+                          control={form.control}
+                          name="location.latitude"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-xs text-slate-500">
+                                Latitude (auto/manual)
+                              </FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="number"
+                                  step="any"
+                                  placeholder="28.2096"
+                                  value={field.value ?? ""}
+                                  onChange={(e) =>
+                                    field.onChange(
+                                      e.target.value === ""
+                                        ? null
+                                        : Number(e.target.value),
+                                    )
+                                  }
+                                  className="h-10 rounded-xl border-slate-200"
+                                />
+                              </FormControl>
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="location.longitude"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-xs text-slate-500">
+                                Longitude (auto/manual)
+                              </FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="number"
+                                  step="any"
+                                  placeholder="83.9856"
+                                  value={field.value ?? ""}
+                                  onChange={(e) =>
+                                    field.onChange(
+                                      e.target.value === ""
+                                        ? null
+                                        : Number(e.target.value),
+                                    )
+                                  }
+                                  className="h-10 rounded-xl border-slate-200"
+                                />
+                              </FormControl>
+                            </FormItem>
+                          )}
+                        />
+                      </div>
                     </div>
                   </div>
                 )}
