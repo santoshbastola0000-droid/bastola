@@ -770,7 +770,7 @@ export default function RoomDetailPage() {
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["room", id],
-    queryFn: () => roomService.getRoomById(id),
+    queryFn: () => roomService.getAdminRoomById(id),
     enabled: !!id,
   });
 
