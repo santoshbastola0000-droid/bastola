@@ -862,9 +862,19 @@ export function RoomList({ initialFilters = {} }: RoomListProps) {
                         <span>Floor {room.floorNumber}</span>
                       </div>
                     </div>
-                    <div className="flex flex-wrap gap-2 mb-3">
-                      <ApprovalStatusBadge status={room.approvalStatus} />
-                      <ListingStatusBadge status={room.listingStatus} />
+                    <div className="grid grid-cols-2 gap-3 mb-3 rounded-lg border bg-gray-50 p-3">
+                      <div className="space-y-1.5">
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">
+                          Approval Status
+                        </p>
+                        <ApprovalStatusBadge status={room.approvalStatus} />
+                      </div>
+                      <div className="space-y-1.5">
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">
+                          Listing Status
+                        </p>
+                        <ListingStatusBadge status={room.listingStatus} />
+                      </div>
                     </div>
                     <div className="flex gap-2 pt-2 border-t">
                       <Button
@@ -1047,7 +1057,10 @@ export function RoomList({ initialFilters = {} }: RoomListProps) {
                       Location & Contact
                     </TableHead>
                     <TableHead className="font-semibold text-gray-700">
-                      Status
+                      Approval Status
+                    </TableHead>
+                    <TableHead className="font-semibold text-gray-700">
+                      Listing Status
                     </TableHead>
                     <TableHead className="font-semibold text-gray-700">
                       Price
@@ -1060,7 +1073,7 @@ export function RoomList({ initialFilters = {} }: RoomListProps) {
                 <TableBody>
                   {isFetching && rooms.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8">
+                      <TableCell colSpan={7} className="text-center py-8">
                         <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
                       </TableCell>
                     </TableRow>
@@ -1181,12 +1194,10 @@ export function RoomList({ initialFilters = {} }: RoomListProps) {
                             </div>
                           </TableCell>
                           <TableCell>
-                            <div className="space-y-2">
-                              <ApprovalStatusBadge
-                                status={room.approvalStatus}
-                              />
-                              <ListingStatusBadge status={room.listingStatus} />
-                            </div>
+                            <ApprovalStatusBadge status={room.approvalStatus} />
+                          </TableCell>
+                          <TableCell>
+                            <ListingStatusBadge status={room.listingStatus} />
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-1 font-bold text-primary">
@@ -1341,7 +1352,7 @@ export function RoomList({ initialFilters = {} }: RoomListProps) {
                     })
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={6} className="h-64 text-center">
+                      <TableCell colSpan={7} className="h-64 text-center">
                         <div className="flex flex-col items-center justify-center gap-4">
                           <Building2 className="h-16 w-16 text-gray-300" />
                           <div>
