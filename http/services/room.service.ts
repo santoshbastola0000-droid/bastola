@@ -114,7 +114,12 @@ export const roomService = {
   },
 
   getRoomById: async (id: string): Promise<{ data: Room }> => {
-    const response = await privateApi.get(`/rooms/${id}`);
+    const response = await api.get(`/rooms/${id}`);
+    return response.data;
+  },
+
+  getAdminRoomById: async (id: string): Promise<{ data: Room }> => {
+    const response = await privateApi.get(`/rooms/admin/${id}`);
     return response.data;
   },
 
