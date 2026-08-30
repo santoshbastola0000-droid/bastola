@@ -102,6 +102,8 @@ export default function PendingRoomsPage() {
     }) => roomService.updateApprovalStatus(id, status, reason),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["pending-rooms"] });
+      queryClient.invalidateQueries({ queryKey: ["admin-approved-rooms"] });
+      queryClient.invalidateQueries({ queryKey: ["rooms"] });
       queryClient.invalidateQueries({ queryKey: ["room-stats"] });
       toast.success("Room status updated successfully", {
         style: { background: SUCCESSTOAST, color: "#fff" },
