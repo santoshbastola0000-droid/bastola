@@ -46,6 +46,8 @@ function MessagesContent() {
   const searchParams = useSearchParams();
   const requestedConversationId = searchParams.get("conversation");
   const requestedIncomingCallId = searchParams.get("incomingCall");
+  const requestedReturnTo = searchParams.get("returnTo");
+  const safeReturnTo = requestedReturnTo?.startsWith("/") ? requestedReturnTo : null;
 
 const user = useUserStore(
     (state) => state.user,
@@ -1630,9 +1632,13 @@ const user = useUserStore(
                 <button
                   type="button"
                   className="flex h-10 items-center gap-0.5 rounded-full px-1 text-foreground md:hidden"
-                  onClick={() =>
-                    setSelected(null)
-                  }
+                  onClick={() => {
+                    if (safeReturnTo) {
+                      router.push(safeReturnTo);
+                      return;
+                    }
+                    setSelected(null);
+                  }}
                 >
                   <ChevronLeft className="h-7 w-7" />
                 </button>
