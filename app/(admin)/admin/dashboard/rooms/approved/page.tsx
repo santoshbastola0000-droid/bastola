@@ -70,7 +70,7 @@ interface RoomFilters {
   page: number;
   take: number;
   search?: string;
-  status?: RoomStatus;
+  approvalStatus?: RoomStatus;
 }
 
 export default function ApprovedRoomsPage() {
@@ -98,7 +98,7 @@ export default function ApprovedRoomsPage() {
     page,
     take: pageSize,
     search: debouncedSearch || undefined,
-    status: RoomStatus.APPROVED, // Filter by approved status
+    approvalStatus: RoomStatus.APPROVED, // Filter by approved status
   };
 
   const {
