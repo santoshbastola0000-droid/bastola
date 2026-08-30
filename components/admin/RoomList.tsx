@@ -197,6 +197,9 @@ export function RoomList({ initialFilters = {} }: RoomListProps) {
 
   const invalidateRooms = () => {
     queryClient.invalidateQueries({ queryKey: ["rooms"] });
+    queryClient.invalidateQueries({ queryKey: ["pending-rooms"] });
+    queryClient.invalidateQueries({ queryKey: ["admin-approved-rooms"] });
+    queryClient.invalidateQueries({ queryKey: ["room-stats"] });
   };
 
   const handleSearch = () => {
