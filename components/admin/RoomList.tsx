@@ -187,7 +187,7 @@ export function RoomList({ initialFilters = {} }: RoomListProps) {
     refetch,
   } = useQuery({
     queryKey,
-    queryFn: () => roomService.getRooms(buildFilters()),
+    queryFn: () => roomService.getAdminRooms(buildFilters()),
     refetchOnWindowFocus: true,
   });
 
