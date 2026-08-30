@@ -67,8 +67,9 @@ export function RoomMessageSellerCard({
         }),
       );
 
+      const returnTo = `/property/${roomId}`;
       router.push(
-        `/messages?conversation=${encodeURIComponent(result.conversation.id)}`,
+        `/messages?conversation=${encodeURIComponent(result.conversation.id)}&returnTo=${encodeURIComponent(returnTo)}`,
       );
     } catch (error: any) {
       toast.error(
