@@ -2,7 +2,6 @@
 
 import React, { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
 import {
   Building2,
   MapPin,
@@ -88,7 +87,6 @@ import {
   useUpdateApprovalStatusMutation,
   useUpdateListingStatusMutation,
 } from "@/http/mutations/room.mutation";
-import { PAGE_SIZE_OPTIONS } from "@/lib/constants/app.constants";
 import Link from "next/link";
 import {
   ApprovalStatusBadge,
@@ -97,10 +95,8 @@ import {
   ListingStatusBadge,
 } from "./StatusBadge";
 
-// Nepali Rupee formatter
 const formatNPR = (amount: number) => `रु. ${amount.toLocaleString("ne-NP")}`;
 
-// Determine which listing status transitions are allowed
 const getAllowedListingTransitions = (
   approvalStatus: RoomStatus,
   listingStatus: RoomStatus,
@@ -119,27 +115,18 @@ interface RoomListProps {
 }
 
 export function RoomList({ initialFilters = {} }: RoomListProps) {
-  const router = useRouter();
   const queryClient = useQueryClient();
-
   const [searchTerm, setSearchTerm] = useState(initialFilters.search || "");
-  const [appliedSearchTerm, setAppliedSearchTerm] = useState(
-    initialFilters.search || "",
-  );
-  const [approvalStatusFilter, setApprovalStatusFilter] =
-    useState<string>("all");
+  const [appliedSearchTerm, setAppliedSearchTerm] = useState(initialFilters.search || "");
+  const [approvalStatusFilter, setApprovalStatusFilter] = useState<string>("all");
   const [listingStatusFilter, setListingStatusFilter] = useState<string>("all");
-  const [categoryFilter, setCategoryFilter] = useState<string>(
-    initialFilters.category || "all",
-  );
+  const [categoryFilter, setCategoryFilter] = useState<string>(initialFilters.category || "all");
   const [priceRange, setPriceRange] = useState<{ min?: number; max?: number }>({
     min: initialFilters.minPrice,
     max: initialFilters.maxPrice,
   });
   const [allowsWomen, setAllowsWomen] = useState<string>(
-    initialFilters.allowsWomen !== undefined
-      ? initialFilters.allowsWomen.toString()
-      : "all",
+    initialFilters.allowsWomen !== undefined ? initialFilters.allowsWomen.toString() : "all",
   );
   const [ownerLivesInHouse, setOwnerLivesInHouse] = useState<string>(
     initialFilters.ownerLivesInHouse !== undefined
@@ -147,8 +134,7 @@ export function RoomList({ initialFilters = {} }: RoomListProps) {
       : "all",
   );
   const [page, setPage] = useState(initialFilters.page || 0);
-  const [take, setTake] = useState(initialFilters.take || 10);
-
+  const [take] = useState(initialFilters.take || 10);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [roomToDelete, setRoomToDelete] = useState<string | null>(null);
   const [showApprovalDialog, setShowApprovalDialog] = useState(false);
@@ -159,26 +145,18 @@ export function RoomList({ initialFilters = {} }: RoomListProps) {
   const [showFilters, setShowFilters] = useState(false);
 
   const buildFilters = (): RoomFilters => {
-    const filters: RoomFilters = {
-      page,
-      take,
-      search: appliedSearchTerm || undefined,
-    };
-    if (approvalStatusFilter !== "all")
-      filters.approvalStatus = approvalStatusFilter as RoomStatus;
-    if (listingStatusFilter !== "all")
-      filters.listingStatus = listingStatusFilter as RoomStatus;
-    if (categoryFilter !== "all")
-      filters.category = categoryFilter as RoomCategory;
+    const filters: RoomFilters = { page, take, search: appliedSearchTerm || undefined, includeAll: true };
+    if (approvalStatusFilter !== "all") filters.approvalStatus = approvalStatusFilter as RoomStatus;
+    if (listingStatusFilter !== "all") filters.listingStatus = listingStatusFilter as RoomStatus;
+    if (categoryFilter !== "all") filters.category = categoryFilter as RoomCategory;
     if (priceRange.min !== undefined) filters.minPrice = priceRange.min;
     if (priceRange.max !== undefined) filters.maxPrice = priceRange.max;
     if (allowsWomen !== "all") filters.allowsWomen = allowsWomen === "true";
-    if (ownerLivesInHouse !== "all")
-      filters.ownerLivesInHouse = ownerLivesInHouse === "true";
+    if (ownerLivesInHouse !== "all") filters.ownerLivesInHouse = ownerLivesInHouse === "true";
     return filters;
   };
 
-  const queryKey = ["rooms", buildFilters()];
+  const currentFilters = buildFilters();
 
   const {
     data: roomsResponse,
@@ -186,9 +164,19 @@ export function RoomList({ initialFilters = {} }: RoomListProps) {
     isFetching,
     refetch,
   } = useQuery({
-    queryKey,
-    queryFn: () => roomService.getRooms(buildFilters()),
+    queryKey: ["rooms", currentFilters],
+    queryFn: () => roomService.getRooms(currentFilters),
     refetchOnWindowFocus: true,
+    refetchOnMount: "always",
+    staleTime: 0,
+  });
+
+  const { data: roomStatsResponse } = useQuery({
+    queryKey: ["room-stats"],
+    queryFn: () => roomService.getRoomStats(),
+    refetchOnWindowFocus: true,
+    refetchOnMount: "always",
+    staleTime: 0,
   });
 
   const deleteRoomMutation = useDeleteRoomMutation();
@@ -197,14 +185,12 @@ export function RoomList({ initialFilters = {} }: RoomListProps) {
 
   const invalidateRooms = () => {
     queryClient.invalidateQueries({ queryKey: ["rooms"] });
+    queryClient.invalidateQueries({ queryKey: ["room-stats"] });
   };
 
   const handleSearch = () => {
     setAppliedSearchTerm(searchTerm);
     setPage(0);
-  };
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") handleSearch();
   };
 
   const handleClearFilters = () => {
@@ -217,11 +203,6 @@ export function RoomList({ initialFilters = {} }: RoomListProps) {
     setAllowsWomen("all");
     setOwnerLivesInHouse("all");
     setPage(0);
-  };
-
-  const handleDeleteClick = (id: string) => {
-    setRoomToDelete(id);
-    setShowDeleteDialog(true);
   };
 
   const handleDeleteConfirm = async () => {
@@ -238,23 +219,8 @@ export function RoomList({ initialFilters = {} }: RoomListProps) {
   ) => {
     setActionRoom(room);
     setActionStatus(status);
-    if (status === RoomStatus.REJECTED) {
-      setShowApprovalDialog(true);
-    } else {
-      updateApprovalMutation.mutate(
-        { id: room.id, status },
-        { onSuccess: invalidateRooms },
-      );
-    }
-  };
-
-  const handleListingAction = (
-    room: Room,
-    status: RoomStatus.AVAILABLE | RoomStatus.RENTED | RoomStatus.ARCHIVED,
-  ) => {
-    setActionRoom(room);
-    setActionStatus(status);
-    setShowListingDialog(true);
+    if (status === RoomStatus.REJECTED) setShowApprovalDialog(true);
+    else updateApprovalMutation.mutate({ id: room.id, status }, { onSuccess: invalidateRooms });
   };
 
   const confirmApprovalAction = () => {
@@ -283,10 +249,7 @@ export function RoomList({ initialFilters = {} }: RoomListProps) {
     updateListingMutation.mutate(
       {
         id: actionRoom.id,
-        status: actionStatus as
-          | RoomStatus.AVAILABLE
-          | RoomStatus.RENTED
-          | RoomStatus.ARCHIVED,
+        status: actionStatus as RoomStatus.AVAILABLE | RoomStatus.RENTED | RoomStatus.ARCHIVED,
       },
       {
         onSuccess: () => {
@@ -309,83 +272,16 @@ export function RoomList({ initialFilters = {} }: RoomListProps) {
     nextPage: null,
   };
   const totalItems = pagination.total || 0;
-  const showingFrom = totalItems > 0 ? page * take + 1 : 0;
-  const showingTo = Math.min((page + 1) * take, totalItems);
   const totalPages = Math.max(1, Math.ceil(totalItems / take));
-
-  const stats = {
-    total: totalItems,
-    approved: rooms.filter((r) => r.approvalStatus === RoomStatus.APPROVED)
-      .length,
-    pending: rooms.filter((r) => r.approvalStatus === RoomStatus.PENDING)
-      .length,
-    rejected: rooms.filter((r) => r.approvalStatus === RoomStatus.REJECTED)
-      .length,
-    available: rooms.filter((r) => r.listingStatus === RoomStatus.AVAILABLE)
-      .length,
-    rented: rooms.filter((r) => r.listingStatus === RoomStatus.RENTED).length,
-    archived: rooms.filter((r) => r.listingStatus === RoomStatus.ARCHIVED)
-      .length,
-  };
-
-  const renderPageNumbers = () => {
-    const pages = [];
-    pages.push(
-      <Button
-        key="prev"
-        variant="outline"
-        size="sm"
-        onClick={() => setPage(Math.max(0, page - 1))}
-        disabled={page === 0}
-        className="h-8 w-8 p-0 cursor-pointer"
-      >
-        <ChevronLeft className="h-4 w-4" />
-      </Button>,
-    );
-    const maxVisible = 5;
-    let start = Math.max(0, page - Math.floor(maxVisible / 2));
-    const end = Math.min(totalPages - 1, start + maxVisible - 1);
-    if (end - start + 1 < maxVisible) start = Math.max(0, end - maxVisible + 1);
-    for (let i = start; i <= end; i++) {
-      pages.push(
-        <Button
-          key={i}
-          variant={page === i ? "default" : "outline"}
-          size="sm"
-          onClick={() => setPage(i)}
-          className="h-8 w-8 p-0 cursor-pointer"
-        >
-          {i + 1}
-        </Button>,
-      );
-    }
-    pages.push(
-      <Button
-        key="next"
-        variant="outline"
-        size="sm"
-        onClick={() => setPage(Math.min(totalPages - 1, page + 1))}
-        disabled={page >= totalPages - 1}
-        className="h-8 w-8 p-0 cursor-pointer"
-      >
-        <ChevronRight className="h-4 w-4" />
-      </Button>,
-    );
-    return pages;
-  };
+  const stats = roomStatsResponse?.data;
 
   if (isLoading) {
     return (
       <div className="p-4 md:p-6 space-y-6">
-        <div className="flex justify-between items-center">
-          <Skeleton className="h-10 w-48" />
-          <Skeleton className="h-10 w-32" />
-        </div>
-        <div className="space-y-3">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <Skeleton key={i} className="h-16 w-full" />
-          ))}
-        </div>
+        <Skeleton className="h-10 w-48" />
+        {Array.from({ length: 5 }).map((_, i) => (
+          <Skeleton key={i} className="h-16 w-full" />
+        ))}
       </div>
     );
   }
@@ -393,1160 +289,265 @@ export function RoomList({ initialFilters = {} }: RoomListProps) {
   return (
     <>
       <div className="p-4 md:p-6 space-y-6 pb-20">
-        {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
             <h1 className="text-2xl md:text-3xl font-bold text-gray-900 flex items-center gap-3">
               <Building2 className="h-7 w-7 text-primary" />
               Rooms Management
             </h1>
-            <p className="text-gray-600 mt-1">
-              Manage all room listings and approvals
-            </p>
+            <p className="text-gray-600 mt-1">Newest rooms appear first, including pending listings.</p>
           </div>
           <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              onClick={() => refetch()}
-              disabled={isFetching}
-              className="cursor-pointer border-gray-300"
-            >
-              <RefreshCw
-                className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`}
-              />
+            <Button variant="outline" onClick={() => refetch()} disabled={isFetching}>
+              <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
             </Button>
-            <Button
-              asChild
-              className="bg-primary hover:bg-primary/90 cursor-pointer"
-            >
+            <Button asChild>
               <Link href="/admin/dashboard/rooms/create">
-                <Plus className="h-4 w-4 mr-2" />
-                Add New Room
+                <Plus className="h-4 w-4 mr-2" /> Add New Room
               </Link>
             </Button>
           </div>
         </div>
 
-        {/* Stats Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-7 gap-3">
           {[
-            {
-              label: "Total",
-              value: stats.total,
-              icon: Building2,
-              color: "gray",
-            },
-            {
-              label: "Approved",
-              value: stats.approved,
-              icon: CheckCircle,
-              color: "green",
-            },
-            {
-              label: "Pending",
-              value: stats.pending,
-              icon: Clock,
-              color: "yellow",
-            },
-            {
-              label: "Rejected",
-              value: stats.rejected,
-              icon: XCircle,
-              color: "red",
-            },
-            {
-              label: "Available",
-              value: stats.available,
-              icon: CheckCircle,
-              color: "green",
-            },
-            {
-              label: "Rented",
-              value: stats.rented,
-              icon: Users,
-              color: "blue",
-            },
-            {
-              label: "Archived",
-              value: stats.archived,
-              icon: Archive,
-              color: "gray",
-            },
-          ].map((stat) => {
-            const Icon = stat.icon;
-            const colorMap: Record<string, string> = {
-              green: "border-green-200 bg-green-50 text-green-700",
-              yellow: "border-yellow-200 bg-yellow-50 text-yellow-700",
-              red: "border-red-200 bg-red-50 text-red-700",
-              blue: "border-blue-200 bg-blue-50 text-blue-700",
-              gray: "border-gray-200 bg-gray-50 text-gray-700",
-            };
-            const iconColorMap: Record<string, string> = {
-              green: "text-green-500",
-              yellow: "text-yellow-500",
-              red: "text-red-500",
-              blue: "text-blue-500",
-              gray: "text-gray-400",
-            };
-            return (
-              <Card
-                key={stat.label}
-                className={`border col-span-1 ${stat.label === "Total" ? "col-span-2 lg:col-span-1" : ""} ${colorMap[stat.color]}`}
-              >
-                <CardContent className="p-3 sm:p-4 flex items-center justify-between">
-                  <div>
-                    <p className="text-xs sm:text-sm font-medium">
-                      {stat.label}
-                    </p>
-                    <p className="text-lg sm:text-2xl font-bold">
-                      {stat.value}
-                    </p>
-                  </div>
-                  <Icon
-                    className={`h-6 w-6 sm:h-8 sm:w-8 ${iconColorMap[stat.color]}`}
-                  />
-                </CardContent>
-              </Card>
-            );
-          })}
+            ["Total", stats?.total ?? totalItems, Building2],
+            ["Approved", stats?.approved ?? 0, CheckCircle],
+            ["Pending", stats?.pendingApproval ?? 0, Clock],
+            ["Rejected", stats?.rejected ?? 0, XCircle],
+            ["Available", stats?.available ?? 0, CheckCircle],
+            ["Rented", stats?.rented ?? 0, Users],
+            ["Archived", stats?.archived ?? 0, Archive],
+          ].map(([label, value, Icon]: any) => (
+            <Card key={label}>
+              <CardContent className="p-3 sm:p-4 flex items-center justify-between">
+                <div>
+                  <p className="text-xs sm:text-sm font-medium">{label}</p>
+                  <p className="text-lg sm:text-2xl font-bold">{value}</p>
+                </div>
+                <Icon className="h-6 w-6 sm:h-8 sm:w-8 text-gray-500" />
+              </CardContent>
+            </Card>
+          ))}
         </div>
 
-        {/* Search and Filters */}
-        <Card className="border border-gray-200">
-          <CardContent className="p-4 md:p-6">
-            <div className="space-y-4">
-              <div className="flex flex-col sm:flex-row gap-3">
-                <div className="flex-1 relative">
-                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
-                  <Input
-                    placeholder="Search by title or address..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                    className="pl-9 cursor-text"
-                  />
-                  {searchTerm && (
-                    <button
-                      onClick={() => {
-                        setSearchTerm("");
-                        setAppliedSearchTerm("");
-                      }}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 cursor-pointer"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  )}
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    onClick={handleSearch}
-                    className="cursor-pointer bg-primary hover:bg-primary/90"
+        <Card>
+          <CardContent className="p-4 md:p-6 space-y-4">
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="flex-1 relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
+                <Input
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                  placeholder="Search by title or address..."
+                  className="pl-9"
+                />
+                {searchTerm && (
+                  <button
+                    onClick={() => {
+                      setSearchTerm("");
+                      setAppliedSearchTerm("");
+                    }}
+                    className="absolute right-3 top-1/2 -translate-y-1/2"
                   >
-                    Search
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => setShowFilters(!showFilters)}
-                    className="cursor-pointer border-gray-300"
-                  >
-                    <Filter className="h-4 w-4 mr-2" />
-                    Filters
-                  </Button>
-                </div>
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
               </div>
-
-              {showFilters && (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 pt-4 border-t">
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium">
-                      Approval Status
-                    </Label>
-                    <Select
-                      value={approvalStatusFilter}
-                      onValueChange={setApprovalStatusFilter}
-                    >
-                      <SelectTrigger className="cursor-pointer border-gray-300">
-                        <SelectValue placeholder="All" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all" className="cursor-pointer">
-                          All
-                        </SelectItem>
-                        <SelectItem
-                          value={RoomStatus.APPROVED}
-                          className="cursor-pointer"
-                        >
-                          Approved
-                        </SelectItem>
-                        <SelectItem
-                          value={RoomStatus.PENDING}
-                          className="cursor-pointer"
-                        >
-                          Pending
-                        </SelectItem>
-                        <SelectItem
-                          value={RoomStatus.REJECTED}
-                          className="cursor-pointer"
-                        >
-                          Rejected
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium">
-                      Listing Status
-                    </Label>
-                    <Select
-                      value={listingStatusFilter}
-                      onValueChange={setListingStatusFilter}
-                    >
-                      <SelectTrigger className="cursor-pointer border-gray-300">
-                        <SelectValue placeholder="All" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all" className="cursor-pointer">
-                          All
-                        </SelectItem>
-                        <SelectItem
-                          value={RoomStatus.AVAILABLE}
-                          className="cursor-pointer"
-                        >
-                          Available
-                        </SelectItem>
-                        <SelectItem
-                          value={RoomStatus.RENTED}
-                          className="cursor-pointer"
-                        >
-                          Rented
-                        </SelectItem>
-                        <SelectItem
-                          value={RoomStatus.ARCHIVED}
-                          className="cursor-pointer"
-                        >
-                          Archived
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium">Category</Label>
-                    <Select
-                      value={categoryFilter}
-                      onValueChange={setCategoryFilter}
-                    >
-                      <SelectTrigger className="cursor-pointer border-gray-300">
-                        <SelectValue placeholder="All" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all" className="cursor-pointer">
-                          All
-                        </SelectItem>
-                        {Object.values(RoomCategory).map((cat) => (
-                          <SelectItem
-                            key={cat}
-                            value={cat}
-                            className="cursor-pointer capitalize"
-                          >
-                            {cat.replace("_", " ")}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium">
-                      Price Range (रु.)
-                    </Label>
-                    <div className="flex items-center gap-2">
-                      <Input
-                        type="number"
-                        placeholder="Min"
-                        value={priceRange.min || ""}
-                        onChange={(e) =>
-                          setPriceRange({
-                            ...priceRange,
-                            min: e.target.value
-                              ? Number(e.target.value)
-                              : undefined,
-                          })
-                        }
-                        className="cursor-text"
-                      />
-                      <span>-</span>
-                      <Input
-                        type="number"
-                        placeholder="Max"
-                        value={priceRange.max || ""}
-                        onChange={(e) =>
-                          setPriceRange({
-                            ...priceRange,
-                            max: e.target.value
-                              ? Number(e.target.value)
-                              : undefined,
-                          })
-                        }
-                        className="cursor-text"
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium">Women Allowed</Label>
-                    <Select value={allowsWomen} onValueChange={setAllowsWomen}>
-                      <SelectTrigger className="cursor-pointer border-gray-300">
-                        <SelectValue placeholder="All" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all" className="cursor-pointer">
-                          All
-                        </SelectItem>
-                        <SelectItem value="true" className="cursor-pointer">
-                          Yes
-                        </SelectItem>
-                        <SelectItem value="false" className="cursor-pointer">
-                          No
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium">
-                      Owner in House
-                    </Label>
-                    <Select
-                      value={ownerLivesInHouse}
-                      onValueChange={setOwnerLivesInHouse}
-                    >
-                      <SelectTrigger className="cursor-pointer border-gray-300">
-                        <SelectValue placeholder="All" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all" className="cursor-pointer">
-                          All
-                        </SelectItem>
-                        <SelectItem value="true" className="cursor-pointer">
-                          Yes
-                        </SelectItem>
-                        <SelectItem value="false" className="cursor-pointer">
-                          No
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="flex items-end">
-                    <Button
-                      variant="outline"
-                      onClick={handleClearFilters}
-                      className="cursor-pointer border-gray-300"
-                    >
-                      Clear Filters
-                    </Button>
-                  </div>
-                </div>
-              )}
+              <Button onClick={handleSearch}>Search</Button>
+              <Button variant="outline" onClick={() => setShowFilters((v) => !v)}>
+                <Filter className="h-4 w-4 mr-2" /> Filters
+              </Button>
+              <Button variant="ghost" onClick={handleClearFilters}>Clear</Button>
             </div>
+
+            {showFilters && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t">
+                <Select value={approvalStatusFilter} onValueChange={(v) => { setApprovalStatusFilter(v); setPage(0); }}>
+                  <SelectTrigger><SelectValue placeholder="Approval status" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All approval statuses</SelectItem>
+                    <SelectItem value={RoomStatus.PENDING}>Pending</SelectItem>
+                    <SelectItem value={RoomStatus.APPROVED}>Approved</SelectItem>
+                    <SelectItem value={RoomStatus.REJECTED}>Rejected</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={listingStatusFilter} onValueChange={(v) => { setListingStatusFilter(v); setPage(0); }}>
+                  <SelectTrigger><SelectValue placeholder="Listing status" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All listing statuses</SelectItem>
+                    <SelectItem value={RoomStatus.AVAILABLE}>Available</SelectItem>
+                    <SelectItem value={RoomStatus.RENTED}>Rented</SelectItem>
+                    <SelectItem value={RoomStatus.ARCHIVED}>Archived</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={categoryFilter} onValueChange={(v) => { setCategoryFilter(v); setPage(0); }}>
+                  <SelectTrigger><SelectValue placeholder="Category" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All categories</SelectItem>
+                    {Object.values(RoomCategory).map((category) => (
+                      <SelectItem key={category} value={category}>{category}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </CardContent>
         </Card>
 
-        {/* Results Summary */}
-        <div className="flex items-center justify-between">
-          <div className="text-sm text-gray-600">
-            {totalItems > 0 ? (
-              <>
-                <span className="font-semibold text-gray-900">
-                  {showingFrom}
-                </span>{" "}
-                to{" "}
-                <span className="font-semibold text-gray-900">{showingTo}</span>{" "}
-                सम्म, जम्मा{" "}
-                <span className="font-semibold text-gray-900">
-                  {totalItems}
-                </span>{" "}
-                rooms
-              </>
-            ) : (
-              "No rooms found"
-            )}
-            {isFetching && (
-              <Loader2 className="inline ml-2 h-3 w-3 animate-spin" />
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-            <Label
-              htmlFor="items-per-page"
-              className="text-sm text-gray-600 hidden sm:block"
-            >
-              Show
-            </Label>
-            <Select
-              value={take.toString()}
-              onValueChange={(value) => {
-                setTake(parseInt(value));
-                setPage(0);
-              }}
-            >
-              <SelectTrigger
-                id="items-per-page"
-                className="h-8 w-20 cursor-pointer border-gray-300"
-              >
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {PAGE_SIZE_OPTIONS.map((size) => (
-                  <SelectItem
-                    key={size}
-                    value={size.toString()}
-                    className="cursor-pointer"
-                  >
-                    {size}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-
-        {/* Mobile Cards */}
-        <div className="block lg:hidden space-y-4">
-          {isFetching && rooms.length === 0 ? (
-            <div className="text-center py-8">
-              <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
-            </div>
-          ) : rooms.length > 0 ? (
-            rooms.map((room) => {
-              const allowedTransitions = getAllowedListingTransitions(
-                room.approvalStatus,
-                room.listingStatus,
-              );
-              return (
-                <Card key={room.id} className="overflow-hidden">
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                          {getCategoryIcon(room.category)}
-                        </div>
-                        <div className="min-w-0">
-                          <h3 className="font-semibold text-gray-900 truncate">
-                            {room.title}
-                          </h3>
-                          <p className="text-xs text-gray-500 flex items-center gap-1 mt-1">
-                            <MapPin className="h-3 w-3 flex-shrink-0" />
-                            <span className="truncate">{room.address}</span>
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2 text-sm mb-3">
-                      <div className="flex items-center gap-2">
-                        <span className="font-semibold text-xs text-muted-foreground">
-                          रु.
-                        </span>
-                        <span className="font-semibold text-primary">
-                          {room.price.toLocaleString("ne-NP")}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Users className="h-4 w-4 text-gray-500" />
-                        <span>{room.roomCapacity} persons</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Bath className="h-4 w-4 text-gray-500" />
-                        <span>{room.bathroomCapacity} bath</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Bed className="h-4 w-4 text-gray-500" />
-                        <span>Floor {room.floorNumber}</span>
-                      </div>
-                    </div>
-                    <div className="flex flex-wrap gap-2 mb-3">
-                      <ApprovalStatusBadge status={room.approvalStatus} />
-                      <ListingStatusBadge status={room.listingStatus} />
-                    </div>
-                    <div className="flex gap-2 pt-2 border-t">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="flex-1 cursor-pointer"
-                        asChild
-                      >
-                        <Link href={`/admin/dashboard/rooms/${room.id}`}>
-                          <Eye className="h-4 w-4 mr-1" />
-                          हेर्नुहोस्
-                        </Link>
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="flex-1 cursor-pointer"
-                        asChild
-                      >
-                        <Link href={`/admin/dashboard/rooms/${room.id}/edit`}>
-                          <Edit className="h-4 w-4 mr-1" />
-                          सम्पादन
-                        </Link>
-                      </Button>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="px-2 cursor-pointer"
-                          >
-                            <AlertCircle className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            className="text-red-600 cursor-pointer"
-                            onClick={() => handleDeleteClick(room.id)}
-                          >
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Delete
-                          </DropdownMenuItem>
-                          {room.approvalStatus === RoomStatus.PENDING && (
-                            <>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuLabel className="text-xs text-muted-foreground">
-                                Approval
-                              </DropdownMenuLabel>
-                              <DropdownMenuItem
-                                className="text-green-600 cursor-pointer"
-                                onClick={() =>
-                                  handleApprovalAction(
-                                    room,
-                                    RoomStatus.APPROVED,
-                                  )
-                                }
-                              >
-                                <CheckCircle className="h-4 w-4 mr-2" />
-                                स्वीकृत गर्नुहोस्
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                className="text-red-600 cursor-pointer"
-                                onClick={() =>
-                                  handleApprovalAction(
-                                    room,
-                                    RoomStatus.REJECTED,
-                                  )
-                                }
-                              >
-                                <XCircle className="h-4 w-4 mr-2" />
-                                अस्वीकृत गर्नुहोस्
-                              </DropdownMenuItem>
-                            </>
-                          )}
-                          {allowedTransitions.length > 0 && (
-                            <>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuLabel className="text-xs text-muted-foreground">
-                                Listing Status
-                              </DropdownMenuLabel>
-                              {allowedTransitions.includes(
-                                RoomStatus.AVAILABLE,
-                              ) && (
-                                <DropdownMenuItem
-                                  className="text-green-600 cursor-pointer"
-                                  onClick={() =>
-                                    handleListingAction(
-                                      room,
-                                      RoomStatus.AVAILABLE,
-                                    )
-                                  }
-                                >
-                                  <CheckCircle className="h-4 w-4 mr-2" />
-                                  Mark Available
-                                </DropdownMenuItem>
-                              )}
-                              {allowedTransitions.includes(
-                                RoomStatus.RENTED,
-                              ) && (
-                                <DropdownMenuItem
-                                  className="text-blue-600 cursor-pointer"
-                                  onClick={() =>
-                                    handleListingAction(room, RoomStatus.RENTED)
-                                  }
-                                >
-                                  <Users className="h-4 w-4 mr-2" />
-                                  भाडामा चिन्ह लगाउनुहोस्
-                                </DropdownMenuItem>
-                              )}
-                              {allowedTransitions.includes(
-                                RoomStatus.ARCHIVED,
-                              ) && (
-                                <DropdownMenuItem
-                                  className="text-gray-600 cursor-pointer"
-                                  onClick={() =>
-                                    handleListingAction(
-                                      room,
-                                      RoomStatus.ARCHIVED,
-                                    )
-                                  }
-                                >
-                                  <Archive className="h-4 w-4 mr-2" />
-                                  Archive
-                                </DropdownMenuItem>
-                              )}
-                            </>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })
-          ) : (
-            <Card>
-              <CardContent className="py-12 text-center">
-                <Building2 className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-                <h3 className="font-semibold text-lg text-gray-700">
-                  कोठा फेला परेन
-                </h3>
-                <p className="text-gray-500 mt-1">
-                  {appliedSearchTerm ||
-                  approvalStatusFilter !== "all" ||
-                  listingStatusFilter !== "all" ||
-                  categoryFilter !== "all"
-                    ? "Filtersसँग मिल्ने कोठा छैन"
-                    : "Start by adding your first room"}
-                </p>
-                <Button
-                  asChild
-                  className="mt-4 bg-primary hover:bg-primary/90 cursor-pointer"
-                >
-                  <Link href="/admin/dashboard/rooms/create">
-                    <Plus className="h-4 w-4 mr-2" />
-                    कोठा थप्नुहोस्
-                  </Link>
-                </Button>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-
-        {/* Desktop Table */}
-        <div className="hidden lg:block">
-          <Card className="border border-gray-200 overflow-hidden">
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-gray-50">
-                    <TableHead className="font-semibold text-gray-700 w-[280px]">
-                      कोठाको विवरण
-                    </TableHead>
-                    <TableHead className="font-semibold text-gray-700">
-                      Specs
-                    </TableHead>
-                    <TableHead className="font-semibold text-gray-700">
-                      Location & Contact
-                    </TableHead>
-                    <TableHead className="font-semibold text-gray-700">
-                      Status
-                    </TableHead>
-                    <TableHead className="font-semibold text-gray-700">
-                      Price
-                    </TableHead>
-                    <TableHead className="font-semibold text-gray-700 text-right">
-                      Actions
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {isFetching && rooms.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8">
-                        <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+        <Card>
+          <CardContent className="p-0 overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Room</TableHead>
+                  <TableHead>Owner</TableHead>
+                  <TableHead>Location</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Price</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {rooms.length ? rooms.map((room) => {
+                  const allowedTransitions = getAllowedListingTransitions(room.approvalStatus, room.listingStatus);
+                  return (
+                    <TableRow key={room.id}>
+                      <TableCell>
+                        <div className="font-semibold">{room.title}</div>
+                        <div className="text-xs text-gray-500">Added: {formatDate(room.createdAt)}</div>
                       </TableCell>
-                    </TableRow>
-                  ) : rooms.length > 0 ? (
-                    rooms.map((room) => {
-                      const allowedTransitions = getAllowedListingTransitions(
-                        room.approvalStatus,
-                        room.listingStatus,
-                      );
-                      return (
-                        <TableRow key={room.id} className="hover:bg-gray-50">
-                          <TableCell>
-                            <div className="space-y-2">
-                              <div className="flex items-center gap-2">
-                                {getCategoryIcon(room.category)}
-                                <span className="text-sm font-medium text-gray-500 capitalize">
-                                  {room.category.replace("_", " ")}
-                                </span>
-                              </div>
-                              <h3 className="font-semibold text-gray-900">
-                                {room.title}
-                              </h3>
-                              <p className="text-sm text-gray-500 line-clamp-2">
-                                {room.description}
-                              </p>
-                              <div className="flex flex-wrap gap-1 mt-2">
-                                {room.amenities?.slice(0, 3).map((amenity) => (
-                                  <Badge
-                                    key={amenity}
-                                    variant="outline"
-                                    className="text-xs gap-1 cursor-default"
-                                  >
-                                    {getAmenityIcon(amenity)}
-                                    {amenity}
-                                  </Badge>
-                                ))}
-                                {room.amenities?.length > 3 && (
-                                  <Badge
-                                    variant="outline"
-                                    className="text-xs cursor-default"
-                                  >
-                                    +{room.amenities.length - 3} more
-                                  </Badge>
-                                )}
-                              </div>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="space-y-2">
-                              <div className="flex items-center gap-2">
-                                <Users className="h-4 w-4 text-gray-500" />
-                                <span className="text-sm">
-                                  Capacity: {room.roomCapacity} persons
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <Bath className="h-4 w-4 text-gray-500" />
-                                <span className="text-sm">
-                                  bath: {room.bathroomCapacity}
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <Bed className="h-4 w-4 text-gray-500" />
-                                <span className="text-sm">
-                                  Floor: {room.floorNumber}
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <Building2 className="h-4 w-4 text-gray-500" />
-                                <span className="text-sm">
-                                  Area: {room.roomArea} m²
-                                </span>
-                              </div>
-                              <Badge
-                                variant={
-                                  room.allowsWomen ? "default" : "outline"
-                                }
-                                className={
-                                  room.allowsWomen
-                                    ? "bg-green-100 text-green-800 border-green-200 cursor-default text-xs"
-                                    : "cursor-default text-xs"
-                                }
-                              >
-                                {room.allowsWomen
-                                  ? "Women Allowed"
-                                  : "No Women"}
-                              </Badge>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="space-y-2">
-                              <div className="flex items-start gap-2 text-sm">
-                                <MapPin className="h-4 w-4 text-gray-500 mt-0.5 flex-shrink-0" />
-                                <span className="line-clamp-2">
-                                  {room.address}
-                                </span>
-                              </div>
-                              {room.contactPhone && (
-                                <div className="flex items-center gap-2 text-sm">
-                                  <Phone className="h-3 w-3 text-gray-500" />
-                                  <a
-                                    href={`tel:${room.contactPhone}`}
-                                    className="text-blue-600 hover:underline cursor-pointer"
-                                  >
-                                    {room.contactPhone}
-                                  </a>
-                                </div>
-                              )}
-                              {room.location?.city && (
-                                <div className="flex items-center gap-2 text-xs text-gray-500">
-                                  <MapPin className="h-3 w-3" />
-                                  {room.location.city}, {room.location.country}
-                                </div>
-                              )}
-                              <p className="text-xs text-gray-500">
-                                Added: {formatDate(room.createdAt)}
-                              </p>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="space-y-2">
-                              <ApprovalStatusBadge
-                                status={room.approvalStatus}
-                              />
-                              <ListingStatusBadge status={room.listingStatus} />
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-1 font-bold text-primary">
-                              <span className="text-xs font-semibold">रु.</span>
-                              {room.price.toLocaleString("ne-NP")}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex justify-end gap-1">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 hover:bg-blue-50 hover:text-blue-600 cursor-pointer"
-                                asChild
-                                title="View Details"
-                              >
-                                <Link
-                                  href={`/admin/dashboard/rooms/${room.id}`}
-                                >
-                                  <Eye className="h-4 w-4" />
-                                </Link>
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 hover:bg-green-50 hover:text-green-600 cursor-pointer"
-                                asChild
-                                title="Edit"
-                              >
-                                <Link
-                                  href={`/admin/dashboard/rooms/${room.id}/edit`}
-                                >
-                                  <Edit className="h-4 w-4" />
-                                </Link>
-                              </Button>
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-8 w-8 hover:bg-gray-600 cursor-pointer"
-                                    title="More actions"
-                                  >
-                                    <AlertCircle className="h-4 w-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem
-                                    className="text-red-600 cursor-pointer"
-                                    onClick={() => handleDeleteClick(room.id)}
-                                  >
-                                    <Trash2 className="h-4 w-4 mr-2" />
-                                    कोठा मेट्नुहोस्
+                      <TableCell>{room.user?.name || "Unknown"}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1"><MapPin className="h-3 w-3" />{room.address}</div>
+                        {room.contactPhone && <div className="flex items-center gap-1 text-xs"><Phone className="h-3 w-3" />{room.contactPhone}</div>}
+                      </TableCell>
+                      <TableCell className="space-y-1">
+                        <ApprovalStatusBadge status={room.approvalStatus} />
+                        <ListingStatusBadge status={room.listingStatus} />
+                      </TableCell>
+                      <TableCell className="font-semibold">{formatNPR(room.price)}</TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-1">
+                          <Button variant="ghost" size="icon" asChild title="View">
+                            <Link href={`/admin/dashboard/rooms/${room.id}`}><Eye className="h-4 w-4" /></Link>
+                          </Button>
+                          <Button variant="ghost" size="icon" asChild title="Edit">
+                            <Link href={`/admin/dashboard/rooms/${room.id}/edit`}><Edit className="h-4 w-4" /></Link>
+                          </Button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon"><AlertCircle className="h-4 w-4" /></Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              {room.approvalStatus === RoomStatus.PENDING && (
+                                <>
+                                  <DropdownMenuLabel>Approval</DropdownMenuLabel>
+                                  <DropdownMenuItem onClick={() => handleApprovalAction(room, RoomStatus.APPROVED)}>
+                                    <CheckCircle className="h-4 w-4 mr-2" />Approve
                                   </DropdownMenuItem>
-                                  {room.approvalStatus ===
-                                    RoomStatus.PENDING && (
-                                    <>
-                                      <DropdownMenuSeparator />
-                                      <DropdownMenuLabel className="text-xs text-muted-foreground">
-                                        Approval
-                                      </DropdownMenuLabel>
-                                      <DropdownMenuItem
-                                        className="text-green-600 cursor-pointer"
-                                        onClick={() =>
-                                          handleApprovalAction(
-                                            room,
-                                            RoomStatus.APPROVED,
-                                          )
-                                        }
-                                      >
-                                        <CheckCircle className="h-4 w-4 mr-2" />
-                                        Approve
-                                      </DropdownMenuItem>
-                                      <DropdownMenuItem
-                                        className="text-red-600 cursor-pointer"
-                                        onClick={() =>
-                                          handleApprovalAction(
-                                            room,
-                                            RoomStatus.REJECTED,
-                                          )
-                                        }
-                                      >
-                                        <XCircle className="h-4 w-4 mr-2" />
-                                        Reject
-                                      </DropdownMenuItem>
-                                    </>
-                                  )}
-                                  {allowedTransitions.length > 0 && (
-                                    <>
-                                      <DropdownMenuSeparator />
-                                      <DropdownMenuLabel className="text-xs text-muted-foreground">
-                                        Change Listing Status
-                                      </DropdownMenuLabel>
-                                      {allowedTransitions.includes(
-                                        RoomStatus.AVAILABLE,
-                                      ) && (
-                                        <DropdownMenuItem
-                                          className="text-green-600 cursor-pointer"
-                                          onClick={() =>
-                                            handleListingAction(
-                                              room,
-                                              RoomStatus.AVAILABLE,
-                                            )
-                                          }
-                                        >
-                                          <CheckCircle className="h-4 w-4 mr-2" />
-                                          Mark Available
-                                        </DropdownMenuItem>
-                                      )}
-                                      {allowedTransitions.includes(
-                                        RoomStatus.RENTED,
-                                      ) && (
-                                        <DropdownMenuItem
-                                          className="text-blue-600 cursor-pointer"
-                                          onClick={() =>
-                                            handleListingAction(
-                                              room,
-                                              RoomStatus.RENTED,
-                                            )
-                                          }
-                                        >
-                                          <Users className="h-4 w-4 mr-2" />
-                                          भाडामा चिन्ह लगाउनुहोस्
-                                        </DropdownMenuItem>
-                                      )}
-                                      {allowedTransitions.includes(
-                                        RoomStatus.ARCHIVED,
-                                      ) && (
-                                        <DropdownMenuItem
-                                          className="text-gray-600 cursor-pointer"
-                                          onClick={() =>
-                                            handleListingAction(
-                                              room,
-                                              RoomStatus.ARCHIVED,
-                                            )
-                                          }
-                                        >
-                                          <Archive className="h-4 w-4 mr-2" />
-                                          Archive
-                                        </DropdownMenuItem>
-                                      )}
-                                    </>
-                                  )}
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })
-                  ) : (
-                    <TableRow>
-                      <TableCell colSpan={6} className="h-64 text-center">
-                        <div className="flex flex-col items-center justify-center gap-4">
-                          <Building2 className="h-16 w-16 text-gray-300" />
-                          <div>
-                            <h3 className="font-semibold text-lg text-gray-700">
-                              कोठा फेला परेन
-                            </h3>
-                            <p className="text-gray-500 mt-1">
-                              {appliedSearchTerm ||
-                              approvalStatusFilter !== "all" ||
-                              listingStatusFilter !== "all" ||
-                              categoryFilter !== "all"
-                                ? "Filtersसँग मिल्ने कोठा छैन"
-                                : "Start by adding your first room"}
-                            </p>
-                          </div>
-                          <Button
-                            asChild
-                            className="mt-2 bg-primary hover:bg-primary/90 cursor-pointer"
-                          >
-                            <Link href="/admin/dashboard/rooms/create">
-                              <Plus className="h-4 w-4 mr-2" />
-                              कोठा थप्नुहोस्
-                            </Link>
-                          </Button>
+                                  <DropdownMenuItem onClick={() => handleApprovalAction(room, RoomStatus.REJECTED)}>
+                                    <XCircle className="h-4 w-4 mr-2" />Reject
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                </>
+                              )}
+                              {allowedTransitions.map((status) => (
+                                <DropdownMenuItem
+                                  key={status}
+                                  onClick={() => {
+                                    setActionRoom(room);
+                                    setActionStatus(status);
+                                    setShowListingDialog(true);
+                                  }}
+                                >
+                                  Change to {status}
+                                </DropdownMenuItem>
+                              ))}
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                className="text-red-600"
+                                onClick={() => {
+                                  setRoomToDelete(room.id);
+                                  setShowDeleteDialog(true);
+                                }}
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
                       </TableCell>
                     </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-          </Card>
-        </div>
+                  );
+                }) : (
+                  <TableRow>
+                    <TableCell colSpan={6} className="h-48 text-center">
+                      <Building2 className="h-12 w-12 mx-auto text-gray-300 mb-3" />
+                      No rooms found
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
 
-        {/* Pagination */}
         {totalItems > 0 && (
-          <nav className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="text-sm text-gray-600">
-              Page {page + 1} / {totalPages}
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-gray-600">Page {page + 1} of {totalPages}</span>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" disabled={page === 0} onClick={() => setPage((p) => Math.max(0, p - 1))}>
+                <ChevronLeft className="h-4 w-4" /> Previous
+              </Button>
+              <Button variant="outline" size="sm" disabled={page >= totalPages - 1} onClick={() => setPage((p) => p + 1)}>
+                Next <ChevronRight className="h-4 w-4" />
+              </Button>
             </div>
-            <div className="flex items-center gap-2" aria-label="Pagination">
-              {renderPageNumbers()}
-            </div>
-          </nav>
+          </div>
         )}
       </div>
 
-      {/* Delete Dialog */}
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the
-              room.
-            </AlertDialogDescription>
+            <AlertDialogTitle>Delete this room?</AlertDialogTitle>
+            <AlertDialogDescription>This permanently removes the room.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel
-              onClick={() => {
-                setShowDeleteDialog(false);
-                setRoomToDelete(null);
-              }}
-              className="cursor-pointer"
-            >
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDeleteConfirm}
-              className="cursor-pointer bg-red-600 hover:bg-red-700 text-white"
-              disabled={deleteRoomMutation.isPending}
-            >
-              {deleteRoomMutation.isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Deleting...
-                </>
-              ) : (
-                "Delete Room"
-              )}
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteConfirm} className="bg-red-600 hover:bg-red-700">
+              {deleteRoomMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Delete"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Rejection Dialog */}
       <Dialog open={showApprovalDialog} onOpenChange={setShowApprovalDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-destructive">
-              <XCircle className="h-5 w-5" />
-              Reject Room
-            </DialogTitle>
-            <DialogDescription>
-              Please provide a reason for rejecting this room.
-            </DialogDescription>
+            <DialogTitle>Reject room</DialogTitle>
+            <DialogDescription>Provide a rejection reason.</DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            {actionRoom && (
-              <div className="bg-muted p-3 rounded-lg">
-                <p className="font-medium">{actionRoom.title}</p>
-                <p className="text-sm text-muted-foreground">
-                  Owner: {actionRoom.user?.name}
-                </p>
-              </div>
-            )}
-            <div className="space-y-2">
-              <Label htmlFor="reason">Rejection Reason</Label>
-              <Textarea
-                id="reason"
-                placeholder="Explain why this room is being rejected..."
-                value={rejectionReason}
-                onChange={(e) => setRejectionReason(e.target.value)}
-                rows={4}
-              />
-            </div>
-          </div>
+          <Label htmlFor="reason">Reason</Label>
+          <Textarea id="reason" value={rejectionReason} onChange={(e) => setRejectionReason(e.target.value)} />
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setShowApprovalDialog(false);
-                setActionRoom(null);
-                setActionStatus(null);
-                setRejectionReason("");
-              }}
-            >
-              रद्द गर्नुहोस्
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={confirmApprovalAction}
-              disabled={
-                updateApprovalMutation.isPending || !rejectionReason.trim()
-              }
-            >
-              {updateApprovalMutation.isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Rejecting...
-                </>
-              ) : (
-                "Reject"
-              )}
-            </Button>
+            <Button variant="outline" onClick={() => setShowApprovalDialog(false)}>Cancel</Button>
+            <Button variant="destructive" onClick={confirmApprovalAction} disabled={!rejectionReason.trim()}>Reject</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Listing Status Dialog */}
       <Dialog open={showListingDialog} onOpenChange={setShowListingDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Update Listing Status</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to change the listing status?
-            </DialogDescription>
+            <DialogTitle>Update listing status</DialogTitle>
+            <DialogDescription>Change this room to {actionStatus}?</DialogDescription>
           </DialogHeader>
-          {actionRoom && actionStatus && (
-            <div className="py-4">
-              <p className="text-sm">
-                कोठा: <span className="font-medium">{actionRoom.title}</span>
-              </p>
-              <p className="text-sm mt-2 flex items-center gap-2">
-                New status:
-                {actionStatus === RoomStatus.AVAILABLE && (
-                  <Badge className="bg-green-100 text-green-800 ml-2">
-                    Available
-                  </Badge>
-                )}
-                {actionStatus === RoomStatus.RENTED && (
-                  <Badge className="bg-blue-100 text-blue-800 ml-2">
-                    Rented
-                  </Badge>
-                )}
-                {actionStatus === RoomStatus.ARCHIVED && (
-                  <Badge className="bg-gray-100 text-gray-800 ml-2">
-                    Archived
-                  </Badge>
-                )}
-              </p>
-            </div>
-          )}
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setShowListingDialog(false);
-                setActionRoom(null);
-                setActionStatus(null);
-              }}
-            >
-              रद्द गर्नुहोस्
-            </Button>
-            <Button
-              onClick={confirmListingAction}
-              disabled={updateListingMutation.isPending}
-              className="cursor-pointer bg-primary hover:bg-primary/90"
-            >
-              {updateListingMutation.isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Updating...
-                </>
-              ) : (
-                "Confirm"
-              )}
-            </Button>
+            <Button variant="outline" onClick={() => setShowListingDialog(false)}>Cancel</Button>
+            <Button onClick={confirmListingAction}>Confirm</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
