@@ -122,6 +122,16 @@ class AdminDashboardService {
     });
     return response.data.data;
   }
+  async getInterCallStatus(): Promise<{ enabled: boolean; provider: "twilio"; name: "Inter Call" }> {
+    const response = await privateApi.get("/admin/inter-call");
+    return response.data.data;
+  }
+
+  async setInterCallEnabled(enabled: boolean): Promise<{ enabled: boolean; provider: "twilio"; name: "Inter Call" }> {
+    const response = await privateApi.patch("/admin/inter-call", { enabled });
+    return response.data.data;
+  }
+
 }
 
 export const adminDashboardService = new AdminDashboardService();

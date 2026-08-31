@@ -20,6 +20,7 @@ import {
   IndianRupee,
   ChevronRight,
   UserPlus,
+  PhoneCall,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -48,6 +49,7 @@ import { adminDashboardService } from "@/http/services/admin-dashboard.service";
 import { formatNepaliCurrency, formatDate } from "@/lib/utils";
 import Link from "next/link";
 import { WithdrawalStatus } from "@/types/wallet.types";
+import { toast } from "sonner";
 
 interface StatCardProps {
   title: string;
@@ -184,6 +186,32 @@ export default function AdminDashboard() {
     queryFn: () => adminDashboardService.getRecentRooms(5),
   });
 
+  const {
+    data: interCallStatus,
+    refetch: refetchInterCall,
+  } = useQuery({
+    queryKey: ["admin-inter-call-status"],
+    queryFn: () => adminDashboardService.getInterCallStatus(),
+  });
+
+  const [interCallSaving, setInterCallSaving] = useState(false);
+
+  const toggleInterCall = async () => {
+    try {
+      setInterCallSaving(true);
+      const next = !Boolean(interCallStatus?.enabled);
+      await adminDashboardService.setInterCallEnabled(next);
+      await refetchInterCall();
+      toast.success(`Inter Call ${next ? "ON" : "OFF"} भयो`);
+    } catch (error: any) {
+      toast.error(
+        error?.response?.data?.message || "Inter Call setting update गर्न सकिएन",
+      );
+    } finally {
+      setInterCallSaving(false);
+    }
+  };
+
   const handleRefresh = () => {
     refetchStats();
     refetchChart();
@@ -310,6 +338,35 @@ export default function AdminDashboard() {
           </Button>
         </div>
       </div>
+
+      <Card className="border-primary/20">
+        <CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-primary/10">
+              <PhoneCall className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <p className="font-semibold text-foreground">Inter Call</p>
+              <p className="text-sm text-muted-foreground">
+                Twilio browser-to-phone calling user side मा देखाउने वा लुकाउने।
+              </p>
+            </div>
+          </div>
+
+          <Button
+            type="button"
+            variant={interCallStatus?.enabled ? "default" : "outline"}
+            onClick={toggleInterCall}
+            disabled={interCallSaving}
+            className="min-w-28"
+          >
+            {interCallSaving ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : null}
+            {interCallStatus?.enabled ? "ON" : "OFF"}
+          </Button>
+        </CardContent>
+      </Card>
 
       {/* Stats Grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
