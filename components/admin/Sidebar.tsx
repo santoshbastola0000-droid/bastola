@@ -19,6 +19,7 @@ import {
   BriefcaseBusiness,
   GitFork,
   Bell,
+  PhoneCall,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -80,6 +81,12 @@ const navItems: NavItem[] = [
     href: "/admin/dashboard/notifications",
     icon: Bell,
   },
+  {
+    title: "Inter Call",
+    href: "/admin/dashboard#inter-call",
+    icon: PhoneCall,
+  },
+
   {
     title: "Notifications",
     href: "/admin/dashboard/notifications",

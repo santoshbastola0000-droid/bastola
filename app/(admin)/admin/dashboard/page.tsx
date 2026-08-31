@@ -339,7 +339,7 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      <Card className="border-primary/20">
+      <Card id="inter-call" className="border-primary/20 scroll-mt-6">
         <CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-full bg-primary/10">
