@@ -56,6 +56,14 @@ export function NavBar() {
   const dashboardHref = user?.role === UserRole.ADMIN
     ? "/admin/dashboard" : "/user/dashboard";
   const protectedHref = (href: string) => isAuthenticated ? href : "/auth/login";
+  const { data: interCallStatus } = useQuery({
+    queryKey: ["inter-call-status-navbar"],
+    queryFn: () => interCallService.getStatus(),
+    enabled: isAuthenticated,
+    staleTime: 30_000,
+    refetchOnWindowFocus: true,
+  });
+
   const serviceTiles: {
     key: string; title: string; icon: LucideIcon; href?: string;
   }[] = [
@@ -77,17 +85,9 @@ export function NavBar() {
     { key: "plumbing", title: label("Plumbing", "प्लम्बिङ सेवा"), icon: Droplets },
     { key: "internet", title: label("Internet setup", "इन्टरनेट जडान"), icon: Wifi },
     ...(isAuthenticated && interCallStatus?.enabled
-      ? [{ key: "inter-call", title: label("Inter Call", "इन्टर कल"), icon: PhoneCall, href: "/messages" }]
+      ? [{ key: "inter-call", title: label("Inter Call", "इन्टर कल"), icon: PhoneCall, href: "/inter-call" }]
       : []),
   ];
-
-  const { data: interCallStatus } = useQuery({
-    queryKey: ["inter-call-status-navbar"],
-    queryFn: () => interCallService.getStatus(),
-    enabled: isAuthenticated,
-    staleTime: 30_000,
-    refetchOnWindowFocus: true,
-  });
 
   const {
     data: walletBalance,
