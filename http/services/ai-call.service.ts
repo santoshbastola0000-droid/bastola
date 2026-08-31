@@ -47,6 +47,23 @@ export const aiCallService = {
     return response.data.data;
   },
 
+  async createVoiceClone(input: {
+    audio: Blob;
+    name: string;
+    consentConfirmed: boolean;
+  }): Promise<{ voiceId: string; voiceProvider: "elevenlabs"; name: string }> {
+    const form = new FormData();
+    form.append("audio", input.audio, "roomkhoj-voice-sample.webm");
+    form.append("name", input.name || "RoomKhoj Staff Voice");
+    form.append("consentConfirmed", String(input.consentConfirmed));
+
+    const response = await privateApi.post("/admin/ai-call/voice-clone", form, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+
+    return response.data.data;
+  },
+
   async startOutbound(to: string): Promise<{
     sid: string;
     status: string;
