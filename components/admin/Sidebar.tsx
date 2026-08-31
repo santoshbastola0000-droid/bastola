@@ -87,7 +87,7 @@ const navItems: NavItem[] = [
     icon: PhoneCall,
   },
   {
-    title: "AI Call Center",
+    title: "AI Training",
     href: "/admin/dashboard/ai-call",
     icon: Bot,
   },
