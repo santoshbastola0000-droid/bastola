@@ -19,7 +19,7 @@ import {
   BriefcaseBusiness,
   GitFork,
   Bell,
-} from "lucide-react";
+  MessageCircle,\n} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -74,7 +74,7 @@ const navItems: NavItem[] = [
     title: "Users",
     href: "/admin/dashboard/users",
     icon: Users,
-  },
+  },\n  {\n    title: "Messages",\n    href: "/admin/dashboard/messages",\n    icon: MessageCircle,\n  },
   {
     title: "Notifications",
     href: "/admin/dashboard/notifications",
