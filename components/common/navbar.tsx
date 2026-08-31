@@ -409,7 +409,13 @@ export function NavBar() {
                       {label("Your services", "तपाईंका सेवाहरू")}
                     </h2>
                     <div className="grid grid-cols-2 gap-3" id="roomkhoj-service-tiles">
-                      {(showAllServices ? serviceTiles : serviceTiles.slice(0, 8)).map((item) => {
+                      {(showAllServices
+                        ? serviceTiles
+                        : [
+                            ...serviceTiles.slice(0, 8),
+                            ...serviceTiles.filter((item) => item.key === "inter-call"),
+                          ]
+                      ).map((item) => {
                         const Icon = item.icon;
                         const active = item.href === pathname;
                         const tileClass = `flex min-h-[104px] flex-col items-start justify-between gap-3 rounded-2xl border p-3.5 text-left shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 ${
