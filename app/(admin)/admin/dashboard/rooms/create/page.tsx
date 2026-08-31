@@ -7,6 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Building2,
+  MapPin,
   Loader2,
   AlertCircle,
   ChevronLeft,
@@ -73,7 +74,8 @@ import {
 } from "@/types/room.types";
 import { cn, formatTimeForDisplay, formatTimeForInput } from "@/lib/utils";
 import { useCreateRoomMutation } from "@/http/mutations/room.mutation";
-import { createRoomSchema, CreateRoomFormValues } from "@/schema/room";
+import { createRoomSchema as baseCreateRoomSchema, locationSchema } from "@/schema/room";
+import { z } from "zod";
 import { UserRole } from "@/types/user.types";
 import { useUserRole } from "@/stores/user-store";
 import {
@@ -92,6 +94,17 @@ import {
   TENANT_TYPE_OPTIONS,
   WATER_SUPPLY_OPTIONS,
 } from "@/lib/room-utils";
+
+// This form supports a manual address when GPS permission is unavailable.
+// Keep the shared location schema strict for map-based forms.
+const createRoomSchema = baseCreateRoomSchema.extend({
+  location: locationSchema.extend({
+    name: locationSchema.shape.name.optional().or(z.literal("")),
+    latitude: locationSchema.shape.latitude.nullish(),
+    longitude: locationSchema.shape.longitude.nullish(),
+  }).optional(),
+});
+type CreateRoomFormValues = z.infer<typeof createRoomSchema>;
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
