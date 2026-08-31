@@ -2,7 +2,17 @@
 
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Bot, PhoneCall, Save, Loader2, ArrowRightLeft } from "lucide-react";
+import {
+  ArrowRightLeft,
+  Bot,
+  Database,
+  Loader2,
+  Mic2,
+  PhoneCall,
+  Save,
+  TimerReset,
+  UserRound,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,6 +22,9 @@ import {
   aiCallService,
 } from "@/http/services/ai-call.service";
 
+const toggleClass = (on: boolean) =>
+  on ? "default" : "outline";
+
 export default function AiCallAdminPage() {
   const { data: settings, refetch: refetchSettings } = useQuery({
     queryKey: ["admin-ai-call-settings"],
@@ -20,7 +33,7 @@ export default function AiCallAdminPage() {
 
   const { data: sessions, refetch: refetchSessions } = useQuery({
     queryKey: ["admin-ai-call-sessions"],
-    queryFn: () => aiCallService.getSessions(30),
+    queryFn: () => aiCallService.getSessions(50),
     refetchInterval: 15_000,
   });
 
@@ -31,12 +44,7 @@ export default function AiCallAdminPage() {
 
   useEffect(() => {
     if (!settings) return;
-    setForm({
-      enabled: settings.enabled,
-      assistantName: settings.assistantName,
-      humanTransferNumber: settings.humanTransferNumber || "",
-      systemPrompt: settings.systemPrompt || "",
-    });
+    setForm({ ...settings });
   }, [settings]);
 
   const saveSettings = async () => {
@@ -48,12 +56,28 @@ export default function AiCallAdminPage() {
         humanTransferNumber:
           String(form.humanTransferNumber || "").trim() || null,
         systemPrompt: String(form.systemPrompt || "").trim() || null,
+        greetingMessage: String(form.greetingMessage || "").trim() || null,
+        goodbyeMessage: String(form.goodbyeMessage || "").trim() || null,
+        silenceTimeoutSeconds: Math.max(
+          3,
+          Math.min(30, Number(form.silenceTimeoutSeconds || 10)),
+        ),
+        silenceRetries: Math.max(
+          0,
+          Math.min(3, Number(form.silenceRetries || 0)),
+        ),
+        captureCallerDetails: Boolean(form.captureCallerDetails),
+        useKnownName: Boolean(form.useKnownName),
+        autoTransferOnFailure: Boolean(form.autoTransferOnFailure),
+        voiceProvider:
+          form.voiceProvider === "elevenlabs" ? "elevenlabs" : "twilio",
+        voiceId: String(form.voiceId || "").trim() || null,
       });
       await refetchSettings();
-      toast.success("AI Call settings saved");
+      toast.success("AI Training settings saved");
     } catch (error: any) {
       toast.error(
-        error?.response?.data?.message || "AI Call settings save गर्न सकिएन",
+        error?.response?.data?.message || "AI Training settings save गर्न सकिएन",
       );
     } finally {
       setSaving(false);
@@ -77,43 +101,100 @@ export default function AiCallAdminPage() {
     }
   };
 
+  const setBoolean = (
+    key:
+      | "enabled"
+      | "captureCallerDetails"
+      | "useKnownName"
+      | "autoTransferOnFailure",
+  ) =>
+    setForm((current) => ({
+      ...current,
+      [key]: !Boolean(current[key]),
+    }));
+
   return (
     <div className="space-y-6 p-4 md:p-6">
       <div>
-        <h1 className="text-2xl font-bold text-foreground">AI Call Center</h1>
+        <h1 className="text-2xl font-bold text-foreground">
+          AI Training & Call Center
+        </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Incoming वा outgoing call मा AI ले पहिले कुरा गर्छ र आवश्यक परे staff मा transfer गर्छ।
+          AI को बोल्ने तरिका, silence handling, caller details, human transfer र cloned voice यहींबाट control गर्नुहोस्।
         </p>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-6 xl:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Bot className="h-5 w-5" />
-              AI Agent Settings
+              Core AI Training
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-center justify-between rounded-xl border p-4">
-              <div>
-                <p className="font-semibold">AI Call</p>
-                <p className="text-xs text-muted-foreground">
-                  Incoming/outgoing AI agent enable वा disable
-                </p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="flex items-center justify-between rounded-xl border p-4">
+                <div>
+                  <p className="font-semibold">AI Call</p>
+                  <p className="text-xs text-muted-foreground">Master ON/OFF</p>
+                </div>
+                <Button
+                  type="button"
+                  variant={toggleClass(Boolean(form.enabled))}
+                  onClick={() => setBoolean("enabled")}
+                >
+                  {form.enabled ? "ON" : "OFF"}
+                </Button>
               </div>
-              <Button
-                type="button"
-                variant={form.enabled ? "default" : "outline"}
-                onClick={() =>
-                  setForm((current) => ({
-                    ...current,
-                    enabled: !Boolean(current.enabled),
-                  }))
-                }
-              >
-                {form.enabled ? "ON" : "OFF"}
-              </Button>
+
+              <div className="flex items-center justify-between rounded-xl border p-4">
+                <div>
+                  <p className="font-semibold">Known name</p>
+                  <p className="text-xs text-muted-foreground">
+                    DB मा name भए नाम लिएर बोलाउने
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant={toggleClass(Boolean(form.useKnownName))}
+                  onClick={() => setBoolean("useKnownName")}
+                >
+                  {form.useKnownName ? "ON" : "OFF"}
+                </Button>
+              </div>
+
+              <div className="flex items-center justify-between rounded-xl border p-4">
+                <div>
+                  <p className="font-semibold">Save caller details</p>
+                  <p className="text-xs text-muted-foreground">
+                    Call बाट relevant details structure मा save
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant={toggleClass(Boolean(form.captureCallerDetails))}
+                  onClick={() => setBoolean("captureCallerDetails")}
+                >
+                  {form.captureCallerDetails ? "ON" : "OFF"}
+                </Button>
+              </div>
+
+              <div className="flex items-center justify-between rounded-xl border p-4">
+                <div>
+                  <p className="font-semibold">Auto transfer</p>
+                  <p className="text-xs text-muted-foreground">
+                    AI fail हुँदा staff मा transfer
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant={toggleClass(Boolean(form.autoTransferOnFailure))}
+                  onClick={() => setBoolean("autoTransferOnFailure")}
+                >
+                  {form.autoTransferOnFailure ? "ON" : "OFF"}
+                </Button>
+              </div>
             </div>
 
             <div>
@@ -147,14 +228,45 @@ export default function AiCallAdminPage() {
                 }
                 placeholder="+97798XXXXXXXX"
               />
-              <p className="mt-1 text-xs text-muted-foreground">
-                AI ले solve गर्न नसके वा caller ले staff मागे यही number मा transfer हुन्छ।
-              </p>
             </div>
 
             <div>
               <label className="mb-2 block text-sm font-medium">
-                Custom AI instructions (optional)
+                Greeting message
+              </label>
+              <textarea
+                value={String(form.greetingMessage || "")}
+                onChange={(e) =>
+                  setForm((current) => ({
+                    ...current,
+                    greetingMessage: e.target.value,
+                  }))
+                }
+                className="min-h-24 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                placeholder="Optional. {{name}} र {{assistantName}} प्रयोग गर्न मिल्छ।"
+              />
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-medium">
+                Goodbye message
+              </label>
+              <textarea
+                value={String(form.goodbyeMessage || "")}
+                onChange={(e) =>
+                  setForm((current) => ({
+                    ...current,
+                    goodbyeMessage: e.target.value,
+                  }))
+                }
+                className="min-h-20 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                placeholder="Call काट्दा AI ले बोल्ने अन्तिम message"
+              />
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-medium">
+                AI Training Instructions
               </label>
               <textarea
                 value={String(form.systemPrompt || "")}
@@ -164,72 +276,180 @@ export default function AiCallAdminPage() {
                     systemPrompt: e.target.value,
                   }))
                 }
-                className="min-h-32 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                placeholder="RoomKhoj को phone assistant कसरी बोल्ने र के-के सम्हाल्ने..."
+                className="min-h-40 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                placeholder="उदाहरण: छोटो, नम्र Roman Nepali/Nepali मा बोल; user ले room सोधे real DB data मात्र भन; निर्णय चाहिने कुरा staff मा transfer गर..."
               />
             </div>
-
-            <Button onClick={saveSettings} disabled={saving} className="w-full">
-              {saving ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Save className="mr-2 h-4 w-4" />
-              )}
-              Save settings
-            </Button>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <PhoneCall className="h-5 w-5" />
-              Outbound AI Call
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <label className="mb-2 block text-sm font-medium">
-                User / owner phone
-              </label>
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <TimerReset className="h-5 w-5" />
+                Silence & Hang-up
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="mb-2 block text-sm font-medium">
+                    Wait for voice (seconds)
+                  </label>
+                  <Input
+                    type="number"
+                    min={3}
+                    max={30}
+                    value={Number(form.silenceTimeoutSeconds || 10)}
+                    onChange={(e) =>
+                      setForm((current) => ({
+                        ...current,
+                        silenceTimeoutSeconds: Number(e.target.value),
+                      }))
+                    }
+                  />
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Recommended: 10 seconds
+                  </p>
+                </div>
+                <div>
+                  <label className="mb-2 block text-sm font-medium">
+                    Hello retry count
+                  </label>
+                  <Input
+                    type="number"
+                    min={0}
+                    max={3}
+                    value={Number(form.silenceRetries ?? 1)}
+                    onChange={(e) =>
+                      setForm((current) => ({
+                        ...current,
+                        silenceRetries: Number(e.target.value),
+                      }))
+                    }
+                  />
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Name भए “name जी, सुन्नु हुँदैछ?”, नभए “hello hello”
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Mic2 className="h-5 w-5" />
+                Voice / Clone
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <label className="mb-2 block text-sm font-medium">
+                  Voice provider
+                </label>
+                <select
+                  value={form.voiceProvider || "twilio"}
+                  onChange={(e) =>
+                    setForm((current) => ({
+                      ...current,
+                      voiceProvider:
+                        e.target.value === "elevenlabs"
+                          ? "elevenlabs"
+                          : "twilio",
+                    }))
+                  }
+                  className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                >
+                  <option value="twilio">Twilio standard voice</option>
+                  <option value="elevenlabs">
+                    ElevenLabs cloned voice
+                  </option>
+                </select>
+              </div>
+
+              {form.voiceProvider === "elevenlabs" && (
+                <div>
+                  <label className="mb-2 block text-sm font-medium">
+                    ElevenLabs Voice ID
+                  </label>
+                  <Input
+                    value={String(form.voiceId || "")}
+                    onChange={(e) =>
+                      setForm((current) => ({
+                        ...current,
+                        voiceId: e.target.value,
+                      }))
+                    }
+                    placeholder="voice_xxxxxxxxx"
+                  />
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Staff को स्पष्ट consent भएको cloned voice ID मात्र प्रयोग गर्नुहोस्।
+                  </p>
+                </div>
+              )}
+
+              <div className="rounded-xl border bg-muted/40 p-4 text-xs text-muted-foreground">
+                Cloned voice चल्न backend मा ELEVENLABS_API_KEY र AI_CALL_MEDIA_SECRET पनि चाहिन्छ। नभए Twilio standard voice fallback हुन्छ।
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <PhoneCall className="h-5 w-5" />
+                Outbound AI Call
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
               <Input
                 type="tel"
                 value={outboundNumber}
                 onChange={(e) => setOutboundNumber(e.target.value)}
                 placeholder="+97798XXXXXXXX"
               />
-            </div>
-            <Button
-              onClick={startCall}
-              disabled={calling || !form.enabled}
-              className="w-full"
-            >
-              {calling ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <PhoneCall className="mr-2 h-4 w-4" />
-              )}
-              Start AI Call
-            </Button>
-
-            <div className="rounded-xl border bg-muted/40 p-4 text-sm">
-              <p className="font-semibold">Incoming call webhook</p>
-              <p className="mt-1 break-all text-xs text-muted-foreground">
-                https://api.roomkhoj.com/ai-call/inbound
-              </p>
-              <p className="mt-2 text-xs text-muted-foreground">
-                Twilio number को Voice webhook मा POST method सहित यही URL राख्नुपर्छ।
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+              <Button
+                onClick={startCall}
+                disabled={calling || !form.enabled}
+                className="w-full"
+              >
+                {calling ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <PhoneCall className="mr-2 h-4 w-4" />
+                )}
+                Start AI Call
+              </Button>
+              <div className="rounded-xl border bg-muted/40 p-4 text-sm">
+                <p className="font-semibold">Incoming webhook</p>
+                <p className="mt-1 break-all text-xs text-muted-foreground">
+                  https://api.roomkhoj.com/ai-call/inbound
+                </p>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Twilio number मा HTTP POST राख्नुहोस्।
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
+
+      <Button onClick={saveSettings} disabled={saving} className="w-full md:w-auto">
+        {saving ? (
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+        ) : (
+          <Save className="mr-2 h-4 w-4" />
+        )}
+        Save AI Training
+      </Button>
 
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <ArrowRightLeft className="h-5 w-5" />
-            Recent AI Calls
+            Recent AI Calls & Saved Details
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -240,21 +460,25 @@ export default function AiCallAdminPage() {
           ) : (
             <div className="space-y-3">
               {sessions.map((session) => (
-                <div
-                  key={session.id}
-                  className="rounded-xl border p-4"
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-2">
+                <div key={session.id} className="rounded-xl border p-4">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
-                      <p className="font-semibold">
-                        {session.direction} · {session.phoneNumber || "Unknown"}
+                      <p className="flex items-center gap-2 font-semibold">
+                        <UserRound className="h-4 w-4" />
+                        {session.callerName || session.phoneNumber || "Unknown caller"}
                       </p>
-                      <p className="text-xs text-muted-foreground">
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {session.direction} · {session.phoneNumber || "Unknown"} ·{" "}
                         {new Date(session.createdAt).toLocaleString()}
                       </p>
                     </div>
                     <div className="text-right">
                       <p className="text-sm font-medium">{session.status}</p>
+                      {session.outcome && (
+                        <p className="text-xs text-muted-foreground">
+                          {session.outcome}
+                        </p>
+                      )}
                       {session.transferredToHuman && (
                         <p className="text-xs text-primary">
                           Transferred to staff
@@ -262,6 +486,25 @@ export default function AiCallAdminPage() {
                       )}
                     </div>
                   </div>
+
+                  {Object.keys(session.callerDetails || {}).length > 0 && (
+                    <details className="mt-3">
+                      <summary className="flex cursor-pointer items-center gap-2 text-sm font-medium">
+                        <Database className="h-4 w-4" />
+                        Saved caller details
+                      </summary>
+                      <div className="mt-2 grid gap-2 rounded-lg bg-muted/40 p-3 sm:grid-cols-2">
+                        {Object.entries(session.callerDetails || {}).map(
+                          ([key, value]) => (
+                            <p key={key} className="text-sm">
+                              <span className="font-semibold">{key}:</span>{" "}
+                              {String(value)}
+                            </p>
+                          ),
+                        )}
+                      </div>
+                    </details>
+                  )}
 
                   {!!session.transcript?.length && (
                     <details className="mt-3">
