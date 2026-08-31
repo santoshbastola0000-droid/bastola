@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { ServicesMenu } from "@/components/common/ServicesMenu";
 import { usePathname, useRouter } from "next/navigation";
 import {
   ChevronDown,
@@ -92,14 +93,13 @@ export function UserHeader({ onMenuClick }: UserHeaderProps) {
           {/* LEFT: hamburger (mobile) + page title */}
           <div className="flex items-center gap-3 min-w-0">
             {/* Hamburger — only on mobile */}
-            <button
+            <ServicesMenu><button
               type="button"
-              onClick={onMenuClick}
               className="md:hidden w-9 h-9 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors cursor-pointer flex-shrink-0"
-              aria-label="Open sidebar"
+              aria-label="Open services menu"
             >
               <Menu className="w-5 h-5" />
-            </button>
+            </button></ServicesMenu>
 
             <div className="min-w-0">
               <h1 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100 truncate">
@@ -222,3 +222,4 @@ export function UserHeader({ onMenuClick }: UserHeaderProps) {
     </>
   );
 }
+

@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { ServicesMenu } from "@/components/common/ServicesMenu";
 import { usePathname, useRouter } from "next/navigation";
-import { Search, ChevronDown, LogOut, Moon, Sun } from "lucide-react";
+import { Menu, Search, ChevronDown, LogOut, Moon, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -99,6 +100,7 @@ export function AdminHeader({ isSidebarCollapsed = false }: AdminHeaderProps) {
 
           {/* ── Right: Actions ── */}
           <div className="flex items-center gap-1 md:gap-2">
+            <ServicesMenu><Button variant="ghost" size="icon" aria-label="Open services menu"><Menu className="h-5 w-5" /></Button></ServicesMenu>
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -220,3 +222,4 @@ export function AdminHeader({ isSidebarCollapsed = false }: AdminHeaderProps) {
     </>
   );
 }
+
