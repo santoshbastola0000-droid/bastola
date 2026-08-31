@@ -12,13 +12,14 @@ import {
   Home, PlusCircle, BriefcaseBusiness, MessageCircle, Truck,
   LayoutDashboard, Building2, Gift, ClipboardList, Settings,
   CircleHelp, ChevronDown, ChevronRight, LogOut, Wrench,
-  Droplets, Sparkles, Wifi, type LucideIcon,
+  Droplets, Sparkles, Wifi, PhoneCall, type LucideIcon,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 
 import { useUserStore } from "@/stores/user-store";
 import { useLogout } from "@/hooks/useLogout";
 import { walletService } from "@/http/services/wallet.service";
+import { interCallService } from "@/http/services/inter-call.service";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -75,7 +76,18 @@ export function NavBar() {
     { key: "repairs", title: label("Repairs & electrician", "मर्मत तथा बिजुली"), icon: Wrench },
     { key: "plumbing", title: label("Plumbing", "प्लम्बिङ सेवा"), icon: Droplets },
     { key: "internet", title: label("Internet setup", "इन्टरनेट जडान"), icon: Wifi },
+    ...(isAuthenticated && interCallStatus?.enabled
+      ? [{ key: "inter-call", title: label("Inter Call", "इन्टर कल"), icon: PhoneCall, href: "/messages" }]
+      : []),
   ];
+
+  const { data: interCallStatus } = useQuery({
+    queryKey: ["inter-call-status-navbar"],
+    queryFn: () => interCallService.getStatus(),
+    enabled: isAuthenticated,
+    staleTime: 30_000,
+    refetchOnWindowFocus: true,
+  });
 
   const {
     data: walletBalance,
