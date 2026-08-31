@@ -7,6 +7,7 @@ import { Menu, Wallet, Loader2, Bell } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 
 import { useUserStore } from "@/stores/user-store";
+import { useLogout } from "@/hooks/useLogout";
 import { walletService } from "@/http/services/wallet.service";
 
 import { Button } from "@/components/ui/button";
@@ -22,6 +23,8 @@ export function NavBar() {
   const [scrolled, setScrolled] = useState(false);
 
   const { user } = useUserStore();
+  const { logout } = useLogout();
+  const handleLogout = async () => { await logout(); };
   const pathname = usePathname();
 
   const isAuthenticated = !!user;
