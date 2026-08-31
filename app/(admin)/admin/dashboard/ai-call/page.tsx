@@ -17,6 +17,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { AiVoiceCloneRecorder } from "@/components/admin/AiVoiceCloneRecorder";
 import {
   AiCallSettings,
   aiCallService,
@@ -390,8 +391,17 @@ export default function AiCallAdminPage() {
                 </div>
               )}
 
+              <AiVoiceCloneRecorder
+                activeProvider={settings?.voiceProvider}
+                activeVoiceId={settings?.voiceId}
+                onCreated={async () => {
+                  const result = await refetchSettings();
+                  if (result.data) setForm({ ...result.data });
+                }}
+              />
+
               <div className="rounded-xl border bg-muted/40 p-4 text-xs text-muted-foreground">
-                Cloned voice चल्न backend मा ELEVENLABS_API_KEY र AI_CALL_MEDIA_SECRET पनि चाहिन्छ। नभए Twilio standard voice fallback हुन्छ।
+                Cloned voice चल्न backend मा ELEVENLABS_API_KEY र AI_CALL_MEDIA_SECRET चाहिन्छ। नभए Twilio standard voice fallback हुन्छ।
               </div>
             </CardContent>
           </Card>
