@@ -6,6 +6,15 @@ export type AiCallSettings = {
   assistantName: string;
   humanTransferNumber: string | null;
   systemPrompt: string | null;
+  greetingMessage: string | null;
+  goodbyeMessage: string | null;
+  silenceTimeoutSeconds: number;
+  silenceRetries: number;
+  captureCallerDetails: boolean;
+  useKnownName: boolean;
+  autoTransferOnFailure: boolean;
+  voiceProvider: "twilio" | "elevenlabs";
+  voiceId: string | null;
   updatedAt: string;
 };
 
@@ -14,9 +23,15 @@ export type AiCallSession = {
   callSid: string;
   direction: "INBOUND" | "OUTBOUND";
   phoneNumber: string | null;
+  userId: string | null;
+  callerName: string | null;
   status: string;
+  outcome: string | null;
   transferredToHuman: boolean;
+  silenceCount: number;
+  callerDetails: Record<string, unknown>;
   transcript: Array<{ role: "user" | "assistant"; text: string; at: string }>;
+  endedAt: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -27,10 +42,7 @@ export const aiCallService = {
     return response.data.data;
   },
 
-  async updateSettings(input: Partial<Pick<
-    AiCallSettings,
-    "enabled" | "assistantName" | "humanTransferNumber" | "systemPrompt"
-  >>): Promise<AiCallSettings> {
+  async updateSettings(input: Partial<Omit<AiCallSettings, "id" | "updatedAt">>): Promise<AiCallSettings> {
     const response = await privateApi.patch("/admin/ai-call/settings", input);
     return response.data.data;
   },
