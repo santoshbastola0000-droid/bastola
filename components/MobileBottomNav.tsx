@@ -1,11 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import { ServicesMenu } from "@/components/common/ServicesMenu";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { messageService } from "@/http/services/message.service";
 import {
   Home,
+  Menu,
   BriefcaseBusiness,
   Plus,
   MessageCircle,
@@ -84,7 +86,7 @@ export function MobileBottomNav() {
         {/* HOME */}
         <Link
           href="/"
-          className={`flex min-w-[58px] flex-col items-center justify-center gap-1 text-[11px] ${
+          className={`flex min-w-0 flex-1 flex-col items-center justify-center gap-1 text-[11px] ${
             isHome
               ? "font-semibold text-black"
               : "text-gray-500"
@@ -101,7 +103,7 @@ export function MobileBottomNav() {
         {/* JOBS */}
         <Link
           href="/jobs"
-          className={`flex min-w-[58px] flex-col items-center justify-center gap-1 text-[11px] ${
+          className={`flex min-w-0 flex-1 flex-col items-center justify-center gap-1 text-[11px] ${
             isJobs
               ? "font-semibold text-black"
               : "text-gray-500"
@@ -122,7 +124,7 @@ export function MobileBottomNav() {
           className="
             relative
             -mt-5
-            flex h-[44px] w-[62px]
+            flex shrink-0 h-[44px] w-[54px]
             items-center justify-center
             rounded-xl
             bg-black
@@ -141,7 +143,7 @@ export function MobileBottomNav() {
         {/* MESSAGES */}
         <Link
           href="/messages"
-          className={`flex min-w-[58px] flex-col items-center justify-center gap-1 text-[11px] ${
+          className={`flex min-w-0 flex-1 flex-col items-center justify-center gap-1 text-[11px] ${
             isMessages
               ? "font-semibold text-black"
               : "text-gray-500"
@@ -184,10 +186,13 @@ export function MobileBottomNav() {
           <span>Messages</span>
         </Link>
 
+        {/* SERVICES — same drawer on every page, existing destinations preserved. */}
+        <ServicesMenu><button type="button" aria-label="Open services menu" className="flex min-w-0 flex-1 flex-col items-center justify-center gap-1 text-[11px] text-gray-500"><Menu className="h-6 w-6" /><span>Menu</span></button></ServicesMenu>
+
         {/* PROFILE */}
         <Link
           href="/user/dashboard/profile"
-          className={`flex min-w-[58px] flex-col items-center justify-center gap-1 text-[11px] ${
+          className={`flex min-w-0 flex-1 flex-col items-center justify-center gap-1 text-[11px] ${
             isProfile
               ? "font-semibold text-black"
               : "text-gray-500"
@@ -205,3 +210,4 @@ export function MobileBottomNav() {
     </nav>
   );
 }
+

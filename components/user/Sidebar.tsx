@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   Home,
+  Truck,
   Building2,
   PlusCircle,
   Wallet,
@@ -35,6 +36,7 @@ import { useLogout } from "@/hooks/useLogout";
 import { LogoutConfirmDialog } from "@/components/LogoutConfirmDialog";
 
 const navItems = [
+  { title: "Room Shifting", href: "/user/dashboard/shifting", icon: Truck },
   { title: "Dashboard", href: "/user/dashboard", icon: Home },
   { title: "Profile", href: "/user/dashboard/profile", icon: UserCircle },
   { title: "People", href: "/user/dashboard/people", icon: Users },
@@ -342,3 +344,4 @@ export function UserSidebar({
     </div>
   );
 }
+
