@@ -86,6 +86,11 @@ const navItems: NavItem[] = [
     href: "/admin/dashboard#inter-call",
     icon: PhoneCall,
   },
+  {
+    title: "AI Call Center",
+    href: "/admin/dashboard/ai-call",
+    icon: Bot,
+  },
 
   {
     title: "Notifications",
