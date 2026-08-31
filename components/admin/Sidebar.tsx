@@ -19,6 +19,7 @@ import {
   BriefcaseBusiness,
   GitFork,
   Bell,
+  PhoneCall,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -84,6 +85,11 @@ const navItems: NavItem[] = [
     title: "Notifications",
     href: "/admin/dashboard/notifications",
     icon: Bell,
+  },
+  {
+    title: "Twilio Phone",
+    href: "/admin/dashboard/twilio-call",
+    icon: PhoneCall,
   },
   {
     title: "Vacancies",
