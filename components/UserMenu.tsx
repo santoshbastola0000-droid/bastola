@@ -43,8 +43,8 @@ export function UserMenu({
   scrolled,
 }: UserMenuProps) {
   const [knownAccounts, setKnownAccounts] = useState<KnownAccount[]>([]);
-  const { setToken } = useTokenStore();
-  const { setUser } = useUserStore();
+  const { setToken, clearToken } = useTokenStore();
+  const { setUser, clearUser } = useUserStore();
 
   useEffect(() => {
     try {
@@ -120,6 +120,8 @@ export function UserMenu({
   };
 
   const addAccount = () => {
+    clearToken();
+    clearUser();
     window.location.assign("/auth/login?add_account=1");
   };
 

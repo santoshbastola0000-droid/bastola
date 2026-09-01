@@ -56,8 +56,8 @@ export function NavBar() {
   const label = (english: string, nepali: string) =>
     language === "ne" ? nepali : english;
 
-  const { user, setUser } = useUserStore();
-  const { setToken } = useTokenStore();
+  const { user, setUser, clearUser } = useUserStore();
+  const { setToken, clearToken } = useTokenStore();
   const { logout } = useLogout();
   const pathname = usePathname();
 
@@ -212,6 +212,8 @@ export function NavBar() {
   };
 
   const handleAddAccount = () => {
+    clearToken();
+    clearUser();
     setMobileOpen(false);
     window.location.assign("/auth/login?add_account=1");
   };
