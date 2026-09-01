@@ -211,6 +211,8 @@ const balance = Number(walletBalanceData?.balance ?? 0);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [isRecording, setIsRecording] = useState(false);
+  const [voiceConversationMode, setVoiceConversationMode] = useState(false);
+  const [voiceStatus, setVoiceStatus] = useState("");
   const [documentScanProgress, setDocumentScanProgress] = useState(0);
   const [documentScanStep, setDocumentScanStep] = useState("");
   const [selectedFile, setSelectedFile] = useState<{
@@ -240,6 +242,10 @@ useEffect(() => {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const recognitionRef = useRef<any>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
+  const recordedChunksRef = useRef<BlobPart[]>([]);
+  const voiceConversationRef = useRef(false);
 
   const initDefaultMessages = useCallback(() => {
     return [
@@ -286,6 +292,17 @@ useEffect(() => {
         } catch (e) {
           // ignore
         }
+      }
+      if (mediaRecorderRef.current?.state === "recording") {
+        try {
+          mediaRecorderRef.current.stop();
+        } catch (e) {
+          // ignore
+        }
+      }
+      mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
+      if (typeof window !== "undefined" && "speechSynthesis" in window) {
+        window.speechSynthesis.cancel();
       }
     };
   }, [selectedFile]);
@@ -341,14 +358,166 @@ useEffect(() => {
   };
 
 
-  const toggleVoiceRecording = () => {
+  const speakBotReply = (text: string) => {
+    if (
+      typeof window === "undefined" ||
+      !voiceConversationRef.current ||
+      !("speechSynthesis" in window) ||
+      !text.trim()
+    ) {
+      return;
+    }
+
+    window.speechSynthesis.cancel();
+
+    const utterance = new SpeechSynthesisUtterance(text.slice(0, 1200));
+    utterance.lang = /[\u0900-\u097F]/.test(text) ? "ne-NP" : "en-IN";
+    utterance.rate = 1;
+    utterance.pitch = 1;
+
+    utterance.onstart = () => setVoiceStatus("AI बोल्दैछ...");
+    utterance.onend = () => setVoiceStatus("Mic थिचेर फेरि बोल्नुहोस्");
+    utterance.onerror = () => setVoiceStatus("Mic थिचेर फेरि बोल्नुहोस्");
+
+    window.speechSynthesis.speak(utterance);
+  };
+
+  const stopMediaStream = () => {
+    mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
+    mediaStreamRef.current = null;
+  };
+
+  const transcribeRecordedAudio = async (blob: Blob) => {
+    if (!token) {
+      throw new Error("Live voice fallback requires login.");
+    }
+
+    const form = new FormData();
+    const extension = blob.type.includes("ogg")
+      ? "ogg"
+      : blob.type.includes("mp4")
+        ? "m4a"
+        : "webm";
+
+    form.append("audio", blob, `roomkhoj-live-voice.${extension}`);
+
+    const response = await fetch(
+      "https://api.roomkhoj.com/ai-call/transcribe",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: form,
+      },
+    );
+
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      throw new Error(
+        data?.message ||
+          data?.error ||
+          "Voice transcription failed.",
+      );
+    }
+
+    return String(data?.data?.text || "").trim();
+  };
+
+  const startMediaRecorderFallback = async () => {
+    if (!navigator.mediaDevices?.getUserMedia) {
+      alert("Microphone recording is not supported on this browser.");
+      return;
+    }
+
+    if (!token) {
+      alert("Firefox live voice test का लागि login आवश्यक छ।");
+      return;
+    }
+
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    mediaStreamRef.current = stream;
+
+    const preferredTypes = [
+      "audio/webm;codecs=opus",
+      "audio/webm",
+      "audio/ogg;codecs=opus",
+      "audio/mp4",
+    ];
+    const mimeType =
+      preferredTypes.find((type) => MediaRecorder.isTypeSupported(type)) || "";
+
+    const recorder = mimeType
+      ? new MediaRecorder(stream, { mimeType })
+      : new MediaRecorder(stream);
+
+    recordedChunksRef.current = [];
+    mediaRecorderRef.current = recorder;
+
+    recorder.ondataavailable = (event) => {
+      if (event.data?.size) {
+        recordedChunksRef.current.push(event.data);
+      }
+    };
+
+    recorder.onstop = async () => {
+      setIsRecording(false);
+      setVoiceStatus("आवाज बुझ्दैछ...");
+      stopMediaStream();
+
+      try {
+        const blob = new Blob(recordedChunksRef.current, {
+          type: recorder.mimeType || "audio/webm",
+        });
+        recordedChunksRef.current = [];
+
+        const transcript = await transcribeRecordedAudio(blob);
+        if (!transcript) {
+          setVoiceStatus("आवाज बुझिएन, फेरि बोल्नुहोस्");
+          return;
+        }
+
+        setVoiceStatus(`सुनेँ: ${transcript}`);
+        await sendMessage(transcript);
+      } catch (error) {
+        console.error("Live voice transcription error:", error);
+        setVoiceStatus("Voice test failed");
+      }
+    };
+
+    recorder.start();
+    setIsRecording(true);
+    setVoiceStatus("सुन्दैछु... बोल्नुहोस्, सकेपछि mic फेरि थिच्नुहोस्");
+  };
+
+  const toggleVoiceRecording = async () => {
     if (typeof window === "undefined") return;
 
+    voiceConversationRef.current = true;
+    setVoiceConversationMode(true);
+
+    if (
+      mediaRecorderRef.current &&
+      mediaRecorderRef.current.state === "recording"
+    ) {
+      mediaRecorderRef.current.stop();
+      return;
+    }
+
     const SpeechRecognition =
-      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      (window as any).SpeechRecognition ||
+      (window as any).webkitSpeechRecognition;
 
     if (!SpeechRecognition) {
-      alert("Voice input is not supported on this browser.");
+      try {
+        await startMediaRecorderFallback();
+      } catch (error) {
+        console.error(error);
+        setIsRecording(false);
+        stopMediaStream();
+        alert("Microphone access failed. Browser permission check गर्नुहोस्।");
+      }
       return;
     }
 
@@ -362,16 +531,28 @@ useEffect(() => {
       const recognition = new SpeechRecognition();
       recognition.lang = "ne-NP";
       recognition.interimResults = false;
+      recognition.continuous = false;
 
-      recognition.onstart = () => setIsRecording(true);
+      recognition.onstart = () => {
+        setIsRecording(true);
+        setVoiceStatus("सुन्दैछु... बोल्नुहोस्");
+      };
+
       recognition.onresult = (event: any) => {
         const transcript = event?.results?.[0]?.[0]?.transcript ?? "";
-        if (transcript) {
-          setInput((prev) => (prev ? `${prev} ${transcript}` : transcript));
-        }
         setIsRecording(false);
+
+        if (transcript.trim()) {
+          setVoiceStatus(`सुनेँ: ${transcript}`);
+          void sendMessage(transcript.trim());
+        }
       };
-      recognition.onerror = () => setIsRecording(false);
+
+      recognition.onerror = () => {
+        setIsRecording(false);
+        setVoiceStatus("आवाज बुझिएन, फेरि बोल्नुहोस्");
+      };
+
       recognition.onend = () => setIsRecording(false);
 
       recognitionRef.current = recognition;
@@ -379,6 +560,34 @@ useEffect(() => {
     } catch (err) {
       console.error(err);
       setIsRecording(false);
+      setVoiceStatus("Voice input सुरु हुन सकेन");
+    }
+  };
+
+  const stopVoiceConversation = () => {
+    voiceConversationRef.current = false;
+    setVoiceConversationMode(false);
+    setVoiceStatus("");
+    setIsRecording(false);
+
+    try {
+      recognitionRef.current?.stop();
+    } catch {
+      // ignore
+    }
+
+    if (mediaRecorderRef.current?.state === "recording") {
+      try {
+        mediaRecorderRef.current.stop();
+      } catch {
+        // ignore
+      }
+    }
+
+    stopMediaStream();
+
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      window.speechSynthesis.cancel();
     }
   };
 
@@ -642,6 +851,10 @@ useEffect(() => {
       const finalMsgs = [...updatedMessages, botReply];
       setMessages(finalMsgs);
       saveCurrentSession(finalMsgs);
+
+      if (voiceConversationRef.current && botReplyText.trim()) {
+        speakBotReply(botReplyText);
+      }
     } catch (error: any) {
       console.error("API Error details:", error);
       const fallbackReply: ChatMessage = {
@@ -651,6 +864,9 @@ useEffect(() => {
         timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
       };
       setMessages([...updatedMessages, fallbackReply]);
+      if (voiceConversationRef.current) {
+        speakBotReply(fallbackReply.text);
+      }
     } finally {
       setIsTyping(false);
     }
@@ -1548,16 +1764,35 @@ useEffect(() => {
                     </button>
 
                     <div className="ml-auto flex items-center gap-1">
+                      {voiceConversationMode && (
+                        <button
+                          type="button"
+                          onClick={stopVoiceConversation}
+                          className="hidden sm:flex h-9 items-center rounded-full border border-red-200 bg-red-50 px-3 text-xs font-semibold text-red-600 transition hover:bg-red-100 dark:border-red-900 dark:bg-red-950/40"
+                          title="End live voice"
+                        >
+                          End voice
+                        </button>
+                      )}
+
                       <button
                         type="button"
-                        onClick={toggleVoiceRecording}
+                        onClick={() => void toggleVoiceRecording()}
                         className={cn(
                           "flex h-11 w-11 items-center justify-center rounded-full transition",
                           isRecording
                             ? "bg-red-100 text-red-600 animate-pulse dark:bg-red-950"
-                            : "text-slate-900 hover:bg-slate-100 dark:text-white dark:hover:bg-white/10"
+                            : voiceConversationMode
+                              ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
+                              : "text-slate-900 hover:bg-slate-100 dark:text-white dark:hover:bg-white/10"
                         )}
-                        title={isRecording ? "Stop recording" : "Voice input"}
+                        title={
+                          isRecording
+                            ? "Stop and send voice"
+                            : voiceConversationMode
+                              ? "Speak next turn"
+                              : "Start live voice"
+                        }
                       >
                         {isRecording ? (
                           <MicOff className="h-6 w-6" />
@@ -1586,6 +1821,16 @@ useEffect(() => {
                     </div>
                   </div>
                 </div>
+
+                {voiceConversationMode && (
+                  <div className="mt-2 flex items-center justify-center gap-2 text-[11px] font-medium text-emerald-700 dark:text-emerald-300">
+                    <span className={cn(
+                      "h-2 w-2 rounded-full bg-emerald-500",
+                      isRecording && "animate-pulse"
+                    )} />
+                    <span>{voiceStatus || "Mic थिचेर बोल्नुहोस्"}</span>
+                  </div>
+                )}
 
                 <p className="mt-2 text-center text-[10px] text-slate-400">
                   RoomKhoj AI can make mistakes. Check important information.
