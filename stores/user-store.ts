@@ -19,11 +19,41 @@ export const useUserStore = create<UserState>()(
       user: null,
       isLoaded: false,
 
-      setUser: (userData) =>
+      setUser: (userData) => {
         set({
           user: userData,
           isLoaded: true,
-        }),
+        });
+
+        if (
+          typeof window !== "undefined" &&
+          userData?.id &&
+          userData?.email
+        ) {
+          try {
+            const key = "roomkhoj_known_accounts";
+            const stored = JSON.parse(
+              localStorage.getItem(key) || "[]",
+            ) as Array<{ id: string; name: string; email: string }>;
+            const accounts = Array.isArray(stored) ? stored : [];
+            const email = String(userData.email).toLowerCase();
+            const nextAccounts = [
+              {
+                id: String(userData.id),
+                name: String(userData.name || "RoomKhoj user"),
+                email,
+              },
+              ...accounts.filter(
+                (account) =>
+                  account?.email?.toLowerCase() !== email,
+              ),
+            ].slice(0, 5);
+            localStorage.setItem(key, JSON.stringify(nextAccounts));
+          } catch {
+            // Account history is optional.
+          }
+        }
+      },
 
       updateUser: (updates) =>
         set((state) => ({
