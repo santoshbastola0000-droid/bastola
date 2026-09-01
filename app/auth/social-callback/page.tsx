@@ -3,12 +3,15 @@
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { api } from "@/http/api/api";
+import { privateApi } from "@/http/api/privateApi";
 import useTokenStore from "@/store";
+import { useUserStore } from "@/stores/user-store";
 
 const SocialCallbackPage = () => {
   const router = useRouter();
   const params = useSearchParams();
   const { setToken } = useTokenStore();
+  const { setUser } = useUserStore();
   const [message, setMessage] = useState("Signing you in...");
 
   useEffect(() => {
@@ -36,13 +39,34 @@ const SocialCallbackPage = () => {
         }
 
         setToken(accessToken);
+        privateApi.defaults.headers.common["Authorization"] =
+          `Bearer ${accessToken}`;
+
+        const userResponse = await privateApi.get("/user/active");
+        const user = userResponse.data?.data;
+
+        if (!user) {
+          throw new Error("Missing active user");
+        }
+
+        setUser(user);
+
+        const savedRedirect = sessionStorage.getItem(
+          "roomkhoj_post_auth_redirect",
+        );
+        sessionStorage.removeItem("roomkhoj_post_auth_redirect");
 
         const redirect =
-          sessionStorage.getItem("roomkhoj_post_auth_redirect") || "/";
-        sessionStorage.removeItem("roomkhoj_post_auth_redirect");
+          savedRedirect ||
+          (user.role === "Admin"
+            ? "/admin/dashboard"
+            : user.role === "User"
+              ? "/user/dashboard"
+              : "/");
 
         if (!cancelled) {
           router.replace(redirect);
+          router.refresh();
         }
       } catch {
         if (!cancelled) {
@@ -56,7 +80,7 @@ const SocialCallbackPage = () => {
     return () => {
       cancelled = true;
     };
-  }, [params, router, setToken]);
+  }, [params, router, setToken, setUser]);
 
   return (
     <main className="flex min-h-[60vh] items-center justify-center px-4">
