@@ -27,6 +27,7 @@ import { Input } from "@/components/ui/input";
 import { TRegister, registerSchema } from "@/schema/auth.schema";
 import { useRegisterMutation } from "@/http/mutations/auth.mutations";
 import { routes } from "@/lib/constants/routes";
+import SocialLoginButtons from "@/components/auth/SocialLoginButtons";
 
 const purposes = [
   { value: "FIND_ROOM", title: "कोठा खोज्न", description: "आफ्नो बजेटअनुसार कोठा खोज्न", icon: Search },
@@ -143,6 +144,15 @@ const RegisterForm = () => {
           <Button type="submit" className="h-12 w-full rounded-xl text-base font-medium" disabled={isPending} isLoading={isPending}>Create Account</Button>
         </form>
       </Form>
+
+      <div className="relative py-1">
+        <div className="border-t border-slate-200" />
+        <span className="absolute left-1/2 top-1 -translate-x-1/2 -translate-y-1/2 bg-white px-3 text-xs text-slate-400">
+          or sign up with
+        </span>
+      </div>
+
+      <SocialLoginButtons />
 
       <p className="text-center text-sm text-slate-600">Already have an account?{" "}<Link href={routes.LOGIN} className="font-medium text-primary hover:underline">Sign in</Link></p>
     </div>
