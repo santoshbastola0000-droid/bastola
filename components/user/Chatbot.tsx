@@ -247,6 +247,11 @@ useEffect(() => {
   const recordedChunksRef = useRef<BlobPart[]>([]);
   const voiceConversationRef = useRef(false);
   const activeVoiceAudioRef = useRef<HTMLAudioElement | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const voiceVadFrameRef = useRef<number | null>(null);
+  const voiceTurnProcessingRef = useRef(false);
+  const voiceSilencePromptRef = useRef(false);
 
   const initDefaultMessages = useCallback(() => {
     return [
@@ -302,6 +307,15 @@ useEffect(() => {
         }
       }
       mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
+      if (voiceVadFrameRef.current !== null) {
+        cancelAnimationFrame(voiceVadFrameRef.current);
+        voiceVadFrameRef.current = null;
+      }
+      if (audioContextRef.current) {
+        void audioContextRef.current.close().catch(() => undefined);
+        audioContextRef.current = null;
+      }
+      analyserRef.current = null;
       if (activeVoiceAudioRef.current) {
         activeVoiceAudioRef.current.pause();
         activeVoiceAudioRef.current.src = "";
@@ -364,6 +378,18 @@ useEffect(() => {
   };
 
 
+  const scheduleHandsFreeListen = () => {
+    window.setTimeout(() => {
+      if (
+        voiceConversationRef.current &&
+        !voiceTurnProcessingRef.current &&
+        !activeVoiceAudioRef.current
+      ) {
+        void startHandsFreeListening();
+      }
+    }, 250);
+  };
+
   const speakWithBrowserFallback = (text: string) => {
     if (
       typeof window === "undefined" ||
@@ -396,9 +422,14 @@ useEffect(() => {
     utterance.pitch = 1;
 
     utterance.onstart = () => setVoiceStatus("AI बोल्दैछ...");
-    utterance.onend = () => setVoiceStatus("Mic थिचेर फेरि बोल्नुहोस्");
-    utterance.onerror = () =>
-      setVoiceStatus("Voice playback failed, mic फेरि थिच्नुहोस्");
+    utterance.onend = () => {
+      setVoiceStatus("सुन्दैछु...");
+      scheduleHandsFreeListen();
+    };
+    utterance.onerror = () => {
+      setVoiceStatus("Voice playback failed, फेरि सुन्दैछु...");
+      scheduleHandsFreeListen();
+    };
 
     window.speechSynthesis.speak(utterance);
   };
@@ -459,7 +490,8 @@ useEffect(() => {
         if (activeVoiceAudioRef.current === audio) {
           activeVoiceAudioRef.current = null;
         }
-        setVoiceStatus("Mic थिचेर फेरि बोल्नुहोस्");
+        setVoiceStatus("सुन्दैछु...");
+        scheduleHandsFreeListen();
       };
       audio.onerror = () => {
         URL.revokeObjectURL(audioUrl);
@@ -519,143 +551,261 @@ useEffect(() => {
     return String(data?.data?.text || "").trim();
   };
 
-  const startMediaRecorderFallback = async () => {
+  const stopVoiceCaptureOnly = () => {
+    if (voiceVadFrameRef.current !== null) {
+      cancelAnimationFrame(voiceVadFrameRef.current);
+      voiceVadFrameRef.current = null;
+    }
+
+    if (audioContextRef.current) {
+      void audioContextRef.current.close().catch(() => undefined);
+      audioContextRef.current = null;
+    }
+    analyserRef.current = null;
+
+    stopVoiceCaptureOnly();
+    voiceTurnProcessingRef.current = false;
+    voiceSilencePromptRef.current = false;
+
+    stopMediaStream();
+    setIsRecording(false);
+  };
+
+  const startHandsFreeListening = async () => {
+    if (
+      typeof window === "undefined" ||
+      !voiceConversationRef.current ||
+      voiceTurnProcessingRef.current ||
+      mediaRecorderRef.current?.state === "recording" ||
+      activeVoiceAudioRef.current
+    ) {
+      return;
+    }
+
     if (!navigator.mediaDevices?.getUserMedia) {
-      alert("Microphone recording is not supported on this browser.");
+      setVoiceStatus("यो browser मा microphone recording उपलब्ध छैन");
       return;
     }
 
     if (!token) {
-      alert("Firefox live voice test का लागि login आवश्यक छ।");
+      setVoiceStatus("Live voice का लागि login आवश्यक छ");
       return;
     }
 
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    mediaStreamRef.current = stream;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+          channelCount: 1,
+        },
+      });
+      mediaStreamRef.current = stream;
 
-    const preferredTypes = [
-      "audio/webm;codecs=opus",
-      "audio/webm",
-      "audio/ogg;codecs=opus",
-      "audio/mp4",
-    ];
-    const mimeType =
-      preferredTypes.find((type) => MediaRecorder.isTypeSupported(type)) || "";
+      const AudioContextClass =
+        window.AudioContext || (window as any).webkitAudioContext;
+      const audioContext = new AudioContextClass();
+      audioContextRef.current = audioContext;
 
-    const recorder = mimeType
-      ? new MediaRecorder(stream, { mimeType })
-      : new MediaRecorder(stream);
+      const source = audioContext.createMediaStreamSource(stream);
+      const analyser = audioContext.createAnalyser();
+      analyser.fftSize = 2048;
+      analyser.smoothingTimeConstant = 0.65;
+      source.connect(analyser);
+      analyserRef.current = analyser;
 
-    recordedChunksRef.current = [];
-    mediaRecorderRef.current = recorder;
+      const preferredTypes = [
+        "audio/webm;codecs=opus",
+        "audio/webm",
+        "audio/ogg;codecs=opus",
+        "audio/mp4",
+      ];
+      const mimeType =
+        preferredTypes.find((type) => MediaRecorder.isTypeSupported(type)) || "";
 
-    recorder.ondataavailable = (event) => {
-      if (event.data?.size) {
-        recordedChunksRef.current.push(event.data);
-      }
-    };
+      const recorder = mimeType
+        ? new MediaRecorder(stream, { mimeType })
+        : new MediaRecorder(stream);
 
-    recorder.onstop = async () => {
-      setIsRecording(false);
-      setVoiceStatus("आवाज बुझ्दैछ...");
-      stopMediaStream();
+      recordedChunksRef.current = [];
+      mediaRecorderRef.current = recorder;
 
-      try {
-        const blob = new Blob(recordedChunksRef.current, {
-          type: recorder.mimeType || "audio/webm",
-        });
-        recordedChunksRef.current = [];
+      let speechStarted = false;
+      let speechStartedAt = 0;
+      let lastSpeechAt = performance.now();
+      let listenStartedAt = performance.now();
+      let peakRms = 0;
+      let speechRmsTotal = 0;
+      let speechFrames = 0;
+      let stoppedByVad = false;
 
-        const transcript = await transcribeRecordedAudio(blob);
-        if (!transcript) {
-          setVoiceStatus("आवाज बुझिएन, फेरि बोल्नुहोस्");
+      recorder.ondataavailable = (event) => {
+        if (event.data?.size) {
+          recordedChunksRef.current.push(event.data);
+        }
+      };
+
+      recorder.onstop = async () => {
+        if (voiceVadFrameRef.current !== null) {
+          cancelAnimationFrame(voiceVadFrameRef.current);
+          voiceVadFrameRef.current = null;
+        }
+        if (audioContextRef.current) {
+          void audioContextRef.current.close().catch(() => undefined);
+          audioContextRef.current = null;
+        }
+        analyserRef.current = null;
+        stopMediaStream();
+        setIsRecording(false);
+        mediaRecorderRef.current = null;
+
+        if (!voiceConversationRef.current) {
+          recordedChunksRef.current = [];
           return;
         }
 
-        setVoiceStatus(`सुनेँ: ${transcript}`);
-        await sendMessage(transcript);
-      } catch (error) {
-        console.error("Live voice transcription error:", error);
-        setVoiceStatus("Voice test failed");
-      }
-    };
+        const avgSpeechRms =
+          speechFrames > 0 ? speechRmsTotal / speechFrames : 0;
 
-    recorder.start();
-    setIsRecording(true);
-    setVoiceStatus("सुन्दैछु... बोल्नुहोस्, सकेपछि mic फेरि थिच्नुहोस्");
+        if (!speechStarted || !stoppedByVad) {
+          recordedChunksRef.current = [];
+          voiceTurnProcessingRef.current = true;
+
+          const prompt =
+            peakRms > 0 && peakRms < 0.035
+              ? "तपाईं टाढाबाट बोलिरहनुभएको जस्तो छ। कृपया अलि नजिकबाट स्पष्ट बोल्नुहोस्।"
+              : "तपाईंको आवाज सुनिएन। कृपया बोल्नुहोस्।";
+
+          voiceSilencePromptRef.current = true;
+          await speakBotReply(prompt);
+          voiceSilencePromptRef.current = false;
+          voiceTurnProcessingRef.current = false;
+          return;
+        }
+
+        if (avgSpeechRms < 0.028 || peakRms < 0.04) {
+          recordedChunksRef.current = [];
+          voiceTurnProcessingRef.current = true;
+          await speakBotReply(
+            "तपाईं टाढाबाट बोलिरहनुभएको जस्तो छ। कृपया अलि नजिकबाट स्पष्ट बोल्नुहोस्।",
+          );
+          voiceTurnProcessingRef.current = false;
+          return;
+        }
+
+        voiceTurnProcessingRef.current = true;
+        setVoiceStatus("आवाज बुझ्दैछ...");
+
+        try {
+          const blob = new Blob(recordedChunksRef.current, {
+            type: recorder.mimeType || "audio/webm",
+          });
+          recordedChunksRef.current = [];
+
+          const transcript = await transcribeRecordedAudio(blob);
+
+          if (!transcript) {
+            await speakBotReply(
+              "तपाईंको कुरा स्पष्ट बुझिनँ। कृपया फेरि एकपटक भन्नुहोस्।",
+            );
+            return;
+          }
+
+          setVoiceStatus(`सुनेँ: ${transcript}`);
+          await sendMessage(transcript);
+        } catch (error) {
+          console.error("Hands-free voice transcription error:", error);
+          await speakBotReply(
+            "आवाज बुझ्न समस्या आयो। कृपया फेरि बोल्नुहोस्।",
+          );
+        } finally {
+          voiceTurnProcessingRef.current = false;
+        }
+      };
+
+      recorder.start(250);
+      setIsRecording(true);
+      setVoiceStatus("सुन्दैछु... बोल्नुहोस्");
+
+      const samples = new Uint8Array(analyser.fftSize);
+
+      const monitor = () => {
+        if (
+          !voiceConversationRef.current ||
+          recorder.state !== "recording"
+        ) {
+          return;
+        }
+
+        analyser.getByteTimeDomainData(samples);
+
+        let sumSquares = 0;
+        for (let i = 0; i < samples.length; i += 1) {
+          const normalized = (samples[i] - 128) / 128;
+          sumSquares += normalized * normalized;
+        }
+        const rms = Math.sqrt(sumSquares / samples.length);
+        peakRms = Math.max(peakRms, rms);
+
+        const now = performance.now();
+        const speechThreshold = 0.022;
+
+        if (rms >= speechThreshold) {
+          if (!speechStarted) {
+            speechStarted = true;
+            speechStartedAt = now;
+            setVoiceStatus("सुन्दैछु... बोलिरहनुहोस्");
+          }
+          lastSpeechAt = now;
+          speechRmsTotal += rms;
+          speechFrames += 1;
+        }
+
+        if (
+          speechStarted &&
+          now - lastSpeechAt >= 900 &&
+          now - speechStartedAt >= 250
+        ) {
+          stoppedByVad = true;
+          recorder.stop();
+          return;
+        }
+
+        if (!speechStarted && now - listenStartedAt >= 6000) {
+          recorder.stop();
+          return;
+        }
+
+        if (speechStarted && now - speechStartedAt >= 15000) {
+          stoppedByVad = true;
+          recorder.stop();
+          return;
+        }
+
+        voiceVadFrameRef.current = requestAnimationFrame(monitor);
+      };
+
+      voiceVadFrameRef.current = requestAnimationFrame(monitor);
+    } catch (error) {
+      console.error("Hands-free microphone error:", error);
+      stopVoiceCaptureOnly();
+      setVoiceStatus("Microphone access failed");
+    }
   };
 
   const toggleVoiceRecording = async () => {
     if (typeof window === "undefined") return;
 
+    if (voiceConversationRef.current) {
+      return;
+    }
+
     voiceConversationRef.current = true;
     setVoiceConversationMode(true);
-
-    if (
-      mediaRecorderRef.current &&
-      mediaRecorderRef.current.state === "recording"
-    ) {
-      mediaRecorderRef.current.stop();
-      return;
-    }
-
-    const SpeechRecognition =
-      (window as any).SpeechRecognition ||
-      (window as any).webkitSpeechRecognition;
-
-    if (!SpeechRecognition) {
-      try {
-        await startMediaRecorderFallback();
-      } catch (error) {
-        console.error(error);
-        setIsRecording(false);
-        stopMediaStream();
-        alert("Microphone access failed. Browser permission check गर्नुहोस्।");
-      }
-      return;
-    }
-
-    if (isRecording) {
-      recognitionRef.current?.stop();
-      setIsRecording(false);
-      return;
-    }
-
-    try {
-      const recognition = new SpeechRecognition();
-      recognition.lang = "ne-NP";
-      recognition.interimResults = false;
-      recognition.continuous = false;
-
-      recognition.onstart = () => {
-        setIsRecording(true);
-        setVoiceStatus("सुन्दैछु... बोल्नुहोस्");
-      };
-
-      recognition.onresult = (event: any) => {
-        const transcript = event?.results?.[0]?.[0]?.transcript ?? "";
-        setIsRecording(false);
-
-        if (transcript.trim()) {
-          setVoiceStatus(`सुनेँ: ${transcript}`);
-          void sendMessage(transcript.trim());
-        }
-      };
-
-      recognition.onerror = () => {
-        setIsRecording(false);
-        setVoiceStatus("आवाज बुझिएन, फेरि बोल्नुहोस्");
-      };
-
-      recognition.onend = () => setIsRecording(false);
-
-      recognitionRef.current = recognition;
-      recognition.start();
-    } catch (err) {
-      console.error(err);
-      setIsRecording(false);
-      setVoiceStatus("Voice input सुरु हुन सकेन");
-    }
+    voiceTurnProcessingRef.current = false;
+    setVoiceStatus("Live Voice सुरु हुँदैछ...");
+    await startHandsFreeListening();
   };
 
   const stopVoiceConversation = () => {
@@ -1890,7 +2040,7 @@ useEffect(() => {
                           isRecording
                             ? "Stop and send voice"
                             : voiceConversationMode
-                              ? "Speak next turn"
+                              ? "Live voice active"
                               : "Start live voice"
                         }
                       >
@@ -1928,7 +2078,7 @@ useEffect(() => {
                       "h-2 w-2 rounded-full bg-emerald-500",
                       isRecording && "animate-pulse"
                     )} />
-                    <span>{voiceStatus || "Mic थिचेर बोल्नुहोस्"}</span>
+                    <span>{voiceStatus || "सुन्दैछु..."}</span>
                   </div>
                 )}
 
