@@ -11,6 +11,7 @@ import {
   Menu,
   Globe,
   UsersRound,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,6 +28,9 @@ import { useUserStore } from "@/stores/user-store";
 import { useLogout } from "@/hooks/useLogout";
 import { useTheme } from "next-themes";
 import { LogoutConfirmDialog } from "@/components/LogoutConfirmDialog";
+import { api } from "@/http/api/api";
+import { privateApi } from "@/http/api/privateApi";
+import useTokenStore from "@/store";
 
 type KnownAccount = {
   id: string;
@@ -56,10 +60,14 @@ export function UserHeader({ onMenuClick }: UserHeaderProps) {
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [knownAccounts, setKnownAccounts] = useState<KnownAccount[]>([]);
+  const [switchingAccountId, setSwitchingAccountId] = useState<string | null>(
+    null,
+  );
 
   const pathname = usePathname();
   const router = useRouter();
-  const { user } = useUserStore();
+  const { user, setUser } = useUserStore();
+  const { setToken } = useTokenStore();
   const { logout } = useLogout();
   const { theme, setTheme } = useTheme();
 
@@ -108,17 +116,45 @@ export function UserHeader({ onMenuClick }: UserHeaderProps) {
       String(user?.email || "").toLowerCase(),
   );
 
-  const switchGoogleAccount = (email?: string) => {
-    const backendUrl =
-      process.env.NEXT_PUBLIC_BACKEND_URL ||
-      "https://api.roomkhoj.com";
-    const params = email
-      ? `?login_hint=${encodeURIComponent(email)}`
-      : "";
+  const switchAccount = async (account: KnownAccount) => {
+    setSwitchingAccountId(account.id);
 
-    window.location.assign(
-      `${backendUrl.replace(/\/$/, "")}/user/oauth/google${params}`,
-    );
+    try {
+      const response = await api.post("/user/account-switch", {
+        userId: account.id,
+      });
+      const accessToken = response.data?.data?.accessToken;
+
+      if (!accessToken) {
+        throw new Error("Missing access token");
+      }
+
+      setToken(accessToken);
+      privateApi.defaults.headers.common["Authorization"] =
+        `Bearer ${accessToken}`;
+
+      const userResponse = await privateApi.get("/user/active");
+      const nextUser = userResponse.data?.data;
+
+      if (!nextUser) {
+        throw new Error("Missing active user");
+      }
+
+      setUser(nextUser);
+      router.refresh();
+    } catch {
+      router.push(
+        `/auth/login?add_account=1&email=${encodeURIComponent(
+          account.email,
+        )}`,
+      );
+    } finally {
+      setSwitchingAccountId(null);
+    }
+  };
+
+  const addAccount = () => {
+    router.push("/auth/login?add_account=1");
   };
 
   const handleLogout = async () => {
@@ -252,8 +288,12 @@ export function UserHeader({ onMenuClick }: UserHeaderProps) {
                   <DropdownMenuItem
                     key={account.id || account.email}
                     className="md:hidden cursor-pointer rounded-xl"
-                    onClick={() => switchGoogleAccount(account.email)}
+                    onClick={() => switchAccount(account)}
+                    disabled={switchingAccountId === account.id}
                   >
+                    {switchingAccountId === account.id && (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    )}
                     <div className="min-w-0">
                       <span className="block truncate text-sm font-medium">
                         {account.name || "RoomKhoj user"}
@@ -267,10 +307,10 @@ export function UserHeader({ onMenuClick }: UserHeaderProps) {
 
                 <DropdownMenuItem
                   className="md:hidden cursor-pointer rounded-xl gap-2 text-[var(--primary)]"
-                  onClick={() => switchGoogleAccount()}
+                  onClick={addAccount}
                 >
                   <UsersRound className="h-4 w-4" />
-                  <span>Use another Google account</span>
+                  <span>Add account</span>
                 </DropdownMenuItem>
 
                 <DropdownMenuSeparator />
