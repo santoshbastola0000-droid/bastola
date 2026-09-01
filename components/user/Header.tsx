@@ -66,8 +66,8 @@ export function UserHeader({ onMenuClick }: UserHeaderProps) {
 
   const pathname = usePathname();
   const router = useRouter();
-  const { user, setUser } = useUserStore();
-  const { setToken } = useTokenStore();
+  const { user, setUser, clearUser } = useUserStore();
+  const { setToken, clearToken } = useTokenStore();
   const { logout } = useLogout();
   const { theme, setTheme } = useTheme();
 
@@ -176,6 +176,8 @@ export function UserHeader({ onMenuClick }: UserHeaderProps) {
   };
 
   const addAccount = () => {
+    clearToken();
+    clearUser();
     router.push("/auth/login?add_account=1");
   };
 
