@@ -12,7 +12,7 @@ import {
   Home, PlusCircle, BriefcaseBusiness, MessageCircle, Truck,
   LayoutDashboard, Building2, Gift, ClipboardList, Settings,
   CircleHelp, ChevronDown, ChevronRight, LogOut, Wrench,
-  Droplets, Sparkles, Wifi, PhoneCall, type LucideIcon,
+  Droplets, Sparkles, Wifi, PhoneCall, UsersRound, type LucideIcon,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 
@@ -20,6 +20,9 @@ import { useUserStore } from "@/stores/user-store";
 import { useLogout } from "@/hooks/useLogout";
 import { walletService } from "@/http/services/wallet.service";
 import { interCallService } from "@/http/services/inter-call.service";
+import { api } from "@/http/api/api";
+import { privateApi } from "@/http/api/privateApi";
+import useTokenStore from "@/store";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -43,11 +46,18 @@ export function NavBar() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [showAllServices, setShowAllServices] = useState(false);
+  const [knownAccounts, setKnownAccounts] = useState<
+    Array<{ id: string; name: string; email: string }>
+  >([]);
+  const [switchingAccountId, setSwitchingAccountId] = useState<string | null>(
+    null,
+  );
   const { language } = useLanguage();
   const label = (english: string, nepali: string) =>
     language === "ne" ? nepali : english;
 
-  const { user } = useUserStore();
+  const { user, setUser } = useUserStore();
+  const { setToken } = useTokenStore();
   const { logout } = useLogout();
   const pathname = usePathname();
 
@@ -115,6 +125,74 @@ export function NavBar() {
   useEffect(() => {
     setMobileOpen(false);
   }, [pathname]);
+
+  useEffect(() => {
+    try {
+      const stored = JSON.parse(
+        localStorage.getItem("roomkhoj_known_accounts") || "[]",
+      ) as Array<{ id: string; name: string; email: string }>;
+      setKnownAccounts(
+        Array.isArray(stored)
+          ? stored.filter((account) => account?.id && account?.email)
+          : [],
+      );
+    } catch {
+      setKnownAccounts([]);
+    }
+  }, [user?.email]);
+
+  const otherAccounts = knownAccounts.filter(
+    (account) =>
+      account.email.toLowerCase() !==
+      String(user?.email || "").toLowerCase(),
+  );
+
+  const handleSwitchAccount = async (account: {
+    id: string;
+    name: string;
+    email: string;
+  }) => {
+    setSwitchingAccountId(account.id);
+
+    try {
+      const response = await api.post("/user/account-switch", {
+        userId: account.id,
+      });
+      const accessToken = response.data?.data?.accessToken;
+
+      if (!accessToken) {
+        throw new Error("Missing access token");
+      }
+
+      setToken(accessToken);
+      privateApi.defaults.headers.common["Authorization"] =
+        `Bearer ${accessToken}`;
+
+      const userResponse = await privateApi.get("/user/active");
+      const nextUser = userResponse.data?.data;
+
+      if (!nextUser) {
+        throw new Error("Missing active user");
+      }
+
+      setUser(nextUser);
+      setMobileOpen(false);
+    } catch {
+      setMobileOpen(false);
+      window.location.assign(
+        `/auth/login?add_account=1&email=${encodeURIComponent(
+          account.email,
+        )}`,
+      );
+    } finally {
+      setSwitchingAccountId(null);
+    }
+  };
+
+  const handleAddAccount = () => {
+    setMobileOpen(false);
+    window.location.assign("/auth/login?add_account=1");
+  };
 
   const handleLogout = async () => {
     await logout();
@@ -481,8 +559,48 @@ export function NavBar() {
                     </div>
 
                     {isAuthenticated && (
+                      <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-3">
+                        <div className="flex items-center gap-2 px-1 pb-2 text-sm font-bold text-slate-900">
+                          <UsersRound className="h-5 w-5 text-red-600" />
+                          {label("Switch account", "अकाउन्ट परिवर्तन")}
+                        </div>
+
+                        {otherAccounts.map((account) => (
+                          <button
+                            key={account.id}
+                            type="button"
+                            disabled={switchingAccountId === account.id}
+                            onClick={() => handleSwitchAccount(account)}
+                            className="mt-1 flex w-full items-center rounded-xl bg-slate-50 p-3 text-left hover:bg-slate-100 disabled:opacity-60"
+                          >
+                            {switchingAccountId === account.id && (
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            )}
+                            <span className="min-w-0">
+                              <span className="block truncate text-sm font-bold text-slate-900">
+                                {account.name || "RoomKhoj user"}
+                              </span>
+                              <span className="block truncate text-xs text-slate-500">
+                                {account.email}
+                              </span>
+                            </span>
+                          </button>
+                        ))}
+
+                        <button
+                          type="button"
+                          onClick={handleAddAccount}
+                          className="mt-2 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-bold text-red-700"
+                        >
+                          <UsersRound className="h-4 w-4" />
+                          {label("Add account", "अकाउन्ट थप्नुहोस्")}
+                        </button>
+                      </div>
+                    )}
+
+                    {isAuthenticated && (
                       <button type="button" onClick={handleLogout}
-                        className="mt-5 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-slate-200 p-3 text-sm font-bold text-slate-900 hover:bg-slate-300">
+                        className="mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-slate-200 p-3 text-sm font-bold text-slate-900 hover:bg-slate-300">
                         <LogOut className="h-4 w-4" aria-hidden="true" />
                         {label("Log out", "लग आउट")}
                       </button>
