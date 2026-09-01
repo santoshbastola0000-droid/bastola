@@ -16,6 +16,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { UserRole } from "@/types/user.types";
+import { api } from "@/http/api/api";
+import { privateApi } from "@/http/api/privateApi";
+import useTokenStore from "@/store";
+import { useUserStore } from "@/stores/user-store";
 
 type KnownAccount = {
   id: string;
@@ -39,6 +43,8 @@ export function UserMenu({
   scrolled,
 }: UserMenuProps) {
   const [knownAccounts, setKnownAccounts] = useState<KnownAccount[]>([]);
+  const { setToken } = useTokenStore();
+  const { setUser } = useUserStore();
 
   useEffect(() => {
     try {
@@ -55,16 +61,44 @@ export function UserMenu({
     }
   }, [user?.email]);
 
-  const switchGoogleAccount = (email?: string) => {
-    const backendUrl =
-      process.env.NEXT_PUBLIC_BACKEND_URL ||
-      "https://api.roomkhoj.com";
-    const params = email
-      ? `?login_hint=${encodeURIComponent(email)}`
-      : "";
-    window.location.assign(
-      `${backendUrl.replace(/\/$/, "")}/user/oauth/google${params}`,
-    );
+  const switchAccount = async (account: KnownAccount) => {
+    try {
+      const response = await api.post("/user/account-switch", {
+        userId: account.id,
+      });
+      const accessToken = response.data?.data?.accessToken;
+
+      if (!accessToken) {
+        throw new Error("Missing access token");
+      }
+
+      setToken(accessToken);
+      privateApi.defaults.headers.common["Authorization"] =
+        `Bearer ${accessToken}`;
+      const userResponse = await privateApi.get("/user/active");
+      const nextUser = userResponse.data?.data;
+
+      if (!nextUser) {
+        throw new Error("Missing active user");
+      }
+
+      setUser(nextUser);
+      window.location.assign(
+        nextUser.role === "Admin"
+          ? "/admin/dashboard"
+          : "/user/dashboard",
+      );
+    } catch {
+      window.location.assign(
+        `/auth/login?add_account=1&email=${encodeURIComponent(
+          account.email,
+        )}`,
+      );
+    }
+  };
+
+  const addAccount = () => {
+    window.location.assign("/auth/login?add_account=1");
   };
 
   const otherAccounts = knownAccounts.filter(
@@ -161,7 +195,7 @@ export function UserMenu({
               <button
                 key={account.id || account.email}
                 type="button"
-                onClick={() => switchGoogleAccount(account.email)}
+                onClick={() => switchAccount(account)}
                 className="mt-1 w-full rounded-lg px-2 py-2 text-left hover:bg-white"
               >
                 <span className="block truncate text-sm font-medium text-slate-800">
@@ -175,10 +209,10 @@ export function UserMenu({
 
             <button
               type="button"
-              onClick={() => switchGoogleAccount()}
+              onClick={addAccount}
               className="mt-1 w-full rounded-lg px-2 py-2 text-left text-sm font-medium text-[var(--primary)] hover:bg-white"
             >
-              Use another Google account
+              Add account
             </button>
           </div>
 
@@ -237,6 +271,34 @@ export function UserMenu({
             </Link>
           </DropdownMenuItem>
         </DropdownMenuGroup>
+        <DropdownMenuSeparator />
+        <DropdownMenuLabel className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
+          <UsersRound className="h-4 w-4 text-[var(--primary)]" />
+          Switch account
+        </DropdownMenuLabel>
+        {otherAccounts.map((account) => (
+          <DropdownMenuItem
+            key={account.id || account.email}
+            onClick={() => switchAccount(account)}
+            className="cursor-pointer"
+          >
+            <div className="min-w-0">
+              <span className="block truncate text-sm font-medium">
+                {account.name || "RoomKhoj user"}
+              </span>
+              <span className="block truncate text-xs text-muted-foreground">
+                {account.email}
+              </span>
+            </div>
+          </DropdownMenuItem>
+        ))}
+        <DropdownMenuItem
+          onClick={addAccount}
+          className="cursor-pointer text-[var(--primary)]"
+        >
+          <UsersRound className="mr-2 h-4 w-4" />
+          <span>Add account</span>
+        </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem
           onClick={onLogout}
