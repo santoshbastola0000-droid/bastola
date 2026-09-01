@@ -10,6 +10,7 @@ import {
   Sun,
   Menu,
   Globe,
+  UsersRound,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -26,6 +27,14 @@ import { useUserStore } from "@/stores/user-store";
 import { useLogout } from "@/hooks/useLogout";
 import { useTheme } from "next-themes";
 import { LogoutConfirmDialog } from "@/components/LogoutConfirmDialog";
+
+type KnownAccount = {
+  id: string;
+  name: string;
+  email: string;
+};
+
+const KNOWN_ACCOUNTS_KEY = "roomkhoj_known_accounts";
 
 interface UserHeaderProps {
   isSidebarCollapsed?: boolean;
@@ -46,6 +55,7 @@ const PAGE_TITLES: Record<string, string> = {
 export function UserHeader({ onMenuClick }: UserHeaderProps) {
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [knownAccounts, setKnownAccounts] = useState<KnownAccount[]>([]);
 
   const pathname = usePathname();
   const router = useRouter();
@@ -55,7 +65,20 @@ export function UserHeader({ onMenuClick }: UserHeaderProps) {
 
   useEffect(() => {
     setMounted(true);
-  }, []);
+
+    try {
+      const stored = JSON.parse(
+        localStorage.getItem(KNOWN_ACCOUNTS_KEY) || "[]",
+      ) as KnownAccount[];
+      setKnownAccounts(
+        Array.isArray(stored)
+          ? stored.filter((account) => account?.email)
+          : [],
+      );
+    } catch {
+      setKnownAccounts([]);
+    }
+  }, [user?.email]);
 
   // Derive page title from last non-empty segment
   const pageTitle = (() => {
@@ -78,6 +101,25 @@ export function UserHeader({ onMenuClick }: UserHeaderProps) {
         .toUpperCase()
         .slice(0, 2)
     : (user?.email?.slice(0, 2).toUpperCase() ?? "U");
+
+  const otherAccounts = knownAccounts.filter(
+    (account) =>
+      account.email.toLowerCase() !==
+      String(user?.email || "").toLowerCase(),
+  );
+
+  const switchGoogleAccount = (email?: string) => {
+    const backendUrl =
+      process.env.NEXT_PUBLIC_BACKEND_URL ||
+      "https://api.roomkhoj.com";
+    const params = email
+      ? `?login_hint=${encodeURIComponent(email)}`
+      : "";
+
+    window.location.assign(
+      `${backendUrl.replace(/\/$/, "")}/user/oauth/google${params}`,
+    );
+  };
 
   const handleLogout = async () => {
     setShowLogoutDialog(false);
@@ -197,6 +239,38 @@ export function UserHeader({ onMenuClick }: UserHeaderProps) {
                 >
                   <Globe className="h-4 w-4 text-slate-500" />
                   <span>View Site</span>
+                </DropdownMenuItem>
+
+                <DropdownMenuSeparator className="md:hidden" />
+
+                <DropdownMenuLabel className="md:hidden flex items-center gap-2 px-2 py-1.5 text-xs font-semibold text-muted-foreground">
+                  <UsersRound className="h-4 w-4 text-[var(--primary)]" />
+                  Switch account
+                </DropdownMenuLabel>
+
+                {otherAccounts.map((account) => (
+                  <DropdownMenuItem
+                    key={account.id || account.email}
+                    className="md:hidden cursor-pointer rounded-xl"
+                    onClick={() => switchGoogleAccount(account.email)}
+                  >
+                    <div className="min-w-0">
+                      <span className="block truncate text-sm font-medium">
+                        {account.name || "RoomKhoj user"}
+                      </span>
+                      <span className="block truncate text-xs text-muted-foreground">
+                        {account.email}
+                      </span>
+                    </div>
+                  </DropdownMenuItem>
+                ))}
+
+                <DropdownMenuItem
+                  className="md:hidden cursor-pointer rounded-xl gap-2 text-[var(--primary)]"
+                  onClick={() => switchGoogleAccount()}
+                >
+                  <UsersRound className="h-4 w-4" />
+                  <span>Use another Google account</span>
                 </DropdownMenuItem>
 
                 <DropdownMenuSeparator />
