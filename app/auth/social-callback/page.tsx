@@ -51,6 +51,31 @@ const SocialCallbackPage = () => {
 
         setUser(user);
 
+        try {
+          const key = "roomkhoj_known_accounts";
+          const stored = JSON.parse(
+            localStorage.getItem(key) || "[]",
+          ) as Array<{ id: string; name: string; email: string }>;
+          const accounts = Array.isArray(stored) ? stored : [];
+          const nextAccounts = [
+            {
+              id: String(user.id || user.email),
+              name: String(user.name || "RoomKhoj user"),
+              email: String(user.email || "").toLowerCase(),
+            },
+            ...accounts.filter(
+              (account) =>
+                account?.email?.toLowerCase() !==
+                String(user.email || "").toLowerCase(),
+            ),
+          ]
+            .filter((account) => account.email)
+            .slice(0, 5);
+          localStorage.setItem(key, JSON.stringify(nextAccounts));
+        } catch {
+          // Account history is optional; login must still complete.
+        }
+
         const savedRedirect = sessionStorage.getItem(
           "roomkhoj_post_auth_redirect",
         );
