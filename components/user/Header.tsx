@@ -277,9 +277,9 @@ export function UserHeader({ onMenuClick }: UserHeaderProps) {
                   <span>View Site</span>
                 </DropdownMenuItem>
 
-                <DropdownMenuSeparator className="md:hidden" />
+                <DropdownMenuSeparator />
 
-                <DropdownMenuLabel className="md:hidden flex items-center gap-2 px-2 py-1.5 text-xs font-semibold text-muted-foreground">
+                <DropdownMenuLabel className="flex items-center gap-2 px-2 py-1.5 text-xs font-semibold text-muted-foreground">
                   <UsersRound className="h-4 w-4 text-[var(--primary)]" />
                   Switch account
                 </DropdownMenuLabel>
@@ -287,7 +287,7 @@ export function UserHeader({ onMenuClick }: UserHeaderProps) {
                 {otherAccounts.map((account) => (
                   <DropdownMenuItem
                     key={account.id || account.email}
-                    className="md:hidden cursor-pointer rounded-xl"
+                    className="cursor-pointer rounded-xl"
                     onClick={() => switchAccount(account)}
                     disabled={switchingAccountId === account.id}
                   >
@@ -306,7 +306,7 @@ export function UserHeader({ onMenuClick }: UserHeaderProps) {
                 ))}
 
                 <DropdownMenuItem
-                  className="md:hidden cursor-pointer rounded-xl gap-2 text-[var(--primary)]"
+                  className="cursor-pointer rounded-xl gap-2 text-[var(--primary)]"
                   onClick={addAccount}
                 >
                   <UsersRound className="h-4 w-4" />
