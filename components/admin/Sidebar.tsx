@@ -20,6 +20,7 @@ import {
   GitFork,
   Bell,
   PhoneCall,
+  MessageSquare,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -75,6 +76,11 @@ const navItems: NavItem[] = [
     title: "Users",
     href: "/admin/dashboard/users",
     icon: Users,
+  },
+  {
+    title: "Messages",
+    href: "/admin/dashboard/messages",
+    icon: MessageSquare,
   },
   {
     title: "Notifications",
