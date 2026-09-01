@@ -252,6 +252,9 @@ useEffect(() => {
   const voiceVadFrameRef = useRef<number | null>(null);
   const voiceTurnProcessingRef = useRef(false);
   const voiceSilencePromptRef = useRef(false);
+  const bargeInStreamRef = useRef<MediaStream | null>(null);
+  const bargeInContextRef = useRef<AudioContext | null>(null);
+  const bargeInFrameRef = useRef<number | null>(null);
 
   const initDefaultMessages = useCallback(() => {
     return [
@@ -316,6 +319,16 @@ useEffect(() => {
         audioContextRef.current = null;
       }
       analyserRef.current = null;
+      if (bargeInFrameRef.current !== null) {
+        cancelAnimationFrame(bargeInFrameRef.current);
+        bargeInFrameRef.current = null;
+      }
+      bargeInStreamRef.current?.getTracks().forEach((track) => track.stop());
+      bargeInStreamRef.current = null;
+      if (bargeInContextRef.current) {
+        void bargeInContextRef.current.close().catch(() => undefined);
+        bargeInContextRef.current = null;
+      }
       if (activeVoiceAudioRef.current) {
         activeVoiceAudioRef.current.pause();
         activeVoiceAudioRef.current.src = "";
@@ -378,6 +391,107 @@ useEffect(() => {
   };
 
 
+  const stopBargeInMonitor = () => {
+    if (bargeInFrameRef.current !== null) {
+      cancelAnimationFrame(bargeInFrameRef.current);
+      bargeInFrameRef.current = null;
+    }
+    bargeInStreamRef.current?.getTracks().forEach((track) => track.stop());
+    bargeInStreamRef.current = null;
+    if (bargeInContextRef.current) {
+      void bargeInContextRef.current.close().catch(() => undefined);
+      bargeInContextRef.current = null;
+    }
+  };
+
+  const startBargeInMonitor = async () => {
+    if (
+      typeof window === "undefined" ||
+      !voiceConversationRef.current ||
+      !activeVoiceAudioRef.current ||
+      !navigator.mediaDevices?.getUserMedia
+    ) {
+      return;
+    }
+
+    stopBargeInMonitor();
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+          channelCount: 1,
+        },
+      });
+      bargeInStreamRef.current = stream;
+
+      const AudioContextClass =
+        window.AudioContext || (window as any).webkitAudioContext;
+      const context = new AudioContextClass();
+      bargeInContextRef.current = context;
+
+      const source = context.createMediaStreamSource(stream);
+      const analyser = context.createAnalyser();
+      analyser.fftSize = 1024;
+      analyser.smoothingTimeConstant = 0.55;
+      source.connect(analyser);
+
+      const samples = new Uint8Array(analyser.fftSize);
+      let loudSince: number | null = null;
+
+      const monitor = () => {
+        if (
+          !voiceConversationRef.current ||
+          !activeVoiceAudioRef.current
+        ) {
+          stopBargeInMonitor();
+          return;
+        }
+
+        analyser.getByteTimeDomainData(samples);
+        let sumSquares = 0;
+        for (let i = 0; i < samples.length; i += 1) {
+          const normalized = (samples[i] - 128) / 128;
+          sumSquares += normalized * normalized;
+        }
+        const rms = Math.sqrt(sumSquares / samples.length);
+        const now = performance.now();
+
+        // High threshold + sustained energy reduces accidental self-interruption
+        // from the AI speaker audio. echoCancellation helps further.
+        if (rms >= 0.075) {
+          if (loudSince === null) loudSince = now;
+          if (now - loudSince >= 180) {
+            const audio = activeVoiceAudioRef.current;
+            if (audio) {
+              audio.pause();
+              audio.src = "";
+              activeVoiceAudioRef.current = null;
+            }
+            stopBargeInMonitor();
+            if ("speechSynthesis" in window) {
+              window.speechSynthesis.cancel();
+            }
+            setVoiceStatus("सुन्दैछु...");
+            void startHandsFreeListening();
+            return;
+          }
+        } else {
+          loudSince = null;
+        }
+
+        bargeInFrameRef.current = requestAnimationFrame(monitor);
+      };
+
+      bargeInFrameRef.current = requestAnimationFrame(monitor);
+    } catch (error) {
+      console.error("Barge-in monitor unavailable:", error);
+      stopBargeInMonitor();
+    }
+  };
+
   const scheduleHandsFreeListen = () => {
     window.setTimeout(() => {
       if (
@@ -421,12 +535,17 @@ useEffect(() => {
     utterance.rate = 1;
     utterance.pitch = 1;
 
-    utterance.onstart = () => setVoiceStatus("AI बोल्दैछ...");
+    utterance.onstart = () => {
+      setVoiceStatus("AI बोल्दैछ...");
+      void startBargeInMonitor();
+    };
     utterance.onend = () => {
+      stopBargeInMonitor();
       setVoiceStatus("सुन्दैछु...");
       scheduleHandsFreeListen();
     };
     utterance.onerror = () => {
+      stopBargeInMonitor();
       setVoiceStatus("Voice playback failed, फेरि सुन्दैछु...");
       scheduleHandsFreeListen();
     };
@@ -484,8 +603,12 @@ useEffect(() => {
       const audio = new Audio(audioUrl);
       activeVoiceAudioRef.current = audio;
 
-      audio.onplay = () => setVoiceStatus("AI बोल्दैछ...");
+      audio.onplay = () => {
+        setVoiceStatus("AI बोल्दैछ...");
+        void startBargeInMonitor();
+      };
       audio.onended = () => {
+        stopBargeInMonitor();
         URL.revokeObjectURL(audioUrl);
         if (activeVoiceAudioRef.current === audio) {
           activeVoiceAudioRef.current = null;
@@ -494,6 +617,7 @@ useEffect(() => {
         scheduleHandsFreeListen();
       };
       audio.onerror = () => {
+        stopBargeInMonitor();
         URL.revokeObjectURL(audioUrl);
         if (activeVoiceAudioRef.current === audio) {
           activeVoiceAudioRef.current = null;
@@ -564,6 +688,7 @@ useEffect(() => {
     analyserRef.current = null;
 
     stopVoiceCaptureOnly();
+    stopBargeInMonitor();
     voiceTurnProcessingRef.current = false;
     voiceSilencePromptRef.current = false;
 
@@ -805,7 +930,10 @@ useEffect(() => {
     setVoiceConversationMode(true);
     voiceTurnProcessingRef.current = false;
     setVoiceStatus("Live Voice सुरु हुँदैछ...");
-    await startHandsFreeListening();
+
+    await speakBotReply(
+      "नमस्कार! म RoomKhoj AI हुँ। तपाईंलाई के सहयोग गरौँ?",
+    );
   };
 
   const stopVoiceConversation = () => {
