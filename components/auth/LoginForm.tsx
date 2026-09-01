@@ -21,6 +21,7 @@ import {
   usePasswordLoginMutation,
 } from "@/http/mutations/auth.mutations";
 import { routes } from "@/lib/constants/routes";
+import SocialLoginButtons from "@/components/auth/SocialLoginButtons";
 
 interface LoginFormProps {
   onSuccess?: () => void;
@@ -178,14 +179,7 @@ const LoginForm = ({ onSuccess }: LoginFormProps) => {
         </span>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <Button type="button" variant="outline" className="h-11 rounded-xl" disabled>
-          Google (soon)
-        </Button>
-        <Button type="button" variant="outline" className="h-11 rounded-xl" disabled>
-          Facebook (soon)
-        </Button>
-      </div>
+      <SocialLoginButtons />
 
       <div className="text-center">
         <p className="text-sm text-gray-600">
