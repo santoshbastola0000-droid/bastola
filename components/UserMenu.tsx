@@ -51,10 +51,32 @@ export function UserMenu({
       const stored = JSON.parse(
         localStorage.getItem(KNOWN_ACCOUNTS_KEY) || "[]",
       ) as KnownAccount[];
-      setKnownAccounts(
-        Array.isArray(stored)
-          ? stored.filter((account) => account?.email)
-          : [],
+      const accounts = Array.isArray(stored)
+        ? stored.filter((account) => account?.email)
+        : [];
+      const currentAccount =
+        user?.id && user?.email
+          ? {
+              id: String(user.id),
+              name: String(user.name || "RoomKhoj user"),
+              email: String(user.email).toLowerCase(),
+            }
+          : null;
+      const merged = currentAccount
+        ? [
+            currentAccount,
+            ...accounts.filter(
+              (account) =>
+                account.email.toLowerCase() !== currentAccount.email,
+            ),
+          ]
+        : accounts;
+
+      const nextAccounts = merged.slice(0, 5);
+      setKnownAccounts(nextAccounts);
+      localStorage.setItem(
+        "roomkhoj_known_accounts",
+        JSON.stringify(nextAccounts),
       );
     } catch {
       setKnownAccounts([]);
