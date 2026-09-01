@@ -246,6 +246,7 @@ useEffect(() => {
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const recordedChunksRef = useRef<BlobPart[]>([]);
   const voiceConversationRef = useRef(false);
+  const activeVoiceAudioRef = useRef<HTMLAudioElement | null>(null);
 
   const initDefaultMessages = useCallback(() => {
     return [
@@ -301,6 +302,11 @@ useEffect(() => {
         }
       }
       mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
+      if (activeVoiceAudioRef.current) {
+        activeVoiceAudioRef.current.pause();
+        activeVoiceAudioRef.current.src = "";
+        activeVoiceAudioRef.current = null;
+      }
       if (typeof window !== "undefined" && "speechSynthesis" in window) {
         window.speechSynthesis.cancel();
       }
@@ -358,28 +364,116 @@ useEffect(() => {
   };
 
 
-  const speakBotReply = (text: string) => {
+  const speakWithBrowserFallback = (text: string) => {
     if (
       typeof window === "undefined" ||
-      !voiceConversationRef.current ||
       !("speechSynthesis" in window) ||
       !text.trim()
     ) {
+      setVoiceStatus("यो browser मा voice playback उपलब्ध छैन");
       return;
     }
 
     window.speechSynthesis.cancel();
 
     const utterance = new SpeechSynthesisUtterance(text.slice(0, 1200));
-    utterance.lang = /[\u0900-\u097F]/.test(text) ? "ne-NP" : "en-IN";
+    const voices = window.speechSynthesis.getVoices();
+
+    const nepaliVoice =
+      voices.find((voice) => voice.lang.toLowerCase().startsWith("ne")) ||
+      voices.find((voice) => voice.lang.toLowerCase().startsWith("hi")) ||
+      voices.find((voice) => voice.lang.toLowerCase().startsWith("en-in")) ||
+      voices[0];
+
+    if (nepaliVoice) {
+      utterance.voice = nepaliVoice;
+      utterance.lang = nepaliVoice.lang;
+    } else {
+      utterance.lang = /[\u0900-\u097F]/.test(text) ? "hi-IN" : "en-IN";
+    }
+
     utterance.rate = 1;
     utterance.pitch = 1;
 
     utterance.onstart = () => setVoiceStatus("AI बोल्दैछ...");
     utterance.onend = () => setVoiceStatus("Mic थिचेर फेरि बोल्नुहोस्");
-    utterance.onerror = () => setVoiceStatus("Mic थिचेर फेरि बोल्नुहोस्");
+    utterance.onerror = () =>
+      setVoiceStatus("Voice playback failed, mic फेरि थिच्नुहोस्");
 
     window.speechSynthesis.speak(utterance);
+  };
+
+  const speakBotReply = async (text: string) => {
+    if (
+      typeof window === "undefined" ||
+      !voiceConversationRef.current ||
+      !text.trim()
+    ) {
+      return;
+    }
+
+    if (activeVoiceAudioRef.current) {
+      activeVoiceAudioRef.current.pause();
+      activeVoiceAudioRef.current.src = "";
+      activeVoiceAudioRef.current = null;
+    }
+
+    if ("speechSynthesis" in window) {
+      window.speechSynthesis.cancel();
+    }
+
+    if (!token) {
+      speakWithBrowserFallback(text);
+      return;
+    }
+
+    try {
+      setVoiceStatus("AI आवाज तयार गर्दैछ...");
+
+      const response = await fetch(
+        "https://api.roomkhoj.com/ai-call/speak",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            text: text.slice(0, 1200),
+          }),
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error(`TTS failed: ${response.status}`);
+      }
+
+      const blob = await response.blob();
+      const audioUrl = URL.createObjectURL(blob);
+      const audio = new Audio(audioUrl);
+      activeVoiceAudioRef.current = audio;
+
+      audio.onplay = () => setVoiceStatus("AI बोल्दैछ...");
+      audio.onended = () => {
+        URL.revokeObjectURL(audioUrl);
+        if (activeVoiceAudioRef.current === audio) {
+          activeVoiceAudioRef.current = null;
+        }
+        setVoiceStatus("Mic थिचेर फेरि बोल्नुहोस्");
+      };
+      audio.onerror = () => {
+        URL.revokeObjectURL(audioUrl);
+        if (activeVoiceAudioRef.current === audio) {
+          activeVoiceAudioRef.current = null;
+        }
+        speakWithBrowserFallback(text);
+      };
+
+      await audio.play();
+    } catch (error) {
+      console.error("Server TTS failed, using browser fallback:", error);
+      speakWithBrowserFallback(text);
+    }
   };
 
   const stopMediaStream = () => {
@@ -585,6 +679,12 @@ useEffect(() => {
     }
 
     stopMediaStream();
+
+    if (activeVoiceAudioRef.current) {
+      activeVoiceAudioRef.current.pause();
+      activeVoiceAudioRef.current.src = "";
+      activeVoiceAudioRef.current = null;
+    }
 
     if (typeof window !== "undefined" && "speechSynthesis" in window) {
       window.speechSynthesis.cancel();
@@ -853,7 +953,7 @@ useEffect(() => {
       saveCurrentSession(finalMsgs);
 
       if (voiceConversationRef.current && botReplyText.trim()) {
-        speakBotReply(botReplyText);
+        void speakBotReply(botReplyText);
       }
     } catch (error: any) {
       console.error("API Error details:", error);
@@ -865,7 +965,7 @@ useEffect(() => {
       };
       setMessages([...updatedMessages, fallbackReply]);
       if (voiceConversationRef.current) {
-        speakBotReply(fallbackReply.text);
+        void speakBotReply(fallbackReply.text);
       }
     } finally {
       setIsTyping(false);
