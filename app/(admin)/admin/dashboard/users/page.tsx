@@ -28,6 +28,7 @@ import {
   Bell,
   SendHorizontal,
   Activity,
+  MessageSquare,
 } from "lucide-react";
 
 import {
@@ -570,6 +571,16 @@ export default function UsersList() {
         <div className="col-span-2 flex justify-between items-center pt-2 border-t">
           <div>{getVerificationBadge(user.isVerified)}</div>
           <div className="flex items-center gap-2">
+            <Link href={`/admin/dashboard/messages?userId=${encodeURIComponent(user.id)}`}>
+              <Button
+                variant="outline"
+                size="sm"
+                className="cursor-pointer border-violet-300 bg-violet-50 text-violet-700 hover:bg-violet-100"
+              >
+                <MessageSquare className="mr-1 h-4 w-4" />
+                View Messages
+              </Button>
+            </Link>
             {(
               <Button
                 variant="outline"
@@ -1083,6 +1094,18 @@ export default function UsersList() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
+                          <Link
+                            href={`/admin/dashboard/messages?userId=${encodeURIComponent(user.id)}`}
+                          >
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="cursor-pointer border-violet-300 bg-violet-50 text-violet-700 hover:bg-violet-100"
+                            >
+                              <MessageSquare className="mr-1 h-4 w-4" />
+                              Messages
+                            </Button>
+                          </Link>
                           <Link
                             href={`/admin/dashboard/referrals?userId=${user.id}`}
                           >
