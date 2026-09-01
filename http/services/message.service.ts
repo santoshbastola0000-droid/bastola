@@ -57,6 +57,45 @@ export interface ChatMessage {
 }
 
 export const messageService = {
+
+  adminListUsers: async (query = "") => {
+    const response = await privateApi.get("/message/admin/users", {
+      params: query.trim() ? { q: query.trim() } : undefined,
+    });
+    return response.data as Array<{
+      id: string;
+      name: string;
+      email: string;
+      phoneNumber: string;
+      role: string;
+      isVerified: boolean;
+    }>;
+  },
+
+  adminGetUserConversations: async (userId: string) => {
+    const response = await privateApi.get(
+      `/message/admin/users/${userId}/conversations`,
+    );
+    return response.data as {
+      user: {
+        id: string;
+        name: string;
+        email: string;
+        phoneNumber: string;
+      };
+      conversations: MessageConversation[];
+    };
+  },
+
+  adminGetConversationMessages: async (
+    conversationId: string,
+  ): Promise<ChatMessage[]> => {
+    const response = await privateApi.get(
+      `/message/admin/conversations/${conversationId}/messages`,
+    );
+    return response.data || [];
+  },
+
   getCallCredentials: async () => {
     const response = await privateApi.get("/message/call-credentials");
     return response.data as { iceServers: RTCIceServer[] };
