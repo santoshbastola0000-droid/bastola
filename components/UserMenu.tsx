@@ -1,7 +1,8 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { LogOut, LayoutDashboard, Star, Shield } from "lucide-react";
+import { LogOut, LayoutDashboard, Star, Shield, UsersRound } from "lucide-react";
 import { UserAvatar } from "@/components/UserAvatar";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -16,6 +17,14 @@ import {
 import { Button } from "@/components/ui/button";
 import { UserRole } from "@/types/user.types";
 
+type KnownAccount = {
+  id: string;
+  name: string;
+  email: string;
+};
+
+const KNOWN_ACCOUNTS_KEY = "roomkhoj_known_accounts";
+
 interface UserMenuProps {
   user: any;
   onLogout: () => void;
@@ -29,6 +38,41 @@ export function UserMenu({
   variant = "desktop",
   scrolled,
 }: UserMenuProps) {
+  const [knownAccounts, setKnownAccounts] = useState<KnownAccount[]>([]);
+
+  useEffect(() => {
+    try {
+      const stored = JSON.parse(
+        localStorage.getItem(KNOWN_ACCOUNTS_KEY) || "[]",
+      ) as KnownAccount[];
+      setKnownAccounts(
+        Array.isArray(stored)
+          ? stored.filter((account) => account?.email)
+          : [],
+      );
+    } catch {
+      setKnownAccounts([]);
+    }
+  }, [user?.email]);
+
+  const switchGoogleAccount = (email?: string) => {
+    const backendUrl =
+      process.env.NEXT_PUBLIC_BACKEND_URL ||
+      "https://api.roomkhoj.com";
+    const params = email
+      ? `?login_hint=${encodeURIComponent(email)}`
+      : "";
+    window.location.assign(
+      `${backendUrl.replace(/\/$/, "")}/user/oauth/google${params}`,
+    );
+  };
+
+  const otherAccounts = knownAccounts.filter(
+    (account) =>
+      account.email.toLowerCase() !==
+      String(user?.email || "").toLowerCase(),
+  );
+
   const getDashboardLink = () => {
     switch (user?.role) {
       case user.role === UserRole.ADMIN:
@@ -107,6 +151,37 @@ export function UserMenu({
             <LayoutDashboard className="w-5 h-5 text-[var(--primary)]" />
             {getDashboardLabel()}
           </Link>
+          <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-2">
+            <div className="flex items-center gap-2 px-2 py-1.5 text-sm font-semibold text-slate-800">
+              <UsersRound className="h-5 w-5 text-[var(--primary)]" />
+              Switch account
+            </div>
+
+            {otherAccounts.map((account) => (
+              <button
+                key={account.id || account.email}
+                type="button"
+                onClick={() => switchGoogleAccount(account.email)}
+                className="mt-1 w-full rounded-lg px-2 py-2 text-left hover:bg-white"
+              >
+                <span className="block truncate text-sm font-medium text-slate-800">
+                  {account.name || "RoomKhoj user"}
+                </span>
+                <span className="block truncate text-xs text-slate-500">
+                  {account.email}
+                </span>
+              </button>
+            ))}
+
+            <button
+              type="button"
+              onClick={() => switchGoogleAccount()}
+              className="mt-1 w-full rounded-lg px-2 py-2 text-left text-sm font-medium text-[var(--primary)] hover:bg-white"
+            >
+              Use another Google account
+            </button>
+          </div>
+
           <button
             onClick={onLogout}
             className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-red-600 hover:bg-red-50 rounded-xl transition-all"
