@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Loader2, MessageSquare, Search, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
@@ -15,11 +16,13 @@ type AdminUser = {
   name: string;
   email: string;
   phoneNumber: string;
-  role: string;
-  isVerified: boolean;
+  role?: string;
+  isVerified?: boolean;
 };
 
 export default function AdminMessagesPage() {
+  const searchParams = useSearchParams();
+  const requestedUserId = searchParams.get("userId");
   const [query, setQuery] = useState("");
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
@@ -45,6 +48,49 @@ export default function AdminMessagesPage() {
   useEffect(() => {
     void loadUsers();
   }, []);
+
+  useEffect(() => {
+    if (!requestedUserId) return;
+
+    let cancelled = false;
+
+    const openRequestedUser = async () => {
+      try {
+        setLoadingConversations(true);
+        const data =
+          await messageService.adminGetUserConversations(requestedUserId);
+
+        if (cancelled) return;
+
+        setSelectedUser({
+          id: data.user.id,
+          name: data.user.name,
+          email: data.user.email,
+          phoneNumber: data.user.phoneNumber,
+        });
+        setConversations(data.conversations || []);
+        setSelectedConversation(null);
+        setMessages([]);
+      } catch (error: any) {
+        if (!cancelled) {
+          toast.error(
+            error?.response?.data?.message ||
+              "User conversations load गर्न सकिएन.",
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingConversations(false);
+        }
+      }
+    };
+
+    void openRequestedUser();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [requestedUserId]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => void loadUsers(query), 300);
