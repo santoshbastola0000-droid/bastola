@@ -18,11 +18,17 @@ const SocialCallbackPage = () => {
       return;
     }
 
+    const ticket = params.get("ticket");
+    if (!ticket) {
+      setMessage("Social login session is missing.");
+      return;
+    }
+
     let cancelled = false;
 
     const finishLogin = async () => {
       try {
-        const response = await api.post("/user/session/refresh");
+        const response = await api.post("/user/oauth/session", { ticket });
         const accessToken = response.data?.data?.accessToken;
 
         if (!accessToken) {
