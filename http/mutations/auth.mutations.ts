@@ -54,6 +54,29 @@ export const useLoginMutation = () => {
     ) => {
       const errorData = error.response?.data;
       const statusCode = error.response?.status;
+      const message = String(errorData?.message || "");
+
+      if (message.startsWith("USE_GOOGLE_LOGIN:")) {
+        toast.info("Continue with Google", {
+          description:
+            "यो account Google बाट बनाइएको हो। Google button थिचेर login गर्नुहोस्।",
+          action: {
+            label: "Google",
+            onClick: () => {
+              const backendUrl =
+                process.env.NEXT_PUBLIC_BACKEND_URL ||
+                "https://api.roomkhoj.com";
+              window.location.assign(
+                `${backendUrl.replace(/\/$/, "")}/user/oauth/google?login_hint=${encodeURIComponent(
+                  email.trim().toLowerCase(),
+                )}`,
+              );
+            },
+          },
+          duration: 10000,
+        });
+        return;
+      }
 
       if (statusCode === 404 || errorData?.statusCode === 404) {
         toast.info("Create your account", {
