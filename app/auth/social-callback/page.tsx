@@ -82,12 +82,14 @@ const SocialCallbackPage = () => {
         sessionStorage.removeItem("roomkhoj_post_auth_redirect");
 
         const redirect =
-          savedRedirect ||
-          (user.role === "Admin"
-            ? "/admin/dashboard"
-            : user.role === "User"
-              ? "/user/dashboard"
-              : "/");
+          !user.accountPurpose && user.role === "User"
+            ? "/auth/complete-profile"
+            : savedRedirect ||
+              (user.role === "Admin"
+                ? "/admin/dashboard"
+                : user.role === "User"
+                  ? "/user/dashboard"
+                  : "/");
 
         if (!cancelled) {
           router.replace(redirect);
