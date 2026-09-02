@@ -455,6 +455,14 @@ function RoomsContent() {
         });
         allRooms = resp.data;
         totalCount = resp.pagination?.total ?? resp.data.length;
+      } else if (locationActive) {
+        // Fetch one globally distance-ranked pool, then apply multi-category
+        // selection locally so category request order cannot break nearest-first.
+        const resp = await roomService.getPublicRooms(baseParams);
+        allRooms = resp.data.filter((room) =>
+          f.categories.includes(room.category),
+        );
+        totalCount = allRooms.length;
       } else {
         const results = await Promise.all(
           f.categories.map((cat) =>
