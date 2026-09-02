@@ -40,7 +40,6 @@ import {
 import { useUserStore } from "@/stores/user-store";
 import useTokenStore from "@/store";
 import { resolveImageUrl } from "@/lib/utils";
-import { InterCallButton } from "@/components/messages/InterCallButton";
 
 function MessagesContent() {
   const router = useRouter();
@@ -114,7 +113,6 @@ const user = useUserStore(
     useState<Array<{
       id: string;
       name: string;
-      phoneNumber: string;
     }>>([]);
 
   const [phoneSearching, setPhoneSearching] =
@@ -1469,7 +1467,6 @@ const user = useUserStore(
                 </div>
                 <div className="ml-auto flex items-center gap-1.5">
                   <Button type="button" size="icon" variant="ghost" className="h-10 w-10 rounded-full text-foreground hover:bg-muted" onClick={() => startCall("video")} aria-label="Video call"><Video className="h-5 w-5" /></Button>
-                  <InterCallButton phoneNumber={selected.otherUser?.phoneNumber} />
                 </div>
               </header>
               <audio ref={remoteAudioRef} autoPlay playsInline />
