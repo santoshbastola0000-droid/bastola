@@ -44,6 +44,11 @@ export interface ChatMessage {
   mediaMimeType?: string | null;
   mediaSize?: number | null;
   mediaStorage?: string | null;
+  payment?: {
+    amount: number;
+    currency: "NPR";
+    status: "REQUESTED" | "CONFIRMED";
+  } | null;
   attachment?: {
     type: "ROOM";
     id: string;
@@ -99,6 +104,37 @@ export const messageService = {
     const response = await privateApi.get("/message/call-credentials");
     return response.data as { iceServers: RTCIceServer[] };
   },
+  sendPaymentRequest: async (
+    conversationId: string,
+    amount: number,
+    note?: string,
+    file?: File | null,
+  ): Promise<ChatMessage> => {
+    const formData = new FormData();
+    formData.append("amount", String(amount));
+    if (note?.trim()) formData.append("note", note.trim());
+    if (file) formData.append("file", file);
+
+    const response = await privateApi.post(
+      `/message/conversations/${conversationId}/payment-request`,
+      formData,
+    );
+    return response.data;
+  },
+
+  confirmPaymentRequest: async (
+    messageId: string,
+  ): Promise<{
+    request: ChatMessage;
+    confirmation: ChatMessage | null;
+    alreadyConfirmed: boolean;
+  }> => {
+    const response = await privateApi.post(
+      `/message/messages/${messageId}/payment-confirm`,
+    );
+    return response.data;
+  },
+
   sendMedia: async (
     conversationId: string,
     file: File,
