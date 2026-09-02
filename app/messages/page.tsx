@@ -432,7 +432,7 @@ const user = useUserStore(
             </div>
             {loading ? <div className="flex justify-center p-10"><Loader2 className="h-6 w-6 animate-spin" /></div> : (
               <div className="divide-y divide-border overflow-y-auto">
-                {filtered.map((conversation:any)=><button key={conversation.id} onClick={()=>openConversation(conversation)} className="flex w-full gap-3 px-4 py-3.5 text-left"><div className="min-w-0 flex-1"><p className="truncate font-semibold">{conversation.otherUser?.name || "RoomKhoj user"}</p><p className="truncate text-sm text-muted-foreground">{conversation.lastMessage?.content || "Start conversation"}</p></div></button>)}
+                {filtered.map((conversation:any)=><button key={conversation.id} onClick={()=>openConversation(conversation)} className="flex w-full gap-3 px-4 py-3.5 text-left"><div className="min-w-0 flex-1"><div className="flex items-center justify-between gap-2"><p className="truncate font-semibold">{conversation.otherUser?.name || "RoomKhoj user"}</p>{Number(conversation.unreadCount || 0) > 0 && <span className="min-w-5 rounded-full bg-primary px-1.5 py-0.5 text-center text-[10px] font-bold text-primary-foreground">{conversation.unreadCount}</span>}</div><p className="truncate text-sm text-muted-foreground">{conversation.lastMessage?.content || (conversation.lastMessage?.type === "IMAGE" ? "Photo" : conversation.lastMessage?.type === "VIDEO" ? "Video" : conversation.lastMessage?.attachment?.type === "ROOM" ? "Room attachment" : "Start conversation")}</p></div></button>)}
               </div>
             )}
           </aside>
@@ -447,7 +447,14 @@ const user = useUserStore(
               <div className="min-h-0 flex-1 space-y-2 overflow-y-auto bg-background px-2.5 py-3 pb-28">
                 {messagesLoading ? <div className="flex justify-center p-10"><Loader2 className="h-6 w-6 animate-spin" /></div> : messages.map((message)=>{
                   const mine = message.senderId === currentUserId;
-                  return <div key={message.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}><div className={`max-w-[84%] rounded-2xl px-3 py-2 text-sm ${mine ? "bg-primary text-primary-foreground" : "bg-card"}`}><p className="whitespace-pre-wrap break-words">{message.content}</p><div className="mt-1 flex items-center justify-end gap-1 text-[10px] opacity-70"><span>{new Date(message.createdAt).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})}</span>{mine && <CheckCheck className="h-3.5 w-3.5" />}</div></div></div>;
+                  const deliveryLabel = message.seenAt ? "Seen" : message.deliveredAt ? "Delivered" : "Sent";
+                  return <div key={message.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}><div className={`max-w-[84%] rounded-2xl px-3 py-2 text-sm ${mine ? "bg-primary text-primary-foreground" : "bg-card"}`}>
+                    {message.attachment?.type === "ROOM" && <button type="button" onClick={()=>router.push(message.attachment!.url)} className="mb-2 block w-full overflow-hidden rounded-xl border border-border bg-background/80 text-left text-foreground">{message.attachment.image && <img src={resolveImageUrl(message.attachment.image)} alt="" className="h-32 w-full object-cover" />}<div className="p-2.5"><p className="text-[10px] font-semibold uppercase opacity-70">Room</p><p className="font-semibold">{message.attachment.title}</p><p className="text-xs opacity-80">Rs. {Number(message.attachment.price || 0).toLocaleString()}</p></div></button>}
+                    {message.mediaUrl && message.type === "VIDEO" && <video src={resolveImageUrl(message.mediaUrl)} controls playsInline className="mb-2 max-h-72 w-full rounded-xl" />}
+                    {message.mediaUrl && message.type === "IMAGE" && <img src={resolveImageUrl(message.mediaUrl)} alt="" className="mb-2 max-h-72 w-full rounded-xl object-cover" />}
+                    {message.content && <p className="whitespace-pre-wrap break-words">{message.content}</p>}
+                    <div className="mt-1 flex items-center justify-end gap-1 text-[10px] opacity-75"><span>{new Date(message.createdAt).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})}</span>{mine && <><CheckCheck className={`h-3.5 w-3.5 ${message.seenAt ? "text-sky-200" : ""}`} /><span className="font-medium">{deliveryLabel}</span></>}</div>
+                  </div></div>;
                 })}
                 <div ref={messagesEndRef} />
               </div>
