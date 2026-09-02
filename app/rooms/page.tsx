@@ -125,26 +125,8 @@ const DEFAULT_FILTERS: FilterState = {
   allowsWomen: null,
   lat: null,
   lng: null,
-  radius: 5,
+  radius: 10,
 };
-
-// Haversine distance calculation
-function haversineKm(
-  lat1: number,
-  lng1: number,
-  lat2: number,
-  lng2: number,
-): number {
-  const R = 6371;
-  const dLat = ((lat2 - lat1) * Math.PI) / 180;
-  const dLng = ((lng2 - lng1) * Math.PI) / 180;
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos((lat1 * Math.PI) / 180) *
-      Math.cos((lat2 * Math.PI) / 180) *
-      Math.sin(dLng / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
 
 // Scroll progress bar
 function ScrollProgressBar() {
@@ -449,7 +431,13 @@ function RoomsContent() {
 
       const baseParams = {
         ...(!locationActive && { page: 0, take: PAGE_SIZE }),
-        ...(locationActive && { page: 0, take: 1000 }),
+        ...(locationActive && {
+          page: 0,
+          take: 1000,
+          latitude: f.lat!,
+          longitude: f.lng!,
+          radius: f.radius,
+        }),
         ...(f.search.trim() && { search: f.search.trim() }),
         ...(f.minPrice > 0 && { minPrice: f.minPrice }),
         ...(f.maxPrice < 50000 && { maxPrice: f.maxPrice }),
@@ -467,6 +455,14 @@ function RoomsContent() {
         });
         allRooms = resp.data;
         totalCount = resp.pagination?.total ?? resp.data.length;
+      } else if (locationActive) {
+        // Fetch one globally distance-ranked pool, then apply multi-category
+        // selection locally so category request order cannot break nearest-first.
+        const resp = await roomService.getPublicRooms(baseParams);
+        allRooms = resp.data.filter((room) =>
+          f.categories.includes(room.category),
+        );
+        totalCount = allRooms.length;
       } else {
         const results = await Promise.all(
           f.categories.map((cat) =>
@@ -486,60 +482,8 @@ function RoomsContent() {
       }
 
       if (locationActive) {
-        const userLat = f.lat!;
-        const userLng = f.lng!;
-        const radiusKm = f.radius;
-
-        const roomsWithCoordinates: Room[] = [];
-        const roomsWithoutCoordinates: Room[] = [];
-
-        for (const room of allRooms) {
-          const rawLat =
-            (room as any).latitude ??
-            (room as any).lat ??
-            (room as any).location?.latitude;
-          const rawLng =
-            (room as any).longitude ??
-            (room as any).lng ??
-            (room as any).location?.longitude;
-
-          const rLat = Number(rawLat);
-          const rLng = Number(rawLng);
-          const hasCoordinates =
-            rawLat !== null &&
-            rawLat !== undefined &&
-            rawLng !== null &&
-            rawLng !== undefined &&
-            Number.isFinite(rLat) &&
-            Number.isFinite(rLng);
-
-          if (!hasCoordinates) {
-            roomsWithoutCoordinates.push(room);
-            continue;
-          }
-
-          const distanceKm = haversineKm(userLat, userLng, rLat, rLng);
-          roomsWithCoordinates.push({
-            ...room,
-            _distanceKm: distanceKm,
-            _isWithinRadius: distanceKm <= radiusKm,
-          } as Room);
-        }
-
-        // Location should rank the feed, not hide valid approved listings.
-        // Nearest rooms stay first; farther rooms remain visible afterwards.
-        roomsWithCoordinates.sort((a: any, b: any) => {
-          // Newly created/approved rooms must be visible immediately at the
-          // front of the feed; use distance as the secondary ranking signal.
-          const aTime = new Date(a.approvedAt || a.createdAt || 0).getTime();
-          const bTime = new Date(b.approvedAt || b.createdAt || 0).getTime();
-
-          if (bTime !== aTime) return bTime - aTime;
-
-          return (a._distanceKm ?? Infinity) - (b._distanceKm ?? Infinity);
-        });
-
-        allRooms = [...roomsWithCoordinates, ...roomsWithoutCoordinates];
+        // Distance ranking now happens on the backend. Exact room coordinates
+        // are intentionally never returned to the browser.
         totalCount = allRooms.length;
       }
 
@@ -871,7 +815,7 @@ function RoomsContent() {
     (filters.allowsWomen ? 1 : 0) +
     (locationActive ? 1 : 0);
 
-  const premiumRooms = [...rooms].sort((a, b) => {
+  const premiumRooms = locationActive ? rooms : [...rooms].sort((a, b) => {
     const approvedTime = (room: Room) => {
       const value = (room as any).approvedAt || room.createdAt;
       const time = new Date(value).getTime();
@@ -1083,7 +1027,7 @@ function RoomsContent() {
                 transition={{ delay: 0.15 }}
               >
                 {total > 0
-                  ? `${total.toLocaleString()} verified ${locationActive ? `properties within ${filters.radius} km` : "properties available"}`
+                  ? `${total.toLocaleString()} verified ${locationActive ? `properties — nearby first` : "properties available"}`
                   : "Browse verified listings across Nepal"}
               </motion.p>
             </motion.div>
@@ -1098,9 +1042,8 @@ function RoomsContent() {
                   className="text-center text-xs text-red-600 flex items-center justify-center gap-1"
                 >
                   <MapPin className="w-3 h-3" />
-                  Showing {total} rooms within{" "}
-                  <strong>{filters.radius} km</strong> of your location. Adjust
-                  radius in Filters.
+                  Showing rooms nearest to you first. The first nearby group is{" "}
+                  <strong>{filters.radius} km</strong>, then farther rooms are suggested progressively.
                 </motion.p>
               )}
             </AnimatePresence>
@@ -1395,7 +1338,7 @@ function RoomsContent() {
                     </h3>
                     <p className="text-sm text-slate-500 mb-5">
                       {locationActive
-                        ? `No rooms within ${filters.radius} km of your location. Try increasing the radius in Filters.`
+                        ? "No matching rooms found near your location yet. Try changing the other filters."
                         : "Try adjusting your filters or search terms."}
                     </p>
                     <Button

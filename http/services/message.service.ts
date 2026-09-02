@@ -20,7 +20,6 @@ export interface MessageConversation {
   otherUser?: {
     id: string;
     name: string;
-    phoneNumber: string;
   } | null;
 
   lastMessageAt?: string | null;
@@ -172,7 +171,6 @@ export const messageService = {
       otherUser: {
         id: string;
         name: string;
-        phoneNumber: string;
       } | null;
     }>;
   },
@@ -190,14 +188,12 @@ export const messageService = {
     return response.data as Array<{
       id: string;
       name: string;
-      email?: string | null;
-      phoneNumber: string;
     }>;
   },
 
   findProfileByContact: async (contact: string) => {
     const response = await privateApi.post("/message/find-profile-by-contact", { contact });
-    return response.data as { id: string; name: string; phoneNumber: string };
+    return response.data as { id: string; name: string };
   },
 
   startByContact: async (
@@ -213,8 +209,6 @@ export const messageService = {
       user: {
         id: string;
         name: string;
-        email: string;
-        phoneNumber: string;
       };
     };
   },
@@ -232,7 +226,6 @@ export const messageService = {
       user: {
         id: string;
         name: string;
-        phoneNumber: string;
       };
     };
   },
