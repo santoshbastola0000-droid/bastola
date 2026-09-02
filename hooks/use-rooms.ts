@@ -99,6 +99,25 @@ export function useRooms(filters: RoomFilters = {}): UseRoomsReturn {
     fetchRooms();
   }, [filtersKey, fetchRooms]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const handleLocationUpdate = () => {
+      void fetchRooms();
+    };
+
+    window.addEventListener(
+      "roomkhoj-location-updated",
+      handleLocationUpdate,
+    );
+
+    return () =>
+      window.removeEventListener(
+        "roomkhoj-location-updated",
+        handleLocationUpdate,
+      );
+  }, [fetchRooms]);
+
   return {
     rooms,
     rawRooms,
