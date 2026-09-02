@@ -676,17 +676,97 @@ export default function ProfilePage() {
           ) : (
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
               {[
-                { name: "Free", price: 0, note: "Earn up to Rs. 1,500", active: !monetization?.isMonetized, action: false },
-                { name: "Starter", price: Number(monetization?.monetizationFee || 499), note: "Continue earning after Free limit", active: !!monetization?.isMonetized, action: !monetization?.isMonetized },
-                { name: "Growth", price: 899, note: "More earning tools", active: false, action: false },
-                { name: "Pro", price: 999, note: "For active room earners", active: false, action: false },
-                { name: "VIP", price: 1999, note: "Premium earning plan", active: false, action: false },
+                {
+                  name: "Free",
+                  price: 0,
+                  note: "Start earning without payment",
+                  active: !monetization?.isMonetized,
+                  action: false,
+                  features: [
+                    "Room post गर्न मिल्ने",
+                    "Room browse, save र message",
+                    "Chat बाट payment request",
+                    "Escrow payment receive",
+                    "Rs. 1,500 सम्म total earning",
+                    "Basic wallet & transaction history",
+                  ],
+                },
+                {
+                  name: "Starter",
+                  price: Number(monetization?.monetizationFee || 499),
+                  note: "Best for new earning users",
+                  active: !!monetization?.isMonetized,
+                  action: !monetization?.isMonetized,
+                  features: [
+                    "Free plan का सबै सुविधा",
+                    "Rs. 1,500 earning limit हट्ने",
+                    "Unlimited service-charge earning",
+                    "Escrow release request",
+                    "10% RoomKhoj platform fee",
+                    "Monetized profile badge",
+                    "Wallet withdrawal eligibility",
+                  ],
+                },
+                {
+                  name: "Growth",
+                  price: 899,
+                  note: "For users growing their room business",
+                  active: false,
+                  action: false,
+                  features: [
+                    "Starter का सबै सुविधा",
+                    "Priority room visibility",
+                    "More active room listings",
+                    "Basic earning analytics",
+                    "Lead activity insights",
+                    "Faster support priority",
+                  ],
+                },
+                {
+                  name: "Pro",
+                  price: 999,
+                  note: "For active agents and frequent earners",
+                  active: false,
+                  action: false,
+                  features: [
+                    "Growth का सबै सुविधा",
+                    "Featured room boosts",
+                    "Advanced earning analytics",
+                    "Lead & payment history tools",
+                    "Priority placement",
+                    "Agent-friendly earning dashboard",
+                  ],
+                },
+                {
+                  name: "VIP",
+                  price: 1999,
+                  note: "Premium plan for serious agents",
+                  active: false,
+                  action: false,
+                  features: [
+                    "Pro का सबै सुविधा",
+                    "VIP profile badge",
+                    "Highest room visibility priority",
+                    "Premium featured placement",
+                    "Advanced agent analytics",
+                    "Priority support",
+                    "Early access to new earning features",
+                  ],
+                },
               ].map((plan) => (
                 <div key={plan.name} className={`relative rounded-2xl border p-4 ${plan.active ? "border-amber-400 bg-amber-50 shadow-sm" : "border-border bg-background"}`}>
                   {plan.active && <span className="absolute right-3 top-3 rounded-full bg-emerald-100 px-2 py-1 text-[10px] font-bold text-emerald-700">ACTIVE</span>}
                   <p className="text-sm font-black">{plan.name}</p>
                   <p className="mt-2 text-2xl font-black">{plan.price === 0 ? "Free" : `Rs. ${plan.price.toLocaleString()}`}</p>
                   <p className="mt-2 min-h-10 text-xs text-muted-foreground">{plan.note}</p>
+                  <div className="mt-3 space-y-2">
+                    {plan.features.map((feature) => (
+                      <div key={feature} className="flex items-start gap-2 text-xs">
+                        <BadgeCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-600" />
+                        <span>{feature}</span>
+                      </div>
+                    ))}
+                  </div>
                   {plan.name === "Free" && !monetization?.isMonetized && (
                     <div className="mt-3 rounded-xl bg-muted/60 p-2 text-xs font-semibold">
                       Remaining: Rs. {Number(monetization?.freeEarningRemaining ?? 1500).toLocaleString()} / 1,500
