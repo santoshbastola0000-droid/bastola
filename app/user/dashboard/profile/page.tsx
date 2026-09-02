@@ -386,7 +386,13 @@ export default function ProfilePage() {
     setSelectedMonetizationPlan(plan);
     if (kyc?.status !== "APPROVED") {
       setShowKycForm(true);
-      toast.success("पहिले identity verification पूरा गर्नुहोस्। Approval पछि payment confirmation आउँछ।");
+      if (kyc?.accountVerified && !kyc?.hasIdentityDocument) {
+        toast.success("Account verified छ। Name र phone pre-filled छन्; identity document details पूरा गर्नुहोस्।");
+      } else if (kyc?.status === "PENDING") {
+        toast.success("Identity verification review मा छ। आवश्यक भए details update गर्न सक्नुहुन्छ।");
+      } else {
+        toast.success("पहिले name, phone र identity document सहित verification पूरा गर्नुहोस्।");
+      }
       return;
     }
     try {
