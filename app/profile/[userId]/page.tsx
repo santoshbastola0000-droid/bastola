@@ -23,6 +23,7 @@ import {
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { PropertyCard } from "@/components/rooms/PropertyCard";
 import {
   profileService,
   type FriendStatus,
@@ -65,6 +66,9 @@ export default function PublicProfilePage() {
   const [friends, setFriends] =
     useState<any[]>([]);
 
+  const [incomingRequests, setIncomingRequests] =
+    useState<any[]>([]);
+
   const [tab, setTab] =
     useState<Tab>("posts");
 
@@ -97,6 +101,24 @@ export default function PublicProfilePage() {
         setFriendStatus(
           status.status,
         );
+
+        if (status.status === "SELF") {
+          try {
+            const requests =
+              await profileService
+                .getIncomingFriendRequests();
+
+            setIncomingRequests(
+              Array.isArray(requests)
+                ? requests
+                : [],
+            );
+          } catch {
+            setIncomingRequests([]);
+          }
+        } else {
+          setIncomingRequests([]);
+        }
       } catch {}
 
       try {
@@ -170,6 +192,51 @@ export default function PublicProfilePage() {
         error?.response?.data
           ?.message ||
           "Friend action failed",
+      );
+    } finally {
+      setFriendLoading(false);
+    }
+  };
+
+  const acceptIncomingRequest = async (
+    requesterId: string,
+  ) => {
+    try {
+      setFriendLoading(true);
+
+      await profileService
+        .acceptFriendRequest(
+          requesterId,
+        );
+
+      setIncomingRequests(
+        (current) =>
+          current.filter(
+            (request) =>
+              request.id !== requesterId,
+          ),
+      );
+
+      try {
+        const list =
+          await profileService
+            .getFriends(userId);
+
+        setFriends(
+          Array.isArray(list)
+            ? list
+            : [],
+        );
+      } catch {}
+
+      toast.success(
+        "Friend request accepted",
+      );
+    } catch (error: any) {
+      toast.error(
+        error?.response?.data
+          ?.message ||
+          "Friend request accept गर्न सकिएन",
       );
     } finally {
       setFriendLoading(false);
@@ -393,9 +460,11 @@ export default function PublicProfilePage() {
             <div className="flex overflow-x-auto">
               {[
                 ["posts", "Posts"],
-                ["rooms", "Rooms"],
+                ["rooms", `Rooms (${profile.rooms.length})`],
                 ["jobs", "Jobs"],
-                ["friends", "Friends"],
+                ["friends", friendStatus === "SELF" && incomingRequests.length > 0
+                  ? `Friends (${incomingRequests.length})`
+                  : "Friends"],
                 ["about", "About"],
               ].map(
                 ([value, label]) => (
@@ -553,53 +622,33 @@ export default function PublicProfilePage() {
               </div>
             )}
 
-            {tab === "rooms" &&
-              profile.rooms.map(
-                (room: any) => (
-                  <div
-                    key={room.id}
-                    className="rounded-2xl bg-background p-5 shadow-sm"
-                  >
-                    <div className="mb-2 flex items-center gap-2 font-semibold">
-                      <Home className="h-5 w-5 text-primary" />
-                      Room Listing
-                    </div>
-
-                    <h3 className="text-lg font-bold">
-                      {room.title ||
-                        room.roomType ||
-                        "Room"}
-                    </h3>
-
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      {room.address ||
-                        room.location ||
-                        ""}
+            {tab === "rooms" && (
+              <div>
+                {profile.rooms.length === 0 ? (
+                  <div className="rounded-2xl bg-background p-6 text-center shadow-sm">
+                    <Home className="mx-auto h-10 w-10 text-muted-foreground" />
+                    <p className="mt-3 font-semibold">
+                      No room listings yet
                     </p>
-
-                    {room.price != null && (
-                      <p className="mt-3 font-bold">
-                        Rs.{" "}
-                        {Number(
-                          room.price,
-                        ).toLocaleString()}
-                      </p>
-                    )}
-
-                    <Button
-                      variant="outline"
-                      className="mt-4"
-                      onClick={() =>
-                        router.push(
-                          `/property/${room.id}`,
-                        )
-                      }
-                    >
-                      View Room
-                    </Button>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      This user has not posted any visible rooms.
+                    </p>
                   </div>
-                ),
-              )}
+                ) : (
+                  <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-2">
+                    {profile.rooms.map(
+                      (room: any, index: number) => (
+                        <PropertyCard
+                          key={room.id}
+                          room={room}
+                          index={index}
+                        />
+                      ),
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
 
             {tab === "jobs" &&
               profile.jobs.map(
@@ -638,10 +687,81 @@ export default function PublicProfilePage() {
               )}
 
             {tab === "friends" && (
-              <div className="rounded-2xl bg-background p-5 shadow-sm">
-                <h2 className="mb-4 text-xl font-bold">
-                  Friends
-                </h2>
+              <div className="space-y-4">
+                {friendStatus === "SELF" &&
+                  incomingRequests.length > 0 && (
+                  <div className="rounded-2xl bg-background p-5 shadow-sm">
+                    <h2 className="mb-4 text-xl font-bold">
+                      Friend Requests
+                    </h2>
+
+                    <div className="space-y-3">
+                      {incomingRequests.map(
+                        (request) => (
+                          <div
+                            key={request.id}
+                            className="flex items-center gap-3 rounded-xl border p-3"
+                          >
+                            <button
+                              type="button"
+                              onClick={() =>
+                                router.push(
+                                  `/profile/${request.id}`,
+                                )
+                              }
+                              className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                            >
+                              <div className="h-12 w-12 shrink-0 overflow-hidden rounded-full bg-muted">
+                                {request.profilePhotoUrl ? (
+                                  <img
+                                    src={
+                                      profileMediaUrl(
+                                        request.profilePhotoUrl,
+                                      ) || ""
+                                    }
+                                    alt={request.name}
+                                    className="h-full w-full object-cover"
+                                  />
+                                ) : (
+                                  <div className="flex h-full items-center justify-center">
+                                    <Users className="h-5 w-5 text-muted-foreground" />
+                                  </div>
+                                )}
+                              </div>
+
+                              <div className="min-w-0">
+                                <p className="truncate font-semibold">
+                                  {request.name}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  Sent you a friend request
+                                </p>
+                              </div>
+                            </button>
+
+                            <Button
+                              type="button"
+                              size="sm"
+                              onClick={() =>
+                                void acceptIncomingRequest(
+                                  request.id,
+                                )
+                              }
+                              disabled={friendLoading}
+                            >
+                              Accept
+                            </Button>
+                          </div>
+                        ),
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                <div className="rounded-2xl bg-background p-5 shadow-sm">
+                  <h2 className="mb-4 text-xl font-bold">
+                    Friends
+                  </h2>
 
                 <div className="grid gap-3 sm:grid-cols-2">
                   {friends.map(
@@ -682,6 +802,7 @@ export default function PublicProfilePage() {
                       </button>
                     ),
                   )}
+                </div>
                 </div>
               </div>
             )}
