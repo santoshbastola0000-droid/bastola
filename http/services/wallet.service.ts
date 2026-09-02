@@ -102,6 +102,45 @@ class WalletService {
     return response.data;
   }
 
+  async getPendingReleaseRequests() {
+    const response =
+      await privateApi.get(
+        `${this.baseUrl}/admin/release-requests`,
+      );
+
+    return response.data as {
+      message: string;
+      data: Array<{
+        userId: string;
+        user: {
+          id: string;
+          name: string;
+          email?: string | null;
+          phoneNumber?: string | null;
+        } | null;
+        pendingBalance: number;
+        requestedAt: string | null;
+        status: "PENDING";
+      }>;
+    };
+  }
+
+  async releasePendingBalance(
+    userId: string,
+    adminRemarks?: string,
+  ) {
+    const response =
+      await privateApi.post(
+        `${this.baseUrl}/admin/users/${userId}/release-pending`,
+        {
+          adminRemarks:
+            adminRemarks || undefined,
+        },
+      );
+
+    return response.data;
+  }
+
   async getWalletStats(): Promise<WalletStats> {
     const response = await privateApi.get(`${this.baseUrl}/admin/stats`);
     return response.data.data;
