@@ -2,6 +2,7 @@
 
 import {
   useEffect,
+  useRef,
   useState,
 } from "react";
 import {
@@ -15,10 +16,14 @@ import {
   MessageCircle,
   UserPlus,
   Users,
+  Camera,
+  ChevronLeft,
+  Loader2,
 } from "lucide-react";
 import {
   useParams,
   useRouter,
+  useSearchParams,
 } from "next/navigation";
 import { toast } from "sonner";
 
@@ -45,6 +50,13 @@ export default function PublicProfilePage() {
   }>();
 
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const requestedReturnTo =
+    searchParams.get("returnTo");
+  const safeReturnTo =
+    requestedReturnTo?.startsWith("/")
+      ? requestedReturnTo
+      : null;
 
   const userId =
     String(params.userId);
@@ -79,6 +91,11 @@ export default function PublicProfilePage() {
     useState(false);
 
   const [messageLoading, setMessageLoading] =
+    useState(false);
+
+  const profilePhotoInputRef =
+    useRef<HTMLInputElement | null>(null);
+  const [profilePhotoUploading, setProfilePhotoUploading] =
     useState(false);
 
   const load = async () => {
@@ -144,6 +161,71 @@ export default function PublicProfilePage() {
   useEffect(() => {
     load();
   }, [userId]);
+
+  const goBack = () => {
+    if (safeReturnTo) {
+      router.back();
+      return;
+    }
+
+    router.back();
+  };
+
+  const handleProfilePhotoUpload = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file =
+      event.target.files?.[0];
+
+    event.target.value = "";
+
+    if (!file) return;
+
+    const isImage =
+      file.type.startsWith("image/") ||
+      /\.(jpg|jpeg|png|webp|gif|heic|heif)$/i.test(
+        file.name,
+      );
+
+    if (!isImage) {
+      toast.error(
+        "Profile photo को लागि image file छान्नुहोस्",
+      );
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error(
+        "Profile photo 10 MB भन्दा सानो राख्नुहोस्",
+      );
+      return;
+    }
+
+    try {
+      setProfilePhotoUploading(true);
+
+      await profileService
+        .uploadProfilePhoto(file);
+
+      const refreshed =
+        await profileService
+          .getProfile(userId);
+
+      setProfile(refreshed);
+
+      toast.success(
+        "Profile photo updated",
+      );
+    } catch (error: any) {
+      toast.error(
+        error?.response?.data
+          ?.message ||
+          "Profile photo upload गर्न सकिएन",
+      );
+    } finally {
+      setProfilePhotoUploading(false);
+    }
+  };
 
   const handleFriend = async () => {
     try {
@@ -324,6 +406,19 @@ export default function PublicProfilePage() {
   return (
     <main className="min-h-screen bg-muted/30 pb-24">
       <div className="mx-auto max-w-5xl">
+        <div className="sticky top-0 z-40 flex h-12 items-center border-b border-border/70 bg-background/95 px-2 backdrop-blur md:static md:border-0 md:bg-transparent md:px-0">
+          <button
+            type="button"
+            onClick={goBack}
+            className="flex h-10 items-center gap-1 rounded-full px-2 text-sm font-semibold text-foreground transition hover:bg-muted"
+            aria-label="Back"
+          >
+            <ChevronLeft className="h-6 w-6" />
+            <span className="hidden sm:inline">
+              Back
+            </span>
+          </button>
+        </div>
         <section className="overflow-hidden bg-background shadow-sm md:rounded-b-3xl">
           <div className="relative h-48 bg-gradient-to-br from-red-500 via-rose-500 to-pink-600 sm:h-72">
             {coverPhoto && (
@@ -338,20 +433,50 @@ export default function PublicProfilePage() {
           <div className="px-4 pb-4 sm:px-8">
             <div className="-mt-14 flex flex-col gap-4 sm:-mt-16 sm:flex-row sm:items-end sm:justify-between">
               <div className="flex items-end gap-4">
-                <div className="relative h-28 w-28 shrink-0 overflow-hidden rounded-full border-4 border-background bg-gradient-to-br from-red-500 to-rose-600 shadow-lg sm:h-36 sm:w-36">
-                  {profilePhoto ? (
-                    <img
-                      src={profilePhoto}
-                      alt=""
-                      className="h-full w-full object-cover"
-                      onError={(e) => {
-                        e.currentTarget.style.display = "none";
-                      }}
-                    />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center text-3xl font-bold text-white">
-                      {initials}
-                    </div>
+                <div className="relative h-28 w-28 shrink-0 sm:h-36 sm:w-36">
+                  <div className="h-full w-full overflow-hidden rounded-full border-4 border-background bg-gradient-to-br from-red-500 to-rose-600 shadow-lg">
+                    {profilePhoto ? (
+                      <img
+                        src={profilePhoto}
+                        alt=""
+                        className="h-full w-full object-cover"
+                        onError={(e) => {
+                          e.currentTarget.style.display = "none";
+                        }}
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center text-3xl font-bold text-white">
+                        {initials}
+                      </div>
+                    )}
+                  </div>
+
+                  {friendStatus === "SELF" && (
+                    <>
+                      <input
+                        ref={profilePhotoInputRef}
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handleProfilePhotoUpload}
+                      />
+                      <button
+                        type="button"
+                        onClick={() =>
+                          profilePhotoInputRef.current?.click()
+                        }
+                        disabled={profilePhotoUploading}
+                        className="absolute bottom-1 right-1 flex h-10 w-10 items-center justify-center rounded-full border-2 border-background bg-primary text-primary-foreground shadow-lg transition hover:bg-primary/90 disabled:opacity-60"
+                        aria-label="Change profile photo"
+                        title="Change profile photo"
+                      >
+                        {profilePhotoUploading ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Camera className="h-5 w-5" />
+                        )}
+                      </button>
+                    </>
                   )}
                 </div>
 
