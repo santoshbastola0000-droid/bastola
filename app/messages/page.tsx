@@ -98,6 +98,23 @@ const user = useUserStore(
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [showActionMenu, setShowActionMenu] = useState(false);
 
+  const [showPaymentRequestForm, setShowPaymentRequestForm] =
+    useState(false);
+  const [paymentAmount, setPaymentAmount] =
+    useState("");
+  const [paymentNote, setPaymentNote] =
+    useState("");
+  const [paymentActionLoading, setPaymentActionLoading] =
+    useState<string | null>(null);
+  const [releaseStatus, setReleaseStatus] =
+    useState<{
+      pendingBalance: number;
+      requestedAt: string | null;
+      status: "PENDING" | "RELEASED" | "CANCELLED" | null;
+    } | null>(null);
+  const [releaseLoading, setReleaseLoading] =
+    useState(false);
+
   useEffect(() => {
     const savedTheme = localStorage.getItem("roomkhoj:messages-theme");
     setIsDarkMode(savedTheme === "dark");
@@ -212,19 +229,46 @@ const user = useUserStore(
       clientMessageId: string;
     } | null>(null);
 
-  const loadConversations = async () => {
+  const loadConversations = async (
+    options?: { background?: boolean },
+  ) => {
+    const background =
+      options?.background === true;
+
     try {
-      setLoading(true);
-      const data = await messageService.getConversations();
+      if (!background) {
+        setLoading(true);
+      }
+
+      const data =
+        await messageService
+          .getConversations();
+
       setConversations(data);
+
       if (requestedConversationId) {
-        const requested = data.find((conversation) => conversation.id === requestedConversationId);
-        if (requested) setSelected(requested);
+        const requested =
+          data.find(
+            (conversation) =>
+              conversation.id ===
+              requestedConversationId,
+          );
+
+        if (requested) {
+          setSelected(requested);
+        }
       }
     } catch (error: any) {
-      toast.error(error?.response?.data?.message || "Messages load गर्न सकिएन.");
+      if (!background) {
+        toast.error(
+          error?.response?.data?.message ||
+          "Messages load गर्न सकिएन.",
+        );
+      }
     } finally {
-      setLoading(false);
+      if (!background) {
+        setLoading(false);
+      }
     }
   };
 
@@ -233,17 +277,38 @@ const user = useUserStore(
   }, [requestedConversationId]);
 
   useEffect(() => {
-    let cancelled = false;
-    const syncConversations = async () => {
-      try {
-        const data = await messageService.getConversations();
-        if (!cancelled) setConversations(data);
-      } catch {}
+    const refresh =
+      () => void loadConversations({
+        background: true,
+      });
+
+    const onVisibilityChange = () => {
+      if (
+        document.visibilityState ===
+        "visible"
+      ) {
+        refresh();
+      }
     };
-    const intervalId = window.setInterval(syncConversations, 5000);
+
+    window.addEventListener(
+      "focus",
+      refresh,
+    );
+    document.addEventListener(
+      "visibilitychange",
+      onVisibilityChange,
+    );
+
     return () => {
-      cancelled = true;
-      window.clearInterval(intervalId);
+      window.removeEventListener(
+        "focus",
+        refresh,
+      );
+      document.removeEventListener(
+        "visibilitychange",
+        onVisibilityChange,
+      );
     };
   }, []);
 
@@ -336,6 +401,9 @@ const user = useUserStore(
               ...message,
               deliveredAt: status.deliveredAt ?? message.deliveredAt,
               seenAt: status.seenAt ?? message.seenAt,
+              paymentStatus: status.paymentStatus ?? message.paymentStatus,
+              paymentCompletedAt: status.paymentCompletedAt ?? message.paymentCompletedAt,
+              paymentTransactionId: status.paymentTransactionId ?? message.paymentTransactionId,
             }
           : message,
       ));
@@ -368,6 +436,63 @@ const user = useUserStore(
       block: "end",
     });
   }, [messages.length, selected?.id, messagesLoading]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadProtectedMedia =
+      async () => {
+        const mediaMessages =
+          messages.filter(
+            (message) =>
+              (message.type === "IMAGE" ||
+                message.type === "VIDEO") &&
+              message.mediaUrl &&
+              !mediaObjectUrls[
+                message.id
+              ],
+          );
+
+        for (const message of mediaMessages) {
+          try {
+            const blob =
+              await messageService
+                .getMediaBlob(
+                  message.id,
+                );
+
+            if (cancelled) return;
+
+            const url =
+              URL.createObjectURL(blob);
+
+            setMediaObjectUrls(
+              (current) => ({
+                ...current,
+                [message.id]: url,
+              }),
+            );
+          } catch {}
+        }
+      };
+
+    void loadProtectedMedia();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [messages, mediaObjectUrls]);
+
+  useEffect(() => {
+    return () => {
+      Object.values(
+        mediaObjectUrls,
+      ).forEach(
+        (url) =>
+          URL.revokeObjectURL(url),
+      );
+    };
+  }, []);
 
   const runSearch = async (
     rawValue?: string,
@@ -662,6 +787,222 @@ const user = useUserStore(
     }
   };
 
+  const submitPaymentRequest =
+    async () => {
+      if (!selected) return;
+
+      const amount =
+        Number(paymentAmount);
+
+      if (
+        !Number.isFinite(amount) ||
+        amount <= 0
+      ) {
+        toast.error(
+          "Valid payment amount राख्नुहोस्।",
+        );
+        return;
+      }
+
+      try {
+        setPaymentActionLoading(
+          "create",
+        );
+
+        const message =
+          await messageService
+            .createPaymentRequest(
+              selected.id,
+              amount,
+              paymentNote,
+            );
+
+        setMessages((prev) =>
+          prev.some(
+            (item) =>
+              item.id === message.id,
+          )
+            ? prev
+            : [...prev, message],
+        );
+
+        setShowPaymentRequestForm(
+          false,
+        );
+        setPaymentAmount("");
+        setPaymentNote("");
+        void loadConversations({
+          background: true,
+        });
+      } catch (error: any) {
+        toast.error(
+          error?.response?.data
+            ?.message ||
+          "Payment request पठाउन सकिएन।",
+        );
+      } finally {
+        setPaymentActionLoading(
+          null,
+        );
+      }
+    };
+
+  const payRequest = async (
+    message: ChatMessage,
+  ) => {
+    const amount =
+      Number(
+        message.paymentAmount || 0,
+      );
+
+    const confirmed =
+      window.confirm(
+        `Rs. ${amount.toLocaleString()} wallet बाट pay गर्ने?`,
+      );
+
+    if (!confirmed) return;
+
+    try {
+      setPaymentActionLoading(
+        message.id,
+      );
+
+      const result =
+        await messageService
+          .payPaymentRequest(
+            message.id,
+          );
+
+      setMessages((prev) =>
+        prev.map((item) =>
+          item.id === message.id
+            ? result.message
+            : item,
+        ),
+      );
+
+      toast.success(
+        result.alreadyPaid
+          ? "यो payment पहिले नै complete भइसकेको छ।"
+          : "Payment complete भयो।",
+      );
+
+      void loadConversations({
+        background: true,
+      });
+    } catch (error: any) {
+      toast.error(
+        error?.response?.data
+          ?.message ||
+        "Payment complete गर्न सकिएन।",
+      );
+    } finally {
+      setPaymentActionLoading(
+        null,
+      );
+    }
+  };
+
+  const cancelPaymentRequest =
+    async (
+      message: ChatMessage,
+    ) => {
+      const confirmed =
+        window.confirm(
+          "यो payment request cancel गर्ने?",
+        );
+
+      if (!confirmed) return;
+
+      try {
+        setPaymentActionLoading(
+          message.id,
+        );
+
+        const updated =
+          await messageService
+            .cancelPaymentRequest(
+              message.id,
+            );
+
+        setMessages((prev) =>
+          prev.map((item) =>
+            item.id ===
+            updated.id
+              ? updated
+              : item,
+          ),
+        );
+      } catch (error: any) {
+        toast.error(
+          error?.response?.data
+            ?.message ||
+          "Payment request cancel गर्न सकिएन।",
+        );
+      } finally {
+        setPaymentActionLoading(
+          null,
+        );
+      }
+    };
+
+  const openReleaseRequest =
+    async () => {
+      setShowActionMenu(false);
+
+      try {
+        setReleaseLoading(true);
+
+        const status =
+          await messageService
+            .getPendingBalanceReleaseStatus();
+
+        setReleaseStatus(status);
+      } catch (error: any) {
+        toast.error(
+          error?.response?.data
+            ?.message ||
+          "Pending balance status load गर्न सकिएन।",
+        );
+      } finally {
+        setReleaseLoading(false);
+      }
+    };
+
+  const submitReleaseRequest =
+    async () => {
+      try {
+        setReleaseLoading(true);
+
+        const result =
+          await messageService
+            .requestPendingBalanceRelease();
+
+        setReleaseStatus({
+          pendingBalance:
+            result.pendingBalance,
+          requestedAt:
+            result.requestedAt,
+          status:
+            result.status,
+        });
+
+        toast.success(
+          result.alreadyRequested
+            ? "Release request पहिले नै pending छ।"
+            : "Pending balance release request पठाइयो।",
+        );
+      } catch (error: any) {
+        toast.error(
+          error?.response?.data
+            ?.message ||
+          "Release request पठाउन सकिएन।",
+        );
+      } finally {
+        setReleaseLoading(false);
+      }
+    };
+
   const deleteOwnMessage = async (
     message: ChatMessage,
   ) => {
@@ -708,11 +1049,136 @@ const user = useUserStore(
     }
   };
 
+  const startDeleteHold = (
+    message: ChatMessage,
+  ) => {
+    if (
+      message.senderId !==
+      currentUserId
+    ) {
+      return;
+    }
+
+    if (
+      deleteHoldTimerRef.current
+    ) {
+      window.clearTimeout(
+        deleteHoldTimerRef.current,
+      );
+    }
+
+    deleteHoldTimerRef.current =
+      window.setTimeout(
+        () => {
+          void deleteOwnMessage(
+            message,
+          );
+        },
+        650,
+      );
+  };
+
+  const cancelDeleteHold = () => {
+    if (
+      deleteHoldTimerRef.current
+    ) {
+      window.clearTimeout(
+        deleteHoldTimerRef.current,
+      );
+      deleteHoldTimerRef.current =
+        null;
+    }
+  };
+
   const filtered = search.trim() ? [] : conversations;
   const otherUserId = selected?.otherUser?.id || selected?.otherUserId || (selected ? selected.userOneId === currentUserId ? selected.userTwoId : selected.userOneId : "");
 
   return (
     <>
+      {showPaymentRequestForm && (
+        <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/50 p-4 sm:items-center">
+          <div className="w-full max-w-sm rounded-3xl bg-background p-5 shadow-2xl">
+            <h2 className="text-lg font-black">Create payment request</h2>
+            <p className="mt-1 text-sm text-muted-foreground">यो user बाट कति रकम माग्ने हो?</p>
+
+            <div className="mt-4 space-y-3">
+              <Input
+                type="number"
+                min="1"
+                max="1000000"
+                step="0.01"
+                value={paymentAmount}
+                onChange={(e)=>setPaymentAmount(e.target.value)}
+                placeholder="Amount (Rs.)"
+              />
+              <Input
+                value={paymentNote}
+                onChange={(e)=>setPaymentNote(e.target.value)}
+                placeholder="Reason / note (optional)"
+                maxLength={300}
+              />
+            </div>
+
+            <div className="mt-5 flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={()=>setShowPaymentRequestForm(false)}
+                disabled={paymentActionLoading==="create"}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={()=>void submitPaymentRequest()}
+                disabled={paymentActionLoading==="create" || !paymentAmount}
+              >
+                {paymentActionLoading==="create" ? <Loader2 className="h-4 w-4 animate-spin" /> : "Send Request"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {releaseStatus && (
+        <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/50 p-4 sm:items-center">
+          <div className="w-full max-w-sm rounded-3xl bg-background p-5 shadow-2xl">
+            <h2 className="text-lg font-black">Pending balance release</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              RoomKhoj मा pending earning release गर्न admin लाई request पठाउनुहोस्।
+            </p>
+
+            <div className="mt-4 rounded-2xl border p-4">
+              <p className="text-xs text-muted-foreground">Pending balance</p>
+              <p className="text-2xl font-black">Rs. {Number(releaseStatus.pendingBalance || 0).toLocaleString()}</p>
+              {releaseStatus.status && (
+                <p className="mt-2 text-xs font-semibold">Status: {releaseStatus.status}</p>
+              )}
+            </div>
+
+            <div className="mt-5 flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={()=>setReleaseStatus(null)}
+                disabled={releaseLoading}
+              >
+                Close
+              </Button>
+              {releaseStatus.pendingBalance > 0 && releaseStatus.status !== "PENDING" && (
+                <Button
+                  type="button"
+                  onClick={()=>void submitReleaseRequest()}
+                  disabled={releaseLoading}
+                >
+                  {releaseLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Request Release"}
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       <main className={`${isDarkMode ? "dark" : ""} mx-auto h-[calc(100dvh-68px)] max-w-7xl overflow-hidden bg-background text-foreground md:h-screen md:max-w-none md:p-0`}>
         <div className="grid h-full min-h-0 overflow-hidden border border-border bg-background shadow-none md:grid-cols-[390px_1fr] md:border-0 md:bg-card">
           <aside className={`border-r border-border bg-card ${selected ? "hidden md:block" : "block"}`}>
@@ -754,10 +1220,70 @@ const user = useUserStore(
                 {messagesLoading ? <div className="flex justify-center p-10"><Loader2 className="h-6 w-6 animate-spin" /></div> : messages.map((message)=>{
                   const mine = message.senderId === currentUserId;
                   const deliveryLabel = message.seenAt ? "Seen" : message.deliveredAt ? "Delivered" : "Sent";
-                  return <div key={message.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}><div className={`max-w-[84%] rounded-2xl px-3 py-2 text-sm ${mine ? "bg-primary text-primary-foreground" : "bg-card"}`}>
+                  return <div
+                    key={message.id}
+                    className={`flex ${mine ? "justify-end" : "justify-start"}`}
+                    onTouchStart={()=>startDeleteHold(message)}
+                    onTouchEnd={cancelDeleteHold}
+                    onTouchMove={cancelDeleteHold}
+                    onTouchCancel={cancelDeleteHold}
+                  ><div className={`max-w-[84%] rounded-2xl px-3 py-2 text-sm ${mine ? "bg-primary text-primary-foreground" : "bg-card"}`}>
+                    {message.type === "PAYMENT_REQUEST" && (
+                      <div className="mb-2 min-w-[230px] rounded-xl border border-border bg-background/90 p-3 text-foreground">
+                        <div className="flex items-center gap-2">
+                          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary">
+                            <HandCoins className="h-5 w-5" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Payment request</p>
+                            <p className="text-lg font-black">Rs. {Number(message.paymentAmount || 0).toLocaleString()}</p>
+                          </div>
+                        </div>
+
+                        {message.content && message.content !== "Payment requested" && (
+                          <p className="mt-2 text-xs text-muted-foreground">{message.content}</p>
+                        )}
+
+                        <div className="mt-3 flex items-center justify-between gap-2">
+                          <span className={`rounded-full px-2 py-1 text-[10px] font-bold ${
+                            message.paymentStatus === "PAID"
+                              ? "bg-emerald-100 text-emerald-700"
+                              : message.paymentStatus === "CANCELLED"
+                                ? "bg-muted text-muted-foreground"
+                                : "bg-amber-100 text-amber-700"
+                          }`}>
+                            {message.paymentStatus || "PENDING"}
+                          </span>
+
+                          {message.paymentStatus === "PENDING" && !mine && (
+                            <Button
+                              type="button"
+                              size="sm"
+                              onClick={()=>void payRequest(message)}
+                              disabled={paymentActionLoading===message.id}
+                            >
+                              {paymentActionLoading===message.id ? <Loader2 className="h-4 w-4 animate-spin" /> : "Pay Now"}
+                            </Button>
+                          )}
+
+                          {message.paymentStatus === "PENDING" && mine && (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              onClick={()=>void cancelPaymentRequest(message)}
+                              disabled={paymentActionLoading===message.id}
+                            >
+                              Cancel
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
                     {message.attachment?.type === "ROOM" && <button type="button" onClick={()=>router.push(message.attachment!.url)} className="mb-2 block w-full overflow-hidden rounded-xl border border-border bg-background/80 text-left text-foreground">{message.attachment.image && <img src={resolveImageUrl(message.attachment.image)} alt="" className="h-32 w-full object-cover" />}<div className="p-2.5"><p className="text-[10px] font-semibold uppercase opacity-70">Room</p><p className="font-semibold">{message.attachment.title}</p><p className="text-xs opacity-80">Rs. {Number(message.attachment.price || 0).toLocaleString()}</p></div></button>}
-                    {message.mediaUrl && message.type === "VIDEO" && <video src={resolveImageUrl(message.mediaUrl)} controls playsInline className="mb-2 max-h-72 w-full rounded-xl" />}
-                    {message.mediaUrl && message.type === "IMAGE" && <img src={resolveImageUrl(message.mediaUrl)} alt="" className="mb-2 max-h-72 w-full rounded-xl object-cover" />}
+                    {message.mediaUrl && message.type === "VIDEO" && <video src={mediaObjectUrls[message.id] || resolveImageUrl(message.mediaUrl)} controls playsInline className="mb-2 max-h-72 w-full rounded-xl" />}
+                    {message.mediaUrl && message.type === "IMAGE" && <img src={mediaObjectUrls[message.id] || resolveImageUrl(message.mediaUrl)} alt="" className="mb-2 max-h-72 w-full rounded-xl object-cover" />}
                     {message.content && <p className="whitespace-pre-wrap break-words">{message.content}</p>}
                     <div className="mt-1 flex items-center justify-end gap-1 text-[10px] opacity-75"><span>{new Date(message.createdAt).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})}</span>{mine && <><CheckCheck className={`h-3.5 w-3.5 ${message.seenAt ? "text-sky-200" : ""}`} /><span className="font-medium">{deliveryLabel}</span><button type="button" onClick={()=>void deleteOwnMessage(message)} disabled={deletingMessageId===message.id} className="ml-1 inline-flex h-5 w-5 items-center justify-center rounded-full hover:bg-black/10" aria-label="Delete message">{deletingMessageId===message.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}</button></>}</div>
                   </div></div>;
@@ -796,8 +1322,8 @@ const user = useUserStore(
                 {showActionMenu && (
                   <div className="absolute bottom-[68px] left-2.5 z-50 w-64 overflow-hidden rounded-2xl border border-border bg-card p-2 shadow-2xl md:left-4">
                     <button type="button" onClick={()=>{setShowActionMenu(false); mediaInputRef.current?.click();}} className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left hover:bg-muted"><div className="flex h-9 w-9 items-center justify-center rounded-full bg-muted"><ImageIcon className="h-5 w-5" /></div><div><p className="text-sm font-semibold">Photo / Video</p><p className="text-xs text-muted-foreground">Send media</p></div></button>
-                    <button type="button" onClick={()=>{setShowActionMenu(false); toast.info("Payment request will open here");}} className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left hover:bg-muted"><div className="flex h-9 w-9 items-center justify-center rounded-full bg-muted"><HandCoins className="h-5 w-5" /></div><div><p className="text-sm font-semibold">Request Payment</p><p className="text-xs text-muted-foreground">Ask this user to pay</p></div></button>
-                    <button type="button" onClick={()=>{setShowActionMenu(false); router.push("/user/dashboard/wallet");}} className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left hover:bg-muted"><div className="flex h-9 w-9 items-center justify-center rounded-full bg-muted"><WalletCards className="h-5 w-5" /></div><div><p className="text-sm font-semibold">Wallet / Release</p><p className="text-xs text-muted-foreground">Balance and release request</p></div></button>
+                    <button type="button" onClick={()=>{setShowActionMenu(false); setShowPaymentRequestForm(true);}} className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left hover:bg-muted"><div className="flex h-9 w-9 items-center justify-center rounded-full bg-muted"><HandCoins className="h-5 w-5" /></div><div><p className="text-sm font-semibold">Request Payment</p><p className="text-xs text-muted-foreground">Ask this user to pay</p></div></button>
+                    <button type="button" onClick={()=>void openReleaseRequest()} className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left hover:bg-muted"><div className="flex h-9 w-9 items-center justify-center rounded-full bg-muted"><WalletCards className="h-5 w-5" /></div><div><p className="text-sm font-semibold">Wallet / Release</p><p className="text-xs text-muted-foreground">Balance and release request</p></div></button>
                   </div>
                 )}
                 <div className="flex items-end gap-2">
