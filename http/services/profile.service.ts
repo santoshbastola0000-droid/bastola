@@ -122,6 +122,19 @@ export const profileService = {
     return res.data;
   },
 
+  getIncomingFriendRequests: async () => {
+    const res = await privateApi.get(
+      "/friend/requests/incoming",
+    );
+
+    return res.data as Array<{
+      id: string;
+      name: string;
+      profilePhotoUrl?: string | null;
+      requestedAt?: string;
+    }>;
+  },
+
   getFriends: async (
     userId: string,
   ) => {
