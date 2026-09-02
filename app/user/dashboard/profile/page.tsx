@@ -93,6 +93,10 @@ export default function ProfilePage() {
     monetizationFeePaid: number;
     monetizationFee: number;
     canEarnFromRooms: boolean;
+    currentPlan: "FREE" | "STARTER";
+    totalEarned: number;
+    freeEarningLimit: number;
+    freeEarningRemaining: number;
   } | null>(null);
   const [monetizationLoading, setMonetizationLoading] = useState(true);
   const [monetizationActivating, setMonetizationActivating] = useState(false);
@@ -661,35 +665,44 @@ export default function ProfilePage() {
 
       <Card className="overflow-hidden rounded-3xl border border-amber-200 bg-gradient-to-br from-amber-50 via-white to-yellow-50 shadow-sm">
         <CardContent className="p-5 sm:p-6">
+          <div className="mb-5">
+            <div className="flex items-center gap-2"><Crown className="h-5 w-5 text-amber-700" /><span className="text-xs font-black uppercase tracking-[0.18em] text-amber-700">Earn with RoomKhoj</span></div>
+            <h2 className="mt-1 text-xl font-black">Choose your earning plan</h2>
+            <p className="mt-1 text-sm text-muted-foreground">पहिला plan हेर्नुहोस्। Free बाट सुरु गर्न सकिन्छ; मन परेपछि paid plan activate गर्न सकिन्छ।</p>
+          </div>
+
           {monetizationLoading ? (
-            <div className="flex items-center gap-3"><Loader2 className="h-5 w-5 animate-spin" /><span className="text-sm text-muted-foreground">Checking monetization...</span></div>
-          ) : monetization?.isMonetized ? (
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex gap-4">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-amber-100"><Crown className="h-6 w-6 text-amber-700" /></div>
-                <div>
-                  <div className="flex items-center gap-2"><h2 className="text-lg font-black">Monetized Account</h2><BadgeCheck className="h-5 w-5 text-emerald-600" /></div>
-                  <p className="mt-1 text-sm text-muted-foreground">Earning Active · You can earn from room service-charge payments.</p>
-                  <p className="mt-2 text-xs font-medium text-amber-800">Activation fee paid: Rs. {Number(monetization.monetizationFeePaid || 0).toLocaleString()}</p>
-                </div>
-              </div>
-              <Button type="button" variant="outline" onClick={() => router.push("/user/dashboard/wallet")} className="rounded-full">View earnings</Button>
-            </div>
+            <div className="flex items-center gap-3"><Loader2 className="h-5 w-5 animate-spin" /><span className="text-sm text-muted-foreground">Checking plans...</span></div>
           ) : (
-            <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex gap-4">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-amber-100"><Sparkles className="h-6 w-6 text-amber-700" /></div>
-                <div>
-                  <div className="flex items-center gap-2"><Crown className="h-4 w-4 text-amber-700" /><span className="text-xs font-black uppercase tracking-[0.18em] text-amber-700">VIP Earning</span></div>
-                  <h2 className="mt-1 text-xl font-black">Monetize Account</h2>
-                  <p className="mt-1 max-w-2xl text-sm text-muted-foreground">Activate monetization to earn from rooms and send service-charge payment requests directly from chat.</p>
-                  <p className="mt-2 inline-flex items-center gap-1 text-sm font-bold text-amber-800"><CircleDollarSign className="h-4 w-4" />One-time fee: Rs. {Number(monetization?.monetizationFee || 0).toLocaleString()}</p>
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+              {[
+                { name: "Free", price: 0, note: "Earn up to Rs. 1,500", active: !monetization?.isMonetized, action: false },
+                { name: "Starter", price: Number(monetization?.monetizationFee || 499), note: "Continue earning after Free limit", active: !!monetization?.isMonetized, action: !monetization?.isMonetized },
+                { name: "Growth", price: 899, note: "More earning tools", active: false, action: false },
+                { name: "Pro", price: 999, note: "For active room earners", active: false, action: false },
+                { name: "VIP", price: 1999, note: "Premium earning plan", active: false, action: false },
+              ].map((plan) => (
+                <div key={plan.name} className={`relative rounded-2xl border p-4 ${plan.active ? "border-amber-400 bg-amber-50 shadow-sm" : "border-border bg-background"}`}>
+                  {plan.active && <span className="absolute right-3 top-3 rounded-full bg-emerald-100 px-2 py-1 text-[10px] font-bold text-emerald-700">ACTIVE</span>}
+                  <p className="text-sm font-black">{plan.name}</p>
+                  <p className="mt-2 text-2xl font-black">{plan.price === 0 ? "Free" : `Rs. ${plan.price.toLocaleString()}`}</p>
+                  <p className="mt-2 min-h-10 text-xs text-muted-foreground">{plan.note}</p>
+                  {plan.name === "Free" && !monetization?.isMonetized && (
+                    <div className="mt-3 rounded-xl bg-muted/60 p-2 text-xs font-semibold">
+                      Remaining: Rs. {Number(monetization?.freeEarningRemaining ?? 1500).toLocaleString()} / 1,500
+                    </div>
+                  )}
+                  {plan.action && (
+                    <Button type="button" onClick={activateMonetization} disabled={monetizationActivating} className="mt-3 w-full rounded-full font-bold">
+                      {monetizationActivating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Crown className="mr-2 h-4 w-4" />}
+                      Choose Starter
+                    </Button>
+                  )}
+                  {!plan.active && !plan.action && plan.price > 499 && (
+                    <Button type="button" variant="outline" disabled className="mt-3 w-full rounded-full">Coming soon</Button>
+                  )}
                 </div>
-              </div>
-              <Button type="button" onClick={activateMonetization} disabled={monetizationActivating} className="rounded-full px-6 font-bold">
-                {monetizationActivating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Crown className="mr-2 h-4 w-4" />}
-                Monetize Account
-              </Button>
+              ))}
             </div>
           )}
         </CardContent>
