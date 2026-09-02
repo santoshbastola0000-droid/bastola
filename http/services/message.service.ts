@@ -79,6 +79,8 @@ export const messageService = {
       user: {
         id: string;
         name: string;
+        email: string;
+        phoneNumber: string;
       };
       conversations: MessageConversation[];
     };
@@ -207,8 +209,6 @@ export const messageService = {
       user: {
         id: string;
         name: string;
-        email: string;
-        phoneNumber: string;
       };
     };
   },
