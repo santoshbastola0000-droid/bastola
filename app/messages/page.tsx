@@ -104,6 +104,8 @@ const user = useUserStore(
     useState("");
   const [paymentNote, setPaymentNote] =
     useState("");
+  const [paymentRequestClientId, setPaymentRequestClientId] =
+    useState<string | null>(null);
   const [paymentActionLoading, setPaymentActionLoading] =
     useState<string | null>(null);
   const [releaseStatus, setReleaseStatus] =
@@ -812,6 +814,16 @@ const user = useUserStore(
         return;
       }
 
+      const requestClientId =
+        paymentRequestClientId ||
+        crypto.randomUUID();
+
+      if (!paymentRequestClientId) {
+        setPaymentRequestClientId(
+          requestClientId,
+        );
+      }
+
       try {
         setPaymentActionLoading(
           "create",
@@ -823,6 +835,7 @@ const user = useUserStore(
               selected.id,
               amount,
               paymentNote,
+              requestClientId,
             );
 
         setMessages((prev) =>
@@ -839,6 +852,7 @@ const user = useUserStore(
         );
         setPaymentAmount("");
         setPaymentNote("");
+        setPaymentRequestClientId(null);
         void loadConversations({
           background: true,
         });
@@ -1133,7 +1147,7 @@ const user = useUserStore(
               <Button
                 type="button"
                 variant="ghost"
-                onClick={()=>setShowPaymentRequestForm(false)}
+                onClick={()=>{setShowPaymentRequestForm(false); setPaymentRequestClientId(null);}}
                 disabled={paymentActionLoading==="create"}
               >
                 Cancel
@@ -1332,7 +1346,7 @@ const user = useUserStore(
                 {showActionMenu && (
                   <div className="absolute bottom-[68px] left-2.5 z-50 w-64 overflow-hidden rounded-2xl border border-border bg-card p-2 shadow-2xl md:left-4">
                     <button type="button" onClick={()=>{setShowActionMenu(false); mediaInputRef.current?.click();}} className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left hover:bg-muted"><div className="flex h-9 w-9 items-center justify-center rounded-full bg-muted"><ImageIcon className="h-5 w-5" /></div><div><p className="text-sm font-semibold">Photo / Video</p><p className="text-xs text-muted-foreground">Send media</p></div></button>
-                    <button type="button" onClick={()=>{setShowActionMenu(false); setShowPaymentRequestForm(true);}} className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left hover:bg-muted"><div className="flex h-9 w-9 items-center justify-center rounded-full bg-muted"><HandCoins className="h-5 w-5" /></div><div><p className="text-sm font-semibold">Request Payment</p><p className="text-xs text-muted-foreground">Ask this user to pay</p></div></button>
+                    <button type="button" onClick={()=>{setShowActionMenu(false); setPaymentRequestClientId(crypto.randomUUID()); setShowPaymentRequestForm(true);}} className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left hover:bg-muted"><div className="flex h-9 w-9 items-center justify-center rounded-full bg-muted"><HandCoins className="h-5 w-5" /></div><div><p className="text-sm font-semibold">Request Payment</p><p className="text-xs text-muted-foreground">Ask this user to pay</p></div></button>
                     <button type="button" onClick={()=>void openReleaseRequest()} className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left hover:bg-muted"><div className="flex h-9 w-9 items-center justify-center rounded-full bg-muted"><WalletCards className="h-5 w-5" /></div><div><p className="text-sm font-semibold">Wallet / Release</p><p className="text-xs text-muted-foreground">Balance and release request</p></div></button>
                   </div>
                 )}
