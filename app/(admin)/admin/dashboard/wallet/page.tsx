@@ -139,6 +139,60 @@ export default function AdminWalletPage() {
       }),
   });
 
+  const {
+    data: releaseRequestsResponse,
+    isLoading: releaseRequestsLoading,
+    isFetching: releaseRequestsFetching,
+    refetch: refetchReleaseRequests,
+  } = useQuery({
+    queryKey: ["admin-release-requests"],
+    queryFn: () =>
+      walletService.getPendingReleaseRequests(),
+  });
+
+  const releasePendingMutation = useMutation({
+    mutationFn: ({
+      userId,
+      adminRemarks,
+    }: {
+      userId: string;
+      adminRemarks?: string;
+    }) =>
+      walletService.releasePendingBalance(
+        userId,
+        adminRemarks,
+      ),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["admin-release-requests"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["admin-wallet-stats"],
+      });
+      toast.success(
+        "Pending balance released successfully",
+        {
+          style: {
+            background: SUCCESSTOAST,
+            color: "#fff",
+          },
+        },
+      );
+    },
+    onError: (error: any) => {
+      toast.error(
+        error?.response?.data?.message ||
+          "Failed to release pending balance",
+        {
+          style: {
+            background: FAILURETOAST,
+            color: "#fff",
+          },
+        },
+      );
+    },
+  });
+
   const processMutation = useMutation({
     mutationFn: ({
       id,
@@ -261,8 +315,8 @@ export default function AdminWalletPage() {
   };
 
   const withdrawals = withdrawalsResponse?.data || [];
-
-  console.log("withdrawals", withdrawals[0]);
+  const releaseRequests =
+    releaseRequestsResponse?.data || [];
 
   const pagination = withdrawalsResponse?.pagination || {
     page: 0,
@@ -373,14 +427,15 @@ export default function AdminWalletPage() {
             onClick={() => {
               refetchStats();
               refetchWithdrawals();
+              refetchReleaseRequests();
             }}
-            disabled={statsLoading || withdrawalsFetching}
+            disabled={statsLoading || withdrawalsFetching || releaseRequestsFetching}
             className="cursor-pointer"
           >
             <RefreshCw
               className={cn(
                 "h-4 w-4 mr-2",
-                (statsLoading || withdrawalsFetching) && "animate-spin",
+                (statsLoading || withdrawalsFetching || releaseRequestsFetching) && "animate-spin",
               )}
             />
             Refresh
@@ -482,9 +537,12 @@ export default function AdminWalletPage() {
         onValueChange={setActiveTab}
         className="space-y-4"
       >
-        <TabsList className="grid w-full grid-cols-2 lg:w-[300px]">
+        <TabsList className="grid w-full grid-cols-3 lg:w-[520px]">
           <TabsTrigger value="withdrawals" className="cursor-pointer">
             Withdrawals
+          </TabsTrigger>
+          <TabsTrigger value="releases" className="cursor-pointer">
+            Release Requests ({releaseRequests.length})
           </TabsTrigger>
           <TabsTrigger value="overview" className="cursor-pointer">
             Overview
@@ -827,6 +885,86 @@ export default function AdminWalletPage() {
               </CardContent>
             </Card>
           )}
+        </TabsContent>
+
+        <TabsContent value="releases" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Pending Balance Release Requests</CardTitle>
+              <CardDescription>
+                Requests sent by users from the message Wallet / Release action.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {releaseRequestsLoading ? (
+                <div className="flex justify-center py-10">
+                  <Loader2 className="h-6 w-6 animate-spin" />
+                </div>
+              ) : releaseRequests.length === 0 ? (
+                <div className="py-10 text-center text-sm text-muted-foreground">
+                  No pending release requests.
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {releaseRequests.map((request) => (
+                    <div
+                      key={request.userId}
+                      className="flex flex-col gap-3 rounded-2xl border p-4 md:flex-row md:items-center md:justify-between"
+                    >
+                      <div className="min-w-0">
+                        <p className="font-semibold">
+                          {request.user?.name || "RoomKhoj user"}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {request.user?.email || request.user?.phoneNumber || request.userId}
+                        </p>
+                        <p className="mt-1 text-sm font-bold">
+                          Pending: Rs. {Number(request.pendingBalance || 0).toLocaleString()}
+                        </p>
+                        {request.requestedAt && (
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            Requested {formatDateTime(request.requestedAt)}
+                          </p>
+                        )}
+                      </div>
+
+                      <Button
+                        type="button"
+                        className="bg-green-600 hover:bg-green-700"
+                        disabled={
+                          releasePendingMutation.isPending ||
+                          Number(request.pendingBalance || 0) <= 0
+                        }
+                        onClick={() => {
+                          const confirmed = window.confirm(
+                            `Release Rs. ${Number(request.pendingBalance || 0).toLocaleString()} to ${request.user?.name || "this user"}?`,
+                          );
+                          if (!confirmed) return;
+
+                          const note =
+                            window.prompt(
+                              "Admin note (optional)",
+                              "",
+                            ) || undefined;
+
+                          releasePendingMutation.mutate({
+                            userId: request.userId,
+                            adminRemarks: note,
+                          });
+                        }}
+                      >
+                        {releasePendingMutation.isPending ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          "Release Balance"
+                        )}
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="overview" className="space-y-4">
