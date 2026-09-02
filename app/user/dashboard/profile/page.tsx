@@ -38,6 +38,7 @@ import { Separator } from "@/components/ui/separator";
 import PushNotificationSetup from "@/components/PushNotificationSetup";
 
 import { privateApi } from "@/http/api/privateApi";
+import { roomService } from "@/http/services/room.service";
 import { jobPostingService } from "@/http/services/job-posting.service";
 import { aiProfileService } from "@/http/services/ai-profile.service";
 import {
@@ -46,6 +47,7 @@ import {
 } from "@/http/services/profile.service";
 import { profileMediaUrl } from "@/lib/profile-media";
 import { useUserStore } from "@/stores/user-store";
+import { RoomStatus } from "@/types/room.types";
 
 type ActivityTab =
   | "rooms"
@@ -77,6 +79,9 @@ export default function ProfilePage() {
 
   const [friends, setFriends] =
     useState<any[]>([]);
+
+  const [changingRoomStatusId, setChangingRoomStatusId] =
+    useState<string | null>(null);
 
   const [shareSummary, setShareSummary] =
     useState<{
@@ -529,6 +534,45 @@ export default function ProfilePage() {
     loadProfile();
     loadAiProfile();
   }, []);
+
+  const changeRoomStatus = async (
+    roomId: string,
+    status: RoomStatus.AVAILABLE | RoomStatus.RENTED,
+  ) => {
+    if (changingRoomStatusId) return;
+
+    try {
+      setChangingRoomStatusId(roomId);
+      const response = await roomService.updateListingStatus(roomId, status);
+      const updatedRoom = response.data;
+
+      setProfile((current) =>
+        current
+          ? {
+              ...current,
+              rooms: current.rooms.map((room: any) =>
+                room.id === roomId
+                  ? { ...room, listingStatus: updatedRoom.listingStatus }
+                  : room,
+              ),
+            }
+          : current,
+      );
+
+      toast.success(
+        status === RoomStatus.AVAILABLE
+          ? "Room marked Available"
+          : "Room marked Rented",
+      );
+    } catch (error: any) {
+      toast.error(
+        error?.response?.data?.message ||
+          "Room status update हुन सकेन",
+      );
+    } finally {
+      setChangingRoomStatusId(null);
+    }
+  };
 
   const handleEdit =
     () => {
@@ -1424,16 +1468,22 @@ export default function ProfilePage() {
                         (
                           room: any,
                         ) => (
-                          <button
+                          <div
                             key={
                               room.id
                             }
-                            type="button"
+                            role="button"
+                            tabIndex={0}
                             onClick={() =>
                               router.push(
                                 `/property/${room.id}`,
                               )
                             }
+                            onKeyDown={(event) => {
+                              if (event.key === "Enter") {
+                                router.push(`/property/${room.id}`);
+                              }
+                            }}
                             className="w-full rounded-2xl border p-4 text-left transition hover:bg-muted/40"
                           >
                             <div className="flex items-start gap-3">
@@ -1463,7 +1513,71 @@ export default function ProfilePage() {
                                 )}
                               </div>
                             </div>
-                          </button>
+
+                            {room.approvalStatus === RoomStatus.APPROVED && (
+                              <div
+                                className="mt-3 flex items-center justify-between gap-3 border-t pt-3"
+                                onClick={(event) => event.stopPropagation()}
+                              >
+                                <span
+                                  className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
+                                    room.listingStatus === RoomStatus.RENTED
+                                      ? "bg-slate-100 text-slate-700"
+                                      : "bg-emerald-50 text-emerald-700"
+                                  }`}
+                                >
+                                  {room.listingStatus === RoomStatus.RENTED
+                                    ? "Rented"
+                                    : "Available"}
+                                </span>
+
+                                <div className="flex gap-2">
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant={
+                                      room.listingStatus === RoomStatus.AVAILABLE
+                                        ? "default"
+                                        : "outline"
+                                    }
+                                    disabled={changingRoomStatusId === room.id}
+                                    onClick={(event) => {
+                                      event.stopPropagation();
+                                      void changeRoomStatus(
+                                        room.id,
+                                        RoomStatus.AVAILABLE,
+                                      );
+                                    }}
+                                  >
+                                    Available
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant={
+                                      room.listingStatus === RoomStatus.RENTED
+                                        ? "default"
+                                        : "outline"
+                                    }
+                                    disabled={changingRoomStatusId === room.id}
+                                    onClick={(event) => {
+                                      event.stopPropagation();
+                                      void changeRoomStatus(
+                                        room.id,
+                                        RoomStatus.RENTED,
+                                      );
+                                    }}
+                                  >
+                                    {changingRoomStatusId === room.id ? (
+                                      <Loader2 className="h-4 w-4 animate-spin" />
+                                    ) : (
+                                      "Rented"
+                                    )}
+                                  </Button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
                         ),
                       )
                   )}
