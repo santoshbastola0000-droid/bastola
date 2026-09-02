@@ -364,6 +364,7 @@ export const messageService = {
     conversationId: string,
     amount: number,
     note?: string,
+    clientMessageId?: string,
   ): Promise<ChatMessage> => {
     const response =
       await privateApi.post(
@@ -371,6 +372,8 @@ export const messageService = {
         {
           amount,
           note: note?.trim() || undefined,
+          clientMessageId:
+            clientMessageId || undefined,
         },
       );
 
