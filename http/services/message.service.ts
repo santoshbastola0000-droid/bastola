@@ -34,6 +34,7 @@ export interface ChatMessage {
   conversationId: string;
   senderId: string;
   receiverId: string;
+  clientMessageId?: string | null;
   content: string;
   type: string;
   deliveredAt?: string | null;
@@ -103,6 +104,7 @@ export const messageService = {
     conversationId: string,
     file: File,
     caption?: string,
+    clientMessageId?: string,
   ) => {
     const formData =
       new FormData();
@@ -116,6 +118,13 @@ export const messageService = {
       formData.append(
         "caption",
         caption.trim(),
+      );
+    }
+
+    if (clientMessageId) {
+      formData.append(
+        "clientMessageId",
+        clientMessageId,
       );
     }
 
@@ -332,12 +341,15 @@ export const messageService = {
     conversationId: string,
     content: string,
     roomId?: string,
+    clientMessageId?: string,
   ): Promise<ChatMessage> => {
     const response = await privateApi.post(
       `/message/conversations/${conversationId}/messages`,
       {
         content,
         roomId: roomId || undefined,
+        clientMessageId:
+          clientMessageId || undefined,
       },
     );
 
