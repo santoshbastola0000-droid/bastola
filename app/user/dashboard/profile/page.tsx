@@ -35,8 +35,6 @@ import {
   CardContent,
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import PushNotificationSetup from "@/components/PushNotificationSetup";
-
 import { privateApi } from "@/http/api/privateApi";
 import { jobPostingService } from "@/http/services/job-posting.service";
 import { aiProfileService } from "@/http/services/ai-profile.service";
@@ -932,10 +930,6 @@ export default function ProfilePage() {
 
   return (
     <main className="mx-auto max-w-7xl space-y-5 pb-24">
-      <div className="lg:hidden">
-        <PushNotificationSetup />
-      </div>
-
       {/* COVER + PROFILE */}
       <Card className="overflow-hidden rounded-3xl border-0 shadow-sm">
         <div className="relative h-44 bg-gradient-to-br from-red-500 via-rose-500 to-pink-600 sm:h-64">
@@ -1685,9 +1679,6 @@ export default function ProfilePage() {
 
         {/* RIGHT AI SIDE */}
         <aside className="space-y-5 lg:sticky lg:top-20 lg:self-start">
-          <div className="hidden lg:block">
-            <PushNotificationSetup />
-          </div>
           <Card className="overflow-hidden rounded-3xl border-0 shadow-sm">
             <div className="border-b bg-gradient-to-r from-violet-50 via-fuchsia-50 to-rose-50 p-4 dark:from-violet-950/30 dark:via-fuchsia-950/20 dark:to-rose-950/30">
               <div className="flex items-center justify-between gap-3">
