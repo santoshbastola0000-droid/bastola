@@ -21,6 +21,7 @@ import {
   Bell,
   PhoneCall,
   MessageSquare,
+  ShieldCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -132,6 +133,11 @@ const navItems: NavItem[] = [
     title: "Wallet Top-Up",
     href: "/admin/dashboard/wallet/topup",
     icon: Wallet,
+  },
+  {
+    title: "Account Monetize",
+    href: "/admin/dashboard/monetization",
+    icon: ShieldCheck,
   },
   {
     title: "Commission",
