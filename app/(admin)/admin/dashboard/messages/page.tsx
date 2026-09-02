@@ -203,7 +203,6 @@ export default function AdminMessagesPage() {
                     <MessageSquare className="h-4 w-4 text-gray-500" />
                     <span className="truncate font-medium text-gray-900">
                       {conversation.otherUser?.name ||
-                        conversation.otherUser?.phoneNumber ||
                         "Unknown user"}
                     </span>
                   </div>
