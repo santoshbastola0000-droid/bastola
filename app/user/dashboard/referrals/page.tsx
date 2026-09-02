@@ -11,6 +11,8 @@ import {
   Send,
   Trophy,
   Users,
+  CircleDollarSign,
+  BadgeDollarSign,
 } from "lucide-react";
 
 import { privateApi } from "@/http/api/privateApi";
@@ -44,6 +46,7 @@ type ReferralStats = {
 export default function ReferralPage() {
   const [copied, setCopied] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+  const [selectedReferralType, setSelectedReferralType] = useState<"SIGNUP" | "MONETIZATION">("MONETIZATION");
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["my-referral-stats"],
@@ -53,6 +56,11 @@ export default function ReferralPage() {
     },
     staleTime: 30_000,
   });
+
+  const getShareText = () =>
+    selectedReferralType === "MONETIZATION"
+      ? "💰 RoomKhoj Account Monetize Referral! मेरो link बाट account बनाउनुहोस् र Starter monetization activate गर्नुहोस्। Monetization payment सफल भएपछि मलाई fee को 50% commission आउँछ र तपाईंलाई Rs. 100 cashback आफ्नै wallet मा आउँछ।"
+      : "🎁 RoomKhoj Invite & Win! मेरो link बाट verified account बनाउनुहोस्। हरेक verified signup मा Rs. 5 wallet reward आउँछ।";
 
   const copyLink = async () => {
     if (!data?.referralLink) return;
@@ -72,7 +80,7 @@ export default function ReferralPage() {
 
     const shareData = {
       title: "Join RoomKhoj",
-      text: "🎁 RoomKhoj Invite & Win! मेरो link बाट verified account बनाउनुहोस्। धेरै qualified referrals ल्याएर Rs. 10,000 जित्नुहोस्। हरेक verified signup मा Rs. 5 wallet reward तुरुन्त पाउनुहोस्।",
+      text: getShareText(),
       url: data.referralLink,
     };
 
@@ -92,9 +100,7 @@ export default function ReferralPage() {
   const shareWhatsApp = () => {
     if (!data?.referralLink) return;
 
-    const message =
-      "🎁 RoomKhoj Invite & Win! मेरो link बाट verified account बनाउनुहोस्। धेरै qualified referrals ल्याएर Rs. 10,000 जित्नुहोस्। हरेक verified signup मा Rs. 5 wallet reward तुरुन्त पाउनुहोस्। " +
-      data.referralLink;
+    const message = getShareText() + " " + data.referralLink;
 
     window.open(
       `https://wa.me/?text=${encodeURIComponent(message)}`,
@@ -118,8 +124,7 @@ export default function ReferralPage() {
   const shareTelegram = () => {
     if (!data?.referralLink) return;
 
-    const message =
-      "🎁 RoomKhoj Invite & Win! धेरै qualified referrals ल्याएर Rs. 10,000 जित्नुहोस्। हरेक verified signup मा Rs. 5 पाउनुहोस्।";
+    const message = getShareText();
 
     window.open(
       `https://t.me/share/url?url=${encodeURIComponent(
@@ -133,9 +138,7 @@ export default function ReferralPage() {
   const shareViber = () => {
     if (!data?.referralLink) return;
 
-    const message =
-      "🎁 RoomKhoj Invite & Win! धेरै qualified referrals ल्याएर Rs. 10,000 जित्नुहोस्। हरेक verified signup मा Rs. 5 पाउनुहोस्। " +
-      data.referralLink;
+    const message = getShareText() + " " + data.referralLink;
 
     window.location.href =
       `viber://forward?text=${encodeURIComponent(message)}`;
@@ -179,11 +182,73 @@ export default function ReferralPage() {
         </p>
       </div>
 
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card
+          className={`cursor-pointer transition-all ${selectedReferralType === "MONETIZATION" ? "border-primary ring-2 ring-primary/20" : ""}`}
+          onClick={() => setSelectedReferralType("MONETIZATION")}
+        >
+          <CardContent className="p-5">
+            <div className="flex items-start gap-4">
+              <div className="rounded-xl bg-emerald-100 p-3 text-emerald-700">
+                <BadgeDollarSign className="h-6 w-6" />
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center justify-between gap-3">
+                  <h2 className="font-black">Account Monetize Referral</h2>
+                  {selectedReferralType === "MONETIZATION" && (
+                    <span className="rounded-full bg-primary/10 px-2 py-1 text-[10px] font-bold text-primary">SELECTED</span>
+                  )}
+                </div>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Referral user ले paid Account Monetize activate गरेपछि तपाईंलाई monetization fee को 50% commission आउँछ।
+                </p>
+                <div className="mt-3 space-y-1 text-sm font-semibold">
+                  <p>• Rs. 499 Starter भए तपाईंलाई Rs. 249.50</p>
+                  <p>• Referred user लाई Rs. 100 cashback</p>
+                  <p>• Successful monetization payment भएपछि मात्र reward</p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card
+          className={`cursor-pointer transition-all ${selectedReferralType === "SIGNUP" ? "border-primary ring-2 ring-primary/20" : ""}`}
+          onClick={() => setSelectedReferralType("SIGNUP")}
+        >
+          <CardContent className="p-5">
+            <div className="flex items-start gap-4">
+              <div className="rounded-xl bg-blue-100 p-3 text-blue-700">
+                <CircleDollarSign className="h-6 w-6" />
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center justify-between gap-3">
+                  <h2 className="font-black">Verified Signup Referral</h2>
+                  {selectedReferralType === "SIGNUP" && (
+                    <span className="rounded-full bg-primary/10 px-2 py-1 text-[10px] font-bold text-primary">SELECTED</span>
+                  )}
+                </div>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  साथीले referral link बाट नयाँ account बनाएर OTP verify गरेपछि normal referral reward आउँछ।
+                </p>
+                <div className="mt-3 space-y-1 text-sm font-semibold">
+                  <p>• Rs. {data.rewardPerVerifiedReferral} per verified signup</p>
+                  <p>• Monthly referral competition मा count</p>
+                  <p>• Duplicate/self referral मानिँदैन</p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
       <Card className="border-primary/20 bg-gradient-to-br from-primary/10 via-background to-background">
         <CardHeader>
           <CardTitle>तपाईंको Referral Link</CardTitle>
           <CardDescription>
-            यो link साथीहरूलाई पठाउनुहोस्।
+            {selectedReferralType === "MONETIZATION"
+              ? "Account Monetize referral का लागि यो link share गर्नुहोस्।"
+              : "Verified signup referral का लागि यो link share गर्नुहोस्।"}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -292,7 +357,9 @@ export default function ReferralPage() {
               Share & Earn
             </DialogTitle>
             <DialogDescription className="text-center">
-              साथीलाई invite गर्नुहोस्। हरेक verified signup मा Rs. 5 पाउनुहोस्।
+              {selectedReferralType === "MONETIZATION"
+                ? "Account Monetize referral share गर्नुहोस् — 50% commission + referred user लाई Rs. 100 cashback."
+                : "साथीलाई invite गर्नुहोस्। हरेक verified signup मा Rs. 5 पाउनुहोस्।"}
             </DialogDescription>
           </DialogHeader>
 
@@ -382,7 +449,9 @@ export default function ReferralPage() {
             </Button>
 
             <p className="mt-3 text-center text-xs text-muted-foreground">
-              Reward unique OTP-verified account बनेपछि मात्र wallet मा credit हुन्छ।
+              {selectedReferralType === "MONETIZATION"
+                ? "Monetization referral reward successful paid activation पछि मात्र credit हुन्छ।"
+                : "Reward unique OTP-verified account बनेपछि मात्र wallet मा credit हुन्छ।"}
             </p>
           </div>
         </DialogContent>
