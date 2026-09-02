@@ -16,6 +16,8 @@ export interface PublicProfile {
   user: PublicProfileUser;
   rooms: any[];
   jobs: any[];
+  roomCount: number;
+  jobCount: number;
 }
 
 export type FriendStatus =
