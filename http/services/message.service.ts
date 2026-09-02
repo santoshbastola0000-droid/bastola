@@ -55,6 +55,11 @@ export interface ChatMessage {
   } | null;
 }
 
+export type MessagePaymentAction =
+  | "PAYMENT_REQUEST"
+  | "PAYMENT_CONFIRM"
+  | "RELEASE_REQUEST";
+
 export const messageService = {
 
   adminListUsers: async (query = "") => {
@@ -338,6 +343,30 @@ export const messageService = {
       {
         content,
         roomId: roomId || undefined,
+      },
+    );
+
+    return response.data;
+  },
+
+  sendPaymentAction: async (
+    conversationId: string,
+    action: MessagePaymentAction,
+    amount: number,
+    note?: string,
+  ): Promise<ChatMessage> => {
+    const endpoint =
+      action === "PAYMENT_REQUEST"
+        ? "payment-request"
+        : action === "PAYMENT_CONFIRM"
+          ? "payment-confirm"
+          : "release-request";
+
+    const response = await privateApi.post(
+      `/message/conversations/${conversationId}/${endpoint}`,
+      {
+        amount,
+        note: note?.trim() || undefined,
       },
     );
 
