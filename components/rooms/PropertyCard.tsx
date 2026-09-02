@@ -1,7 +1,7 @@
 "use client";
 
-import { useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useUserStore } from "@/stores/user-store";
 import { motion } from "framer-motion";
 import {
@@ -32,6 +32,8 @@ export function PropertyCard({
   index = 0,
 }: PropertyCardProps) {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const user = useUserStore((state) => state.user);
   const isLoaded = useUserStore((state) => state.isLoaded);
   const [imgError, setImgError] = useState(false);
@@ -40,6 +42,34 @@ export function PropertyCard({
   const [imageIndex, setImageIndex] = useState(0);
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
   const touchGestureRef = useRef<"horizontal" | "vertical" | null>(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const query = searchParams.toString();
+    const currentUrl =
+      pathname + (query ? `?${query}` : "");
+    const key =
+      `roomkhoj:return-scroll:${currentUrl}`;
+    const saved =
+      sessionStorage.getItem(key);
+
+    if (!saved) return;
+
+    sessionStorage.removeItem(key);
+    const y = Number(saved);
+
+    if (!Number.isFinite(y)) return;
+
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        window.scrollTo({
+          top: y,
+          behavior: "auto",
+        });
+      });
+    });
+  }, [pathname, searchParams]);
 
   const catCfg = categoryConfig[room.category] ?? {
     label: room.category,
@@ -313,7 +343,24 @@ export function PropertyCard({
             onClick={(event) => {
               event.stopPropagation();
               if (room.user?.id) {
-                router.push(`/profile/${room.user.id}`);
+                const query =
+                  searchParams.toString();
+                const returnTo =
+                  pathname +
+                  (query ? `?${query}` : "");
+
+                if (typeof window !== "undefined") {
+                  sessionStorage.setItem(
+                    `roomkhoj:return-scroll:${returnTo}`,
+                    String(window.scrollY),
+                  );
+                }
+
+                router.push(
+                  `/profile/${room.user.id}?returnTo=${encodeURIComponent(
+                    returnTo,
+                  )}`,
+                );
               }
             }}
             className="flex min-w-0 items-center gap-2 text-left"
