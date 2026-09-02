@@ -26,6 +26,8 @@ import {
   Plus,
   WalletCards,
   HandCoins,
+  Trash2,
+  RotateCcw,
 } from "lucide-react";
 import { toast } from "sonner";
 import { io, Socket } from "socket.io-client";
@@ -47,8 +49,6 @@ function MessagesContent() {
   const searchParams = useSearchParams();
   const requestedConversationId = searchParams.get("conversation");
   const requestedIncomingCallId = searchParams.get("incomingCall");
-  const requestedReturnTo = searchParams.get("returnTo");
-  const safeReturnTo = requestedReturnTo?.startsWith("/") ? requestedReturnTo : null;
 
 const user = useUserStore(
     (state) => state.user,
@@ -120,6 +120,18 @@ const user = useUserStore(
   const [phoneSearching, setPhoneSearching] =
     useState(false);
 
+  const [messageSearchResults, setMessageSearchResults] =
+    useState<Array<{
+      id: string;
+      conversationId: string;
+      content: string;
+      createdAt: string;
+      otherUser: {
+        id: string;
+        name: string;
+      } | null;
+    }>>([]);
+
   const [draft, setDraft] =
     useState("");
 
@@ -165,6 +177,9 @@ const user = useUserStore(
   const [mediaSending, setMediaSending] =
     useState(false);
 
+  const [mediaClientMessageId, setMediaClientMessageId] =
+    useState<string | null>(null);
+
   const [mediaObjectUrls, setMediaObjectUrls] =
     useState<Record<string, string>>({});
 
@@ -188,6 +203,14 @@ const user = useUserStore(
 
   const [sending, setSending] =
     useState(false);
+
+  const [failedSend, setFailedSend] =
+    useState<{
+      conversationId: string;
+      text: string;
+      roomId?: string;
+      clientMessageId: string;
+    } | null>(null);
 
   const loadConversations = async () => {
     try {
@@ -339,17 +362,71 @@ const user = useUserStore(
     socket.emit("presence:subscribe", { userIds });
   }, [socket, currentUserId, conversations]);
 
-  const searchByContact = async (options?: {silent?:boolean;query?:string}) => {
-    const raw = (options?.query ?? search).trim();
-    if (raw.length < 2) return;
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({
+      behavior: messagesLoading ? "auto" : "smooth",
+      block: "end",
+    });
+  }, [messages.length, selected?.id, messagesLoading]);
+
+  const runSearch = async (
+    rawValue?: string,
+  ) => {
+    const raw =
+      String(rawValue ?? search)
+        .trim();
+
+    if (raw.length < 2) {
+      setPhoneResults([]);
+      setMessageSearchResults([]);
+      return;
+    }
+
     try {
       setPhoneSearching(true);
-      const results = await messageService.searchUsersByPhone(raw);
-      setPhoneResults(results);
+
+      const [usersResult, messagesResult] =
+        await Promise.allSettled([
+          messageService
+            .searchUsersByPhone(raw),
+          messageService
+            .searchMessages(raw),
+        ]);
+
+      setPhoneResults(
+        usersResult.status === "fulfilled"
+          ? usersResult.value
+          : [],
+      );
+
+      setMessageSearchResults(
+        messagesResult.status === "fulfilled"
+          ? messagesResult.value
+          : [],
+      );
     } finally {
       setPhoneSearching(false);
     }
   };
+
+  useEffect(() => {
+    const raw = search.trim();
+
+    if (raw.length < 2) {
+      setPhoneResults([]);
+      setMessageSearchResults([]);
+      return;
+    }
+
+    const timer =
+      window.setTimeout(
+        () => void runSearch(raw),
+        300,
+      );
+
+    return () =>
+      window.clearTimeout(timer);
+  }, [search]);
 
   const openConversation = async (conversation: MessageConversation) => {
     setSelected(conversation);
@@ -365,12 +442,84 @@ const user = useUserStore(
     }
   };
 
+  const openMessageSearchResult = async (
+    result: {
+      conversationId: string;
+    },
+  ) => {
+    let conversation =
+      conversations.find(
+        (item) =>
+          item.id ===
+          result.conversationId,
+      );
+
+    if (!conversation) {
+      try {
+        const refreshed =
+          await messageService
+            .getConversations();
+
+        setConversations(refreshed);
+
+        conversation =
+          refreshed.find(
+            (item) =>
+              item.id ===
+              result.conversationId,
+          );
+      } catch {}
+    }
+
+    if (conversation) {
+      setSearch("");
+      await openConversation(
+        conversation,
+      );
+    }
+  };
+
   const handleMediaSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    e.target.value = "";
+
     if (!file) return;
-    if (mediaPreview) URL.revokeObjectURL(mediaPreview);
+
+    const isImage =
+      file.type.startsWith("image/");
+    const isVideo =
+      file.type.startsWith("video/");
+
+    if (!isImage && !isVideo) {
+      toast.error(
+        "Photo वा video file मात्र पठाउन मिल्छ।",
+      );
+      return;
+    }
+
+    if (
+      file.size >
+      25 * 1024 * 1024
+    ) {
+      toast.error(
+        "Media file 25 MB भन्दा सानो राख्नुहोस्।",
+      );
+      return;
+    }
+
+    if (mediaPreview) {
+      URL.revokeObjectURL(
+        mediaPreview,
+      );
+    }
+
     setSelectedMedia(file);
-    setMediaPreview(URL.createObjectURL(file));
+    setMediaPreview(
+      URL.createObjectURL(file),
+    );
+    setMediaClientMessageId(
+      crypto.randomUUID(),
+    );
     setShowActionMenu(false);
   };
 
@@ -378,33 +527,184 @@ const user = useUserStore(
     if (mediaPreview) URL.revokeObjectURL(mediaPreview);
     setSelectedMedia(null);
     setMediaPreview(null);
+    setMediaClientMessageId(null);
     if (mediaInputRef.current) mediaInputRef.current.value = "";
   };
 
   const uploadMedia = async () => {
-    if (!selected || !selectedMedia || mediaSending) return;
+    if (
+      !selected ||
+      !selectedMedia ||
+      mediaSending
+    ) {
+      return;
+    }
+
+    const clientMessageId =
+      mediaClientMessageId ||
+      crypto.randomUUID();
+
+    if (!mediaClientMessageId) {
+      setMediaClientMessageId(
+        clientMessageId,
+      );
+    }
+
     try {
       setMediaSending(true);
-      const message = await messageService.sendMedia(selected.id, selectedMedia);
-      setMessages((prev) => [...prev, message]);
+
+      const message =
+        await messageService
+          .sendMedia(
+            selected.id,
+            selectedMedia,
+            undefined,
+            clientMessageId,
+          );
+
+      setMessages((prev) =>
+        prev.some(
+          (item) =>
+            item.id === message.id,
+        )
+          ? prev
+          : [...prev, message],
+      );
+
       removeSelectedMedia();
-      loadConversations();
+      void loadConversations();
+    } catch (error: any) {
+      toast.error(
+        error?.response?.data
+          ?.message ||
+          "Media पठाउन सकिएन। फेरि Send थिच्नुहोस्।",
+      );
     } finally {
       setMediaSending(false);
     }
   };
 
-  const sendMessage = async () => {
-    const text = draft.trim();
-    if (!selected || !text || sending) return;
+  const sendMessage = async (
+    retry?: {
+      conversationId: string;
+      text: string;
+      roomId?: string;
+      clientMessageId: string;
+    },
+  ) => {
+    const conversationId =
+      retry?.conversationId ||
+      selected?.id ||
+      "";
+
+    const text =
+      retry?.text ||
+      draft.trim();
+
+    const roomId =
+      retry?.roomId ||
+      (pendingContextPost?.type === "ROOM"
+        ? pendingContextPost.id
+        : undefined);
+
+    if (
+      !conversationId ||
+      !text ||
+      sending
+    ) {
+      return;
+    }
+
+    const clientMessageId =
+      retry?.clientMessageId ||
+      crypto.randomUUID();
+
     try {
       setSending(true);
-      const message = await messageService.sendMessage(selected.id, text);
-      setMessages((prev) => [...prev, message]);
+
+      const message =
+        await messageService
+          .sendMessage(
+            conversationId,
+            text,
+            roomId,
+            clientMessageId,
+          );
+
+      setMessages((prev) =>
+        prev.some(
+          (item) =>
+            item.id === message.id,
+        )
+          ? prev
+          : [...prev, message],
+      );
+
       setDraft("");
-      loadConversations();
+      setPendingContextPost(null);
+      setFailedSend(null);
+      void loadConversations();
+    } catch (error: any) {
+      setFailedSend({
+        conversationId,
+        text,
+        roomId,
+        clientMessageId,
+      });
+
+      toast.error(
+        error?.response?.data
+          ?.message ||
+          "Message पठाउन सकिएन। Retry गर्नुहोस्।",
+      );
     } finally {
       setSending(false);
+    }
+  };
+
+  const deleteOwnMessage = async (
+    message: ChatMessage,
+  ) => {
+    if (
+      message.senderId !==
+      currentUserId
+    ) {
+      return;
+    }
+
+    const confirmed =
+      window.confirm(
+        "यो message दुवै side बाट delete गर्ने?",
+      );
+
+    if (!confirmed) return;
+
+    try {
+      setDeletingMessageId(
+        message.id,
+      );
+
+      await messageService
+        .deleteMessage(
+          message.id,
+        );
+
+      setMessages((prev) =>
+        prev.filter(
+          (item) =>
+            item.id !== message.id,
+        ),
+      );
+
+      void loadConversations();
+    } catch (error: any) {
+      toast.error(
+        error?.response?.data
+          ?.message ||
+          "Message delete गर्न सकिएन।",
+      );
+    } finally {
+      setDeletingMessageId(null);
     }
   };
 
@@ -425,10 +725,16 @@ const user = useUserStore(
               </div>
               <div className="relative mt-3">
                 <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input value={search} onChange={(e)=>setSearch(e.target.value)} onKeyDown={(e)=>{if(e.key==="Enter") void searchByContact();}} placeholder="Search or start new chat" className="h-11 rounded-[14px] border-0 bg-muted pl-11" />
+                <Input value={search} onChange={(e)=>setSearch(e.target.value)} onKeyDown={(e)=>{if(e.key==="Enter") void runSearch();}} placeholder="Search or start new chat" className="h-11 rounded-[14px] border-0 bg-muted pl-11" />
               </div>
               {phoneSearching && <Loader2 className="mt-2 h-4 w-4 animate-spin" />}
-              {phoneResults.map((result)=><button key={result.id} onClick={()=>router.push(`/profile/${result.id}`)} className="mt-2 block w-full rounded-xl border p-3 text-left">{result.name}</button>)}
+              {search.trim().length >= 2 && (
+                <div className="mt-2 max-h-72 space-y-2 overflow-y-auto">
+                  {phoneResults.map((result)=><button key={`user-${result.id}`} onClick={()=>router.push(`/profile/${result.id}`)} className="block w-full rounded-xl border p-3 text-left"><p className="text-sm font-semibold">{result.name}</p><p className="text-xs text-muted-foreground">User</p></button>)}
+                  {messageSearchResults.map((result)=><button key={`message-${result.id}`} onClick={()=>void openMessageSearchResult(result)} className="block w-full rounded-xl border p-3 text-left"><p className="text-sm font-semibold">{result.otherUser?.name || "Conversation"}</p><p className="line-clamp-2 text-xs text-muted-foreground">{result.content || "Message"}</p></button>)}
+                  {!phoneSearching && phoneResults.length === 0 && messageSearchResults.length === 0 && <p className="p-3 text-sm text-muted-foreground">No matching users or messages.</p>}
+                </div>
+              )}
             </div>
             {loading ? <div className="flex justify-center p-10"><Loader2 className="h-6 w-6 animate-spin" /></div> : (
               <div className="divide-y divide-border overflow-y-auto">
@@ -453,11 +759,36 @@ const user = useUserStore(
                     {message.mediaUrl && message.type === "VIDEO" && <video src={resolveImageUrl(message.mediaUrl)} controls playsInline className="mb-2 max-h-72 w-full rounded-xl" />}
                     {message.mediaUrl && message.type === "IMAGE" && <img src={resolveImageUrl(message.mediaUrl)} alt="" className="mb-2 max-h-72 w-full rounded-xl object-cover" />}
                     {message.content && <p className="whitespace-pre-wrap break-words">{message.content}</p>}
-                    <div className="mt-1 flex items-center justify-end gap-1 text-[10px] opacity-75"><span>{new Date(message.createdAt).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})}</span>{mine && <><CheckCheck className={`h-3.5 w-3.5 ${message.seenAt ? "text-sky-200" : ""}`} /><span className="font-medium">{deliveryLabel}</span></>}</div>
+                    <div className="mt-1 flex items-center justify-end gap-1 text-[10px] opacity-75"><span>{new Date(message.createdAt).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})}</span>{mine && <><CheckCheck className={`h-3.5 w-3.5 ${message.seenAt ? "text-sky-200" : ""}`} /><span className="font-medium">{deliveryLabel}</span><button type="button" onClick={()=>void deleteOwnMessage(message)} disabled={deletingMessageId===message.id} className="ml-1 inline-flex h-5 w-5 items-center justify-center rounded-full hover:bg-black/10" aria-label="Delete message">{deletingMessageId===message.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}</button></>}</div>
                   </div></div>;
                 })}
                 <div ref={messagesEndRef} />
               </div>
+
+              {pendingContextPost?.type === "ROOM" && (
+                <div className="border-t border-border bg-card p-3">
+                  <div className="flex items-center gap-3 rounded-xl border p-2">
+                    {pendingContextPost.image && <img src={resolveImageUrl(pendingContextPost.image)} alt="" className="h-14 w-14 rounded-lg object-cover" />}
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold">{pendingContextPost.title}</p>
+                      <p className="text-xs text-muted-foreground">This room will be attached to your next message.</p>
+                    </div>
+                    <Button type="button" variant="ghost" size="sm" onClick={()=>setPendingContextPost(null)} aria-label="Remove room attachment">Remove</Button>
+                  </div>
+                </div>
+              )}
+
+              {failedSend && (
+                <div className="border-t border-border bg-card px-3 py-2">
+                  <div className="flex items-center justify-between gap-3 rounded-xl border border-destructive/30 bg-destructive/5 p-2">
+                    <p className="min-w-0 flex-1 truncate text-xs text-destructive">Message send failed</p>
+                    <Button type="button" size="sm" variant="outline" onClick={()=>void sendMessage(failedSend)} disabled={sending} className="gap-1">
+                      <RotateCcw className="h-3.5 w-3.5" />
+                      Retry
+                    </Button>
+                  </div>
+                </div>
+              )}
 
               {selectedMedia && mediaPreview && <div className="border-t border-border bg-card p-3"><div className="flex items-center gap-3">{selectedMedia.type.startsWith("video/") ? <video src={mediaPreview} className="h-16 w-16 rounded-lg object-cover" /> : <img src={mediaPreview} alt="" className="h-16 w-16 rounded-lg object-cover" />}<div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{selectedMedia.name}</p></div><Button variant="ghost" onClick={removeSelectedMedia}>Remove</Button><Button onClick={()=>void uploadMedia()} disabled={mediaSending}>{mediaSending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Send"}</Button></div></div>}
 
