@@ -100,6 +100,18 @@ export default function ProfilePage() {
   } | null>(null);
   const [monetizationLoading, setMonetizationLoading] = useState(true);
   const [monetizationActivating, setMonetizationActivating] = useState(false);
+  const [kyc, setKyc] = useState<any>(null);
+  const [kycLoading, setKycLoading] = useState(true);
+  const [kycSubmitting, setKycSubmitting] = useState(false);
+  const [showKycForm, setShowKycForm] = useState(false);
+  const [kycForm, setKycForm] = useState({
+    fullName: "",
+    phoneNumber: "",
+    address: "",
+    documentType: "CITIZENSHIP",
+    documentNumber: "",
+  });
+  const [kycDocument, setKycDocument] = useState<File | null>(null);
 
   const [shareSummary, setShareSummary] =
     useState<{
@@ -312,7 +324,63 @@ export default function ProfilePage() {
     }
   };
 
+  const loadMonetizationKyc = async () => {
+    try {
+      setKycLoading(true);
+      const data = await walletService.getMonetizationKyc();
+      setKyc(data);
+      if (data?.fullName || data?.phoneNumber || data?.address) {
+        setKycForm((prev) => ({
+          ...prev,
+          fullName: data.fullName || prev.fullName,
+          phoneNumber: data.phoneNumber || prev.phoneNumber,
+          address: data.address || prev.address,
+          documentType: data.documentType || prev.documentType,
+        }));
+      }
+    } catch {
+      setKyc(null);
+    } finally {
+      setKycLoading(false);
+    }
+  };
+
+  const submitMonetizationKyc = async () => {
+    if (
+      !kycForm.fullName.trim() ||
+      !kycForm.phoneNumber.trim() ||
+      !kycForm.address.trim() ||
+      !kycForm.documentNumber.trim() ||
+      !kycDocument
+    ) {
+      toast.error("सबै identity details र document upload गर्नुहोस्.");
+      return;
+    }
+    try {
+      setKycSubmitting(true);
+      await walletService.submitMonetizationKyc({
+        ...kycForm,
+        document: kycDocument,
+      });
+      await loadMonetizationKyc();
+      setShowKycForm(false);
+      toast.success("Identity verification review का लागि पठाइयो");
+    } catch (error: any) {
+      toast.error(
+        error?.response?.data?.message ||
+          "Identity verification submit गर्न सकिएन.",
+      );
+    } finally {
+      setKycSubmitting(false);
+    }
+  };
+
   const activateMonetization = async () => {
+    if (kyc?.status !== "APPROVED") {
+      setShowKycForm(true);
+      toast.error("Account Monetize गर्न identity verification approve हुनुपर्छ.");
+      return;
+    }
     try {
       setMonetizationActivating(true);
       await walletService.activateMonetization();
@@ -386,6 +454,7 @@ export default function ProfilePage() {
     loadProfile();
     loadAiProfile();
     loadMonetization();
+    loadMonetizationKyc();
   }, []);
 
   const changeRoomStatus = async (
@@ -667,9 +736,92 @@ export default function ProfilePage() {
         <CardContent className="p-5 sm:p-6">
           <div className="mb-5">
             <div className="flex items-center gap-2"><Crown className="h-5 w-5 text-amber-700" /><span className="text-xs font-black uppercase tracking-[0.18em] text-amber-700">Earn with RoomKhoj</span></div>
-            <h2 className="mt-1 text-xl font-black">Choose your earning plan</h2>
-            <p className="mt-1 text-sm text-muted-foreground">पहिला plan हेर्नुहोस्। Free बाट सुरु गर्न सकिन्छ; मन परेपछि paid plan activate गर्न सकिन्छ।</p>
+            <h2 className="mt-1 text-xl font-black">Account Monetize</h2>
+            <p className="mt-1 text-sm text-muted-foreground">पहिला plan हेर्नुहोस्। Free बाट सुरु गर्न सकिन्छ; paid Account Monetize गर्न identity verification आवश्यक हुन्छ।</p>
           </div>
+
+          {!monetization?.isMonetized && !kycLoading && (
+            <div className="mb-5 rounded-2xl border border-border bg-background p-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="font-bold">Identity Verification</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Full name, phone, address र government identity document verification आवश्यक छ।
+                  </p>
+                  <p className="mt-2 text-xs font-semibold">
+                    Status: {String(kyc?.status || "NOT_SUBMITTED").replaceAll("_", " ")}
+                  </p>
+                  {kyc?.adminRemarks && (
+                    <p className="mt-1 text-xs text-red-600">{kyc.adminRemarks}</p>
+                  )}
+                </div>
+                {kyc?.status !== "APPROVED" && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="rounded-full"
+                    onClick={() => setShowKycForm((v) => !v)}
+                  >
+                    {kyc?.status === "PENDING" ? "Update details" : "Verify identity"}
+                  </Button>
+                )}
+              </div>
+
+              {showKycForm && (
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  <Input
+                    placeholder="Full legal name"
+                    value={kycForm.fullName}
+                    onChange={(e) => setKycForm((p) => ({ ...p, fullName: e.target.value }))}
+                  />
+                  <Input
+                    placeholder="Phone number"
+                    value={kycForm.phoneNumber}
+                    onChange={(e) => setKycForm((p) => ({ ...p, phoneNumber: e.target.value }))}
+                  />
+                  <Input
+                    placeholder="Permanent/current address"
+                    value={kycForm.address}
+                    onChange={(e) => setKycForm((p) => ({ ...p, address: e.target.value }))}
+                  />
+                  <select
+                    value={kycForm.documentType}
+                    onChange={(e) => setKycForm((p) => ({ ...p, documentType: e.target.value }))}
+                    className="h-10 rounded-md border bg-background px-3 text-sm"
+                  >
+                    <option value="CITIZENSHIP">Citizenship</option>
+                    <option value="PASSPORT">Passport</option>
+                    <option value="DRIVING_LICENSE">Driving License</option>
+                    <option value="NATIONAL_ID">National ID</option>
+                  </select>
+                  <Input
+                    placeholder="Document number"
+                    value={kycForm.documentNumber}
+                    onChange={(e) => setKycForm((p) => ({ ...p, documentNumber: e.target.value }))}
+                  />
+                  <Input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,application/pdf"
+                    onChange={(e) => setKycDocument(e.target.files?.[0] || null)}
+                  />
+                  <div className="sm:col-span-2">
+                    <Button
+                      type="button"
+                      onClick={() => void submitMonetizationKyc()}
+                      disabled={kycSubmitting}
+                      className="rounded-full"
+                    >
+                      {kycSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      Submit identity for review
+                    </Button>
+                    <p className="mt-2 text-[11px] text-muted-foreground">
+                      JPG, PNG, WEBP वा PDF · maximum 5 MB. Identity documents public profile मा देखाइँदैनन्।
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {monetizationLoading ? (
             <div className="flex items-center gap-3"><Loader2 className="h-5 w-5 animate-spin" /><span className="text-sm text-muted-foreground">Checking plans...</span></div>
