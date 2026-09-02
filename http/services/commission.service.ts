@@ -4,6 +4,7 @@ export interface CommissionSettings {
   id: string;
   serviceCharge: number;
   commissionPercentage: number;
+  monetizationFee: number;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -70,6 +71,7 @@ export const commissionService = {
   createSettings: async (data: {
     serviceCharge: number;
     commissionPercentage: number;
+    monetizationFee: number;
     isActive?: boolean;
   }): Promise<CommissionSettings> => {
     const response = await privateApi.post("/commission/settings", data);
@@ -81,6 +83,7 @@ export const commissionService = {
     data: {
       serviceCharge?: number;
       commissionPercentage?: number;
+      monetizationFee?: number;
     },
   ): Promise<CommissionSettings> => {
     const response = await privateApi.put(`/commission/settings/${id}`, data);
