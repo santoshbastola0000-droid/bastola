@@ -460,7 +460,7 @@ export default function PublicProfilePage() {
             <div className="flex overflow-x-auto">
               {[
                 ["posts", "Posts"],
-                ["rooms", `Rooms (${profile.rooms.length})`],
+                ["rooms", `Rooms (${profile.roomCount ?? profile.rooms.length})`],
                 ["jobs", "Jobs"],
                 ["friends", friendStatus === "SELF" && incomingRequests.length > 0
                   ? `Friends (${incomingRequests.length})`
@@ -522,6 +522,7 @@ export default function PublicProfilePage() {
                   <Home className="mt-0.5 h-4 w-4 text-muted-foreground" />
                   <span>
                     {
+                      profile.roomCount ??
                       profile.rooms
                         .length
                     }{" "}
@@ -533,6 +534,7 @@ export default function PublicProfilePage() {
                   <BriefcaseBusiness className="mt-0.5 h-4 w-4 text-muted-foreground" />
                   <span>
                     {
+                      profile.jobCount ??
                       profile.jobs
                         .length
                     }{" "}
