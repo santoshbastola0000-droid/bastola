@@ -124,6 +124,29 @@ class WalletService {
     return response.data;
   }
 
+  async getAdminMonetizationKyc(status?: string) {
+    const response = await privateApi.get(
+      `${this.baseUrl}/admin/monetization/kyc`,
+      { params: status ? { status } : undefined },
+    );
+    return response.data.data as Array<any>;
+  }
+
+  async reviewMonetizationKyc(
+    id: string,
+    data: { status: "APPROVED" | "REJECTED"; adminRemarks?: string },
+  ) {
+    const response = await privateApi.patch(
+      `${this.baseUrl}/admin/monetization/kyc/${id}`,
+      data,
+    );
+    return response.data.data;
+  }
+
+  getMonetizationKycDocumentUrl(id: string) {
+    return `/api/wallet/admin/monetization/kyc/${id}/document`;
+  }
+
   async getAllWithdrawals(params?: WithdrawalsQueryParams) {
     const response = await privateApi.get(`${this.baseUrl}/admin/withdrawals`, {
       params,
