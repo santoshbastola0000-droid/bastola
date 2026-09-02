@@ -25,6 +25,8 @@ import {
   Camera,
   ChevronLeft,
   Plus,
+  WalletCards,
+  FileText,
 } from "lucide-react";
 import { toast } from "sonner";
 import { io, Socket } from "socket.io-client";
@@ -169,6 +171,24 @@ const user = useUserStore(
 
   const mediaInputRef =
     useRef<HTMLInputElement | null>(null);
+
+  const paymentFileInputRef =
+    useRef<HTMLInputElement | null>(null);
+
+  const [attachmentMenuOpen, setAttachmentMenuOpen] =
+    useState(false);
+  const [paymentDialogOpen, setPaymentDialogOpen] =
+    useState(false);
+  const [paymentAmount, setPaymentAmount] =
+    useState("");
+  const [paymentNote, setPaymentNote] =
+    useState("");
+  const [paymentAttachment, setPaymentAttachment] =
+    useState<File | null>(null);
+  const [paymentSending, setPaymentSending] =
+    useState(false);
+  const [confirmingPaymentId, setConfirmingPaymentId] =
+    useState<string | null>(null);
 
   const messagesEndRef =
     useRef<HTMLDivElement | null>(null);
@@ -793,6 +813,92 @@ const user = useUserStore(
         setMediaSending(false);
       }
     };
+
+  const sendPaymentRequest = async () => {
+    if (!selected || paymentSending) return;
+
+    const amount = Number(paymentAmount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      toast.error("Payment amount राख्नुहोस्.");
+      return;
+    }
+
+    try {
+      setPaymentSending(true);
+      const message = await messageService.sendPaymentRequest(
+        selected.id,
+        amount,
+        paymentNote,
+        paymentAttachment,
+      );
+
+      setMessages((prev) => [...prev, message]);
+      setPaymentAmount("");
+      setPaymentNote("");
+      setPaymentAttachment(null);
+      setPaymentDialogOpen(false);
+      setAttachmentMenuOpen(false);
+      if (paymentFileInputRef.current) {
+        paymentFileInputRef.current.value = "";
+      }
+      loadConversations();
+      toast.success("Payment request sent");
+    } catch (error: any) {
+      toast.error(
+        error?.response?.data?.message ||
+          "Payment request पठाउन सकिएन.",
+      );
+    } finally {
+      setPaymentSending(false);
+    }
+  };
+
+  const confirmPaymentRequest = async (messageId: string) => {
+    if (confirmingPaymentId) return;
+
+    try {
+      setConfirmingPaymentId(messageId);
+      const result = await messageService.confirmPaymentRequest(messageId);
+
+      setMessages((prev) => {
+        const updated = prev.map((item) =>
+          item.id === messageId
+            ? {
+                ...item,
+                ...result.request,
+                payment: {
+                  amount: Number(result.request.payment?.amount || item.payment?.amount || 0),
+                  currency: "NPR" as const,
+                  status: "CONFIRMED" as const,
+                },
+              }
+            : item,
+        );
+
+        if (
+          result.confirmation &&
+          !updated.some((item) => item.id === result.confirmation!.id)
+        ) {
+          updated.push(result.confirmation);
+        }
+        return updated;
+      });
+
+      loadConversations();
+      toast.success(
+        result.alreadyConfirmed
+          ? "Payment already confirmed"
+          : "Payment confirmed",
+      );
+    } catch (error: any) {
+      toast.error(
+        error?.response?.data?.message ||
+          "Payment confirm गर्न सकिएन.",
+      );
+    } finally {
+      setConfirmingPaymentId(null);
+    }
+  };
 
   const sendCallSignal = (
     toUserId: string,
@@ -1559,6 +1665,74 @@ const user = useUserStore(
                                 : "rounded-bl-md bg-card text-foreground"
                             }`}
                           >
+                            {(message.type === "PAYMENT_REQUEST" ||
+                              message.type === "PAYMENT_CONFIRMED") && (
+                              <div className="mb-2 min-w-[230px] rounded-2xl border border-border bg-background/80 p-3 text-foreground">
+                                <div className="flex items-center gap-2">
+                                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
+                                    <WalletCards className="h-5 w-5" />
+                                  </div>
+                                  <div>
+                                    <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                      Payment request
+                                    </p>
+                                    <p className="text-xl font-extrabold">
+                                      रु {Number(message.payment?.amount || message.mediaOriginalName || 0).toLocaleString()}
+                                    </p>
+                                  </div>
+                                </div>
+
+                                {message.content && (
+                                  <p className="mt-2 whitespace-pre-wrap break-words text-sm">
+                                    {message.content}
+                                  </p>
+                                )}
+
+                                {message.mediaUrl && message.mediaMimeType && (
+                                  <a
+                                    href={resolveImageUrl(message.mediaUrl)}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="mt-2 flex items-center gap-2 rounded-xl border border-border px-3 py-2 text-xs font-semibold"
+                                    onClick={(event) => event.stopPropagation()}
+                                  >
+                                    <FileText className="h-4 w-4" />
+                                    View attachment
+                                  </a>
+                                )}
+
+                                <div className="mt-3">
+                                  {message.type === "PAYMENT_CONFIRMED" ||
+                                  message.payment?.status === "CONFIRMED" ? (
+                                    <div className="rounded-xl bg-emerald-100 px-3 py-2 text-center text-xs font-bold text-emerald-800">
+                                      Payment confirmed
+                                    </div>
+                                  ) : !mine ? (
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      className="w-full rounded-xl"
+                                      disabled={confirmingPaymentId === message.id}
+                                      onClick={(event) => {
+                                        event.stopPropagation();
+                                        void confirmPaymentRequest(message.id);
+                                      }}
+                                    >
+                                      {confirmingPaymentId === message.id ? (
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                      ) : (
+                                        "Confirm payment"
+                                      )}
+                                    </Button>
+                                  ) : (
+                                    <div className="rounded-xl bg-muted px-3 py-2 text-center text-xs font-semibold">
+                                      Waiting for confirmation
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+
                             {message.attachment?.type === "ROOM" && message.attachment.url && (
                               <button
                                 type="button"
@@ -1582,7 +1756,9 @@ const user = useUserStore(
                               </button>
                             )}
 
-                            {message.mediaUrl && (
+                            {message.mediaUrl &&
+                              message.type !== "PAYMENT_REQUEST" &&
+                              message.type !== "PAYMENT_CONFIRMED" && (
                               message.type === "VIDEO" ? (
                                 <video src={resolveImageUrl(message.mediaUrl)} controls playsInline className="mb-2 max-h-72 w-full rounded-xl" />
                               ) : (
@@ -1590,7 +1766,11 @@ const user = useUserStore(
                               )
                             )}
 
-                            {message.content && <p className="whitespace-pre-wrap break-words">{message.content}</p>}
+                            {message.content &&
+                              message.type !== "PAYMENT_REQUEST" &&
+                              message.type !== "PAYMENT_CONFIRMED" && (
+                                <p className="whitespace-pre-wrap break-words">{message.content}</p>
+                              )}
 
                             <div className="mt-1 flex items-center justify-end gap-1 text-[10px] opacity-70">
                               <span>{new Date(message.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
@@ -1628,14 +1808,64 @@ const user = useUserStore(
 
               <div className="border-t border-border bg-card px-2.5 py-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] md:px-4 md:py-3">
                 <div className="flex items-end gap-2">
-                  <button
-                    type="button"
-                    onClick={() => mediaInputRef.current?.click()}
-                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-foreground hover:bg-muted"
-                    aria-label="Attach media"
-                  >
-                    <Plus className="h-6 w-6" />
-                  </button>
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setAttachmentMenuOpen((open) => !open)}
+                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-foreground hover:bg-muted"
+                      aria-label="Open attachment menu"
+                    >
+                      <Plus className={`h-6 w-6 transition-transform ${attachmentMenuOpen ? "rotate-45" : ""}`} />
+                    </button>
+
+                    {attachmentMenuOpen && (
+                      <div className="absolute bottom-14 left-0 z-50 w-[310px] rounded-3xl border border-border bg-card p-4 shadow-2xl">
+                        <div className="grid grid-cols-3 gap-4">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setAttachmentMenuOpen(false);
+                              mediaInputRef.current?.click();
+                            }}
+                            className="flex flex-col items-center gap-2 text-xs font-medium"
+                          >
+                            <span className="flex h-14 w-14 items-center justify-center rounded-full bg-sky-100 text-sky-700">
+                              <Camera className="h-6 w-6" />
+                            </span>
+                            Photos
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setAttachmentMenuOpen(false);
+                              mediaInputRef.current?.click();
+                            }}
+                            className="flex flex-col items-center gap-2 text-xs font-medium"
+                          >
+                            <span className="flex h-14 w-14 items-center justify-center rounded-full bg-violet-100 text-violet-700">
+                              <ImageIcon className="h-6 w-6" />
+                            </span>
+                            Media
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPaymentDialogOpen(true);
+                              setAttachmentMenuOpen(false);
+                            }}
+                            className="flex flex-col items-center gap-2 text-xs font-medium"
+                          >
+                            <span className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
+                              <WalletCards className="h-6 w-6" />
+                            </span>
+                            Payment request
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                   <input
                     ref={mediaInputRef}
                     type="file"
@@ -1678,6 +1908,86 @@ const user = useUserStore(
         </section>
       </div>
     </main>
+
+    {paymentDialogOpen && (
+      <div className="fixed inset-0 z-[120] flex items-end justify-center bg-black/45 p-3 sm:items-center">
+        <div className="w-full max-w-md rounded-3xl bg-card p-5 text-foreground shadow-2xl">
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
+              <WalletCards className="h-5 w-5" />
+            </div>
+            <div>
+              <h3 className="font-bold">Request payment</h3>
+              <p className="text-xs text-muted-foreground">
+                Ask the other user to confirm this payment.
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-4 space-y-3">
+            <Input
+              inputMode="decimal"
+              value={paymentAmount}
+              onChange={(event) => setPaymentAmount(event.target.value)}
+              placeholder="Amount in NPR"
+            />
+            <textarea
+              value={paymentNote}
+              onChange={(event) => setPaymentNote(event.target.value)}
+              placeholder="Note (optional)"
+              rows={3}
+              className="w-full resize-none rounded-xl border border-border bg-background px-3 py-2 text-sm outline-none"
+            />
+            <input
+              ref={paymentFileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,application/pdf"
+              className="hidden"
+              onChange={(event) =>
+                setPaymentAttachment(event.target.files?.[0] || null)
+              }
+            />
+            <button
+              type="button"
+              onClick={() => paymentFileInputRef.current?.click()}
+              className="flex w-full items-center justify-between rounded-xl border border-border px-3 py-2 text-sm"
+            >
+              <span className="flex items-center gap-2">
+                <FileText className="h-4 w-4" />
+                {paymentAttachment ? paymentAttachment.name : "Add attachment"}
+              </span>
+              <span className="text-xs text-muted-foreground">Optional</span>
+            </button>
+          </div>
+
+          <div className="mt-5 flex gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              className="flex-1 rounded-xl"
+              onClick={() => {
+                setPaymentDialogOpen(false);
+                setPaymentAttachment(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              className="flex-1 rounded-xl"
+              disabled={paymentSending || !paymentAmount.trim()}
+              onClick={() => void sendPaymentRequest()}
+            >
+              {paymentSending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                "Send request"
+              )}
+            </Button>
+          </div>
+        </div>
+      </div>
+    )}
 
     {callNotice && (
       <div className="fixed left-1/2 top-4 z-[100] -translate-x-1/2 rounded-full bg-black/85 px-4 py-2 text-sm font-medium text-white shadow-lg">
