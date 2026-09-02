@@ -34,6 +34,30 @@ class WalletService {
     return response.data.data;
   }
 
+  async getMonetizationStatus(): Promise<{
+    isMonetized: boolean;
+    monetizedAt: string | null;
+    monetizationFeePaid: number;
+    monetizationFee: number;
+    canEarnFromRooms: boolean;
+  }> {
+    const response = await privateApi.get(`${this.baseUrl}/monetization`);
+    return response.data.data;
+  }
+
+  async activateMonetization() {
+    const response = await privateApi.post(
+      `${this.baseUrl}/monetization/activate`,
+    );
+    return response.data.data as {
+      isMonetized: boolean;
+      monetizedAt: string | null;
+      monetizationFeePaid: number;
+      balance?: number;
+      alreadyActive: boolean;
+    };
+  }
+
   async getTransactions(params?: TransactionsQueryParams) {
     const response = await privateApi.get(`${this.baseUrl}/transactions`, {
       params,

@@ -96,6 +96,7 @@ export default function CommissionPage() {
   const [formData, setFormData] = useState({
     serviceCharge: "",
     commissionPercentage: "",
+    monetizationFee: "499",
     isActive: false,
   });
 
@@ -284,6 +285,7 @@ export default function CommissionPage() {
     setFormData({
       serviceCharge: "",
       commissionPercentage: "",
+      monetizationFee: "499",
       isActive: false,
     });
   };
@@ -293,6 +295,7 @@ export default function CommissionPage() {
     setFormData({
       serviceCharge: settings.serviceCharge.toString(),
       commissionPercentage: settings.commissionPercentage.toString(),
+      monetizationFee: Number(settings.monetizationFee ?? 499).toString(),
       isActive: settings.isActive,
     });
     setShowEditDialog(true);
@@ -359,6 +362,7 @@ export default function CommissionPage() {
     // Ensure numbers are properly parsed
     const serviceCharge = Number(formData.serviceCharge);
     const commissionPercentage = Number(formData.commissionPercentage);
+    const monetizationFee = Number(formData.monetizationFee);
 
     // Validate numbers
     if (isNaN(serviceCharge) || serviceCharge < 0) {
@@ -382,6 +386,7 @@ export default function CommissionPage() {
     const data = {
       serviceCharge,
       commissionPercentage,
+      monetizationFee: Number.isFinite(monetizationFee) && monetizationFee >= 0 ? monetizationFee : 499,
       isActive: formData.isActive,
     };
 
@@ -408,6 +413,7 @@ export default function CommissionPage() {
       // Ensure numbers are properly parsed
       const serviceCharge = Number(formData.serviceCharge);
       const commissionPercentage = Number(formData.commissionPercentage);
+      const monetizationFee = Number(formData.monetizationFee);
 
       // Validate numbers
       if (isNaN(serviceCharge) || serviceCharge < 0) {
@@ -431,6 +437,7 @@ export default function CommissionPage() {
       const data = {
         serviceCharge,
         commissionPercentage,
+        monetizationFee: Number.isFinite(monetizationFee) && monetizationFee >= 0 ? monetizationFee : 499,
       };
 
       updateMutation.mutate({
@@ -1240,6 +1247,29 @@ export default function CommissionPage() {
               </div>
             </div>
 
+            <div className="space-y-2">
+              <Label htmlFor="monetizationFee">Account Monetization Fee (NPR)</Label>
+              <div className="relative">
+                <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="monetizationFee"
+                  type="number"
+                  min="0"
+                  value={formData.monetizationFee}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      monetizationFee: e.target.value,
+                    })
+                  }
+                  className="pl-9"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Users pay this one-time fee before they can earn from rooms.
+              </p>
+            </div>
+
             <div className="flex items-center justify-between">
               <Label htmlFor="isActive">Activate immediately</Label>
               <Switch
@@ -1397,6 +1427,26 @@ export default function CommissionPage() {
                     setFormData({
                       ...formData,
                       commissionPercentage: e.target.value,
+                    })
+                  }
+                  className="pl-9"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-monetizationFee">Account Monetization Fee (NPR)</Label>
+              <div className="relative">
+                <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="edit-monetizationFee"
+                  type="number"
+                  min="0"
+                  value={formData.monetizationFee}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      monetizationFee: e.target.value,
                     })
                   }
                   className="pl-9"

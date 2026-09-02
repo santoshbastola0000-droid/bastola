@@ -41,6 +41,28 @@ import { useUserStore } from "@/stores/user-store";
 import useTokenStore from "@/store";
 import { resolveImageUrl } from "@/lib/utils";
 
+type EscrowCard = {
+  id: string;
+  status: string;
+  amount: number;
+  platformFee: number;
+  agentAmount: number;
+};
+
+function parseEscrowCard(message: ChatMessage): EscrowCard | null {
+  if (message.type !== "PAYMENT") return null;
+  const [marker, id, status, amount, fee, agentAmount] =
+    String(message.content || "").split("|");
+  if (marker !== "ESCROW_PAYMENT" || !id) return null;
+  return {
+    id,
+    status,
+    amount: Number(amount || 0),
+    platformFee: Number(fee || 0),
+    agentAmount: Number(agentAmount || 0),
+  };
+}
+
 function MessagesContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -120,6 +142,11 @@ const user = useUserStore(
 
   const [draft, setDraft] =
     useState("");
+
+  const [showPlusMenu, setShowPlusMenu] =
+    useState(false);
+  const [paymentActionId, setPaymentActionId] =
+    useState<string | null>(null);
 
   const [pendingContextPost, setPendingContextPost] =
     useState<MessageConversation["contextPost"]>(null);
@@ -1063,6 +1090,77 @@ const user = useUserStore(
     endCall(false, "Call declined");
   };
 
+
+  const appendPaymentMessage = (message: ChatMessage) => {
+    setMessages((prev) =>
+      prev.some((item) => item.id === message.id)
+        ? prev
+        : [...prev, message],
+    );
+    void loadConversations();
+  };
+
+  const createPaymentRequest = async () => {
+    if (!selected) return;
+    const raw = window.prompt("Service charge amount (Rs.)");
+    if (raw === null) return;
+    const amount = Number(raw);
+    if (!Number.isFinite(amount) || amount < 1) {
+      toast.error("Valid amount enter गर्नुहोस्.");
+      return;
+    }
+    try {
+      setPaymentActionId("create");
+      const result = await messageService.createPaymentRequest(
+        selected.id,
+        amount,
+      );
+      appendPaymentMessage(result.message);
+      setShowPlusMenu(false);
+      toast.success("Payment request sent");
+    } catch (error: any) {
+      toast.error(
+        error?.response?.data?.message ||
+          "Payment request send गर्न सकिएन.",
+      );
+    } finally {
+      setPaymentActionId(null);
+    }
+  };
+
+  const runPaymentAction = async (
+    paymentId: string,
+    action: "pay" | "release-request" | "release" | "dispute",
+  ) => {
+    try {
+      setPaymentActionId(paymentId);
+      let result;
+      if (action === "pay") {
+        result = await messageService.payPaymentRequest(paymentId);
+      } else if (action === "release-request") {
+        result = await messageService.requestPaymentRelease(paymentId);
+      } else if (action === "release") {
+        const ok = window.confirm(
+          "Room लिएको confirm गरेर agent लाई payment release गर्ने?",
+        );
+        if (!ok) return;
+        result = await messageService.confirmPaymentRelease(paymentId);
+      } else {
+        const reason =
+          window.prompt("Dispute reason (optional)") || undefined;
+        result = await messageService.disputePayment(paymentId, reason);
+      }
+      appendPaymentMessage(result.message);
+    } catch (error: any) {
+      toast.error(
+        error?.response?.data?.message ||
+          "Payment action complete गर्न सकिएन.",
+      );
+    } finally {
+      setPaymentActionId(null);
+    }
+  };
+
   const clearDeleteHoldTimer = () => {
     if (deleteHoldTimerRef.current !== null) {
       window.clearTimeout(
@@ -1582,7 +1680,50 @@ const user = useUserStore(
                               </button>
                             )}
 
-                            {message.mediaUrl && (
+                            {parseEscrowCard(message) && (() => {
+                              const payment = parseEscrowCard(message)!;
+                              const mine = message.senderId === currentUserId;
+                              return (
+                                <div className="mb-2 min-w-[250px] rounded-xl border border-border bg-background/80 p-3 text-foreground">
+                                  <div className="flex items-center justify-between gap-3">
+                                    <div>
+                                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">RoomKhoj Escrow</p>
+                                      <p className="mt-1 text-xl font-bold">Rs. {payment.amount.toLocaleString()}</p>
+                                    </div>
+                                    <span className="rounded-full bg-muted px-2 py-1 text-[10px] font-semibold">
+                                      {payment.status.replaceAll("_", " ")}
+                                    </span>
+                                  </div>
+                                  <div className="mt-2 text-xs text-muted-foreground">
+                                    10% RoomKhoj fee: Rs. {payment.platformFee.toLocaleString()} · Agent gets Rs. {payment.agentAmount.toLocaleString()}
+                                  </div>
+                                  <div className="mt-3 flex flex-wrap gap-2">
+                                    {payment.status === "PAYMENT_REQUESTED" && !mine && (
+                                      <Button size="sm" onClick={() => void runPaymentAction(payment.id, "pay")} disabled={paymentActionId === payment.id}>
+                                        Pay & hold in escrow
+                                      </Button>
+                                    )}
+                                    {payment.status === "ESCROW_HELD" && !mine && (
+                                      <Button size="sm" onClick={() => void runPaymentAction(payment.id, "release-request")} disabled={paymentActionId === payment.id}>
+                                        Request release
+                                      </Button>
+                                    )}
+                                    {payment.status === "RELEASE_REQUESTED" && !mine && (
+                                      <>
+                                        <Button size="sm" onClick={() => void runPaymentAction(payment.id, "release")} disabled={paymentActionId === payment.id}>
+                                          Confirm & release
+                                        </Button>
+                                        <Button size="sm" variant="outline" onClick={() => void runPaymentAction(payment.id, "dispute")} disabled={paymentActionId === payment.id}>
+                                          Raise dispute
+                                        </Button>
+                                      </>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })()}
+
+                            {message.type !== "PAYMENT" && message.mediaUrl && (
                               message.type === "VIDEO" ? (
                                 <video src={resolveImageUrl(message.mediaUrl)} controls playsInline className="mb-2 max-h-72 w-full rounded-xl" />
                               ) : (
@@ -1590,7 +1731,7 @@ const user = useUserStore(
                               )
                             )}
 
-                            {message.content && <p className="whitespace-pre-wrap break-words">{message.content}</p>}
+                            {message.type !== "PAYMENT" && message.content && <p className="whitespace-pre-wrap break-words">{message.content}</p>}
 
                             <div className="mt-1 flex items-center justify-end gap-1 text-[10px] opacity-70">
                               <span>{new Date(message.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
@@ -1628,14 +1769,38 @@ const user = useUserStore(
 
               <div className="border-t border-border bg-card px-2.5 py-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] md:px-4 md:py-3">
                 <div className="flex items-end gap-2">
-                  <button
-                    type="button"
-                    onClick={() => mediaInputRef.current?.click()}
-                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-foreground hover:bg-muted"
-                    aria-label="Attach media"
-                  >
-                    <Plus className="h-6 w-6" />
-                  </button>
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setShowPlusMenu((open) => !open)}
+                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-foreground hover:bg-muted"
+                      aria-label="Message actions"
+                    >
+                      <Plus className="h-6 w-6" />
+                    </button>
+                    {showPlusMenu && (
+                      <div className="absolute bottom-14 left-0 z-50 w-52 rounded-2xl border border-border bg-card p-2 shadow-xl">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowPlusMenu(false);
+                            mediaInputRef.current?.click();
+                          }}
+                          className="w-full rounded-xl px-3 py-2 text-left text-sm hover:bg-muted"
+                        >
+                          Photo / video
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void createPaymentRequest()}
+                          disabled={paymentActionId === "create"}
+                          className="mt-1 w-full rounded-xl px-3 py-2 text-left text-sm font-semibold text-primary hover:bg-muted disabled:opacity-50"
+                        >
+                          Request payment
+                        </button>
+                      </div>
+                    )}
+                  </div>
                   <input
                     ref={mediaInputRef}
                     type="file"

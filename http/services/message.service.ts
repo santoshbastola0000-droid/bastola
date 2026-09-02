@@ -344,6 +344,47 @@ export const messageService = {
     return response.data;
   },
 
+
+  createPaymentRequest: async (
+    conversationId: string,
+    amount: number,
+  ) => {
+    const response = await privateApi.post(
+      `/message/conversations/${conversationId}/payment-requests`,
+      { amount },
+    );
+    return response.data as { payment: any; message: ChatMessage };
+  },
+
+  payPaymentRequest: async (paymentId: string) => {
+    const response = await privateApi.post(
+      `/message/payments/${paymentId}/pay`,
+    );
+    return response.data as { payment: any; message: ChatMessage };
+  },
+
+  requestPaymentRelease: async (paymentId: string) => {
+    const response = await privateApi.post(
+      `/message/payments/${paymentId}/release-request`,
+    );
+    return response.data as { payment: any; message: ChatMessage };
+  },
+
+  confirmPaymentRelease: async (paymentId: string) => {
+    const response = await privateApi.post(
+      `/message/payments/${paymentId}/release`,
+    );
+    return response.data as { payment: any; message: ChatMessage };
+  },
+
+  disputePayment: async (paymentId: string, reason?: string) => {
+    const response = await privateApi.post(
+      `/message/payments/${paymentId}/dispute`,
+      { reason },
+    );
+    return response.data as { payment: any; message: ChatMessage };
+  },
+
   deleteMessage: async (
     messageId: string,
   ): Promise<{
