@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Wallet,
   ArrowUpRight,
@@ -9,6 +9,8 @@ import {
   History,
   Receipt,
   Loader2,
+  BadgeCheck,
+  CircleDollarSign,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -19,8 +21,10 @@ import { TransactionList } from "@/components/user/wallet/TransactionList";
 import { WithdrawalHistory } from "@/components/user/wallet/WithdrawalHistory";
 import { WithdrawalModal } from "@/components/user/wallet/WithdrawalModal";
 import { Skeleton } from "@/components/ui/skeleton";
+import { toast } from "sonner";
 
 export default function UserWalletPage() {
+  const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState("overview");
   const [withdrawalModalOpen, setWithdrawalModalOpen] = useState(false);
 
@@ -34,6 +38,32 @@ export default function UserWalletPage() {
     queryFn: () => walletService.getBalance(),
     staleTime: 1000 * 60 * 5, // 5 minutes
     retry: 1,
+  });
+
+  const { data: monetization, isLoading: monetizationLoading } = useQuery({
+    queryKey: ["account-monetization"],
+    queryFn: () => walletService.getMonetizationStatus(),
+    staleTime: 1000 * 60 * 2,
+  });
+
+  const monetizationMutation = useMutation({
+    mutationFn: () => walletService.activateMonetization(),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["account-monetization"] });
+      queryClient.invalidateQueries({ queryKey: ["wallet-balance"] });
+      queryClient.invalidateQueries({ queryKey: ["wallet-transactions"] });
+      toast.success(
+        data.alreadyActive
+          ? "Account is already monetized"
+          : "Account monetized successfully",
+      );
+    },
+    onError: (error: any) => {
+      toast.error(
+        error?.response?.data?.message ||
+          "Account monetization activate गर्न सकिएन.",
+      );
+    },
   });
 
   // Fetch recent transactions
@@ -116,6 +146,57 @@ export default function UserWalletPage() {
 
       {/* Balance Cards */}
       {balance && <WalletBalance balance={balance} />}
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            {monetization?.isMonetized ? (
+              <BadgeCheck className="h-5 w-5 text-primary" />
+            ) : (
+              <CircleDollarSign className="h-5 w-5 text-primary" />
+            )}
+            Account Monetization
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {monetizationLoading ? (
+            <Skeleton className="h-24 w-full" />
+          ) : monetization?.isMonetized ? (
+            <div className="rounded-xl border border-border bg-muted/40 p-4">
+              <p className="font-semibold text-foreground">Monetized ✓</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                You can earn from room service-charge payments and eligible room earnings.
+              </p>
+              <p className="mt-2 text-xs text-muted-foreground">
+                Activation fee paid: Rs. {Number(monetization.monetizationFeePaid || 0).toLocaleString()}
+              </p>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-4 rounded-xl border border-border p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="font-semibold text-foreground">Start earning from RoomKhoj</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Monetize your account once, then you can request service-charge payments from your room customers.
+                </p>
+                <p className="mt-2 text-sm font-semibold text-primary">
+                  One-time fee: Rs. {Number(monetization?.monetizationFee || 0).toLocaleString()}
+                </p>
+              </div>
+              <Button
+                type="button"
+                onClick={() => monetizationMutation.mutate()}
+                disabled={monetizationMutation.isPending}
+                className="shrink-0"
+              >
+                {monetizationMutation.isPending ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : null}
+                Monetize account
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Tabs */}
       <Tabs
