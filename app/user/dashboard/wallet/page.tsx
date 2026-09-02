@@ -8,7 +8,6 @@ import {
   Plus,
   History,
   Receipt,
-  Loader2,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -50,6 +49,21 @@ export default function UserWalletPage() {
     queryFn: () => walletService.getWithdrawals({ take: 5 }),
     staleTime: 1000 * 60 * 2, // 2 minutes
     enabled: !!balance,
+  });
+
+  // Full history is fetched only when the user opens the respective tab.
+  const { data: allTransactions, isLoading: allTransactionsLoading } = useQuery({
+    queryKey: ["wallet-transactions", "all"],
+    queryFn: () => walletService.getTransactions({ take: 100 }),
+    staleTime: 1000 * 60 * 2,
+    enabled: !!balance && activeTab === "transactions",
+  });
+
+  const { data: allWithdrawals, isLoading: allWithdrawalsLoading } = useQuery({
+    queryKey: ["wallet-withdrawals", "all"],
+    queryFn: () => walletService.getWithdrawals({ take: 100 }),
+    staleTime: 1000 * 60 * 2,
+    enabled: !!balance && activeTab === "withdrawals",
   });
 
   if (balanceLoading) {
@@ -209,10 +223,18 @@ export default function UserWalletPage() {
               <CardTitle>All Transactions</CardTitle>
             </CardHeader>
             <CardContent>
-              <TransactionList
-                transactions={transactions?.data || []}
-                showAll
-              />
+              {allTransactionsLoading ? (
+                <div className="space-y-3">
+                  {[1, 2, 3].map((i) => (
+                    <Skeleton key={i} className="h-16 w-full" />
+                  ))}
+                </div>
+              ) : (
+                <TransactionList
+                  transactions={allTransactions?.data || []}
+                  showAll
+                />
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -223,10 +245,18 @@ export default function UserWalletPage() {
               <CardTitle>Withdrawal History</CardTitle>
             </CardHeader>
             <CardContent>
-              <WithdrawalHistory
-                withdrawals={withdrawals?.data || []}
-                showAll
-              />
+              {allWithdrawalsLoading ? (
+                <div className="space-y-3">
+                  {[1, 2, 3].map((i) => (
+                    <Skeleton key={i} className="h-16 w-full" />
+                  ))}
+                </div>
+              ) : (
+                <WithdrawalHistory
+                  withdrawals={allWithdrawals?.data || []}
+                  showAll
+                />
+              )}
             </CardContent>
           </Card>
         </TabsContent>
