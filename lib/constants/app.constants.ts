@@ -35,7 +35,7 @@ export const BASE_URL =
 
 export type Step = "info" | "amount" | "payment" | "success";
 
-export const MIN_TOPUP = 1500;
+export const MIN_TOPUP = 1;
 
 import {
   Wifi,
