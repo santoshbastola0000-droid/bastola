@@ -49,6 +49,44 @@ class WalletService {
     return response.data.data;
   }
 
+  async getMonetizationKyc(): Promise<{
+    status: "NOT_SUBMITTED" | "PENDING" | "APPROVED" | "REJECTED";
+    fullName: string | null;
+    phoneNumber: string | null;
+    address: string | null;
+    documentType: string | null;
+    submittedAt: string | null;
+    reviewedAt: string | null;
+    adminRemarks: string | null;
+  }> {
+    const response = await privateApi.get(`${this.baseUrl}/monetization/kyc`);
+    return response.data.data;
+  }
+
+  async submitMonetizationKyc(data: {
+    fullName: string;
+    phoneNumber: string;
+    address: string;
+    documentType: string;
+    documentNumber: string;
+    document: File;
+  }) {
+    const form = new FormData();
+    form.append("fullName", data.fullName);
+    form.append("phoneNumber", data.phoneNumber);
+    form.append("address", data.address);
+    form.append("documentType", data.documentType);
+    form.append("documentNumber", data.documentNumber);
+    form.append("document", data.document);
+
+    const response = await privateApi.post(
+      `${this.baseUrl}/monetization/kyc`,
+      form,
+      { headers: { "Content-Type": "multipart/form-data" } },
+    );
+    return response.data.data;
+  }
+
   async activateMonetization() {
     const response = await privateApi.post(
       `${this.baseUrl}/monetization/activate`,
