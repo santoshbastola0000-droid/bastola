@@ -6,6 +6,7 @@ import {
   WithdrawalStatus,
   PaymentMethod,
 } from "@/types/wallet.types";
+import type { MonetizationPlanCode } from "@/lib/monetization-plans";
 import { privateApi } from "../api/privateApi";
 
 export interface TransactionsQueryParams {
@@ -38,21 +39,42 @@ class WalletService {
     isMonetized: boolean;
     monetizedAt: string | null;
     monetizationFeePaid: number;
-    monetizationFee: number;
+    monetizationPlan: MonetizationPlanCode | null;
+    monetizationExpiresAt: string | null;
+    listingLimit: number;
+    priorityLevel: number;
+    commissionRate: number;
     canEarnFromRooms: boolean;
+    plans: Array<{
+      code: MonetizationPlanCode;
+      name: string;
+      fee: number;
+      validityDays: number;
+      activeListingLimit: number;
+      commissionRate: number;
+      priorityLevel: number;
+      featuredListings: number;
+      features: string[];
+    }>;
   }> {
     const response = await privateApi.get(`${this.baseUrl}/monetization`);
     return response.data.data;
   }
 
-  async activateMonetization() {
+  async activateMonetization(plan: MonetizationPlanCode) {
     const response = await privateApi.post(
       `${this.baseUrl}/monetization/activate`,
+      { plan },
     );
     return response.data.data as {
       isMonetized: boolean;
       monetizedAt: string | null;
       monetizationFeePaid: number;
+      monetizationPlan: MonetizationPlanCode;
+      monetizationExpiresAt: string | null;
+      listingLimit: number;
+      priorityLevel: number;
+      commissionRate: number;
       balance?: number;
       alreadyActive: boolean;
     };
