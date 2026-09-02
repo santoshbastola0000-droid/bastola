@@ -200,6 +200,9 @@ const user = useUserStore(
   const [mediaObjectUrls, setMediaObjectUrls] =
     useState<Record<string, string>>({});
 
+  const mediaObjectUrlsRef =
+    useRef<string[]>([]);
+
   const mediaInputRef =
     useRef<HTMLInputElement | null>(null);
 
@@ -376,13 +379,13 @@ const user = useUserStore(
         }
         return current;
       });
-      loadConversations();
+      loadConversations({ background: true });
     });
 
     nextSocket.on("message:deleted", (payload: {messageId:string;conversationId:string}) => {
       if (!payload?.messageId) return;
       setMessages((prev) => prev.filter((message) => message.id !== payload.messageId));
-      loadConversations();
+      loadConversations({ background: true });
     });
 
     nextSocket.on("message:seen", (payload: {conversationId:string}) => {
@@ -466,6 +469,10 @@ const user = useUserStore(
             const url =
               URL.createObjectURL(blob);
 
+            mediaObjectUrlsRef.current.push(
+              url,
+            );
+
             setMediaObjectUrls(
               (current) => ({
                 ...current,
@@ -485,12 +492,13 @@ const user = useUserStore(
 
   useEffect(() => {
     return () => {
-      Object.values(
-        mediaObjectUrls,
-      ).forEach(
-        (url) =>
-          URL.revokeObjectURL(url),
-      );
+      mediaObjectUrlsRef.current
+        .forEach(
+          (url) =>
+            URL.revokeObjectURL(url),
+        );
+      mediaObjectUrlsRef.current =
+        [];
     };
   }, []);
 
@@ -561,7 +569,7 @@ const user = useUserStore(
       const data = await messageService.getMessages(conversation.id);
       setMessages(data);
       await messageService.markSeen(conversation.id);
-      loadConversations();
+      loadConversations({ background: true });
     } finally {
       setMessagesLoading(false);
     }
@@ -697,7 +705,7 @@ const user = useUserStore(
       );
 
       removeSelectedMedia();
-      void loadConversations();
+      void loadConversations({ background: true });
     } catch (error: any) {
       toast.error(
         error?.response?.data
@@ -768,7 +776,7 @@ const user = useUserStore(
       setDraft("");
       setPendingContextPost(null);
       setFailedSend(null);
-      void loadConversations();
+      void loadConversations({ background: true });
     } catch (error: any) {
       setFailedSend({
         conversationId,
@@ -1008,7 +1016,9 @@ const user = useUserStore(
   ) => {
     if (
       message.senderId !==
-      currentUserId
+      currentUserId ||
+      message.type ===
+        "PAYMENT_REQUEST"
     ) {
       return;
     }
@@ -1037,7 +1047,7 @@ const user = useUserStore(
         ),
       );
 
-      void loadConversations();
+      void loadConversations({ background: true });
     } catch (error: any) {
       toast.error(
         error?.response?.data
@@ -1284,8 +1294,8 @@ const user = useUserStore(
                     {message.attachment?.type === "ROOM" && <button type="button" onClick={()=>router.push(message.attachment!.url)} className="mb-2 block w-full overflow-hidden rounded-xl border border-border bg-background/80 text-left text-foreground">{message.attachment.image && <img src={resolveImageUrl(message.attachment.image)} alt="" className="h-32 w-full object-cover" />}<div className="p-2.5"><p className="text-[10px] font-semibold uppercase opacity-70">Room</p><p className="font-semibold">{message.attachment.title}</p><p className="text-xs opacity-80">Rs. {Number(message.attachment.price || 0).toLocaleString()}</p></div></button>}
                     {message.mediaUrl && message.type === "VIDEO" && <video src={mediaObjectUrls[message.id] || resolveImageUrl(message.mediaUrl)} controls playsInline className="mb-2 max-h-72 w-full rounded-xl" />}
                     {message.mediaUrl && message.type === "IMAGE" && <img src={mediaObjectUrls[message.id] || resolveImageUrl(message.mediaUrl)} alt="" className="mb-2 max-h-72 w-full rounded-xl object-cover" />}
-                    {message.content && <p className="whitespace-pre-wrap break-words">{message.content}</p>}
-                    <div className="mt-1 flex items-center justify-end gap-1 text-[10px] opacity-75"><span>{new Date(message.createdAt).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})}</span>{mine && <><CheckCheck className={`h-3.5 w-3.5 ${message.seenAt ? "text-sky-200" : ""}`} /><span className="font-medium">{deliveryLabel}</span><button type="button" onClick={()=>void deleteOwnMessage(message)} disabled={deletingMessageId===message.id} className="ml-1 inline-flex h-5 w-5 items-center justify-center rounded-full hover:bg-black/10" aria-label="Delete message">{deletingMessageId===message.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}</button></>}</div>
+                    {message.content && message.type !== "PAYMENT_REQUEST" && <p className="whitespace-pre-wrap break-words">{message.content}</p>}
+                    <div className="mt-1 flex items-center justify-end gap-1 text-[10px] opacity-75"><span>{new Date(message.createdAt).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})}</span>{mine && <><CheckCheck className={`h-3.5 w-3.5 ${message.seenAt ? "text-sky-200" : ""}`} /><span className="font-medium">{deliveryLabel}</span>{message.type !== "PAYMENT_REQUEST" && <button type="button" onClick={()=>void deleteOwnMessage(message)} disabled={deletingMessageId===message.id} className="ml-1 inline-flex h-5 w-5 items-center justify-center rounded-full hover:bg-black/10" aria-label="Delete message">{deletingMessageId===message.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}</button>}</>}</div>
                   </div></div>;
                 })}
                 <div ref={messagesEndRef} />
