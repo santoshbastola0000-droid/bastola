@@ -967,7 +967,9 @@ export default function ProfilePage() {
                     </Button>
                   )}
                   {!plan.active && !plan.action && plan.price > 499 && (
-                    <Button type="button" variant="outline" disabled className="mt-3 w-full rounded-full">Coming soon</Button>
+                    <div className="mt-3 rounded-full border px-3 py-2 text-center text-xs font-semibold text-muted-foreground">
+                      Admin controlled
+                    </div>
                   )}
                 </div>
               ))}
