@@ -51,6 +51,31 @@ export function useRooms(filters: RoomFilters = {}): UseRoomsReturn {
           }
         });
 
+        // When the viewer has already shared location, rank every public room
+        // feed nearest-first without ever receiving room coordinates back.
+        if (
+          cleanFilters.latitude === undefined &&
+          cleanFilters.longitude === undefined &&
+          typeof window !== "undefined"
+        ) {
+          try {
+            const saved = localStorage.getItem("roomkhoj-viewer-location");
+            if (saved) {
+              const location = JSON.parse(saved);
+              if (
+                Number.isFinite(location?.latitude) &&
+                Number.isFinite(location?.longitude)
+              ) {
+                cleanFilters.latitude = Number(location.latitude);
+                cleanFilters.longitude = Number(location.longitude);
+                cleanFilters.radius = cleanFilters.radius ?? 10;
+              }
+            }
+          } catch {
+            // Ignore malformed local location cache.
+          }
+        }
+
         const response = await roomService.getPublicRooms(cleanFilters);
 
         setRawRooms(response.data);
