@@ -45,6 +45,8 @@ import { roomService } from "@/http/services/room.service";
 import { jobPostingService } from "@/http/services/job-posting.service";
 import { aiProfileService } from "@/http/services/ai-profile.service";
 import { walletService } from "@/http/services/wallet.service";
+import { unlockService } from "@/http/services/unlock.service";
+import { TopUpRequestDialog } from "@/components/wallet/TopUpRequestDialog";
 import {
   profileService,
   type PublicProfile,
@@ -100,6 +102,11 @@ export default function ProfilePage() {
   } | null>(null);
   const [monetizationLoading, setMonetizationLoading] = useState(true);
   const [monetizationActivating, setMonetizationActivating] = useState(false);
+  const [selectedMonetizationPlan, setSelectedMonetizationPlan] = useState<any>(null);
+  const [showMonetizationConfirm, setShowMonetizationConfirm] = useState(false);
+  const [showMonetizationTopup, setShowMonetizationTopup] = useState(false);
+  const [walletBalance, setWalletBalance] = useState<number>(0);
+  const [topupSettings, setTopupSettings] = useState<any>(null);
   const [kyc, setKyc] = useState<any>(null);
   const [kycLoading, setKycLoading] = useState(true);
   const [kycSubmitting, setKycSubmitting] = useState(false);
@@ -375,22 +382,47 @@ export default function ProfilePage() {
     }
   };
 
-  const activateMonetization = async () => {
+  const chooseMonetizationPlan = async (plan: any) => {
+    setSelectedMonetizationPlan(plan);
     if (kyc?.status !== "APPROVED") {
       setShowKycForm(true);
-      toast.error("Account Monetize गर्न identity verification approve हुनुपर्छ.");
+      toast.success("पहिले identity verification पूरा गर्नुहोस्। Approval पछि payment confirmation आउँछ।");
       return;
     }
+    try {
+      const [balance, settings] = await Promise.all([
+        walletService.getBalance(),
+        unlockService.getSettings(),
+      ]);
+      setWalletBalance(Number(balance?.balance || 0));
+      setTopupSettings(settings);
+      setShowMonetizationConfirm(true);
+    } catch {
+      toast.error("Wallet balance load गर्न सकिएन.");
+    }
+  };
+
+  const activateMonetization = async () => {
+    const fee = Number(selectedMonetizationPlan?.price || monetization?.monetizationFee || 499);
+    if (walletBalance < fee) {
+      setShowMonetizationConfirm(false);
+      setShowMonetizationTopup(true);
+      return;
+    }
+    if (!window.confirm(`Rs. ${fee.toLocaleString()} wallet बाट काटेर Starter plan activate गर्ने?`)) return;
     try {
       setMonetizationActivating(true);
       await walletService.activateMonetization();
       await loadMonetization();
-      toast.success("Account monetized successfully");
+      setShowMonetizationConfirm(false);
+      toast.success("Account Monetize Starter plan activated");
     } catch (error: any) {
-      toast.error(
-        error?.response?.data?.message ||
-          "Account monetization activate गर्न सकिएन.",
-      );
+      const message = error?.response?.data?.message || "Account monetization activate गर्न सकिएन.";
+      if (String(message).toLowerCase().includes("insufficient")) {
+        setShowMonetizationConfirm(false);
+        setShowMonetizationTopup(true);
+      }
+      toast.error(message);
     } finally {
       setMonetizationActivating(false);
     }
@@ -956,6 +988,40 @@ export default function ProfilePage() {
           <Card className="rounded-3xl border-0 shadow-sm"><CardContent className="p-5"><div className="mb-3 flex items-center gap-2"><Bot className="h-5 w-5 text-primary" /><h2 className="font-bold">AI Profile</h2></div><p className="text-sm text-muted-foreground">RoomKhoj AI remembers your room and job preferences here.</p></CardContent></Card>
         </aside>
       </div>
+
+      {showMonetizationConfirm && selectedMonetizationPlan && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/50 p-4">
+          <Card className="w-full max-w-md">
+            <CardContent className="p-6">
+              <h3 className="text-xl font-black">Confirm Account Monetize</h3>
+              <p className="mt-2 text-sm text-muted-foreground">
+                {selectedMonetizationPlan.name} · Rs. {Number(selectedMonetizationPlan.price).toLocaleString()} · 30 days
+              </p>
+              <div className="mt-4 rounded-xl bg-muted p-3 text-sm">
+                Wallet balance: <b>Rs. {walletBalance.toLocaleString()}</b>
+              </div>
+              <div className="mt-5 flex gap-2">
+                <Button variant="outline" className="flex-1" onClick={() => setShowMonetizationConfirm(false)}>Cancel</Button>
+                <Button className="flex-1" disabled={monetizationActivating} onClick={() => void activateMonetization()}>
+                  {walletBalance >= Number(selectedMonetizationPlan.price) ? "Confirm & Pay" : "Load Balance"}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      <TopUpRequestDialog
+        open={showMonetizationTopup}
+        onOpenChange={setShowMonetizationTopup}
+        settings={topupSettings}
+        onSuccess={async () => {
+          const balance = await walletService.getBalance();
+          setWalletBalance(Number(balance?.balance || 0));
+          setShowMonetizationTopup(false);
+          setShowMonetizationConfirm(true);
+        }}
+      />
     </main>
   );
 }
