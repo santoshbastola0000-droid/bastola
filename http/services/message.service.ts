@@ -37,6 +37,10 @@ export interface ChatMessage {
   clientMessageId?: string | null;
   content: string;
   type: string;
+  paymentAmount?: number | null;
+  paymentStatus?: "PENDING" | "PAID" | "CANCELLED" | null;
+  paymentCompletedAt?: string | null;
+  paymentTransactionId?: string | null;
   deliveredAt?: string | null;
   seenAt?: string | null;
   createdAt: string;
@@ -352,6 +356,76 @@ export const messageService = {
           clientMessageId || undefined,
       },
     );
+
+    return response.data;
+  },
+
+  createPaymentRequest: async (
+    conversationId: string,
+    amount: number,
+    note?: string,
+  ): Promise<ChatMessage> => {
+    const response =
+      await privateApi.post(
+        `/message/conversations/${conversationId}/payment-requests`,
+        {
+          amount,
+          note: note?.trim() || undefined,
+        },
+      );
+
+    return response.data;
+  },
+
+  payPaymentRequest: async (
+    messageId: string,
+  ): Promise<{
+    message: ChatMessage;
+    alreadyPaid: boolean;
+  }> => {
+    const response =
+      await privateApi.post(
+        `/message/payment-requests/${messageId}/pay`,
+      );
+
+    return response.data;
+  },
+
+  cancelPaymentRequest: async (
+    messageId: string,
+  ): Promise<ChatMessage> => {
+    const response =
+      await privateApi.post(
+        `/message/payment-requests/${messageId}/cancel`,
+      );
+
+    return response.data;
+  },
+
+  requestPendingBalanceRelease: async (): Promise<{
+    success: boolean;
+    alreadyRequested: boolean;
+    pendingBalance: number;
+    requestedAt: string | null;
+    status: "PENDING";
+  }> => {
+    const response =
+      await privateApi.post(
+        "/message/release-request",
+      );
+
+    return response.data;
+  },
+
+  getPendingBalanceReleaseStatus: async (): Promise<{
+    pendingBalance: number;
+    requestedAt: string | null;
+    status: "PENDING" | "RELEASED" | "CANCELLED" | null;
+  }> => {
+    const response =
+      await privateApi.get(
+        "/message/release-request",
+      );
 
     return response.data;
   },
