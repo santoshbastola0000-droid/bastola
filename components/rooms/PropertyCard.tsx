@@ -16,7 +16,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 
-import type { Room } from "@/types/room.types";
+import { RoomStatus, type Room } from "@/types/room.types";
 import { UserRole } from "@/types/user.types";
 import { formatPriceNPR, resolveImageUrl } from "@/lib/utils";
 import { amenityIcons, categoryConfig } from "@/lib/room-utils";
@@ -396,6 +396,19 @@ export function PropertyCard({
           {room.allowsWomen && (
             <span className="rounded-full bg-pink-50 px-2 py-0.5 text-[8px] font-bold text-pink-600">
               Women OK
+            </span>
+          )}
+
+          {(room.listingStatus === RoomStatus.AVAILABLE ||
+            room.listingStatus === RoomStatus.RENTED) && (
+            <span
+              className={`rounded-full px-2 py-0.5 text-[8px] font-extrabold ${
+                room.listingStatus === RoomStatus.AVAILABLE
+                  ? "bg-emerald-50 text-emerald-700"
+                  : "bg-slate-200 text-slate-700"
+              }`}
+            >
+              {room.listingStatus}
             </span>
           )}
         </div>
