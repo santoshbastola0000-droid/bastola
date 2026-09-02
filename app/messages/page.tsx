@@ -760,11 +760,12 @@ const user = useUserStore(
     }
   };
 
-  const sendSelectedMedia =
+  const uploadMedia =
     async () => {
       if (
         !selected ||
-        !selectedMedia
+        !selectedMedia ||
+        mediaSending
       ) {
         return;
       }
@@ -772,257 +773,45 @@ const user = useUserStore(
       try {
         setMediaSending(true);
 
-        const sent =
+        const message =
           await messageService.sendMedia(
             selected.id,
             selectedMedia,
-            draft.trim() ||
-              undefined,
           );
 
-        setMessages((prev) => {
-          if (
-            prev.some(
-              (m) =>
-                m.id === sent.id,
-            )
-          ) {
-            return prev;
-          }
-
-          return [
-            ...prev,
-            sent,
-          ];
-        });
-
-        setDraft("");
+        setMessages((prev) => [
+          ...prev,
+          message,
+        ]);
 
         removeSelectedMedia();
-
-        await loadConversations();
+        loadConversations();
       } catch (error: any) {
-        console.error(
-          "Media send failed:",
-          error,
-        );
-
         toast.error(
           error?.response?.data?.message ||
-            "Photo/video send हुन सकेन.",
+            "Media send गर्न सकिएन.",
         );
       } finally {
         setMediaSending(false);
       }
     };
 
-  useEffect(() => {
-    let cancelled = false;
-
-    const loadMessageMedia =
-      async () => {
-        const mediaMessages =
-          messages.filter(
-            (message) =>
-              (
-                message.type === "IMAGE" ||
-                message.type === "VIDEO"
-              ) &&
-              !mediaObjectUrls[
-                message.id
-              ],
-          );
-
-        for (
-          const message
-          of mediaMessages
-        ) {
-          try {
-            const blob =
-              await messageService
-                .getMediaBlob(
-                  message.id,
-                );
-
-            if (cancelled) {
-              return;
-            }
-
-            const url =
-              URL.createObjectURL(
-                blob,
-              );
-
-            setMediaObjectUrls(
-              (prev) => ({
-                ...prev,
-                [message.id]:
-                  url,
-              }),
-            );
-          } catch (error) {
-            console.error(
-              "Media load failed:",
-              error,
-            );
-          }
-        }
-      };
-
-    loadMessageMedia();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [messages]);
-
-  /*
-   * Selected chat खुलिसकेपछि त्यस conversation का
-   * received messages seen मान्ने।
-   *
-   * messages.length dependency ले नयाँ message
-   * खुलेको chat मै आएमा पनि badge तुरुन्त clear गर्छ।
-   */
-  useEffect(() => {
-    if (!selected?.id) {
-      return;
-    }
-
-    let cancelled = false;
-
-    const syncSeenStatus =
-      async () => {
-        try {
-          await messageService.markSeen(
-            selected.id,
-          );
-
-          if (cancelled) {
-            return;
-          }
-
-          /*
-           * Left conversation list को
-           * unread badge तुरुन्त हटाउने।
-           */
-          setConversations(
-            (prev) =>
-              prev.map(
-                (conversation) =>
-                  conversation.id ===
-                  selected.id
-                    ? {
-                        ...conversation,
-                        unreadCount: 0,
-                      }
-                    : conversation,
-              ),
-          );
-
-          /*
-           * Bottom nav unread count पनि
-           * तुरुन्त refresh गर्ने।
-           */
-          window.dispatchEvent(
-            new Event(
-              "roomkhoj:unread-refresh",
-            ),
-          );
-        } catch (error) {
-          console.error(
-            "Failed to mark conversation seen:",
-            error,
-          );
-        }
-      };
-
-    syncSeenStatus();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [
-    selected?.id,
-    messages.length,
-  ]);
-
-  useEffect(() => {
-    const profileUserId =
-      new URLSearchParams(
-        window.location.search,
-      ).get("user");
-
-    if (!profileUserId) {
-      return;
-    }
-
-    let cancelled = false;
-
-    const openProfileChat =
-      async () => {
-        try {
-          const result =
-            await messageService
-              .startByUser(
-                profileUserId,
-              );
-
-          if (cancelled) {
-            return;
-          }
-
-          await loadConversations();
-
-          const conversation =
-            result.conversation;
-
-          if (conversation) {
-            setSelected(
-              conversation,
-            );
-          }
-        } catch (error) {
-          console.error(
-            "Profile message start failed:",
-            error,
-          );
-        }
-      };
-
-    openProfileChat();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const bindLocalVideo = (
-    element: HTMLVideoElement | null,
+  const sendCallSignal = (
+    toUserId: string,
+    callId: string,
+    type: string,
+    payload?: any,
+    mode: "audio" | "video" = "audio",
   ) => {
-    localVideoRef.current = element;
+    if (!socket) return;
 
-    if (element && localStreamRef.current) {
-      element.srcObject = localStreamRef.current;
-      void element.play().catch(() => {});
-    }
-  };
-
-  const bindRemoteVideo = (
-    element: HTMLVideoElement | null,
-  ) => {
-    remoteVideoRef.current = element;
-
-    const remoteStream =
-      remoteAudioRef.current?.srcObject;
-
-    if (element && remoteStream) {
-      element.srcObject = remoteStream;
-      void element.play().catch(() => {});
-    }
-  };
-
-  const sendCallSignal = (targetUserId: string, callId: string, type: string, payload?: any, mode?: string) => {
-    socket?.emit("call:signal", { targetUserId, callId, type, payload, mode });
+    socket.emit("call:signal", {
+      toUserId,
+      callId,
+      type,
+      payload,
+      mode,
+    });
   };
 
   const addOrQueueIceCandidate = async (
@@ -1030,32 +819,40 @@ const user = useUserStore(
     candidate: RTCIceCandidateInit,
   ) => {
     const peer = peerRef.current;
-
     if (!peer || !peer.remoteDescription) {
       pendingIceCandidatesRef.current.push({ callId, candidate });
       return;
     }
-
     try {
       await peer.addIceCandidate(candidate);
     } catch (error) {
-      console.warn("Could not add ICE candidate:", error);
+      console.warn("ICE candidate failed:", error);
     }
   };
 
   const flushPendingIceCandidates = async (callId: string) => {
-    const queued = pendingIceCandidatesRef.current.filter(
+    const peer = peerRef.current;
+    if (!peer || !peer.remoteDescription) return;
+    const pending = pendingIceCandidatesRef.current.filter(
       (item) => item.callId === callId,
     );
-    pendingIceCandidatesRef.current =
-      pendingIceCandidatesRef.current.filter((item) => item.callId !== callId);
-
-    for (const item of queued) {
-      await addOrQueueIceCandidate(item.callId, item.candidate);
+    pendingIceCandidatesRef.current = pendingIceCandidatesRef.current.filter(
+      (item) => item.callId !== callId,
+    );
+    for (const item of pending) {
+      try {
+        await peer.addIceCandidate(item.candidate);
+      } catch (error) {
+        console.warn("Queued ICE candidate failed:", error);
+      }
     }
   };
 
-  const createPeer = async (targetUserId: string, callId: string, mode: "audio" | "video") => {
+  const createPeer = async (
+    targetUserId: string,
+    callId: string,
+    mode: "audio" | "video",
+  ) => {
     let iceServers: RTCIceServer[] = [
       { urls: ["stun:stun.l.google.com:19302"] },
     ];
@@ -1512,7 +1309,7 @@ const user = useUserStore(
                         {result.name}
                       </p>
                       <p className="truncate text-xs text-muted-foreground">
-                        {result.phoneNumber}
+                        RoomKhoj user
                       </p>
                     </div>
                   </button>
@@ -1572,9 +1369,7 @@ const user = useUserStore(
                       <div className="min-w-0 flex-1 border-b border-border pb-3">
                         <div className="flex items-center justify-between gap-3">
                           <p className="truncate font-semibold text-foreground">
-                            {conversation.otherUser?.name ||
-                              conversation.otherUser?.phoneNumber ||
-                              "RoomKhoj user"}
+                            {conversation.otherUser?.name || "RoomKhoj user"}
                           </p>
 
                           {conversation.unreadCount >
@@ -1665,15 +1460,11 @@ const user = useUserStore(
 
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-[17px] font-bold text-foreground">
-                    {selected.otherUser?.name ||
-                      selected.otherUser?.phoneNumber ||
-                      "RoomKhoj user"}
+                    {selected.otherUser?.name || "RoomKhoj user"}
                   </p>
 
                   <p className="truncate text-xs text-muted-foreground">
-                    {onlineUserIds.has(otherUserId)
-                      ? "online"
-                      : selected.otherUser?.phoneNumber || "offline"}
+                    {onlineUserIds.has(otherUserId) ? "online" : "offline"}
                   </p>
                 </div>
                 <div className="ml-auto flex items-center gap-1.5">
@@ -1757,202 +1548,59 @@ const user = useUserStore(
 
                       return (
                         <div
-                          key={
-                            message.id
-                          }
-                          className={`flex ${
-                            mine
-                              ? "justify-end"
-                              : "justify-start"
-                          }`}
+                          key={message.id}
+                          className={`flex ${mine ? "justify-end" : "justify-start"}`}
                         >
                           <div
-                            className={`max-w-[86%] rounded-[14px] px-3 py-2 text-[15px] leading-snug shadow-sm sm:max-w-[72%] ${
-                              mine
-                                ? "cursor-pointer select-none rounded-br-[4px] bg-primary text-foreground"
-                                : "rounded-bl-[4px] bg-muted text-foreground"
-                            } ${
-                              deletingMessageId === message.id
-                                ? "opacity-50"
-                                : ""
-                            }`}
-                            onPointerDown={() =>
-                              startDeleteHold(message)
-                            }
+                            onPointerDown={() => startDeleteHold(message)}
                             onPointerUp={clearDeleteHoldTimer}
-                            onPointerCancel={clearDeleteHoldTimer}
                             onPointerLeave={clearDeleteHoldTimer}
-                            onContextMenu={(event) => {
-                              if (!mine) return;
-                              event.preventDefault();
-                              clearDeleteHoldTimer();
-                              void deleteOwnMessage(message);
-                            }}
-                            title={
+                            onPointerCancel={clearDeleteHoldTimer}
+                            className={`max-w-[84%] rounded-2xl px-3 py-2 text-sm shadow-sm ${
                               mine
-                                ? "Press and hold to delete"
-                                : undefined
-                            }
+                                ? "rounded-br-md bg-primary text-primary-foreground"
+                                : "rounded-bl-md bg-card text-foreground"
+                            }`}
                           >
-                            {message.attachment?.type === "ROOM" && (
-                              <div
-                                className={`mb-1 w-full overflow-hidden rounded-xl border text-left shadow-sm ${
-                                  mine
-                                    ? "border-white/20 bg-black/10"
-                                    : "border-border bg-card"
-                                }`}
+                            {message.attachment?.type === "ROOM" && message.attachment.url && (
+                              <button
+                                type="button"
+                                onClick={() => router.push(message.attachment!.url!)}
+                                className="mb-2 block w-full overflow-hidden rounded-xl border border-border bg-background/70 text-left"
                               >
-                                <button
-                                  type="button"
-                                  onClick={(event) => {
-                                    event.stopPropagation();
-                                    router.push(message.attachment!.url);
-                                  }}
-                                  className="block w-full text-left transition hover:opacity-95"
-                                >
-                                  <div className="flex items-stretch">
-                                    <div className="h-24 w-28 shrink-0 overflow-hidden bg-card">
-                                      {message.attachment.image ? (
-                                        <img
-                                          src={resolveImageUrl(message.attachment.image)}
-                                          alt={message.attachment.title}
-                                          className="h-full w-full object-cover"
-                                        />
-                                      ) : (
-                                        <div className="flex h-full w-full items-center justify-center text-2xl">
-                                          🏠
-                                        </div>
-                                      )}
-                                    </div>
-
-                                    <div className="min-w-0 flex-1 p-3">
-                                      <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">
-                                        Room
-                                      </p>
-                                      <p className="mt-0.5 line-clamp-2 font-semibold">
-                                        {message.attachment.title}
-                                      </p>
-                                      <p className="mt-1 text-xs font-semibold text-primary">
-                                        रु {Number(message.attachment.price).toLocaleString()} / month
-                                      </p>
-                                      {message.attachment.address && (
-                                        <p className="mt-1 truncate text-[11px] text-muted-foreground">
-                                          📍 {message.attachment.address}
-                                        </p>
-                                      )}
-                                    </div>
-                                  </div>
-                                </button>
-
-                                {message.content && (
-                                  <div className="border-t border-white/10 px-3 py-3 text-sm text-foreground">
-                                    <p className="whitespace-pre-wrap break-words">
-                                      {message.content}
-                                    </p>
-                                  </div>
+                                {message.attachment.image && (
+                                  <img
+                                    src={resolveImageUrl(message.attachment.image)}
+                                    alt=""
+                                    className="h-32 w-full object-cover"
+                                  />
                                 )}
-
-                                <button
-                                  type="button"
-                                  onClick={(event) => {
-                                    event.stopPropagation();
-                                    router.push(message.attachment!.url);
-                                  }}
-                                  className="block w-full border-t border-white/10 px-3 py-2 text-left text-xs font-semibold text-primary"
-                                >
-                                  View room details →
-                                </button>
-                              </div>
+                                <div className="p-2.5">
+                                  <p className="text-[10px] font-semibold uppercase tracking-wide opacity-70">Room</p>
+                                  <p className="font-semibold">{message.attachment.title || "Room post"}</p>
+                                  {message.attachment.price !== null && message.attachment.price !== undefined && (
+                                    <p className="mt-0.5 text-xs opacity-80">रु {Number(message.attachment.price).toLocaleString()}</p>
+                                  )}
+                                </div>
+                              </button>
                             )}
 
-                            {(message.type === "IMAGE" ||
-                              message.type === "VIDEO") &&
-                              !mediaObjectUrls[message.id] && (
-                                <div className="mb-2 flex min-h-28 min-w-44 items-center justify-center rounded-xl bg-card px-4 text-xs text-muted-foreground">
-                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                  Loading attachment…
-                                </div>
-                              )}
+                            {message.mediaUrl && (
+                              message.type === "VIDEO" ? (
+                                <video src={resolveImageUrl(message.mediaUrl)} controls playsInline className="mb-2 max-h-72 w-full rounded-xl" />
+                              ) : (
+                                <img src={resolveImageUrl(message.mediaUrl)} alt="" className="mb-2 max-h-72 w-full rounded-xl object-cover" />
+                              )
+                            )}
 
-                            {message.type ===
-                              "IMAGE" &&
-                              mediaObjectUrls[
-                                message.id
-                              ] && (
-                                <img
-                                  src={
-                                    mediaObjectUrls[
-                                      message.id
-                                    ]
-                                  }
-                                  alt={
-                                    message.mediaOriginalName ||
-                                    "Photo"
-                                  }
-                                  className="mb-2 max-h-[68vh] w-auto max-w-full rounded-[10px] object-contain"
-                                />
-                              )}
+                            {message.content && <p className="whitespace-pre-wrap break-words">{message.content}</p>}
 
-                            {message.type ===
-                              "VIDEO" &&
-                              mediaObjectUrls[
-                                message.id
-                              ] && (
-                                <video
-                                  src={
-                                    mediaObjectUrls[
-                                      message.id
-                                    ]
-                                  }
-                                  controls
-                                  playsInline
-                                  preload="metadata"
-                                  className="mb-2 max-h-[68vh] w-full rounded-[10px] bg-black"
-                                />
-                              )}
-
-                            {message.content &&
-                              message.attachment?.type !== "ROOM" && (
-                                <p className="whitespace-pre-wrap break-words">
-                                  {message.content}
-                                </p>
-                              )}
-
-                            <p className="mt-1 text-right text-[10px] text-muted-foreground">
-                              {new Date(
-                                message.createdAt,
-                              ).toLocaleTimeString(
-                                [],
-                                {
-                                  hour: "2-digit",
-                                  minute:
-                                    "2-digit",
-                                },
-                              )}
-
+                            <div className="mt-1 flex items-center justify-end gap-1 text-[10px] opacity-70">
+                              <span>{new Date(message.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
                               {mine && (
-                                <span
-                                  className={`ml-1 font-semibold ${
-                                    message.seenAt
-                                      ? "text-[#53bdeb]"
-                                      : "text-muted-foreground"
-                                  }`}
-                                  title={
-                                    message.seenAt
-                                      ? "Seen"
-                                      : message.deliveredAt
-                                        ? "Delivered"
-                                        : "Sent"
-                                  }
-                                >
-                                  {message.seenAt
-                                    ? " ✓✓"
-                                    : message.deliveredAt
-                                      ? " ✓✓"
-                                      : " ✓"}
-                                </span>
+                                <CheckCheck className={`h-3.5 w-3.5 ${message.seenAt ? "text-sky-200" : ""}`} />
                               )}
-                            </p>
+                            </div>
                           </div>
                         </div>
                       );
@@ -1962,150 +1610,69 @@ const user = useUserStore(
                 <div ref={messagesEndRef} />
               </div>
 
-              <div className="sticky bottom-0 z-20 border-t border-border bg-card px-2.5 pb-[calc(0.45rem+env(safe-area-inset-bottom))] pt-2 md:bg-muted md:px-4 md:py-3">
-
-                {selectedMedia &&
-                  mediaPreview && (
-                    <div className="mb-2 rounded-xl border border-border bg-card p-2 text-foreground">
-                      <div className="relative inline-block max-w-full">
-
-                        {selectedMedia.type.startsWith(
-                          "image/",
-                        ) ? (
-                          <img
-                            src={
-                              mediaPreview
-                            }
-                            alt="Selected"
-                            className="max-h-52 max-w-full rounded-lg object-contain"
-                          />
-                        ) : (
-                          <video
-                            src={
-                              mediaPreview
-                            }
-                            controls
-                            playsInline
-                            className="max-h-52 max-w-full rounded-lg"
-                          />
-                        )}
-
-                        <button
-                          type="button"
-                          onClick={
-                            removeSelectedMedia
-                          }
-                          className="absolute right-1 top-1 flex h-7 w-7 items-center justify-center rounded-full bg-black/70 text-sm text-white"
-                        >
-                          ×
-                        </button>
-                      </div>
-
-                      <div className="mt-1 max-w-full truncate text-xs text-muted-foreground">
-                        {
-                          selectedMedia.name
-                        }
-                        {" · "}
-                        {(
-                          selectedMedia.size /
-                          1024 /
-                          1024
-                        ).toFixed(1)}
-                        MB
-                      </div>
+              {selectedMedia && mediaPreview && (
+                <div className="border-t border-border bg-card p-3">
+                  <div className="flex items-center gap-3">
+                    {selectedMedia.type.startsWith("video/") ? (
+                      <video src={mediaPreview} className="h-16 w-16 rounded-lg object-cover" />
+                    ) : (
+                      <img src={mediaPreview} alt="" className="h-16 w-16 rounded-lg object-cover" />
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium">{selectedMedia.name}</p>
                     </div>
-                  )}
+                    <Button variant="ghost" onClick={removeSelectedMedia}>Remove</Button>
+                    <Button onClick={() => void uploadMedia()} disabled={mediaSending}>
+                      {mediaSending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Send"}
+                    </Button>
+                  </div>
+                </div>
+              )}
 
-                <input
-                  ref={mediaInputRef}
-                  type="file"
-                  accept="image/*,video/*,.mp4,.mov,.m4v,.webm,.mkv,.avi"
-                  className="hidden"
-                  onChange={
-                    handleMediaSelect
-                  }
-                />
-
-                <div className="flex items-center gap-2">
-                  <Button
+              <div className="border-t border-border bg-card px-2.5 py-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] md:px-4 md:py-3">
+                <div className="flex items-end gap-2">
+                  <button
                     type="button"
-                    size="icon"
-                    variant="ghost"
-                    onClick={() =>
-                      mediaInputRef.current
-                        ?.click()
-                    }
-                    disabled={
-                      mediaSending
-                    }
-                    title="Photo or video"
-                    className="h-11 w-11 shrink-0 rounded-full text-foreground hover:bg-muted"
+                    onClick={() => mediaInputRef.current?.click()}
+                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-foreground hover:bg-muted"
+                    aria-label="Attach media"
                   >
-                    <Plus className="h-7 w-7" />
-                  </Button>
+                    <Plus className="h-6 w-6" />
+                  </button>
+                  <input
+                    ref={mediaInputRef}
+                    type="file"
+                    accept="image/*,video/*"
+                    className="hidden"
+                    onChange={handleMediaSelect}
+                  />
 
-                  <div className="flex min-w-0 flex-1 items-center rounded-[23px] bg-muted px-3">
-                    <Input
+                  <div className="flex min-h-11 flex-1 items-center rounded-[22px] bg-muted px-3">
+                    <textarea
                       value={draft}
-                      onChange={(e) =>
-                        setDraft(
-                          e.target.value,
-                        )
-                      }
-                      placeholder="Type a message"
-                      className="h-11 min-w-0 flex-1 border-0 bg-transparent px-1 text-foreground shadow-none placeholder:text-muted-foreground focus-visible:ring-0"
+                      onChange={(e) => setDraft(e.target.value)}
                       onKeyDown={(e) => {
-                        if (
-                          e.key ===
-                            "Enter" &&
-                          !e.shiftKey
-                        ) {
+                        if (e.key === "Enter" && !e.shiftKey) {
                           e.preventDefault();
-                          selectedMedia
-                            ? sendSelectedMedia()
-                            : sendMessage();
+                          void sendMessage();
                         }
                       }}
+                      placeholder="Type a message"
+                      rows={1}
+                      className="max-h-32 min-h-7 flex-1 resize-none bg-transparent py-2 text-sm outline-none placeholder:text-muted-foreground"
                     />
-                    <Smile className="h-5 w-5 shrink-0 text-muted-foreground" />
+                    <Smile className="h-5 w-5 text-muted-foreground" />
                   </div>
 
                   <Button
                     type="button"
                     size="icon"
-                    variant="ghost"
-                    onClick={() => mediaInputRef.current?.click()}
-                    className="h-11 w-11 shrink-0 rounded-full text-foreground hover:bg-muted"
-                    aria-label="Camera or media"
+                    className="h-11 w-11 rounded-full"
+                    onClick={() => void sendMessage()}
+                    disabled={!draft.trim() || sending}
+                    aria-label="Send message"
                   >
-                    <Camera className="h-6 w-6" />
-                  </Button>
-
-                  <Button
-                    size="icon"
-                    className="h-11 w-11 shrink-0 rounded-full bg-primary text-primary-foreground shadow-none hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground"
-                    onClick={
-                      selectedMedia
-                        ? sendSelectedMedia
-                        : sendMessage
-                    }
-                    disabled={
-                      sending ||
-                      mediaSending ||
-                      (
-                        !selectedMedia &&
-                        !draft.trim()
-                      )
-                    }
-                  >
-                    {sending ||
-                    mediaSending ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : draft.trim() || selectedMedia ? (
-                      <Send className="h-4 w-4" />
-                    ) : (
-                      <Mic className="h-5 w-5" />
-                    )}
+                    {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-5 w-5" />}
                   </Button>
                 </div>
               </div>
@@ -2114,89 +1681,78 @@ const user = useUserStore(
         </section>
       </div>
     </main>
-      {call && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-sm rounded-2xl bg-background p-6 text-center shadow-2xl">
-            {call.mode === "video" ? <Video className="mx-auto h-10 w-10 text-primary" /> : <Phone className="mx-auto h-10 w-10 text-primary" />}
-            <h2 className="mt-3 text-xl font-bold">
-              {call.status === "calling"
-                ? "Calling…"
-                : call.status === "ringing"
-                  ? "Ringing…"
-                  : "Call connected"}
-            </h2>
-            <p className="mt-1 text-sm text-muted-foreground md:text-muted-foreground">
-              {call.mode === "video" ? "Video call" : "Audio call"}
-            </p>
-            {call.mode === "video" && (
-              <div className="relative mt-5 overflow-hidden rounded-xl bg-black aspect-video">
-                <video
-                  ref={bindRemoteVideo}
-                  autoPlay
-                  playsInline
-                  className="h-full w-full object-cover"
-                />
-                <video
-                  ref={bindLocalVideo}
-                  autoPlay
-                  muted
-                  playsInline
-                  className="absolute bottom-3 right-3 h-24 w-16 -scale-x-100 rounded-lg border-2 border-white object-cover shadow-lg"
-                />
+
+    {callNotice && (
+      <div className="fixed left-1/2 top-4 z-[100] -translate-x-1/2 rounded-full bg-black/85 px-4 py-2 text-sm font-medium text-white shadow-lg">
+        {callNotice}
+      </div>
+    )}
+
+    {incomingCall && (
+      <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/60 p-4">
+        <div className="w-full max-w-sm rounded-3xl bg-card p-6 text-center shadow-2xl">
+          <p className="text-sm text-muted-foreground">Incoming {incomingCall.mode === "video" ? "video" : "voice"} call</p>
+          <h3 className="mt-2 text-xl font-bold text-foreground">RoomKhoj user</h3>
+          <div className="mt-6 flex justify-center gap-4">
+            <Button variant="destructive" size="lg" className="rounded-full" onClick={declineIncomingCall}>
+              <PhoneOff className="mr-2 h-5 w-5" /> Decline
+            </Button>
+            <Button size="lg" className="rounded-full" onClick={() => void acceptCall()}>
+              <Phone className="mr-2 h-5 w-5" /> Accept
+            </Button>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {call && (
+      <div className="fixed inset-0 z-[105] flex items-center justify-center bg-black/80 p-4">
+        <div className="w-full max-w-md overflow-hidden rounded-3xl bg-card shadow-2xl">
+          {call.mode === "video" ? (
+            <div className="relative aspect-[3/4] bg-black">
+              <video ref={remoteVideoRef} autoPlay playsInline className="h-full w-full object-cover" />
+              <video ref={localVideoRef} autoPlay muted playsInline className="absolute bottom-4 right-4 h-28 w-20 rounded-xl border border-white/20 bg-black object-cover" />
+            </div>
+          ) : (
+            <div className="flex min-h-72 flex-col items-center justify-center p-8 text-center">
+              <div className="flex h-24 w-24 items-center justify-center rounded-full bg-muted text-2xl font-bold text-primary">
+                {otherUserId.slice(0, 2).toUpperCase()}
               </div>
-            )}
-            <div className="mt-6 flex justify-center gap-3">
-              <Button
-                size="icon"
-                variant="outline"
-                onClick={() => {
-                  const track = localStreamRef.current?.getAudioTracks()[0];
-                  if (track) {
-                    track.enabled = !track.enabled;
-                    setCall({ ...call, muted: !track.enabled });
-                  }
-                }}
-              >
-                {call.muted ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
-              </Button>
-              <Button size="icon" variant="destructive" onClick={() => endCall()}>
-                <PhoneOff className="h-4 w-4" />
-              </Button>
+              <h3 className="mt-4 text-xl font-bold">{selected?.otherUser?.name || "RoomKhoj user"}</h3>
+              <p className="mt-1 text-sm text-muted-foreground">{call.status === "connected" ? "Connected" : "Calling..."}</p>
             </div>
+          )}
+          <div className="flex items-center justify-center gap-4 border-t border-border bg-card p-4">
+            <Button
+              type="button"
+              size="icon"
+              variant="secondary"
+              className="h-12 w-12 rounded-full"
+              onClick={() => {
+                const stream = localStreamRef.current;
+                if (!stream) return;
+                const audioTracks = stream.getAudioTracks();
+                const shouldMute = !call.muted;
+                audioTracks.forEach((track) => { track.enabled = !shouldMute; });
+                setCall((current: any) => current ? { ...current, muted: shouldMute } : current);
+              }}
+            >
+              {call.muted ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
+            </Button>
+            <Button type="button" size="icon" variant="destructive" className="h-14 w-14 rounded-full" onClick={() => endCall(true)}>
+              <PhoneOff className="h-6 w-6" />
+            </Button>
           </div>
         </div>
-      )}
-      {callNotice && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-sm rounded-2xl bg-background p-6 text-center shadow-2xl">
-            <PhoneOff className="mx-auto h-10 w-10 text-muted-foreground md:text-muted-foreground" />
-            <h2 className="mt-3 text-xl font-bold">{callNotice}</h2>
-          </div>
-        </div>
-      )}
-      {incomingCall && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-sm rounded-2xl bg-background p-6 text-center shadow-2xl">
-            <Phone className="mx-auto h-10 w-10 text-primary" />
-            <h2 className="mt-3 text-lg font-bold">
-              {incomingCall.mode === "video" ? "Incoming video call" : "Incoming audio call"}
-            </h2>
-            <p className="mt-1 text-sm text-muted-foreground md:text-muted-foreground">RoomKhoj user is calling you</p>
-            <div className="mt-6 flex gap-3">
-              <Button className="flex-1" onClick={acceptCall}>Accept</Button>
-              <Button className="flex-1" variant="destructive" onClick={declineIncomingCall}>Decline</Button>
-            </div>
-          </div>
-        </div>
-      )}
+      </div>
+    )}
     </>
   );
 }
 
-
 export default function MessagesPage() {
   return (
-    <Suspense fallback={<main className="p-8 text-center text-sm text-muted-foreground md:text-muted-foreground">Loading messages…</main>}>
+    <Suspense fallback={<div className="flex min-h-screen items-center justify-center"><Loader2 className="h-6 w-6 animate-spin" /></div>}>
       <MessagesContent />
     </Suspense>
   );
