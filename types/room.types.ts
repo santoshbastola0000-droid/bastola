@@ -43,8 +43,8 @@ export interface Location {
   id: string;
   name: string;
   formattedAddress?: string;
-  latitude: number;
-  longitude: number;
+  latitude: number | null;
+  longitude: number | null;
   city?: string;
   state?: string;
   country?: string;
@@ -88,8 +88,8 @@ export interface Room {
   user?: {
     id: string;
     name: string;
-    email: string;
-    phoneNumber: string;
+    email?: string;
+    phoneNumber?: string;
     isVerified: boolean;
     role: UserRole;
     profilePhotoUrl?: string | null;
