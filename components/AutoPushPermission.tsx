@@ -1,13 +1,9 @@
 'use client';
 
-import { useEffect } from 'react';
-import { subscribePush } from '@/lib/web-push';
-
+/**
+ * Browser notification permission must only be requested after an explicit
+ * user action. Keeping this component mounted must never trigger a prompt.
+ */
 export function AutoPushPermission() {
-  useEffect(() => {
-    if ('Notification' in window && Notification.permission === 'default') {
-      subscribePush().catch(() => undefined);
-    }
-  }, []);
   return null;
 }
