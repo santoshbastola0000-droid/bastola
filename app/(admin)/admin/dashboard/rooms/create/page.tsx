@@ -263,6 +263,9 @@ export default function CreateRoomPage() {
   );
   const [ownerCommunityCustom, setOwnerCommunityCustom] = useState("");
   const [showOwnerCommunityInput, setShowOwnerCommunityInput] = useState(false);
+  const [showFreePlanPrompt, setShowFreePlanPrompt] = useState(false);
+  const [createdRoomId, setCreatedRoomId] = useState<string | null>(null);
+  const [savingFreePlan, setSavingFreePlan] = useState(false);
   const [gateClosingTimeDisplay, setGateClosingTimeDisplay] = useState("");
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -801,15 +804,19 @@ export default function CreateRoomPage() {
     createRoomMutation.mutate(
       { data: formData },
       {
-        onSuccess: () => {
+        onSuccess: (response: any) => {
           toast.dismiss(tid);
           toast.success("🎉 Room listed successfully!", {
             duration: 4000,
             style: { background: SUCCESSTOAST, color: "#fff" },
           });
-          router.push(
-            isAdmin ? "/admin/dashboard/rooms" : "/user/dashboard/rooms",
-          );
+          if (isAdmin) {
+            router.push("/admin/dashboard/rooms");
+            return;
+          }
+          const roomId = String(response?.data?.id || response?.id || "");
+          setCreatedRoomId(roomId || null);
+          setShowFreePlanPrompt(true);
         },
         onError: (error: unknown) => {
           toast.dismiss(tid);
@@ -848,6 +855,29 @@ export default function CreateRoomPage() {
     )
       return true;
     return false;
+  };
+
+  const continueWithoutFreePlan = () => {
+    setShowFreePlanPrompt(false);
+    router.push("/user/dashboard/rooms");
+  };
+
+  const activateFreePlanForRoom = async () => {
+    if (!createdRoomId) {
+      continueWithoutFreePlan();
+      return;
+    }
+    try {
+      setSavingFreePlan(true);
+      await roomService.updateRoom(createdRoomId, { freePlanOptIn: true } as any);
+      toast.success("Free plan selected. Reward applies only after a successful tenant deal.");
+      setShowFreePlanPrompt(false);
+      router.push("/user/dashboard/rooms");
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || "Free plan select गर्न सकिएन.");
+    } finally {
+      setSavingFreePlan(false);
+    }
   };
 
   return (
@@ -2669,6 +2699,41 @@ export default function CreateRoomPage() {
           </form>
         </Form>
       </main>
+
+      {showFreePlanPrompt && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/55 p-4">
+          <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl">
+            <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-100">
+              <CircleDollarSign className="h-6 w-6 text-emerald-700" />
+            </div>
+            <h2 className="text-xl font-black text-slate-900">Free Plan प्रयोग गर्ने?</h2>
+            <p className="mt-2 text-sm leading-6 text-slate-600">
+              तपाईंको room admin review मा पठाइसकिएको छ। Normal listing चाहिँ free नै रहन्छ।
+              तर Free earning plan select गरेपछि मात्रै यो room successfully अर्को tenant ले लिएर
+              deal confirm हुँदा reward eligible हुन्छ।
+            </p>
+            <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+              <p className="text-sm font-bold text-emerald-900">Free earning rule</p>
+              <p className="mt-1 text-sm text-emerald-800">
+                Successful rented deal पछि मात्र Rs.500 reward · अधिकतम 3 successful deals = Rs.1,500.
+                केवल room post गरेको भरमा reward आउँदैन।
+              </p>
+            </div>
+            <div className="mt-5 grid gap-2 sm:grid-cols-2">
+              <Button type="button" variant="outline" onClick={continueWithoutFreePlan} disabled={savingFreePlan}>
+                Normal Listing
+              </Button>
+              <Button type="button" onClick={() => void activateFreePlanForRoom()} disabled={savingFreePlan}>
+                {savingFreePlan ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                Use Free Plan
+              </Button>
+            </div>
+            <p className="mt-3 text-center text-[11px] text-slate-500">
+              यो popup redirect हुनुअघि देखिन्छ, त्यसैले तुरुन्त plan choose गर्न सकिन्छ।
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* ── Sticky Bottom Navigation ── */}
       <nav
