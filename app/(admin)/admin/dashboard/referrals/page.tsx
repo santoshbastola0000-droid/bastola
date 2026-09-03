@@ -88,6 +88,11 @@ function ReferralTreeNode({
 
         <div className="hidden text-right text-xs sm:block">
           <p>{node.directReferralCount} direct referrals</p>
+          {parentName && (
+            <p className="max-w-44 truncate text-muted-foreground">
+              Referred by: {parentName}
+            </p>
+          )}
           {node.referralStatus && (
             <p
               className={
@@ -108,6 +113,48 @@ function ReferralTreeNode({
         )}
       </div>
 
+      <div className="grid gap-2 rounded-xl border border-dashed bg-muted/30 p-3 text-xs sm:hidden">
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-muted-foreground">Referred by</span>
+          <span className="max-w-[62%] truncate text-right font-semibold">
+            {parentName || "—"}
+          </span>
+        </div>
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-muted-foreground">Referred users</span>
+          <span className="font-semibold">{node.directReferralCount}</span>
+        </div>
+        {node.children?.length > 0 && (
+          <div>
+            <p className="mb-1 text-muted-foreground">Who came from this referral</p>
+            <div className="flex flex-wrap gap-1.5">
+              {node.children.map((child) => (
+                <span
+                  key={child.userId}
+                  className="rounded-full border bg-background px-2 py-1 font-medium"
+                >
+                  {child.name}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+        {node.referralStatus && (
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-muted-foreground">Status</span>
+            <span
+              className={
+                node.referralStatus === "QUALIFIED"
+                  ? "font-semibold text-emerald-600"
+                  : "font-semibold text-amber-600"
+              }
+            >
+              {node.referralStatus}
+            </span>
+          </div>
+        )}
+      </div>
+
       {open &&
         hasChildren &&
         node.children.map((child) => (
@@ -115,6 +162,7 @@ function ReferralTreeNode({
             key={child.userId}
             node={child}
             level={level + 1}
+            parentName={node.name}
           />
         ))}
     </div>
@@ -158,7 +206,7 @@ export default function AdminReferralPage() {
           Referral Management
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Verified referral chain र monthly leaderboard हेर्नुहोस्।
+          Mobile र desktop दुवैमा को कसको referral बाट आयो र कसले क-कसलाई ल्यायो हेर्नुहोस्।
         </p>
       </div>
 
