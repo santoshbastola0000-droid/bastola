@@ -43,9 +43,11 @@ type ReferralNode = {
 function ReferralTreeNode({
   node,
   level = 0,
+  parentName,
 }: {
   node: ReferralNode;
   level?: number;
+  parentName?: string;
 }) {
   const [open, setOpen] = useState(level < 2);
   const hasChildren = node.children?.length > 0;
