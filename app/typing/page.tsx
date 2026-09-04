@@ -348,7 +348,7 @@ function VirtualKeyboard({ activeKey, language = "english" }: { activeKey: strin
   return <div className="relative mx-auto mt-6 block max-w-3xl select-none overflow-hidden rounded-2xl border border-slate-300 bg-slate-200 p-2 pb-3 shadow-inner sm:p-3">
     <div className="relative z-10 mb-1 text-center"><span className="inline-block rounded-full bg-slate-900/85 px-3 py-1 text-[10px] font-black text-white shadow">{activeKey === " " ? "Use thumbs for Space" : activeFinger ? `Next: ${activeKey.toUpperCase()} · ${activeFinger} finger` : "Keep fingers on ASDF and JKL;"}</span></div>
     <div className="relative z-10 space-y-1 sm:space-y-1.5">{KEY_ROWS.map((row, rowIndex) => <div key={rowIndex} className="flex justify-center gap-0.5 sm:gap-1.5">{row.map((key) => <span key={key} className={`grid h-8 min-w-6 flex-1 place-items-center rounded-md border border-b-2 text-[8px] font-black uppercase leading-none transition sm:h-10 sm:min-w-10 sm:flex-none sm:rounded-lg sm:text-[10px] ${activeKey === key ? "relative z-30 -translate-y-1 border-red-700 bg-red-600 text-white shadow-[0_10px_22px_rgba(220,38,38,.75),0_0_0_4px_rgba(254,202,202,.95)]" : "border-slate-400 bg-white/85 text-slate-700 shadow-[0_2px_0_rgba(100,116,139,.22)]"}`}><span>{key}</span>{language === "nepali" && NEPALI_KEY_LABELS[key] && <span className="mt-0.5 text-[10px] font-black sm:text-sm">{NEPALI_KEY_LABELS[key]}</span>}</span>)}</div>)}<div className="flex justify-center"><span className={`mt-0.5 grid h-8 w-40 place-items-center rounded-lg border border-b-2 text-[9px] font-black uppercase sm:h-9 sm:w-64 sm:text-[10px] ${activeKey === " " ? "relative z-30 -translate-y-1 border-red-700 bg-red-600 text-white shadow-[0_10px_22px_rgba(220,38,38,.75),0_0_0_4px_rgba(254,202,202,.95)]" : "border-slate-400 bg-white/85 text-slate-600"}`}>Space</span></div></div>
-    <div className="pointer-events-none absolute inset-x-0 bottom-[-23px] z-20 flex items-center justify-center gap-8 opacity-75 sm:gap-28 [&_p]:hidden">
+    <div className="pointer-events-none absolute inset-x-0 bottom-[-31px] z-20 flex items-center justify-center gap-5 opacity-80 sm:gap-24 [&_p]:hidden">
       <HandDiagram side="Left" activeFinger={activeFinger} />
       <HandDiagram side="Right" activeFinger={activeFinger} />
     </div>
@@ -370,15 +370,32 @@ function FingerGuide({ activeKey, compact = false, overlay = false }: { activeKe
 function HandDiagram({ side, activeFinger }: { side: "Left" | "Right"; activeFinger: string }) {
   const isActive = (name: string) => activeFinger === `${side} ${name}` || (name === "thumb" && activeFinger === "Thumbs");
   const fingerClass = (name: string) => isActive(name) ? "fill-red-400 stroke-red-600 drop-shadow-[0_0_5px_rgba(239,68,68,.8)]" : "fill-slate-200 stroke-slate-400";
+  const fingers = side === "Left"
+    ? [
+        { name: "little", x: 18, y: 40, height: 65 },
+        { name: "ring", x: 41, y: 23, height: 82 },
+        { name: "middle", x: 65, y: 14, height: 91 },
+        { name: "index", x: 90, y: 27, height: 78 },
+      ]
+    : [
+        { name: "index", x: 56, y: 27, height: 78 },
+        { name: "middle", x: 81, y: 14, height: 91 },
+        { name: "ring", x: 105, y: 23, height: 82 },
+        { name: "little", x: 128, y: 40, height: 65 },
+      ];
+  const palmPath = side === "Left"
+    ? "M20 91 C14 108 19 135 39 146 L119 146 C139 132 139 102 125 88 C115 81 105 88 104 102 L104 112 L53 112 C41 93 28 83 20 91 Z"
+    : "M150 91 C156 108 151 135 131 146 L51 146 C31 132 31 102 45 88 C55 81 65 88 66 102 L66 112 L117 112 C129 93 142 83 150 91 Z";
   return <div className="text-center">
-    <svg viewBox="0 0 170 150" className={`h-24 w-28 sm:h-32 sm:w-36 ${side === "Right" ? "-scale-x-100" : ""}`} role="img" aria-label={`${side} hand finger position`}>
-      <rect x="49" y="29" width="23" height="76" rx="12" className={`stroke-2 transition-all ${fingerClass("little")}`} />
-      <rect x="72" y="13" width="24" height="92" rx="12" className={`stroke-2 transition-all ${fingerClass("ring")}`} />
-      <rect x="96" y="5" width="25" height="100" rx="12" className={`stroke-2 transition-all ${fingerClass("middle")}`} />
-      <rect x="121" y="18" width="24" height="88" rx="12" className={`stroke-2 transition-all ${fingerClass("index")}`} />
-      <rect x="22" y="78" width="59" height="25" rx="13" transform="rotate(38 22 78)" className={`stroke-2 transition-all ${fingerClass("thumb")}`} />
-      <path d="M52 89 C43 99 43 130 62 142 L130 142 C145 128 146 102 137 88 Z" className="fill-slate-100 stroke-slate-400 stroke-2" />
-      <path d="M68 111 Q96 96 127 112" className="fill-none stroke-slate-300 stroke-2" />
+    <svg viewBox="0 0 170 150" className="h-24 w-32 sm:h-32 sm:w-40" role="img" aria-label={`${side} hand finger position`}>
+      <defs><linearGradient id={`palm-${side}`} x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#f8fafc"/><stop offset="1" stopColor="#cbd5e1"/></linearGradient></defs>
+      {fingers.map((finger) => <rect key={finger.name} x={finger.x} y={finger.y} width="22" height={finger.height} rx="11" className={`stroke-2 transition-all duration-200 ${fingerClass(finger.name)}`} />)}
+      {side === "Left"
+        ? <rect x="107" y="77" width="58" height="24" rx="12" transform="rotate(-38 107 77)" className={`stroke-2 transition-all duration-200 ${fingerClass("thumb")}`} />
+        : <rect x="5" y="77" width="58" height="24" rx="12" transform="rotate(38 63 77)" className={`stroke-2 transition-all duration-200 ${fingerClass("thumb")}`} />}
+      <path d={palmPath} fill={`url(#palm-${side})`} className="stroke-slate-500 stroke-2" />
+      <path d={side === "Left" ? "M37 121 Q75 101 116 120" : "M133 121 Q95 101 54 120"} className="fill-none stroke-slate-400/70 stroke-2" />
+      <circle cx={side === "Left" ? 80 : 90} cy="130" r="4" className="fill-white/80" />
     </svg>
     <p className="-mt-1 text-[10px] font-black uppercase tracking-wider text-slate-400">{side} hand</p>
   </div>;
