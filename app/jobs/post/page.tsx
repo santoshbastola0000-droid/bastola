@@ -230,15 +230,15 @@ export default function PostVacancyPage() {
 
       salary: form.salary
         ? Number(form.salary)
-        : null,
+        : undefined,
 
       salaryMin: form.salaryMin
         ? Number(form.salaryMin)
-        : null,
+        : undefined,
 
       salaryMax: form.salaryMax
         ? Number(form.salaryMax)
-        : null,
+        : undefined,
 
       salaryNegotiable: form.salaryNegotiable,
 
@@ -263,7 +263,7 @@ export default function PostVacancyPage() {
         form.description.trim() || undefined,
 
       applicationDeadline:
-        form.applicationDeadline || null,
+        form.applicationDeadline || undefined,
 
       contactPhone: form.contactPhone.trim(),
 
@@ -446,7 +446,13 @@ export default function PostVacancyPage() {
                         autoFocus
                         type="number"
                         min="0"
-                        value={form.salary}
+                        value={
+                          current.key === "salary"
+                            ? form.salary
+                            : current.key === "salaryMin"
+                              ? form.salaryMin
+                              : form.salaryMax
+                        }
                         onChange={(e) =>
                           updateField(e.target.value)
                         }
