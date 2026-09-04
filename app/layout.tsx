@@ -16,6 +16,7 @@ import { AutoPushPermission } from "@/components/AutoPushPermission";
 import { AutoLocationUpdate } from "@/components/AutoLocationUpdate";
 import { PermissionStatusSync } from "@/components/PermissionStatusSync";
 import { EngagementTracker } from "@/components/EngagementTracker";
+import { SiteNoticeBanner } from "@/components/common/site-notice";
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -116,6 +117,7 @@ export default function RootLayout({
             <GuestLoginPopup />
             <GlobalIncomingCall />
             <PwaInstallPrompt />
+            <SiteNoticeBanner />
             {children}
 
           <RoomKhojAIFloatingButton />
