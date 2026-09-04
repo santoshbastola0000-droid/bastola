@@ -151,7 +151,15 @@ const NEPALI_ROMAN: Record<string, string> = {
   "प": "pa", "फ": "pha", "ब": "ba", "भ": "bha", "म": "ma", "य": "ya", "र": "ra", "ल": "la", "व": "wa", "श": "sha", "ष": "shha", "स": "sa", "ह": "ha",
 };
 
-const NEPALI_KEY_LABELS: Record<string, string> = { a: "अ", i: "इ", u: "उ", e: "ए", o: "ओ", k: "क", g: "ग", c: "च", j: "ज", t: "त", d: "द", n: "न", p: "प", f: "फ", b: "ब", m: "म", y: "य", r: "र", l: "ल", v: "व", w: "व", s: "स", h: "ह" };
+const NEPALI_KEY_LABELS: Record<string, string> = {
+  q: "त्र", w: "ध", e: "भ", r: "च", t: "त", y: "थ", u: "ग", i: "ष", o: "य", p: "उ", "[": "ृ", "]": "े",
+  a: "ब", s: "क", d: "म", f: "ा", g: "न", h: "ज", j: "व", k: "प", l: "ि", ";": "स", "'": "ु",
+  z: "श", x: "ह", c: "अ", v: "ख", b: "द", n: "ल", m: "ः", ",": "ज्ञ", ".": "।", "/": "र",
+};
+
+function nepaliPhysicalKey(character: string) {
+  return Object.entries(NEPALI_KEY_LABELS).find(([, nepali]) => nepali === character)?.[0] || "";
+}
 
 const NEPALI_WORD_GUIDE = [
   ["ghar", "घर"], ["kotha", "कोठा"], ["paani", "पानी"], ["bhaadaa", "भाडा"],
@@ -216,8 +224,8 @@ export default function TypingPracticePage() {
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   const lesson = LESSONS[language][lessonIndex];
-  const practiceText = language === "nepali" ? romanizeNepaliText(lesson.text) : lesson.text;
-  const complete = typed.toLowerCase() === practiceText.toLowerCase();
+  const practiceText = lesson.text;
+  const complete = typed === practiceText;
   const nextCharacter = practiceText[typed.length] ?? "";
 
   useEffect(() => {
@@ -337,15 +345,22 @@ export default function TypingPracticePage() {
 
           <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-7">
             <div onClick={() => inputRef.current?.focus()} className="relative min-h-40 cursor-text rounded-2xl border-2 border-slate-100 bg-slate-50 p-5 text-2xl font-semibold leading-[1.8] tracking-wide sm:p-7 sm:text-3xl">
-              {language === "nepali" ? <RomanNepaliPractice nepaliText={lesson.text} romanText={practiceText} typed={typed} /> : lesson.text.split("").map((character, index) => {
+              {lesson.text.split("").map((character, index) => {
                 const state = index < typed.length ? (typed[index] === character ? "correct" : "wrong") : index === typed.length ? "current" : "pending";
                 return <span key={`${character}-${index}`} className={state === "correct" ? "text-emerald-600" : state === "wrong" ? "rounded bg-red-100 text-red-600 underline decoration-red-400" : state === "current" ? "animate-pulse rounded-sm border-b-4 border-red-500 bg-red-50 text-slate-900" : "text-slate-400"}>{character === " " ? "\u00a0" : character}</span>;
               })}
               {!typed && <span className="pointer-events-none absolute bottom-3 right-4 text-xs font-bold text-slate-400">Click here and start typing</span>}
             </div>
 
-            <textarea ref={inputRef} value={typed} aria-label="Typing input" autoFocus autoCorrect="off" autoCapitalize="off" spellCheck={false} className="fixed left-[-9999px] top-0 h-px w-px opacity-0" onPaste={(event) => event.preventDefault()} onChange={(event) => {
+            <textarea ref={inputRef} value={typed} aria-label="Typing input" autoFocus autoCorrect="off" autoCapitalize="off" spellCheck={false} className="fixed left-[-9999px] top-0 h-px w-px opacity-0" onPaste={(event) => event.preventDefault()} onKeyDown={(event) => {
+              if (language !== "nepali" || complete) return;
+              if (event.key === "Backspace") { event.preventDefault(); setTyped((current) => current.slice(0, -1)); return; }
+              if (event.key === " ") { event.preventDefault(); if (!startedAt) setStartedAt(Date.now()); setTyped((current) => (current + " ").slice(0, practiceText.length)); return; }
+              const nepaliCharacter = NEPALI_KEY_LABELS[event.key.toLowerCase()];
+              if (nepaliCharacter) { event.preventDefault(); if (!startedAt) setStartedAt(Date.now()); setTyped((current) => (current + nepaliCharacter).slice(0, practiceText.length)); playKeySound(); }
+            }} onChange={(event) => {
               if (complete) return;
+              if (language === "nepali" && /^[\x00-\x7F]*$/.test(event.target.value)) return;
               if (!startedAt && event.target.value.length) setStartedAt(Date.now());
               const next = event.target.value.slice(0, practiceText.length);
               setTyped(next); playKeySound();
@@ -353,9 +368,9 @@ export default function TypingPracticePage() {
 
             {complete ? <div className={`mt-5 rounded-2xl border p-5 ${stats.wpm >= lesson.targetWpm && stats.accuracy >= 90 ? "border-emerald-200 bg-emerald-50" : "border-amber-200 bg-amber-50"}`}><div className="flex items-center gap-3"><span className={`grid h-11 w-11 place-items-center rounded-full text-white ${stats.wpm >= lesson.targetWpm && stats.accuracy >= 90 ? "bg-emerald-500" : "bg-amber-500"}`}><Medal className="h-6 w-6" /></span><div><p className="font-black text-slate-900">{stats.wpm >= lesson.targetWpm && stats.accuracy >= 90 ? "Speed target achieved! 🎉" : "Lesson complete—speed फेरि अभ्यास गर्नुहोस्"}</p><p className="text-sm text-slate-600">तपाईंको {stats.wpm} WPM · लक्ष्य {lesson.targetWpm} WPM · {stats.accuracy}% accuracy</p></div></div></div> : <div className="mt-4 flex items-center justify-center gap-2 text-sm text-slate-500"><span className="font-semibold">Next key:</span><kbd className="min-w-9 rounded-lg border border-b-2 border-slate-300 bg-white px-2 py-1 text-center font-black text-slate-900">{nextCharacter === " " ? "Space" : nextCharacter}</kbd>{language === "english" && nextCharacter !== " " ? <span className="hidden sm:inline">· {FINGER_MAP[nextCharacter.toLowerCase()] ?? "Use the nearest finger"}</span> : null}</div>}
 
-            {language === "nepali" && <NepaliRomanGuide nextCharacter={nextCharacter} />}
-            <VirtualKeyboard activeKey={nextCharacter.toLowerCase()} language={language} />
-            {language === "nepali" && <div className="mt-3 rounded-2xl bg-indigo-50 p-3 text-center text-xs font-semibold text-indigo-800">Romanized Nepali input छान्नुहोस्। Windows keyboard बदल्न <kbd className="rounded bg-white px-1.5 py-0.5">Win + Space</kbd> प्रयोग गर्न सक्नुहुन्छ। Device अनुसार spelling अलि फरक हुन सक्छ।</div>}
+            {language === "nepali" && <div className="mt-5 flex items-center justify-center gap-3 rounded-2xl border border-indigo-200 bg-indigo-50 p-4"><span className="text-sm font-bold text-indigo-800">यो अक्षर टाइप गर्न</span><kbd className="rounded-lg bg-slate-900 px-3 py-1.5 font-black uppercase text-white">{nextCharacter === " " ? "Space" : nepaliPhysicalKey(nextCharacter) || "Nepali key"}</kbd><span className="text-xl font-black text-indigo-950">→ {nextCharacter}</span></div>}
+            <VirtualKeyboard activeKey={language === "nepali" ? nepaliPhysicalKey(nextCharacter) : nextCharacter.toLowerCase()} language={language} />
+            {language === "nepali" && <div className="mt-3 rounded-2xl bg-indigo-50 p-3 text-center text-xs font-semibold text-indigo-800">यो Romanized spelling होइन—Traditional Nepali keyboard हो। Screen मा देखिएको English key थिच्दा त्यस key को नेपाली अक्षर सीधै लेखिन्छ।</div>}
 
             <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-5"><button onClick={reset} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-bold text-slate-600 transition hover:bg-slate-50"><RotateCcw className="h-4 w-4" /> Restart</button><button onClick={nextLesson} className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-5 py-2.5 text-sm font-black text-white shadow-lg shadow-red-200 transition hover:bg-red-700">{complete ? "Continue" : "Skip lesson"}<ChevronRight className="h-4 w-4" /></button></div>
           </div>
@@ -429,7 +444,7 @@ function FingerGuide({ activeKey, compact = false, overlay = false }: { activeKe
 
 function HandDiagram({ side, activeFinger }: { side: "Left" | "Right"; activeFinger: string }) {
   const isActive = (name: string) => activeFinger === `${side} ${name}` || (name === "thumb" && activeFinger === "Thumbs");
-  const fingerClass = (name: string) => isActive(name) ? "fill-red-400 stroke-red-600 drop-shadow-[0_0_5px_rgba(239,68,68,.8)]" : "fill-slate-200 stroke-slate-400";
+  const fingerClass = (name: string) => isActive(name) ? "fill-red-400 stroke-red-700 drop-shadow-[0_0_6px_rgba(239,68,68,.9)]" : "fill-[#efc39f] stroke-[#9a6545]";
   const fingers = side === "Left"
     ? [
         { name: "little", x: 18, y: 40, height: 65 },
@@ -448,13 +463,13 @@ function HandDiagram({ side, activeFinger }: { side: "Left" | "Right"; activeFin
     : "M150 91 C156 108 151 135 131 146 L51 146 C31 132 31 102 45 88 C55 81 65 88 66 102 L66 112 L117 112 C129 93 142 83 150 91 Z";
   return <div className="text-center">
     <svg viewBox="0 0 170 150" className="h-24 w-32 sm:h-32 sm:w-40" role="img" aria-label={`${side} hand finger position`}>
-      <defs><linearGradient id={`palm-${side}`} x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#f8fafc"/><stop offset="1" stopColor="#cbd5e1"/></linearGradient></defs>
-      {fingers.map((finger) => <rect key={finger.name} x={finger.x} y={finger.y} width="22" height={finger.height} rx="11" className={`stroke-2 transition-all duration-200 ${fingerClass(finger.name)}`} />)}
+      <defs><linearGradient id={`palm-${side}`} x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#f5cfad"/><stop offset="1" stopColor="#dda77d"/></linearGradient></defs>
+      {fingers.map((finger) => <g key={finger.name}><rect x={finger.x} y={finger.y} width="22" height={finger.height} rx="11" className={`stroke-2 transition-all duration-200 ${fingerClass(finger.name)}`} /><ellipse cx={finger.x + 11} cy={finger.y + 10} rx="6" ry="4" className="fill-[#fff4e9]/80 stroke-[#b98261] stroke-1" /><path d={`M${finger.x + 4} ${finger.y + 37} Q${finger.x + 11} ${finger.y + 34} ${finger.x + 18} ${finger.y + 37}`} className="fill-none stroke-[#b98261]/70 stroke-1" /></g>)}
       {side === "Left"
         ? <rect x="107" y="77" width="58" height="24" rx="12" transform="rotate(-38 107 77)" className={`stroke-2 transition-all duration-200 ${fingerClass("thumb")}`} />
         : <rect x="5" y="77" width="58" height="24" rx="12" transform="rotate(38 63 77)" className={`stroke-2 transition-all duration-200 ${fingerClass("thumb")}`} />}
-      <path d={palmPath} fill={`url(#palm-${side})`} className="stroke-slate-500 stroke-2" />
-      <path d={side === "Left" ? "M37 121 Q75 101 116 120" : "M133 121 Q95 101 54 120"} className="fill-none stroke-slate-400/70 stroke-2" />
+      <path d={palmPath} fill={`url(#palm-${side})`} className="stroke-[#8f5b3d] stroke-2" />
+      <path d={side === "Left" ? "M37 121 Q75 101 116 120" : "M133 121 Q95 101 54 120"} className="fill-none stroke-[#b98261] stroke-2" />
       <circle cx={side === "Left" ? 80 : 90} cy="130" r="4" className="fill-white/80" />
     </svg>
     <p className="-mt-1 text-[10px] font-black uppercase tracking-wider text-slate-400">{side} hand</p>
