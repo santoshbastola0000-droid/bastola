@@ -1,10 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import {
-  BriefcaseBusiness,
-  MapPin,
-  Search,
-} from "lucide-react";
+import { BriefcaseBusiness } from "lucide-react";
 import { NavBar } from "@/components/common/navbar";
 import Footer from "@/components/common/footer";
 import ApprovedVacancies from "@/components/jobs/ApprovedVacancies";
@@ -111,36 +107,6 @@ export default function NepalJobsPage() {
       />
 
       <main className="min-h-screen bg-slate-50">
-        <section className="bg-gradient-to-br from-slate-950 via-slate-900 to-red-950 px-4 pb-20 pt-32 text-white">
-          <div className="mx-auto max-w-6xl text-center">
-            <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-red-400/30 bg-red-500/10 px-4 py-2 text-sm text-red-200">
-              <MapPin className="h-4 w-4" />
-              Jobs across Nepal
-            </div>
-
-            <h1 className="text-4xl font-black tracking-tight md:text-6xl">
-              Jobs in Nepal
-              <span className="block text-red-500">
-                Job Vacancies Across Nepal
-              </span>
-            </h1>
-
-            <p className="mx-auto mt-6 max-w-3xl text-lg leading-8 text-slate-300">
-              नेपालभर waiter, cook, sales, hotel, caregiver, office,
-              driver तथा अन्य काम खोज्नुहोस्। आफ्नो location, अनुभव र
-              अपेक्षित salary अनुसार RoomKhoj बाट job खोज्न सक्नुहुन्छ।
-            </p>
-
-            <a
-              href="#how-to-find-job"
-              className="mt-8 inline-flex items-center gap-2 rounded-xl bg-red-600 px-6 py-3 font-semibold text-white transition hover:bg-red-700"
-            >
-              <Search className="h-5 w-5" />
-              नेपालभर Job खोज्नुहोस्
-            </a>
-          </div>
-        </section>
-
         <ApprovedVacancies />
 
         <section className="mx-auto max-w-6xl px-4 py-16">
