@@ -106,7 +106,7 @@ export default function NepalJobsPage() {
         }}
       />
 
-      <main className="min-h-screen bg-slate-50">
+      <main className="min-h-screen bg-slate-50 pt-20">
         <ApprovedVacancies />
 
         <section className="mx-auto max-w-6xl px-4 py-16">
