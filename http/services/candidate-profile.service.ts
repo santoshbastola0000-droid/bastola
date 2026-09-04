@@ -41,7 +41,22 @@ export interface PublicCandidateProfileInput {
 export const candidateProfileService = {
   createPublic: async (
     data: PublicCandidateProfileInput,
+    cv?: File | null,
   ) => {
+    if (cv) {
+      const formData = new FormData();
+      formData.append("profile", JSON.stringify(data.profile));
+      formData.append("job", JSON.stringify(data.job));
+      formData.append("cv", cv);
+
+      const response = await api.post(
+        "/candidate-profile/public",
+        formData,
+      );
+
+      return response.data;
+    }
+
     const response = await api.post(
       "/candidate-profile/public",
       data,
