@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { privateApi } from "@/http/api/privateApi";
 import { useUserStore } from "@/stores/user-store";
 
@@ -36,7 +36,6 @@ function detectSource() {
 export function EngagementTracker() {
   const userId = useUserStore((state) => state.user?.id);
   const pathname = usePathname();
-  const searchParams = useSearchParams();
   const lastTrackedRef = useRef<string>("");
 
   useEffect(() => {
@@ -57,11 +56,10 @@ export function EngagementTracker() {
   useEffect(() => {
     if (!userId || !pathname) return;
 
-    const query = searchParams?.toString();
-    const path = query ? `${pathname}?${query}` : pathname;
+    const path = `${pathname}${window.location.search}`;
     const trackingKey = `${userId}:${path}`;
 
-    // Prevent duplicate React renders of the same route while keeping every real navigation.
+    // Prevent duplicate React renders of the same route while keeping real page navigations.
     if (lastTrackedRef.current === trackingKey) return;
     lastTrackedRef.current = trackingKey;
 
@@ -72,7 +70,7 @@ export function EngagementTracker() {
         referrer: document.referrer || "",
       })
       .catch(() => undefined);
-  }, [userId, pathname, searchParams]);
+  }, [userId, pathname]);
 
   return null;
 }
