@@ -256,16 +256,16 @@ function Stat({ icon, label, value, tone }: { icon: ReactNode; label: string; va
 }
 
 function VirtualKeyboard({ activeKey }: { activeKey: string }) {
-  return <div className="mx-auto mt-6 hidden max-w-3xl select-none space-y-1.5 rounded-2xl bg-slate-100 p-3 md:block">{KEY_ROWS.map((row, rowIndex) => <div key={rowIndex} className="flex justify-center gap-1.5">{row.map((key) => <span key={key} className={`grid h-10 min-w-10 place-items-center rounded-lg border border-b-2 text-xs font-black uppercase transition ${activeKey === key ? "border-red-600 bg-red-600 text-white -translate-y-0.5 shadow-lg shadow-red-200" : "border-slate-300 bg-white text-slate-600"}`}>{key}</span>)}</div>)}<div className="flex justify-center"><span className={`mt-0.5 grid h-9 w-64 place-items-center rounded-lg border border-b-2 text-[10px] font-black uppercase ${activeKey === " " ? "border-red-600 bg-red-600 text-white" : "border-slate-300 bg-white text-slate-500"}`}>Space</span></div><FingerGuide activeKey={activeKey} /></div>;
+  return <div className="relative mx-auto mt-6 hidden max-w-3xl select-none space-y-1.5 overflow-hidden rounded-2xl bg-slate-100 p-3 pb-24 md:block">{KEY_ROWS.map((row, rowIndex) => <div key={rowIndex} className="relative z-10 flex justify-center gap-1.5">{row.map((key) => <span key={key} className={`grid h-10 min-w-10 place-items-center rounded-lg border border-b-2 text-xs font-black uppercase transition ${activeKey === key ? "border-red-600 bg-red-600 text-white -translate-y-0.5 shadow-lg shadow-red-200" : "border-slate-300 bg-white/95 text-slate-600"}`}>{key}</span>)}</div>)}<div className="relative z-10 flex justify-center"><span className={`mt-0.5 grid h-9 w-64 place-items-center rounded-lg border border-b-2 text-[10px] font-black uppercase ${activeKey === " " ? "border-red-600 bg-red-600 text-white" : "border-slate-300 bg-white/95 text-slate-500"}`}>Space</span></div><div className="pointer-events-none absolute inset-x-0 bottom-[-27px] z-20"><FingerGuide activeKey={activeKey} overlay /></div></div>;
 }
 
-function FingerGuide({ activeKey, compact = false }: { activeKey: string; compact?: boolean }) {
+function FingerGuide({ activeKey, compact = false, overlay = false }: { activeKey: string; compact?: boolean; overlay?: boolean }) {
   const activeFinger = activeKey === " " ? "Thumbs" : FINGER_MAP[activeKey] || "";
-  return <div className={`${compact ? "mt-3" : "mt-4 border-t border-slate-200 pt-4"}`}>
-    <p className="mb-3 text-center text-xs font-black text-slate-500">{activeKey === " " ? "Space थिच्न बुढी औँला प्रयोग गर्नुहोस्" : activeFinger ? `${activeFinger} finger प्रयोग गर्नुहोस्` : "नजिकको औँला प्रयोग गर्नुहोस्"}</p>
-    <div className="flex items-center justify-center gap-3 sm:gap-12">
+  return <div className={`${overlay ? "" : compact ? "mt-3" : "mt-4 border-t border-slate-200 pt-4"}`}>
+    <p className={`${overlay ? "mb-1 rounded-full bg-white/90 px-3 py-1 shadow-sm" : "mb-3"} mx-auto w-fit text-center text-xs font-black text-slate-600`}>{activeKey === " " ? "Space थिच्न बुढी औँला प्रयोग गर्नुहोस्" : activeFinger ? `${activeFinger} finger प्रयोग गर्नुहोस्` : "नजिकको औँला प्रयोग गर्नुहोस्"}</p>
+    <div className={`flex items-center justify-center ${overlay ? "gap-32 sm:gap-52" : "gap-3 sm:gap-12"}`}>
       <HandDiagram side="Left" activeFinger={activeFinger} />
-      <div className="hidden rounded-2xl border border-slate-200 bg-white px-3 py-2 text-center text-[10px] font-bold text-slate-400 sm:block">HOME ROW<br/><span className="text-slate-700">A S D F&nbsp;&nbsp; J K L ;</span></div>
+      {!overlay && <div className="hidden rounded-2xl border border-slate-200 bg-white px-3 py-2 text-center text-[10px] font-bold text-slate-400 sm:block">HOME ROW<br/><span className="text-slate-700">A S D F&nbsp;&nbsp; J K L ;</span></div>}
       <HandDiagram side="Right" activeFinger={activeFinger} />
     </div>
   </div>;
