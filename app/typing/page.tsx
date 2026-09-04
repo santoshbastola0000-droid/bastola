@@ -259,21 +259,32 @@ function VirtualKeyboard({ activeKey }: { activeKey: string }) {
   return <div className="mx-auto mt-6 hidden max-w-3xl select-none space-y-1.5 rounded-2xl bg-slate-100 p-3 md:block">{KEY_ROWS.map((row, rowIndex) => <div key={rowIndex} className="flex justify-center gap-1.5">{row.map((key) => <span key={key} className={`grid h-10 min-w-10 place-items-center rounded-lg border border-b-2 text-xs font-black uppercase transition ${activeKey === key ? "border-red-600 bg-red-600 text-white -translate-y-0.5 shadow-lg shadow-red-200" : "border-slate-300 bg-white text-slate-600"}`}>{key}</span>)}</div>)}<div className="flex justify-center"><span className={`mt-0.5 grid h-9 w-64 place-items-center rounded-lg border border-b-2 text-[10px] font-black uppercase ${activeKey === " " ? "border-red-600 bg-red-600 text-white" : "border-slate-300 bg-white text-slate-500"}`}>Space</span></div><FingerGuide activeKey={activeKey} /></div>;
 }
 
-const FINGERS = ["Left little", "Left ring", "Left middle", "Left index", "Left thumb", "Right thumb", "Right index", "Right middle", "Right ring", "Right little"];
-
 function FingerGuide({ activeKey, compact = false }: { activeKey: string; compact?: boolean }) {
   const activeFinger = activeKey === " " ? "Thumbs" : FINGER_MAP[activeKey] || "";
   return <div className={`${compact ? "mt-3" : "mt-4 border-t border-slate-200 pt-4"}`}>
     <p className="mb-3 text-center text-xs font-black text-slate-500">{activeKey === " " ? "Space थिच्न बुढी औँला प्रयोग गर्नुहोस्" : activeFinger ? `${activeFinger} finger प्रयोग गर्नुहोस्` : "नजिकको औँला प्रयोग गर्नुहोस्"}</p>
-    <div className="flex items-end justify-center gap-5 sm:gap-10">
-      {[FINGERS.slice(0, 5), FINGERS.slice(5)].map((hand, handIndex) => <div key={handIndex} className="relative flex items-end gap-1 rounded-[45%_45%_38%_38%] bg-slate-300/50 px-3 pb-2 pt-4 shadow-[inset_0_-8px_12px_rgba(100,116,139,.16)]">
-        {hand.map((finger, index) => {
-          const active = activeFinger === finger || (activeFinger === "Thumbs" && finger.includes("thumb"));
-          const heights = handIndex === 0 ? [34, 46, 52, 48, 28] : [28, 48, 52, 46, 34];
-          return <span key={finger} title={finger} className={`w-4 rounded-full border transition-all duration-200 sm:w-5 ${active ? "border-red-500 bg-red-400 shadow-[0_0_0_5px_rgba(239,68,68,.18),0_0_18px_rgba(239,68,68,.65)] -translate-y-1" : "border-slate-300 bg-slate-200 shadow-inner"}`} style={{ height: heights[index] }} />;
-        })}
-      </div>)}
+    <div className="flex items-center justify-center gap-3 sm:gap-12">
+      <HandDiagram side="Left" activeFinger={activeFinger} />
+      <div className="hidden rounded-2xl border border-slate-200 bg-white px-3 py-2 text-center text-[10px] font-bold text-slate-400 sm:block">HOME ROW<br/><span className="text-slate-700">A S D F&nbsp;&nbsp; J K L ;</span></div>
+      <HandDiagram side="Right" activeFinger={activeFinger} />
     </div>
+  </div>;
+}
+
+function HandDiagram({ side, activeFinger }: { side: "Left" | "Right"; activeFinger: string }) {
+  const isActive = (name: string) => activeFinger === `${side} ${name}` || (name === "thumb" && activeFinger === "Thumbs");
+  const fingerClass = (name: string) => isActive(name) ? "fill-red-400 stroke-red-600 drop-shadow-[0_0_5px_rgba(239,68,68,.8)]" : "fill-slate-200 stroke-slate-400";
+  return <div className="text-center">
+    <svg viewBox="0 0 170 150" className={`h-24 w-28 sm:h-32 sm:w-36 ${side === "Right" ? "-scale-x-100" : ""}`} role="img" aria-label={`${side} hand finger position`}>
+      <rect x="49" y="29" width="23" height="76" rx="12" className={`stroke-2 transition-all ${fingerClass("little")}`} />
+      <rect x="72" y="13" width="24" height="92" rx="12" className={`stroke-2 transition-all ${fingerClass("ring")}`} />
+      <rect x="96" y="5" width="25" height="100" rx="12" className={`stroke-2 transition-all ${fingerClass("middle")}`} />
+      <rect x="121" y="18" width="24" height="88" rx="12" className={`stroke-2 transition-all ${fingerClass("index")}`} />
+      <rect x="22" y="78" width="59" height="25" rx="13" transform="rotate(38 22 78)" className={`stroke-2 transition-all ${fingerClass("thumb")}`} />
+      <path d="M52 89 C43 99 43 130 62 142 L130 142 C145 128 146 102 137 88 Z" className="fill-slate-100 stroke-slate-400 stroke-2" />
+      <path d="M68 111 Q96 96 127 112" className="fill-none stroke-slate-300 stroke-2" />
+    </svg>
+    <p className="-mt-1 text-[10px] font-black uppercase tracking-wider text-slate-400">{side} hand</p>
   </div>;
 }
 
