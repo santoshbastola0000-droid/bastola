@@ -3,6 +3,7 @@ import { AxiosError } from "axios";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { CircleDollarSign } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { roomService } from "@/http/services/room.service";
 import { ROOM_QUERY_KEYS } from "@/hooks/rooms/use-room-queries";
 import { STATUS_CODES } from "@/lib/constants/app.constants";
@@ -16,6 +17,7 @@ import { UserRole } from "@/types/user.types";
 // is refactored to import them locally.
 (globalThis as any).roomService = roomService;
 (globalThis as any).CircleDollarSign = CircleDollarSign;
+(globalThis as any).Button = Button;
 
 // Toast messages
 export const CreateRoom = {
