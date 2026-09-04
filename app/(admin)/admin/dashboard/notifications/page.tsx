@@ -1,7 +1,17 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Bell, Link2, Loader2, Search, Send } from "lucide-react";
+import {
+  Bell,
+  CheckCircle2,
+  Link2,
+  Loader2,
+  Mail,
+  RefreshCw,
+  Search,
+  Send,
+  XCircle,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { privateApi } from "@/http/api/privateApi";
@@ -11,6 +21,17 @@ type UserOption = {
   name: string;
   email: string;
   phone?: string | null;
+};
+
+type BroadcastJob = {
+  id: string;
+  subject: string;
+  total: number;
+  sent: number;
+  failed: number;
+  pending: number;
+  status: string;
+  createdAt?: string;
 };
 
 export default function AdminNotificationsPage() {
@@ -23,15 +44,41 @@ export default function AdminNotificationsPage() {
   const [loadingUsers, setLoadingUsers] = useState(true);
   const [sending, setSending] = useState(false);
 
+  const [emailSubject, setEmailSubject] = useState("RoomKhoj Update");
+  const [emailMessage, setEmailMessage] = useState("");
+  const [emailLink, setEmailLink] = useState("https://www.roomkhoj.com");
+  const [broadcasting, setBroadcasting] = useState(false);
+  const [jobs, setJobs] = useState<BroadcastJob[]>([]);
+  const [loadingJobs, setLoadingJobs] = useState(false);
+
   useEffect(() => {
     privateApi
       .get("/user", { params: { take: 100, page: 0 } })
-      .then((response) => {
-        const items = response.data?.data || [];
-        setUsers(items);
-      })
+      .then((response) => setUsers(response.data?.data || []))
       .catch(() => toast.error("Users load हुन सकेन"))
       .finally(() => setLoadingUsers(false));
+  }, []);
+
+  const loadJobs = async (silent = false) => {
+    try {
+      if (!silent) setLoadingJobs(true);
+      const response = await privateApi.get("/notifications/admin/broadcast-email", {
+        params: { limit: 20 },
+      });
+      setJobs(Array.isArray(response.data) ? response.data : []);
+    } catch {
+      if (!silent) toast.error("Broadcast history load हुन सकेन");
+    } finally {
+      if (!silent) setLoadingJobs(false);
+    }
+  };
+
+  useEffect(() => {
+    void loadJobs(true);
+    const timer = window.setInterval(() => {
+      void loadJobs(true);
+    }, 3000);
+    return () => window.clearInterval(timer);
   }, []);
 
   const filteredUsers = useMemo(() => {
@@ -75,8 +122,35 @@ export default function AdminNotificationsPage() {
     }
   }
 
+  async function sendBroadcastEmail() {
+    if (!emailSubject.trim() || !emailMessage.trim()) {
+      toast.error("Email subject र message राख्नुहोस्");
+      return;
+    }
+    if (!window.confirm("सबै email भएका RoomKhoj users लाई यो email queue मा पठाउने?")) {
+      return;
+    }
+
+    try {
+      setBroadcasting(true);
+      const response = await privateApi.post("/notifications/admin/broadcast-email", {
+        subject: emailSubject.trim(),
+        message: emailMessage.trim(),
+        actionUrl: emailLink.trim(),
+      });
+      const job = response.data as BroadcastJob;
+      toast.success(`${job?.total || 0} users को email queue तयार भयो।`);
+      setEmailMessage("");
+      await loadJobs(true);
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || "Broadcast email queue गर्न सकेन");
+    } finally {
+      setBroadcasting(false);
+    }
+  }
+
   return (
-    <main className="mx-auto max-w-3xl space-y-6 p-4 sm:p-6">
+    <main className="mx-auto max-w-5xl space-y-6 p-4 sm:p-6">
       <div className="flex items-start gap-3">
         <div className="rounded-xl bg-primary/10 p-2 text-primary">
           <Bell className="h-5 w-5" />
@@ -84,12 +158,122 @@ export default function AdminNotificationsPage() {
         <div>
           <h1 className="text-2xl font-bold">Notify Users</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Admin बाट user लाई app notification पठाउनुहोस्। चाहिएको page वा website link पनि राख्न सकिन्छ।
+            Single user notification र सबै users लाई queued email broadcast यहीँबाट पठाउन सकिन्छ।
           </p>
         </div>
       </div>
 
       <section className="rounded-2xl border bg-white p-5 shadow-sm sm:p-6">
+        <div className="mb-5 flex items-center gap-2">
+          <Mail className="h-5 w-5 text-red-600" />
+          <div>
+            <h2 className="font-bold">Broadcast Email to All Users</h2>
+            <p className="text-xs text-muted-foreground">
+              Email भएका सबै users लाई batch/queue मा पठाइन्छ। तल Sent, Failed र Pending live track हुन्छ।
+            </p>
+          </div>
+        </div>
+
+        <label className="mb-2 block text-sm font-medium">Email subject</label>
+        <input
+          value={emailSubject}
+          onChange={(event) => setEmailSubject(event.target.value)}
+          maxLength={180}
+          className="h-11 w-full rounded-xl border px-3 text-sm"
+          placeholder="RoomKhoj Update"
+        />
+
+        <label className="mb-2 mt-5 block text-sm font-medium">Email message</label>
+        <textarea
+          value={emailMessage}
+          onChange={(event) => setEmailMessage(event.target.value)}
+          maxLength={4000}
+          rows={7}
+          className="w-full rounded-xl border p-3 text-sm"
+          placeholder="सबै users लाई पठाउने message लेख्नुहोस्..."
+        />
+
+        <label className="mb-2 mt-5 block text-sm font-medium">Open link (optional)</label>
+        <input
+          value={emailLink}
+          onChange={(event) => setEmailLink(event.target.value)}
+          maxLength={500}
+          className="h-11 w-full rounded-xl border px-3 text-sm"
+          placeholder="https://www.roomkhoj.com/jobs"
+        />
+
+        <button
+          type="button"
+          onClick={sendBroadcastEmail}
+          disabled={broadcasting}
+          className="mt-6 inline-flex h-11 items-center gap-2 rounded-xl bg-red-600 px-4 text-sm font-semibold text-white disabled:opacity-60"
+        >
+          {broadcasting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
+          Send email to all users
+        </button>
+      </section>
+
+      <section className="rounded-2xl border bg-white p-5 shadow-sm sm:p-6">
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <div>
+            <h2 className="font-bold">Broadcast Delivery Tracking</h2>
+            <p className="text-xs text-muted-foreground">हरेक broadcast को live queue progress</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => void loadJobs()}
+            className="inline-flex h-9 items-center gap-2 rounded-lg border px-3 text-sm"
+          >
+            <RefreshCw className={`h-4 w-4 ${loadingJobs ? "animate-spin" : ""}`} /> Refresh
+          </button>
+        </div>
+
+        {jobs.length === 0 ? (
+          <p className="rounded-xl bg-slate-50 p-4 text-sm text-muted-foreground">अहिलेसम्म broadcast email छैन।</p>
+        ) : (
+          <div className="space-y-3">
+            {jobs.map((job) => {
+              const done = job.sent + job.failed;
+              const percent = job.total > 0 ? Math.round((done / job.total) * 100) : 100;
+              return (
+                <div key={job.id} className="rounded-xl border p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <p className="font-semibold">{job.subject || "RoomKhoj Broadcast"}</p>
+                      <p className="text-xs text-muted-foreground">{job.status} · {percent}% processed</p>
+                    </div>
+                    <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold">Total {job.total}</span>
+                  </div>
+
+                  <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100">
+                    <div className="h-full bg-black transition-all" style={{ width: `${Math.min(percent, 100)}%` }} />
+                  </div>
+
+                  <div className="mt-3 grid grid-cols-3 gap-2 text-center text-sm">
+                    <div className="rounded-lg bg-emerald-50 p-2 text-emerald-700">
+                      <CheckCircle2 className="mx-auto mb-1 h-4 w-4" />
+                      <b>{job.sent}</b><div className="text-[11px]">Sent</div>
+                    </div>
+                    <div className="rounded-lg bg-red-50 p-2 text-red-700">
+                      <XCircle className="mx-auto mb-1 h-4 w-4" />
+                      <b>{job.failed}</b><div className="text-[11px]">Failed</div>
+                    </div>
+                    <div className="rounded-lg bg-amber-50 p-2 text-amber-700">
+                      <Loader2 className={`mx-auto mb-1 h-4 w-4 ${job.pending > 0 ? "animate-spin" : ""}`} />
+                      <b>{job.pending}</b><div className="text-[11px]">Pending</div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
+      <section className="rounded-2xl border bg-white p-5 shadow-sm sm:p-6">
+        <h2 className="mb-1 font-bold">Send to One User</h2>
+        <p className="mb-5 text-xs text-muted-foreground">Existing push / in-app / email fallback notification</p>
+
         <label className="mb-2 block text-sm font-medium">Find recipient</label>
         <div className="relative">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -127,7 +311,6 @@ export default function AdminNotificationsPage() {
           onChange={(event) => setTitle(event.target.value)}
           maxLength={180}
           className="h-11 w-full rounded-xl border px-3 text-sm"
-          placeholder="RoomKhoj"
         />
 
         <label className="mb-2 mt-5 block text-sm font-medium">Message</label>
@@ -148,12 +331,8 @@ export default function AdminNotificationsPage() {
             onChange={(event) => setActionUrl(event.target.value)}
             maxLength={500}
             className="h-11 w-full rounded-xl border pl-9 pr-3 text-sm"
-            placeholder="/jobs or https://roomkhoj.com/jobs"
           />
         </div>
-        <p className="mt-2 text-xs text-muted-foreground">
-          User ले notification click गर्दा यही link खुल्छ। खाली छोडे /notifications खुल्छ।
-        </p>
 
         <button
           type="button"
