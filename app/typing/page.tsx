@@ -260,9 +260,14 @@ function Stat({ icon, label, value, tone }: { icon: ReactNode; label: string; va
 }
 
 function VirtualKeyboard({ activeKey }: { activeKey: string }) {
-  return <div className="relative mx-auto mt-6 block max-w-3xl select-none rounded-2xl border border-slate-200 bg-slate-100 p-2 shadow-inner sm:p-3">
-    <div className="mb-3 rounded-2xl border border-red-100 bg-white p-2 shadow-[0_8px_24px_rgba(15,23,42,.10)] sm:p-3"><FingerGuide activeKey={activeKey} overlay /></div>
-    <div className="space-y-1 sm:space-y-1.5">{KEY_ROWS.map((row, rowIndex) => <div key={rowIndex} className="flex justify-center gap-0.5 sm:gap-1.5">{row.map((key) => <span key={key} className={`grid h-8 min-w-6 flex-1 place-items-center rounded-md border border-b-2 text-[9px] font-black uppercase transition sm:h-10 sm:min-w-10 sm:flex-none sm:rounded-lg sm:text-xs ${activeKey === key ? "relative z-10 -translate-y-1 border-red-700 bg-red-600 text-white shadow-[0_10px_22px_rgba(220,38,38,.65),0_0_0_4px_rgba(254,202,202,.9)]" : "border-slate-300 bg-white text-slate-600 shadow-[0_2px_0_rgba(100,116,139,.18)]"}`}>{key}</span>)}</div>)}<div className="flex justify-center"><span className={`mt-0.5 grid h-8 w-40 place-items-center rounded-lg border border-b-2 text-[9px] font-black uppercase sm:h-9 sm:w-64 sm:text-[10px] ${activeKey === " " ? "-translate-y-1 border-red-700 bg-red-600 text-white shadow-[0_10px_22px_rgba(220,38,38,.65),0_0_0_4px_rgba(254,202,202,.9)]" : "border-slate-300 bg-white text-slate-500"}`}>Space</span></div></div>
+  const activeFinger = activeKey === " " ? "Thumbs" : FINGER_MAP[activeKey] || "";
+  return <div className="relative mx-auto mt-6 block max-w-3xl select-none overflow-hidden rounded-2xl border border-slate-300 bg-slate-200 p-2 pb-3 shadow-inner sm:p-3">
+    <div className="relative z-10 mb-1 text-center"><span className="inline-block rounded-full bg-slate-900/85 px-3 py-1 text-[10px] font-black text-white shadow">{activeKey === " " ? "Use thumbs for Space" : activeFinger ? `Next: ${activeKey.toUpperCase()} · ${activeFinger} finger` : "Keep fingers on ASDF and JKL;"}</span></div>
+    <div className="relative z-10 space-y-1 sm:space-y-1.5">{KEY_ROWS.map((row, rowIndex) => <div key={rowIndex} className="flex justify-center gap-0.5 sm:gap-1.5">{row.map((key) => <span key={key} className={`grid h-8 min-w-6 flex-1 place-items-center rounded-md border border-b-2 text-[9px] font-black uppercase transition sm:h-10 sm:min-w-10 sm:flex-none sm:rounded-lg sm:text-xs ${activeKey === key ? "relative z-30 -translate-y-1 border-red-700 bg-red-600 text-white shadow-[0_10px_22px_rgba(220,38,38,.75),0_0_0_4px_rgba(254,202,202,.95)]" : "border-slate-400 bg-white/85 text-slate-700 shadow-[0_2px_0_rgba(100,116,139,.22)]"}`}>{key}</span>)}</div>)}<div className="flex justify-center"><span className={`mt-0.5 grid h-8 w-40 place-items-center rounded-lg border border-b-2 text-[9px] font-black uppercase sm:h-9 sm:w-64 sm:text-[10px] ${activeKey === " " ? "relative z-30 -translate-y-1 border-red-700 bg-red-600 text-white shadow-[0_10px_22px_rgba(220,38,38,.75),0_0_0_4px_rgba(254,202,202,.95)]" : "border-slate-400 bg-white/85 text-slate-600"}`}>Space</span></div></div>
+    <div className="pointer-events-none absolute inset-x-0 bottom-[-23px] z-20 flex items-center justify-center gap-8 opacity-75 sm:gap-28 [&_p]:hidden">
+      <HandDiagram side="Left" activeFinger={activeFinger} />
+      <HandDiagram side="Right" activeFinger={activeFinger} />
+    </div>
   </div>;
 }
 
