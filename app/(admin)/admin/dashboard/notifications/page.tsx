@@ -34,6 +34,8 @@ type BroadcastJob = {
   createdAt?: string;
 };
 
+const ALL_USERS = "__ALL_USERS__";
+
 export default function AdminNotificationsPage() {
   const [users, setUsers] = useState<UserOption[]>([]);
   const [userId, setUserId] = useState("");
@@ -93,7 +95,31 @@ export default function AdminNotificationsPage() {
 
   async function sendNotification() {
     if (!userId || !title.trim() || !message.trim()) {
-      toast.error("User, title र message राख्नुहोस्");
+      toast.error("Recipient, title र message राख्नुहोस्");
+      return;
+    }
+
+    if (userId === ALL_USERS) {
+      if (!window.confirm("यो message सबै email भएका RoomKhoj users लाई queue मा पठाउने?")) {
+        return;
+      }
+
+      try {
+        setSending(true);
+        const response = await privateApi.post("/notifications/admin/broadcast-email", {
+          subject: title.trim(),
+          message: message.trim(),
+          actionUrl: actionUrl.trim() || undefined,
+        });
+        const job = response.data as BroadcastJob;
+        toast.success(`${job?.total || 0} users को broadcast queue तयार भयो।`);
+        setMessage("");
+        await loadJobs(true);
+      } catch (error: any) {
+        toast.error(error?.response?.data?.message || "सबै users लाई पठाउन सकेन");
+      } finally {
+        setSending(false);
+      }
       return;
     }
 
@@ -271,8 +297,10 @@ export default function AdminNotificationsPage() {
       </section>
 
       <section className="rounded-2xl border bg-white p-5 shadow-sm sm:p-6">
-        <h2 className="mb-1 font-bold">Send to One User</h2>
-        <p className="mb-5 text-xs text-muted-foreground">Existing push / in-app / email fallback notification</p>
+        <h2 className="mb-1 font-bold">Send Notification</h2>
+        <p className="mb-5 text-xs text-muted-foreground">
+          एक जना छान्दा single notification जान्छ। All Users छान्दा सबै email भएका users लाई queued broadcast जान्छ।
+        </p>
 
         <label className="mb-2 block text-sm font-medium">Find recipient</label>
         <div className="relative">
@@ -297,12 +325,19 @@ export default function AdminNotificationsPage() {
             className="h-11 w-full rounded-xl border bg-white px-3 text-sm"
           >
             <option value="">Select user</option>
+            <option value={ALL_USERS}>🌐 All Users — Email Broadcast</option>
             {filteredUsers.map((user) => (
               <option key={user.id} value={user.id}>
                 {user.name} — {user.email || user.phone || user.id}
               </option>
             ))}
           </select>
+        )}
+
+        {userId === ALL_USERS && (
+          <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+            All Users selected: Send गर्दा email भएका सबै users लाई queue मा पठाइन्छ र माथिको Delivery Tracking मा progress देखिन्छ।
+          </div>
         )}
 
         <label className="mb-2 mt-5 block text-sm font-medium">Title</label>
@@ -341,7 +376,7 @@ export default function AdminNotificationsPage() {
           className="mt-6 inline-flex h-11 items-center gap-2 rounded-xl bg-black px-4 text-sm font-medium text-white disabled:opacity-60"
         >
           {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-          Send notification
+          {userId === ALL_USERS ? "Send to all users" : "Send notification"}
         </button>
       </section>
     </main>
