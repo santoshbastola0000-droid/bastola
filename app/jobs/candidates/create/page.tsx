@@ -7,6 +7,7 @@ import {
   ArrowLeft,
   ArrowRight,
   CheckCircle2,
+  FileText,
   Loader2,
   UserRound,
 } from "lucide-react";
@@ -84,6 +85,7 @@ export default function CreateCandidateProfilePage() {
   const [step, setStep] = useState(0);
   const [form, setForm] = useState<FormState>(initialForm);
   const [submitted, setSubmitted] = useState(false);
+  const [cvFile, setCvFile] = useState<File | null>(null);
 
   const roles = useMemo(
     () => getRolesForCategory(form.category),
@@ -162,7 +164,7 @@ export default function CreateCandidateProfilePage() {
           interviewCompleted: true,
           isActive: true,
         },
-      }),
+      }, cvFile),
 
     onSuccess: () => {
       setSubmitted(true);
@@ -642,6 +644,65 @@ export default function CreateCandidateProfilePage() {
                     Final details
                   </h2>
 
+                  <label className="mt-5 block cursor-pointer rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4 transition hover:border-red-400 hover:bg-red-50/50">
+                    <span className="flex items-center gap-3">
+                      <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-red-600 shadow-sm">
+                        <FileText className="h-5 w-5" />
+                      </span>
+                      <span>
+                        <span className="block text-sm font-semibold text-slate-800">
+                          {cvFile ? cvFile.name : "Upload CV (optional)"}
+                        </span>
+                        <span className="block text-xs text-slate-500">
+                          PDF, DOC or DOCX · maximum 5 MB
+                        </span>
+                      </span>
+                    </span>
+                    <input
+                      type="file"
+                      accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                      className="sr-only"
+                      onChange={(event) => {
+                        const file = event.target.files?.[0] || null;
+
+                        if (!file) {
+                          setCvFile(null);
+                          return;
+                        }
+
+                        const extension = file.name
+                          .toLowerCase()
+                          .split(".")
+                          .pop();
+                        const allowed = ["pdf", "doc", "docx"];
+
+                        if (!extension || !allowed.includes(extension)) {
+                          toast.error("CV PDF, DOC वा DOCX format मा upload गर्नुहोस्");
+                          event.target.value = "";
+                          return;
+                        }
+
+                        if (file.size > 5 * 1024 * 1024) {
+                          toast.error("CV को size 5 MB भन्दा कम हुनुपर्छ");
+                          event.target.value = "";
+                          return;
+                        }
+
+                        setCvFile(file);
+                      }}
+                    />
+                  </label>
+
+                  {cvFile && (
+                    <button
+                      type="button"
+                      onClick={() => setCvFile(null)}
+                      className="mt-2 text-xs font-semibold text-red-600"
+                    >
+                      Remove CV
+                    </button>
+                  )}
+
                   <textarea
                     rows={4}
                     value={form.extraInfo}
@@ -701,6 +762,7 @@ export default function CreateCandidateProfilePage() {
                     </p>
                     <p><b>Location:</b> {form.currentLocation}</p>
                     <p><b>Name:</b> {form.fullName}</p>
+                    <p><b>CV:</b> {cvFile?.name || "Not uploaded"}</p>
                   </div>
                 </>
               )}
