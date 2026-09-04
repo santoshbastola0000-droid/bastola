@@ -295,13 +295,36 @@ function HandDiagram({ side, activeFinger }: { side: "Left" | "Right"; activeFin
   </div>;
 }
 
-const GAME_WORDS: Record<Language, string[]> = {
-  english: ["room", "home", "rent", "water", "bright", "search", "Nepal", "friend", "typing", "keyboard", "practice", "perfect", "window", "garden", "quickly"],
-  nepali: ["घर", "कोठा", "पानी", "बाटो", "साथी", "नेपाल", "काम", "राम्रो", "खोजी", "अभ्यास", "छिटो", "सजिलो", "भाडा", "बसाइ", "परिवार"],
-};
+type GameId = "room-drop" | "listing-rush" | "location-hunt" | "facility-blast" | "job-match" | "message-sprint" | "nepali-master";
+type GameMode = { id: GameId; name: string; nepaliName: string; emoji: string; description: string; words: Record<Language, string[]> };
+
+const GAME_MODES: GameMode[] = [
+  { id: "room-drop", name: "Room Drop", nepaliName: "कोठा बचाऊ", emoji: "🏠", description: "Room types छिटो टाइप गर्नुहोस्", words: {
+    english: ["room", "flat", "house", "apartment", "hostel", "single room", "two bedroom", "shared room", "studio", "rental home", "available room", "family flat"],
+    nepali: ["कोठा", "फ्ल्याट", "घर", "होस्टेल", "एक कोठा", "दुई कोठा", "साझा कोठा", "भाडाको घर", "खाली कोठा", "पारिवारिक फ्ल्याट"] } },
+  { id: "listing-rush", name: "Listing Rush", nepaliName: "लिस्टिङ दौड", emoji: "📝", description: "Room listing का शब्द पूरा गर्नुहोस्", words: {
+    english: ["post a room", "monthly rent", "available from", "room details", "owner contact", "verified listing", "property photo", "room video", "tenant preference", "furnished room", "rent agreement"],
+    nepali: ["कोठा पोस्ट", "मासिक भाडा", "उपलब्ध मिति", "कोठाको विवरण", "घरधनी सम्पर्क", "प्रमाणित लिस्टिङ", "कोठाको फोटो", "भाडा सम्झौता"] } },
+  { id: "location-hunt", name: "Location Hunt", nepaliName: "ठेगाना खोज", emoji: "📍", description: "RoomKhoj location practice", words: {
+    english: ["Pokhara", "Kathmandu", "Lalitpur", "Bhaktapur", "Lakeside", "New Road", "Baneshwor", "Kalanki", "Koteshwor", "Chabahil", "Parshyang", "Sirjanachok", "Bagar", "Mahendrapul"],
+    nepali: ["पोखरा", "काठमाडौं", "ललितपुर", "भक्तपुर", "लेकसाइड", "नयाँ सडक", "बानेश्वर", "कलंकी", "कोटेश्वर", "चाबहिल", "पर्स्याङ", "सिर्जनाचोक", "बगर", "महेन्द्रपुल"] } },
+  { id: "facility-blast", name: "Facility Blast", nepaliName: "सुविधा ब्लास्ट", emoji: "⚡", description: "कोठाका facilities टाइप गर्नुहोस्", words: {
+    english: ["water supply", "parking", "wifi", "attached bathroom", "furnished", "balcony", "kitchen", "electricity", "hot water", "main road", "security", "garden", "pet friendly"],
+    nepali: ["पानी सुविधा", "पार्किङ", "इन्टरनेट", "बाथरुम", "फर्निचर", "बालकनी", "भान्सा", "बिजुली", "तातो पानी", "मुख्य सडक", "सुरक्षा", "बगैँचा"] } },
+  { id: "job-match", name: "Job Match", nepaliName: "जागिर मिलान", emoji: "💼", description: "RoomKhoj Jobs का शब्द खेल्नुहोस्", words: {
+    english: ["job vacancy", "waiter", "receptionist", "accountant", "sales assistant", "office helper", "driver", "cook", "teacher", "graphic designer", "apply now", "monthly salary", "work experience"],
+    nepali: ["जागिर", "वेटर", "रिसेप्सनिस्ट", "लेखापाल", "बिक्री सहायक", "कार्यालय सहयोगी", "चालक", "कुक", "शिक्षक", "मासिक तलब", "कामको अनुभव"] } },
+  { id: "message-sprint", name: "Message Sprint", nepaliName: "मेसेज स्प्रिन्ट", emoji: "💬", description: "Tenant–owner message practice", words: {
+    english: ["Is this room available?", "What is the monthly rent?", "Can I visit today?", "Please send room details.", "Is parking available?", "I want to rent this room.", "Thank you for the information."],
+    nepali: ["यो कोठा खाली छ?", "मासिक भाडा कति हो?", "आज कोठा हेर्न मिल्छ?", "कृपया विवरण पठाउनुहोस्।", "पार्किङ सुविधा छ?", "म यो कोठा भाडामा लिन चाहन्छु।"] } },
+  { id: "nepali-master", name: "Nepali Master", nepaliName: "नेपाली मास्टर", emoji: "🇳🇵", description: "पूरा नेपाली rental वाक्य अभ्यास", words: {
+    english: ["Find a suitable room near your workplace.", "Contact details stay private until unlock.", "Search verified rooms around your location.", "RoomKhoj makes renting easier across Nepal."],
+    nepali: ["आफ्नो काम गर्ने ठाउँ नजिकै उपयुक्त कोठा खोज्नुहोस्।", "सम्पर्क विवरण अनलक नभएसम्म गोप्य रहन्छ।", "आफ्नो स्थान वरिपरिका प्रमाणित कोठा खोज्नुहोस्।", "रुमखोजले नेपालभर कोठा भाडामा लिन सजिलो बनाउँछ।"] } },
+];
 
 function TypingGame({ language, onLanguageChange }: { language: Language; onLanguageChange: (language: Language) => void }) {
   const { user } = useUserStore();
+  const [gameId, setGameId] = useState<GameId>("room-drop");
   const [running, setRunning] = useState(false);
   const [word, setWord] = useState("");
   const [input, setInput] = useState("");
@@ -314,6 +337,7 @@ function TypingGame({ language, onLanguageChange }: { language: Language; onLang
   const [leaderboard, setLeaderboard] = useState<Array<{ userId: string; name: string; score: number; level: number; language: Language }>>([]);
   const [leaderboardLoading, setLeaderboardLoading] = useState(true);
   const gameInputRef = useRef<HTMLInputElement>(null);
+  const selectedGame = GAME_MODES.find((game) => game.id === gameId) || GAME_MODES[0];
 
   const loadLeaderboard = useCallback(async () => {
     try {
@@ -328,17 +352,22 @@ function TypingGame({ language, onLanguageChange }: { language: Language; onLang
   useEffect(() => { void loadLeaderboard(); }, [loadLeaderboard]);
 
   const newWord = useCallback(() => {
-    const words = GAME_WORDS[language];
+    const game = GAME_MODES.find((item) => item.id === gameId) || GAME_MODES[0];
+    const words = game.words[language];
     setWord(words[Math.floor(Math.random() * words.length)]);
     setPosition(8);
     setLane(12 + Math.floor(Math.random() * 70));
     setInput("");
-  }, [language]);
+  }, [gameId, language]);
 
   useEffect(() => {
     try { setBest(Number(localStorage.getItem(`roomkhoj_typing_game_${language}`) || 0)); } catch { setBest(0); }
     setRunning(false); setScore(0); setLives(3); setInput(""); setPosition(8);
   }, [language]);
+
+  useEffect(() => {
+    setRunning(false); setScore(0); setLives(3); setInput(""); setPosition(8); setSubmittedScore(null);
+  }, [gameId]);
 
   useEffect(() => {
     if (lives !== 0 || score <= 0 || submittedScore === score) return;
@@ -390,9 +419,11 @@ function TypingGame({ language, onLanguageChange }: { language: Language; onLang
   const winner = leaderboard[0];
   return <div className="mx-auto max-w-6xl px-4 py-5 sm:px-6">
     <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-      <div><p className="text-xs font-black uppercase tracking-[.2em] text-red-500">Learn while playing</p><h1 className="text-2xl font-black sm:text-3xl">Word Drop Typing Game</h1></div>
+      <div><p className="text-xs font-black uppercase tracking-[.2em] text-red-500">7 RoomKhoj typing games</p><h1 className="text-2xl font-black sm:text-3xl">{selectedGame.emoji} {language === "nepali" ? selectedGame.nepaliName : selectedGame.name}</h1><p className="mt-1 text-sm font-semibold text-slate-500">{selectedGame.description}</p></div>
       <div className="flex rounded-2xl bg-slate-200/70 p-1"><LanguageButton active={language === "english"} onClick={() => onLanguageChange("english")}>English</LanguageButton><LanguageButton active={language === "nepali"} onClick={() => onLanguageChange("nepali")}>नेपाली</LanguageButton></div>
     </div>
+
+    <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">{GAME_MODES.map((game, index) => <button key={game.id} onClick={() => setGameId(game.id)} className={`rounded-2xl border p-3 text-left transition ${gameId === game.id ? "border-red-500 bg-red-50 shadow-md ring-2 ring-red-100" : "border-slate-200 bg-white hover:border-red-200 hover:bg-red-50/40"}`}><span className="text-2xl">{game.emoji}</span><span className="mt-2 block text-[10px] font-black uppercase text-slate-400">Game {index + 1}</span><span className="block text-xs font-black leading-4">{language === "nepali" ? game.nepaliName : game.name}</span></button>)}</div>
 
     <div className="mb-4 overflow-hidden rounded-3xl bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 p-[2px] shadow-lg">
       <div className="flex flex-col gap-3 rounded-[22px] bg-slate-950 px-5 py-4 text-white sm:flex-row sm:items-center sm:justify-between">
@@ -412,9 +443,9 @@ function TypingGame({ language, onLanguageChange }: { language: Language; onLang
     <div onClick={() => gameInputRef.current?.focus()} className="relative h-[430px] overflow-hidden rounded-3xl border-4 border-white bg-gradient-to-b from-sky-100 via-indigo-50 to-emerald-100 shadow-xl sm:h-[520px]">
       <div className="absolute inset-x-0 top-0 h-24 bg-[radial-gradient(circle_at_20%_40%,white_0_10%,transparent_11%),radial-gradient(circle_at_70%_50%,white_0_12%,transparent_13%)] opacity-70" />
       <div className="absolute inset-x-0 bottom-0 h-14 bg-emerald-300/70" />
-      {running && <div className="absolute z-10 -translate-x-1/2 rounded-2xl border-2 border-indigo-200 bg-white px-5 py-2.5 text-xl font-black text-indigo-950 shadow-lg transition-[top] duration-100 sm:text-2xl" style={{ left: `${lane}%`, top: `${position}%` }}>{word}</div>}
+      {running && <div className="absolute z-10 max-w-[85%] -translate-x-1/2 rounded-2xl border-2 border-indigo-200 bg-white px-4 py-2.5 text-center text-base font-black text-indigo-950 shadow-lg transition-[top] duration-100 sm:px-5 sm:text-2xl" style={{ left: `${lane}%`, top: `${position}%` }}>{word}</div>}
 
-      {!running && <div className="absolute inset-0 z-20 grid place-items-center bg-slate-950/25 p-5 backdrop-blur-[2px]"><div className="max-w-md rounded-3xl bg-white p-7 text-center shadow-2xl"><span className="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-red-100 text-red-600"><Gamepad2 className="h-8 w-8" /></span><h2 className="mt-4 text-2xl font-black">{gameOver ? "Game Over" : "शब्द खस्न नदिनुहोस्!"}</h2><p className="mt-2 text-sm leading-6 text-slate-500">खसिरहेको शब्द तल पुग्नुअघि टाइप गर्नुहोस्। Score बढेसँगै game छिटो हुन्छ।</p>{gameOver && <div className="mt-3"><p className="text-lg font-black text-red-600">Your score: {score} · Level {Math.min(100, Math.floor(score / 500) + 1)}</p><p className="mt-1 text-xs font-bold text-slate-500">{user ? "तपाईंको best score global leaderboard मा save भयो।" : "Leaderboard मा नाम देखाउन login गरेर खेल्नुहोस्।"}</p></div>}<button onClick={start} className="mx-auto mt-5 inline-flex items-center gap-2 rounded-xl bg-red-600 px-6 py-3 font-black text-white shadow-lg shadow-red-200 hover:bg-red-700"><Play className="h-4 w-4 fill-current" /> {gameOver ? "Play again" : "Start game"}</button></div></div>}
+      {!running && <div className="absolute inset-0 z-20 grid place-items-center bg-slate-950/25 p-5 backdrop-blur-[2px]"><div className="max-w-md rounded-3xl bg-white p-7 text-center shadow-2xl"><span className="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-red-100 text-3xl shadow-sm">{selectedGame.emoji}</span><h2 className="mt-4 text-2xl font-black">{gameOver ? "Game Over" : language === "nepali" ? selectedGame.nepaliName : selectedGame.name}</h2><p className="mt-2 text-sm leading-6 text-slate-500">{selectedGame.description}। खसिरहेको शब्द तल पुग्नुअघि टाइप गर्नुहोस्।</p>{gameOver && <div className="mt-3"><p className="text-lg font-black text-red-600">Your score: {score} · Level {Math.min(100, Math.floor(score / 500) + 1)}</p><p className="mt-1 text-xs font-bold text-slate-500">{user ? "तपाईंको best score global leaderboard मा save भयो।" : "Leaderboard मा नाम देखाउन login गरेर खेल्नुहोस्।"}</p></div>}<button onClick={start} className="mx-auto mt-5 inline-flex items-center gap-2 rounded-xl bg-red-600 px-6 py-3 font-black text-white shadow-lg shadow-red-200 hover:bg-red-700"><Play className="h-4 w-4 fill-current" /> {gameOver ? "Play again" : "Start game"}</button></div></div>}
     </div>
 
     <div className="relative mx-auto -mt-8 w-[calc(100%-2rem)] max-w-2xl rounded-2xl border border-slate-200 bg-white p-3 shadow-xl sm:p-4">
