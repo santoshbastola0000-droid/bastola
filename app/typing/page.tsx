@@ -24,26 +24,50 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 type Language = "english" | "nepali";
-type Lesson = { title: string; subtitle: string; level: string; text: string };
+type Lesson = { title: string; subtitle: string; level: string; text: string; targetWpm: number };
 
-const LESSONS: Record<Language, Lesson[]> = {
-  english: [
-    { title: "Home row", subtitle: "F and J keys", level: "Beginner", text: "fff jjj fjf jfj fff jjj fjf jfj" },
-    { title: "Home row words", subtitle: "A S D F J K L", level: "Beginner", text: "ask dad; fall; flask; salad; all sad;" },
-    { title: "Top row", subtitle: "Q W E R T Y U I O P", level: "Beginner", text: "quiet power write type your proper route" },
-    { title: "Simple sentences", subtitle: "Build accuracy", level: "Intermediate", text: "The room is clean and bright. Practice typing every day." },
-    { title: "Everyday English", subtitle: "Real sentences", level: "Intermediate", text: "RoomKhoj helps people find rooms and jobs across Nepal quickly and easily." },
-    { title: "Speed builder", subtitle: "Keep a steady rhythm", level: "Advanced", text: "Accuracy comes before speed. Keep your fingers relaxed and look at the screen while you type." },
-  ],
-  nepali: [
-    { title: "नेपाली अक्षर", subtitle: "सजिला अक्षर अभ्यास", level: "सुरुवात", text: "क ख ग घ क ख ग घ क ख ग घ" },
-    { title: "सजिला शब्द", subtitle: "दैनिक प्रयोगका शब्द", level: "सुरुवात", text: "घर कोठा पानी बाटो काम नाम साथी राम्रो नेपाल" },
-    { title: "सानो वाक्य", subtitle: "शब्द र खाली ठाउँ", level: "सुरुवात", text: "म नेपाली टाइप गर्न सिक्दै छु।" },
-    { title: "दैनिक अभ्यास", subtitle: "सही अक्षरमा ध्यान", level: "मध्यम", text: "म हरेक दिन दश मिनेट टाइपिङ अभ्यास गर्छु।" },
-    { title: "रुमखोज वाक्य", subtitle: "व्यावहारिक नेपाली", level: "मध्यम", text: "रुमखोजले नेपालभर कोठा र रोजगारी खोज्न सजिलो बनाउँछ।" },
-    { title: "गति अभ्यास", subtitle: "लामो वाक्य", level: "उन्नत", text: "छिटो टाइप गर्नुभन्दा पहिले सही टाइप गर्ने बानी बसाल्नुहोस् र नियमित अभ्यास गर्नुहोस्।" },
-  ],
-};
+const ENGLISH_PRACTICE = [
+  "fff jjj fjf jfj asdf jkl; ask dad fall flask salad",
+  "quiet power write type your proper route every time",
+  "The room is clean and bright. Practice typing every day.",
+  "Keep your fingers relaxed and return them to the home row after every key.",
+  "RoomKhoj helps people find suitable rooms and useful jobs across Nepal quickly.",
+  "Fast typing grows from accuracy, steady rhythm, correct posture, and daily focused practice.",
+  "A skilled typist reads ahead, keeps both hands balanced, and corrects mistakes without losing rhythm.",
+  "Speed is useful only when the words remain accurate, clear, and easy for another person to understand.",
+];
+
+const NEPALI_PRACTICE = [
+  "क ख ग घ ङ च छ ज झ ञ क ख ग घ",
+  "घर कोठा पानी बाटो काम नाम साथी राम्रो नेपाल",
+  "म नेपाली टाइप गर्न सिक्दै छु र हरेक दिन अभ्यास गर्छु।",
+  "सही औँलाले अक्षर थिचेर बिस्तारै आफ्नो गति बढाउनुहोस्।",
+  "रुमखोजले नेपालभर कोठा र रोजगारी खोज्न सजिलो बनाउँछ।",
+  "छिटो टाइप गर्न शुद्धता, सही आसन र नियमित अभ्यास सबैभन्दा आवश्यक हुन्छ।",
+  "दुवै हातलाई सन्तुलित राखेर स्क्रिनमा हेर्दै निरन्तर एउटै लयमा टाइप गर्नुहोस्।",
+  "गति बढाउँदा हिज्जे र अक्षर नबिगार्नुहोस् किनकि सही टाइपिङ नै राम्रो सीपको आधार हो।",
+];
+
+function buildLessons(language: Language): Lesson[] {
+  const samples = language === "english" ? ENGLISH_PRACTICE : NEPALI_PRACTICE;
+  return Array.from({ length: 100 }, (_, index) => {
+    const number = index + 1;
+    const stage = Math.min(samples.length - 1, Math.floor(index / 13));
+    const repetitions = number < 21 ? 1 : number < 51 ? 2 : number < 81 ? 3 : 4;
+    const text = Array.from({ length: repetitions }, (__, repeat) => samples[(stage + repeat) % samples.length]).join(" ");
+    const targetWpm = language === "english" ? Math.min(80, 12 + Math.floor(index * 0.7)) : Math.min(55, 8 + Math.floor(index * 0.48));
+    const level = number <= 25 ? (language === "english" ? "Beginner" : "सुरुवात") : number <= 60 ? (language === "english" ? "Intermediate" : "मध्यम") : number <= 85 ? (language === "english" ? "Advanced" : "उन्नत") : (language === "english" ? "Speed master" : "गति विशेषज्ञ");
+    return {
+      title: language === "english" ? `Level ${number}` : `स्तर ${number}`,
+      subtitle: number <= 20 ? (language === "english" ? "Keys and accuracy" : "अक्षर र शुद्धता") : number <= 60 ? (language === "english" ? "Words and rhythm" : "शब्द र लय") : (language === "english" ? `${targetWpm} WPM speed challenge` : `${targetWpm} WPM गति चुनौती`),
+      level,
+      text,
+      targetWpm,
+    };
+  });
+}
+
+const LESSONS: Record<Language, Lesson[]> = { english: buildLessons("english"), nepali: buildLessons("nepali") };
 
 const KEY_ROWS = [
   ["`", "1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "-", "="],
@@ -182,15 +206,16 @@ export default function TypingPracticePage() {
 
         <section className="min-w-0 space-y-4">
           <div className="overflow-hidden rounded-3xl bg-gradient-to-br from-slate-950 via-slate-900 to-red-950 px-5 py-6 text-white shadow-xl sm:px-7">
-            <div className="flex items-start justify-between gap-4"><div><p className="text-xs font-black uppercase tracking-[.2em] text-red-400">Lesson {lessonIndex + 1} · {lesson.level}</p><h1 className="mt-2 text-2xl font-black sm:text-3xl">{lesson.title}</h1><p className="mt-1 text-sm text-slate-300">{lesson.subtitle} · सही अक्षर टाइप गर्दै speed बढाउनुहोस्।</p></div><Languages className="hidden h-16 w-16 text-white/10 sm:block" /></div>
+            <div className="flex items-start justify-between gap-4"><div><p className="text-xs font-black uppercase tracking-[.2em] text-red-400">Lesson {lessonIndex + 1} of 100 · {lesson.level}</p><h1 className="mt-2 text-2xl font-black sm:text-3xl">{lesson.title}</h1><p className="mt-1 text-sm text-slate-300">{lesson.subtitle} · Target {lesson.targetWpm} WPM · सही अक्षर टाइप गर्दै speed बढाउनुहोस्।</p></div><Languages className="hidden h-16 w-16 text-white/10 sm:block" /></div>
             <div className="mt-5 h-2 overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full bg-red-500 transition-all duration-200" style={{ width: `${stats.progress}%` }} /></div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
             <Stat icon={<Gauge className="h-4 w-4" />} label="Words/min" value={String(stats.wpm)} tone="red" />
             <Stat icon={<Target className="h-4 w-4" />} label="Accuracy" value={`${stats.accuracy}%`} tone="emerald" />
             <Stat icon={<Clock3 className="h-4 w-4" />} label="Time" value={formatTime(elapsed)} tone="blue" />
             <Stat icon={<Sparkles className="h-4 w-4" />} label="Errors" value={String(stats.errors)} tone="amber" />
+            <Stat icon={<Trophy className="h-4 w-4" />} label="Target WPM" value={String(lesson.targetWpm)} tone="red" />
           </div>
 
           <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-7">
@@ -209,7 +234,7 @@ export default function TypingPracticePage() {
               setTyped(next); playKeySound();
             }} />
 
-            {complete ? <div className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 p-5"><div className="flex items-center gap-3"><span className="grid h-11 w-11 place-items-center rounded-full bg-emerald-500 text-white"><Medal className="h-6 w-6" /></span><div><p className="font-black text-emerald-900">Lesson complete! 🎉</p><p className="text-sm text-emerald-700">{stats.wpm} WPM र {stats.accuracy}% accuracy</p></div></div></div> : <div className="mt-4 flex items-center justify-center gap-2 text-sm text-slate-500"><span className="font-semibold">Next key:</span><kbd className="min-w-9 rounded-lg border border-b-2 border-slate-300 bg-white px-2 py-1 text-center font-black text-slate-900">{nextCharacter === " " ? "Space" : nextCharacter}</kbd>{language === "english" && nextCharacter !== " " ? <span className="hidden sm:inline">· {FINGER_MAP[nextCharacter.toLowerCase()] ?? "Use the nearest finger"}</span> : null}</div>}
+            {complete ? <div className={`mt-5 rounded-2xl border p-5 ${stats.wpm >= lesson.targetWpm && stats.accuracy >= 90 ? "border-emerald-200 bg-emerald-50" : "border-amber-200 bg-amber-50"}`}><div className="flex items-center gap-3"><span className={`grid h-11 w-11 place-items-center rounded-full text-white ${stats.wpm >= lesson.targetWpm && stats.accuracy >= 90 ? "bg-emerald-500" : "bg-amber-500"}`}><Medal className="h-6 w-6" /></span><div><p className="font-black text-slate-900">{stats.wpm >= lesson.targetWpm && stats.accuracy >= 90 ? "Speed target achieved! 🎉" : "Lesson complete—speed फेरि अभ्यास गर्नुहोस्"}</p><p className="text-sm text-slate-600">तपाईंको {stats.wpm} WPM · लक्ष्य {lesson.targetWpm} WPM · {stats.accuracy}% accuracy</p></div></div></div> : <div className="mt-4 flex items-center justify-center gap-2 text-sm text-slate-500"><span className="font-semibold">Next key:</span><kbd className="min-w-9 rounded-lg border border-b-2 border-slate-300 bg-white px-2 py-1 text-center font-black text-slate-900">{nextCharacter === " " ? "Space" : nextCharacter}</kbd>{language === "english" && nextCharacter !== " " ? <span className="hidden sm:inline">· {FINGER_MAP[nextCharacter.toLowerCase()] ?? "Use the nearest finger"}</span> : null}</div>}
 
             {language === "english" ? <VirtualKeyboard activeKey={nextCharacter.toLowerCase()} /> : <div className="mt-5 rounded-2xl bg-indigo-50 p-4 text-center text-sm font-semibold text-indigo-800">नेपाली अभ्यासका लागि आफ्नो device को Nepali keyboard छान्नुहोस्। Windows मा <kbd className="rounded bg-white px-1.5 py-0.5">Win + Space</kbd> प्रयोग गर्न सक्नुहुन्छ।</div>}
 
