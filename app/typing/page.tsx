@@ -144,6 +144,21 @@ const FINGER_MAP: Record<string, string> = {
   l: "Right ring", p: "Right little", ";": "Right little", "'": "Right little",
 };
 
+const NEPALI_ROMAN: Record<string, string> = {
+  "अ": "a", "आ": "aa", "इ": "i", "ई": "ii", "उ": "u", "ऊ": "uu", "ए": "e", "ऐ": "ai", "ओ": "o", "औ": "au",
+  "क": "ka", "ख": "kha", "ग": "ga", "घ": "gha", "ङ": "nga", "च": "cha", "छ": "chha", "ज": "ja", "झ": "jha", "ञ": "nya",
+  "ट": "Ta", "ठ": "Tha", "ड": "Da", "ढ": "Dha", "ण": "Na", "त": "ta", "थ": "tha", "द": "da", "ध": "dha", "न": "na",
+  "प": "pa", "फ": "pha", "ब": "ba", "भ": "bha", "म": "ma", "य": "ya", "र": "ra", "ल": "la", "व": "wa", "श": "sha", "ष": "shha", "स": "sa", "ह": "ha",
+};
+
+const NEPALI_KEY_LABELS: Record<string, string> = { a: "अ", i: "इ", u: "उ", e: "ए", o: "ओ", k: "क", g: "ग", c: "च", j: "ज", t: "त", d: "द", n: "न", p: "प", f: "फ", b: "ब", m: "म", y: "य", r: "र", l: "ल", v: "व", w: "व", s: "स", h: "ह" };
+
+const NEPALI_WORD_GUIDE = [
+  ["ghar", "घर"], ["kotha", "कोठा"], ["paani", "पानी"], ["bhaadaa", "भाडा"],
+  ["kamaai", "कमाइ"], ["paisa", "पैसा"], ["rakama", "रकम"], ["saathi", "साथी"],
+  ["Nepal", "नेपाल"], ["RoomKhoj", "रुमखोज"],
+];
+
 function formatTime(seconds: number) {
   return `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
 }
@@ -296,8 +311,9 @@ export default function TypingPracticePage() {
 
             {complete ? <div className={`mt-5 rounded-2xl border p-5 ${stats.wpm >= lesson.targetWpm && stats.accuracy >= 90 ? "border-emerald-200 bg-emerald-50" : "border-amber-200 bg-amber-50"}`}><div className="flex items-center gap-3"><span className={`grid h-11 w-11 place-items-center rounded-full text-white ${stats.wpm >= lesson.targetWpm && stats.accuracy >= 90 ? "bg-emerald-500" : "bg-amber-500"}`}><Medal className="h-6 w-6" /></span><div><p className="font-black text-slate-900">{stats.wpm >= lesson.targetWpm && stats.accuracy >= 90 ? "Speed target achieved! 🎉" : "Lesson complete—speed फेरि अभ्यास गर्नुहोस्"}</p><p className="text-sm text-slate-600">तपाईंको {stats.wpm} WPM · लक्ष्य {lesson.targetWpm} WPM · {stats.accuracy}% accuracy</p></div></div></div> : <div className="mt-4 flex items-center justify-center gap-2 text-sm text-slate-500"><span className="font-semibold">Next key:</span><kbd className="min-w-9 rounded-lg border border-b-2 border-slate-300 bg-white px-2 py-1 text-center font-black text-slate-900">{nextCharacter === " " ? "Space" : nextCharacter}</kbd>{language === "english" && nextCharacter !== " " ? <span className="hidden sm:inline">· {FINGER_MAP[nextCharacter.toLowerCase()] ?? "Use the nearest finger"}</span> : null}</div>}
 
-            <VirtualKeyboard activeKey={nextCharacter.toLowerCase()} />
-            {language === "nepali" && <div className="mt-3 rounded-2xl bg-indigo-50 p-3 text-center text-xs font-semibold text-indigo-800">नेपाली keyboard छान्न Windows मा <kbd className="rounded bg-white px-1.5 py-0.5">Win + Space</kbd> प्रयोग गर्नुहोस्। Keyboard र hand-position guide माथि सधैँ देखिन्छ।</div>}
+            {language === "nepali" && <NepaliRomanGuide nextCharacter={nextCharacter} />}
+            <VirtualKeyboard activeKey={language === "nepali" ? (NEPALI_ROMAN[nextCharacter]?.[0] || "") : nextCharacter.toLowerCase()} language={language} />
+            {language === "nepali" && <div className="mt-3 rounded-2xl bg-indigo-50 p-3 text-center text-xs font-semibold text-indigo-800">Romanized Nepali input छान्नुहोस्। Windows keyboard बदल्न <kbd className="rounded bg-white px-1.5 py-0.5">Win + Space</kbd> प्रयोग गर्न सक्नुहुन्छ। Device अनुसार spelling अलि फरक हुन सक्छ।</div>}
 
             <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-5"><button onClick={reset} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-bold text-slate-600 transition hover:bg-slate-50"><RotateCcw className="h-4 w-4" /> Restart</button><button onClick={nextLesson} className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-5 py-2.5 text-sm font-black text-white shadow-lg shadow-red-200 transition hover:bg-red-700">{complete ? "Continue" : "Skip lesson"}<ChevronRight className="h-4 w-4" /></button></div>
           </div>
@@ -316,11 +332,22 @@ function Stat({ icon, label, value, tone }: { icon: ReactNode; label: string; va
   return <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4"><span className={`grid h-9 w-9 place-items-center rounded-xl ${colors[tone]}`}>{icon}</span><span><span className="block text-lg font-black leading-none sm:text-xl">{value}</span><span className="mt-1 block text-[11px] font-bold text-slate-400">{label}</span></span></div>;
 }
 
-function VirtualKeyboard({ activeKey }: { activeKey: string }) {
+function NepaliRomanGuide({ nextCharacter }: { nextCharacter: string }) {
+  const roman = NEPALI_ROMAN[nextCharacter];
+  return <div className="mt-5 rounded-2xl border border-indigo-200 bg-gradient-to-r from-indigo-50 to-violet-50 p-4">
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div><p className="text-xs font-black uppercase tracking-wider text-indigo-500">Roman → नेपाली guide</p><p className="mt-1 text-sm font-bold text-indigo-950">English letters टाइप गर्दा कुन नेपाली बन्छ हेर्नुहोस्।</p></div>
+      {roman && <div className="flex items-center gap-2 rounded-xl bg-white px-4 py-2 shadow-sm"><kbd className="font-black text-red-600">{roman}</kbd><span className="text-slate-400">→</span><span className="text-2xl font-black text-indigo-900">{nextCharacter}</span></div>}
+    </div>
+    <div className="mt-3 flex gap-2 overflow-x-auto pb-1">{NEPALI_WORD_GUIDE.map(([english, nepali]) => <div key={english} className="min-w-fit rounded-xl border border-indigo-100 bg-white px-3 py-2 text-center shadow-sm"><span className="block text-[10px] font-black text-red-500">{english}</span><span className="block text-sm font-black text-slate-900">{nepali}</span></div>)}</div>
+  </div>;
+}
+
+function VirtualKeyboard({ activeKey, language = "english" }: { activeKey: string; language?: Language }) {
   const activeFinger = activeKey === " " ? "Thumbs" : FINGER_MAP[activeKey] || "";
   return <div className="relative mx-auto mt-6 block max-w-3xl select-none overflow-hidden rounded-2xl border border-slate-300 bg-slate-200 p-2 pb-3 shadow-inner sm:p-3">
     <div className="relative z-10 mb-1 text-center"><span className="inline-block rounded-full bg-slate-900/85 px-3 py-1 text-[10px] font-black text-white shadow">{activeKey === " " ? "Use thumbs for Space" : activeFinger ? `Next: ${activeKey.toUpperCase()} · ${activeFinger} finger` : "Keep fingers on ASDF and JKL;"}</span></div>
-    <div className="relative z-10 space-y-1 sm:space-y-1.5">{KEY_ROWS.map((row, rowIndex) => <div key={rowIndex} className="flex justify-center gap-0.5 sm:gap-1.5">{row.map((key) => <span key={key} className={`grid h-8 min-w-6 flex-1 place-items-center rounded-md border border-b-2 text-[9px] font-black uppercase transition sm:h-10 sm:min-w-10 sm:flex-none sm:rounded-lg sm:text-xs ${activeKey === key ? "relative z-30 -translate-y-1 border-red-700 bg-red-600 text-white shadow-[0_10px_22px_rgba(220,38,38,.75),0_0_0_4px_rgba(254,202,202,.95)]" : "border-slate-400 bg-white/85 text-slate-700 shadow-[0_2px_0_rgba(100,116,139,.22)]"}`}>{key}</span>)}</div>)}<div className="flex justify-center"><span className={`mt-0.5 grid h-8 w-40 place-items-center rounded-lg border border-b-2 text-[9px] font-black uppercase sm:h-9 sm:w-64 sm:text-[10px] ${activeKey === " " ? "relative z-30 -translate-y-1 border-red-700 bg-red-600 text-white shadow-[0_10px_22px_rgba(220,38,38,.75),0_0_0_4px_rgba(254,202,202,.95)]" : "border-slate-400 bg-white/85 text-slate-600"}`}>Space</span></div></div>
+    <div className="relative z-10 space-y-1 sm:space-y-1.5">{KEY_ROWS.map((row, rowIndex) => <div key={rowIndex} className="flex justify-center gap-0.5 sm:gap-1.5">{row.map((key) => <span key={key} className={`grid h-8 min-w-6 flex-1 place-items-center rounded-md border border-b-2 text-[8px] font-black uppercase leading-none transition sm:h-10 sm:min-w-10 sm:flex-none sm:rounded-lg sm:text-[10px] ${activeKey === key ? "relative z-30 -translate-y-1 border-red-700 bg-red-600 text-white shadow-[0_10px_22px_rgba(220,38,38,.75),0_0_0_4px_rgba(254,202,202,.95)]" : "border-slate-400 bg-white/85 text-slate-700 shadow-[0_2px_0_rgba(100,116,139,.22)]"}`}><span>{key}</span>{language === "nepali" && NEPALI_KEY_LABELS[key] && <span className="mt-0.5 text-[10px] font-black sm:text-sm">{NEPALI_KEY_LABELS[key]}</span>}</span>)}</div>)}<div className="flex justify-center"><span className={`mt-0.5 grid h-8 w-40 place-items-center rounded-lg border border-b-2 text-[9px] font-black uppercase sm:h-9 sm:w-64 sm:text-[10px] ${activeKey === " " ? "relative z-30 -translate-y-1 border-red-700 bg-red-600 text-white shadow-[0_10px_22px_rgba(220,38,38,.75),0_0_0_4px_rgba(254,202,202,.95)]" : "border-slate-400 bg-white/85 text-slate-600"}`}>Space</span></div></div>
     <div className="pointer-events-none absolute inset-x-0 bottom-[-23px] z-20 flex items-center justify-center gap-8 opacity-75 sm:gap-28 [&_p]:hidden">
       <HandDiagram side="Left" activeFinger={activeFinger} />
       <HandDiagram side="Right" activeFinger={activeFinger} />
