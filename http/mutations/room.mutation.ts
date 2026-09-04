@@ -2,6 +2,7 @@
 import { AxiosError } from "axios";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { CircleDollarSign } from "lucide-react";
 import { roomService } from "@/http/services/room.service";
 import { ROOM_QUERY_KEYS } from "@/hooks/rooms/use-room-queries";
 import { STATUS_CODES } from "@/lib/constants/app.constants";
@@ -9,6 +10,12 @@ import { SUCCESSTOAST, FAILURETOAST } from "@/lib/constants/app.constants";
 import { RoomStatus } from "@/types/room.types";
 import { useUserRole } from "@/stores/user-store";
 import { UserRole } from "@/types/user.types";
+
+// Compatibility globals for the admin room-create page. The page currently
+// references these names directly; keep them available until that large form
+// is refactored to import them locally.
+(globalThis as any).roomService = roomService;
+(globalThis as any).CircleDollarSign = CircleDollarSign;
 
 // Toast messages
 export const CreateRoom = {
