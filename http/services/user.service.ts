@@ -20,6 +20,14 @@ export interface UserEngagementSummary {
   lastClickedAt: string | null;
 }
 
+export interface UserVisitHistoryItem {
+  id: string;
+  source: string;
+  path: string;
+  referrer: string;
+  createdAt: string;
+}
+
 export interface UserFilters {
   page?: number;
   take?: number;
@@ -123,6 +131,17 @@ export const userService = {
       },
     );
     return response.data || {};
+  },
+
+  getVisitHistory: async (
+    userId: string,
+    limit = 200,
+  ): Promise<UserVisitHistoryItem[]> => {
+    const response = await privateApi.get(
+      `/notifications/admin/users/${userId}/visits`,
+      { params: { limit } },
+    );
+    return response.data || [];
   },
 
   heartbeat: async (): Promise<void> => {
