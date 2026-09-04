@@ -24,6 +24,7 @@ import { toast } from "sonner";
 import { NavBar } from "@/components/common/navbar";
 import Footer from "@/components/common/footer";
 import { candidateProfileService } from "@/http/services/candidate-profile.service";
+import { messageService } from "@/http/services/message.service";
 
 export default function CandidateDetailPage() {
   const params = useParams();
@@ -61,14 +62,29 @@ export default function CandidateDetailPage() {
       const data = contact?.phone
         ? contact
         : await candidateProfileService.revealContact(id, { action: "VIEW_CONTACT" });
+
       if (!data?.phone) {
         toast.error("यो candidate को RoomKhoj contact उपलब्ध छैन।");
         return;
       }
+
       setContact(data);
-      router.push(`/messages?phone=${encodeURIComponent(String(data.phone))}&returnTo=${encodeURIComponent(`/jobs/candidates/${id}`)}`);
+      const started = await messageService.startByContact(String(data.phone));
+      const conversationId = started?.conversation?.id;
+
+      if (!conversationId) {
+        toast.error("यो candidate को RoomKhoj account भेटिएन।");
+        return;
+      }
+
+      router.push(
+        `/messages?conversation=${encodeURIComponent(conversationId)}&returnTo=${encodeURIComponent(`/jobs/candidates/${id}`)}`,
+      );
     } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Candidate लाई message खोल्न सकिएन।");
+      toast.error(
+        err?.response?.data?.message ||
+          "यो candidate को RoomKhoj account भेटिएन वा message खोल्न सकिएन।",
+      );
     } finally {
       setOpeningMessage(false);
     }
