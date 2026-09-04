@@ -51,18 +51,75 @@ const NEPALI_PRACTICE = [
   "गति बढाउँदा हिज्जे र अक्षर नबिगार्नुहोस् किनकि सही टाइपिङ नै राम्रो सीपको आधार हो।",
 ];
 
+const ENGLISH_BEGINNER = [
+  { keys: "F · J", text: "f j f j ff jj fj jf f j fj jf" },
+  { keys: "F · J", text: "fff jjj fjf jfj jfjj fjff" },
+  { keys: "D · K", text: "d k d k dd kk dk kd f d j k" },
+  { keys: "D F · J K", text: "df jk df jk fd kj dfd jkj" },
+  { keys: "S · L", text: "s l s l ss ll sl ls d s k l" },
+  { keys: "S D F · J K L", text: "sdf jkl sdf jkl lkj fds" },
+  { keys: "A · ;", text: "a ; a ; aa ;; a; ;a as l;" },
+  { keys: "Home row", text: "asdf jkl; asdf jkl; fdsa ;lkj" },
+  { keys: "Home-row words", text: "ask dad sad fall all flask salad" },
+  { keys: "G · H", text: "g h g h gg hh gh hg flag hall" },
+  { keys: "E · I", text: "e i e i ee ii ei ie idea like" },
+  { keys: "R · U", text: "r u r u rr uu ru ur rule user" },
+  { keys: "W · O", text: "w o w o ww oo wo ow word room" },
+  { keys: "Q · P", text: "q p q p qq pp qp pq quick post" },
+  { keys: "Top row", text: "qwerty uiop type room quiet power" },
+  { keys: "C · M", text: "c m c m cc mm cm mc come income" },
+  { keys: "V · N", text: "v n v n vv nn vn nv new available" },
+  { keys: "B", text: "b b bb bbb balance bonus bedroom" },
+  { keys: "X · ,", text: "x , x , xx ,, extra rent, room," },
+  { keys: "Z · .", text: "z . z . zz .. prize. size. zone." },
+  { keys: "Bottom row", text: "zxcvbnm income balance commission" },
+  { keys: "Capital letters", text: "Room RoomKhoj Nepal Pokhara Wallet" },
+  { keys: "Numbers", text: "1 2 3 4 5 10 12 30 50 100 499" },
+  { keys: "Short phrase", text: "post room earn money" },
+  { keys: "Easy sentence", text: "I earn money from a successful room deal." },
+];
+
+const NEPALI_BEGINNER = [
+  { keys: "स्वर अ · आ", text: "अ आ अ आ अआ आअ अ आ" },
+  { keys: "स्वर इ · ई", text: "इ ई इ ई इई ईइ अ आ इ ई" },
+  { keys: "स्वर उ · ऊ", text: "उ ऊ उ ऊ उऊ ऊउ इ ई उ ऊ" },
+  { keys: "ए · ऐ · ओ · औ", text: "ए ऐ ओ औ ए ऐ ओ औ" },
+  { keys: "क · ख", text: "क ख क ख कक खख कख खक" },
+  { keys: "ग · घ", text: "ग घ ग घ गग घघ गघ घग" },
+  { keys: "च · छ", text: "च छ च छ चच छछ चछ छच" },
+  { keys: "ज · झ", text: "ज झ ज झ जज झझ जझ झज" },
+  { keys: "ट · ठ · ड · ढ", text: "ट ठ ड ढ ट ठ ड ढ" },
+  { keys: "त · थ · द · ध", text: "त थ द ध त थ द ध" },
+  { keys: "प · फ · ब · भ", text: "प फ ब भ प फ ब भ" },
+  { keys: "म · य · र · ल", text: "म य र ल म य र ल" },
+  { keys: "व · श · स · ह", text: "व श स ह व श स ह" },
+  { keys: "आकार मात्रा", text: "का खा गा चा जा ता पा मा" },
+  { keys: "इकार मात्रा", text: "कि खि गि चि जि ति पि मि" },
+  { keys: "ईकार मात्रा", text: "की खी गी ची जी ती पी मी" },
+  { keys: "उकार मात्रा", text: "कु खु गु चु जु तु पु मु" },
+  { keys: "एकार मात्रा", text: "के खे गे चे जे ते पे मे" },
+  { keys: "सजिला शब्द", text: "घर काम नाम पानी साथी" },
+  { keys: "कोठाका शब्द", text: "कोठा घर भाडा पानी बाटो" },
+  { keys: "कमाइका शब्द", text: "कमाइ रकम पैसा वालेट" },
+  { keys: "दुई शब्द", text: "कोठा कमाइ सफल डिल" },
+  { keys: "सानो वाक्य", text: "कोठा खाली छ।" },
+  { keys: "सानो वाक्य", text: "मैले रकम कमाएँ।" },
+  { keys: "सजिलो अभ्यास", text: "कोठा पोस्ट गरेर कमाउनुहोस्।" },
+];
+
 function buildLessons(language: Language): Lesson[] {
   const samples = language === "english" ? ENGLISH_PRACTICE : NEPALI_PRACTICE;
   return Array.from({ length: 100 }, (_, index) => {
     const number = index + 1;
+    const beginner = language === "english" ? ENGLISH_BEGINNER[index] : NEPALI_BEGINNER[index];
     const stage = Math.min(samples.length - 1, Math.floor(index / 13));
     const repetitions = number < 21 ? 1 : number < 51 ? 2 : number < 81 ? 3 : 4;
-    const text = Array.from({ length: repetitions }, (__, repeat) => samples[(stage + repeat) % samples.length]).join(" ");
-    const targetWpm = language === "english" ? Math.min(80, 12 + Math.floor(index * 0.7)) : Math.min(55, 8 + Math.floor(index * 0.48));
+    const text = beginner?.text || Array.from({ length: repetitions }, (__, repeat) => samples[(stage + repeat) % samples.length]).join(" ");
+    const targetWpm = language === "english" ? Math.min(80, 5 + Math.floor(index * 0.76)) : Math.min(55, 4 + Math.floor(index * 0.52));
     const level = number <= 25 ? (language === "english" ? "Beginner" : "सुरुवात") : number <= 60 ? (language === "english" ? "Intermediate" : "मध्यम") : number <= 85 ? (language === "english" ? "Advanced" : "उन्नत") : (language === "english" ? "Speed master" : "गति विशेषज्ञ");
     return {
       title: language === "english" ? `Level ${number}` : `स्तर ${number}`,
-      subtitle: number <= 20 ? (language === "english" ? "Keys and accuracy" : "अक्षर र शुद्धता") : number <= 60 ? (language === "english" ? "Words and rhythm" : "शब्द र लय") : (language === "english" ? `${targetWpm} WPM speed challenge` : `${targetWpm} WPM गति चुनौती`),
+      subtitle: beginner ? (language === "english" ? `Learn ${beginner.keys} slowly` : `${beginner.keys} बिस्तारै सिक्नुहोस्`) : number <= 60 ? (language === "english" ? "Words and rhythm" : "शब्द र लय") : (language === "english" ? `${targetWpm} WPM speed challenge` : `${targetWpm} WPM गति चुनौती`),
       level,
       text,
       targetWpm,
