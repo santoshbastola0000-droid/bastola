@@ -22,6 +22,9 @@ import {
   VolumeX,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { api } from "@/http/api/api";
+import { privateApi } from "@/http/api/privateApi";
+import { useUserStore } from "@/stores/user-store";
 
 type Language = "english" | "nepali";
 type Lesson = { title: string; subtitle: string; level: string; text: string; targetWpm: number };
@@ -298,6 +301,7 @@ const GAME_WORDS: Record<Language, string[]> = {
 };
 
 function TypingGame({ language, onLanguageChange }: { language: Language; onLanguageChange: (language: Language) => void }) {
+  const { user } = useUserStore();
   const [running, setRunning] = useState(false);
   const [word, setWord] = useState("");
   const [input, setInput] = useState("");
@@ -306,7 +310,22 @@ function TypingGame({ language, onLanguageChange }: { language: Language; onLang
   const [score, setScore] = useState(0);
   const [lives, setLives] = useState(3);
   const [best, setBest] = useState(0);
+  const [submittedScore, setSubmittedScore] = useState<number | null>(null);
+  const [leaderboard, setLeaderboard] = useState<Array<{ userId: string; name: string; score: number; level: number; language: Language }>>([]);
+  const [leaderboardLoading, setLeaderboardLoading] = useState(true);
   const gameInputRef = useRef<HTMLInputElement>(null);
+
+  const loadLeaderboard = useCallback(async () => {
+    try {
+      setLeaderboardLoading(true);
+      const response = await api.get("/typing-game/leaderboard");
+      const rows = Array.isArray(response.data?.data) ? response.data.data : [];
+      setLeaderboard(rows.map((row: any) => ({ ...row, score: Number(row.score || 0), level: Number(row.level || 1) })));
+    } catch { setLeaderboard([]); }
+    finally { setLeaderboardLoading(false); }
+  }, []);
+
+  useEffect(() => { void loadLeaderboard(); }, [loadLeaderboard]);
 
   const newWord = useCallback(() => {
     const words = GAME_WORDS[language];
@@ -320,6 +339,15 @@ function TypingGame({ language, onLanguageChange }: { language: Language; onLang
     try { setBest(Number(localStorage.getItem(`roomkhoj_typing_game_${language}`) || 0)); } catch { setBest(0); }
     setRunning(false); setScore(0); setLives(3); setInput(""); setPosition(8);
   }, [language]);
+
+  useEffect(() => {
+    if (lives !== 0 || score <= 0 || submittedScore === score) return;
+    setSubmittedScore(score);
+    if (!user) return;
+    void privateApi.post("/typing-game/score", { score, language })
+      .then(() => loadLeaderboard())
+      .catch(() => undefined);
+  }, [language, lives, loadLeaderboard, score, submittedScore, user]);
 
   useEffect(() => {
     if (!running) return;
@@ -339,7 +367,7 @@ function TypingGame({ language, onLanguageChange }: { language: Language; onLang
   }, [newWord, position, running]);
 
   const start = () => {
-    setScore(0); setLives(3); setRunning(true); newWord();
+    setScore(0); setLives(3); setSubmittedScore(null); setRunning(true); newWord();
     window.setTimeout(() => gameInputRef.current?.focus(), 0);
   };
 
@@ -359,15 +387,25 @@ function TypingGame({ language, onLanguageChange }: { language: Language; onLang
   };
 
   const gameOver = !running && lives === 0;
+  const winner = leaderboard[0];
   return <div className="mx-auto max-w-6xl px-4 py-5 sm:px-6">
     <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
       <div><p className="text-xs font-black uppercase tracking-[.2em] text-red-500">Learn while playing</p><h1 className="text-2xl font-black sm:text-3xl">Word Drop Typing Game</h1></div>
       <div className="flex rounded-2xl bg-slate-200/70 p-1"><LanguageButton active={language === "english"} onClick={() => onLanguageChange("english")}>English</LanguageButton><LanguageButton active={language === "nepali"} onClick={() => onLanguageChange("nepali")}>नेपाली</LanguageButton></div>
     </div>
 
+    <div className="mb-4 overflow-hidden rounded-3xl bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 p-[2px] shadow-lg">
+      <div className="flex flex-col gap-3 rounded-[22px] bg-slate-950 px-5 py-4 text-white sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-3"><span className="grid h-12 w-12 place-items-center rounded-2xl bg-amber-400 text-slate-950 shadow-lg"><Trophy className="h-7 w-7" /></span><div><p className="text-[10px] font-black uppercase tracking-[.2em] text-amber-300">RoomKhoj Typing Winner</p><p className="text-xl font-black">{leaderboardLoading ? "Winner loading..." : winner?.name || "अहिलेसम्म winner छैन"}</p></div></div>
+        {winner && <div className="flex gap-5 text-sm"><div><span className="block text-[10px] font-bold uppercase text-slate-400">Score</span><span className="text-lg font-black text-amber-300">{winner.score}</span></div><div><span className="block text-[10px] font-bold uppercase text-slate-400">Level</span><span className="text-lg font-black">{winner.level}/100</span></div><div><span className="block text-[10px] font-bold uppercase text-slate-400">Language</span><span className="text-sm font-black capitalize">{winner.language}</span></div></div>}
+      </div>
+    </div>
+
+    {leaderboard.length > 1 && <div className="mb-4 flex gap-2 overflow-x-auto pb-1">{leaderboard.slice(1, 6).map((player, index) => <div key={`${player.userId}-${player.language}`} className="min-w-[170px] rounded-2xl border border-slate-200 bg-white p-3 shadow-sm"><p className="text-xs font-black text-slate-400">#{index + 2}</p><p className="truncate text-sm font-black">{player.name}</p><p className="mt-1 text-xs font-bold text-red-600">{player.score} pts · Level {player.level}</p></div>)}</div>}
+
     <div className="mb-3 grid grid-cols-3 gap-3">
       <Stat icon={<Trophy className="h-4 w-4" />} label="Score" value={String(score)} tone="red" />
-      <Stat icon={<Medal className="h-4 w-4" />} label="Best score" value={String(best)} tone="amber" />
+      <Stat icon={<Medal className="h-4 w-4" />} label="Best · Level" value={`${best} · ${Math.min(100, Math.floor(best / 500) + 1)}`} tone="amber" />
       <div className="flex items-center justify-center gap-1 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm" aria-label={`${lives} lives left`}>{[0, 1, 2].map((life) => <Heart key={life} className={`h-6 w-6 ${life < lives ? "fill-red-500 text-red-500" : "fill-slate-100 text-slate-200"}`} />)}</div>
     </div>
 
@@ -376,7 +414,7 @@ function TypingGame({ language, onLanguageChange }: { language: Language; onLang
       <div className="absolute inset-x-0 bottom-0 h-14 bg-emerald-300/70" />
       {running && <div className="absolute z-10 -translate-x-1/2 rounded-2xl border-2 border-indigo-200 bg-white px-5 py-2.5 text-xl font-black text-indigo-950 shadow-lg transition-[top] duration-100 sm:text-2xl" style={{ left: `${lane}%`, top: `${position}%` }}>{word}</div>}
 
-      {!running && <div className="absolute inset-0 z-20 grid place-items-center bg-slate-950/25 p-5 backdrop-blur-[2px]"><div className="max-w-md rounded-3xl bg-white p-7 text-center shadow-2xl"><span className="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-red-100 text-red-600"><Gamepad2 className="h-8 w-8" /></span><h2 className="mt-4 text-2xl font-black">{gameOver ? "Game Over" : "शब्द खस्न नदिनुहोस्!"}</h2><p className="mt-2 text-sm leading-6 text-slate-500">खसिरहेको शब्द तल पुग्नुअघि टाइप गर्नुहोस्। Score बढेसँगै game छिटो हुन्छ।</p>{gameOver && <p className="mt-3 text-lg font-black text-red-600">Your score: {score}</p>}<button onClick={start} className="mx-auto mt-5 inline-flex items-center gap-2 rounded-xl bg-red-600 px-6 py-3 font-black text-white shadow-lg shadow-red-200 hover:bg-red-700"><Play className="h-4 w-4 fill-current" /> {gameOver ? "Play again" : "Start game"}</button></div></div>}
+      {!running && <div className="absolute inset-0 z-20 grid place-items-center bg-slate-950/25 p-5 backdrop-blur-[2px]"><div className="max-w-md rounded-3xl bg-white p-7 text-center shadow-2xl"><span className="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-red-100 text-red-600"><Gamepad2 className="h-8 w-8" /></span><h2 className="mt-4 text-2xl font-black">{gameOver ? "Game Over" : "शब्द खस्न नदिनुहोस्!"}</h2><p className="mt-2 text-sm leading-6 text-slate-500">खसिरहेको शब्द तल पुग्नुअघि टाइप गर्नुहोस्। Score बढेसँगै game छिटो हुन्छ।</p>{gameOver && <div className="mt-3"><p className="text-lg font-black text-red-600">Your score: {score} · Level {Math.min(100, Math.floor(score / 500) + 1)}</p><p className="mt-1 text-xs font-bold text-slate-500">{user ? "तपाईंको best score global leaderboard मा save भयो।" : "Leaderboard मा नाम देखाउन login गरेर खेल्नुहोस्।"}</p></div>}<button onClick={start} className="mx-auto mt-5 inline-flex items-center gap-2 rounded-xl bg-red-600 px-6 py-3 font-black text-white shadow-lg shadow-red-200 hover:bg-red-700"><Play className="h-4 w-4 fill-current" /> {gameOver ? "Play again" : "Start game"}</button></div></div>}
     </div>
 
     <div className="relative mx-auto -mt-8 w-[calc(100%-2rem)] max-w-2xl rounded-2xl border border-slate-200 bg-white p-3 shadow-xl sm:p-4">
