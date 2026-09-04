@@ -299,27 +299,27 @@ type GameId = "room-drop" | "listing-rush" | "location-hunt" | "facility-blast" 
 type GameMode = { id: GameId; name: string; nepaliName: string; emoji: string; description: string; words: Record<Language, string[]> };
 
 const GAME_MODES: GameMode[] = [
-  { id: "room-drop", name: "Room Drop", nepaliName: "कोठा बचाऊ", emoji: "🏠", description: "Room types छिटो टाइप गर्नुहोस्", words: {
-    english: ["room", "flat", "house", "apartment", "hostel", "single room", "two bedroom", "shared room", "studio", "rental home", "available room", "family flat"],
-    nepali: ["कोठा", "फ्ल्याट", "घर", "होस्टेल", "एक कोठा", "दुई कोठा", "साझा कोठा", "भाडाको घर", "खाली कोठा", "पारिवारिक फ्ल्याट"] } },
-  { id: "listing-rush", name: "Listing Rush", nepaliName: "लिस्टिङ दौड", emoji: "📝", description: "Room listing का शब्द पूरा गर्नुहोस्", words: {
-    english: ["post a room", "monthly rent", "available from", "room details", "owner contact", "verified listing", "property photo", "room video", "tenant preference", "furnished room", "rent agreement"],
-    nepali: ["कोठा पोस्ट", "मासिक भाडा", "उपलब्ध मिति", "कोठाको विवरण", "घरधनी सम्पर्क", "प्रमाणित लिस्टिङ", "कोठाको फोटो", "भाडा सम्झौता"] } },
-  { id: "location-hunt", name: "Location Hunt", nepaliName: "ठेगाना खोज", emoji: "📍", description: "RoomKhoj location practice", words: {
-    english: ["Pokhara", "Kathmandu", "Lalitpur", "Bhaktapur", "Lakeside", "New Road", "Baneshwor", "Kalanki", "Koteshwor", "Chabahil", "Parshyang", "Sirjanachok", "Bagar", "Mahendrapul"],
-    nepali: ["पोखरा", "काठमाडौं", "ललितपुर", "भक्तपुर", "लेकसाइड", "नयाँ सडक", "बानेश्वर", "कलंकी", "कोटेश्वर", "चाबहिल", "पर्स्याङ", "सिर्जनाचोक", "बगर", "महेन्द्रपुल"] } },
-  { id: "facility-blast", name: "Facility Blast", nepaliName: "सुविधा ब्लास्ट", emoji: "⚡", description: "कोठाका facilities टाइप गर्नुहोस्", words: {
-    english: ["water supply", "parking", "wifi", "attached bathroom", "furnished", "balcony", "kitchen", "electricity", "hot water", "main road", "security", "garden", "pet friendly"],
-    nepali: ["पानी सुविधा", "पार्किङ", "इन्टरनेट", "बाथरुम", "फर्निचर", "बालकनी", "भान्सा", "बिजुली", "तातो पानी", "मुख्य सडक", "सुरक्षा", "बगैँचा"] } },
-  { id: "job-match", name: "Job Match", nepaliName: "जागिर मिलान", emoji: "💼", description: "RoomKhoj Jobs का शब्द खेल्नुहोस्", words: {
-    english: ["job vacancy", "waiter", "receptionist", "accountant", "sales assistant", "office helper", "driver", "cook", "teacher", "graphic designer", "apply now", "monthly salary", "work experience"],
-    nepali: ["जागिर", "वेटर", "रिसेप्सनिस्ट", "लेखापाल", "बिक्री सहायक", "कार्यालय सहयोगी", "चालक", "कुक", "शिक्षक", "मासिक तलब", "कामको अनुभव"] } },
-  { id: "message-sprint", name: "Message Sprint", nepaliName: "मेसेज स्प्रिन्ट", emoji: "💬", description: "Tenant–owner message practice", words: {
-    english: ["Is this room available?", "What is the monthly rent?", "Can I visit today?", "Please send room details.", "Is parking available?", "I want to rent this room.", "Thank you for the information."],
-    nepali: ["यो कोठा खाली छ?", "मासिक भाडा कति हो?", "आज कोठा हेर्न मिल्छ?", "कृपया विवरण पठाउनुहोस्।", "पार्किङ सुविधा छ?", "म यो कोठा भाडामा लिन चाहन्छु।"] } },
-  { id: "nepali-master", name: "Nepali Master", nepaliName: "नेपाली मास्टर", emoji: "🇳🇵", description: "पूरा नेपाली rental वाक्य अभ्यास", words: {
-    english: ["Find a suitable room near your workplace.", "Contact details stay private until unlock.", "Search verified rooms around your location.", "RoomKhoj makes renting easier across Nepal."],
-    nepali: ["आफ्नो काम गर्ने ठाउँ नजिकै उपयुक्त कोठा खोज्नुहोस्।", "सम्पर्क विवरण अनलक नभएसम्म गोप्य रहन्छ।", "आफ्नो स्थान वरिपरिका प्रमाणित कोठा खोज्नुहोस्।", "रुमखोजले नेपालभर कोठा भाडामा लिन सजिलो बनाउँछ।"] } },
+  { id: "room-drop", name: "Earning Drop", nepaliName: "कमाइ ड्रप", emoji: "💰", description: "RoomKhoj earning का आधारभूत शब्द", words: {
+    english: ["earn money", "room income", "agent earning", "successful deal", "rental reward", "earn from rooms", "verified earning", "monthly income", "RoomKhoj income", "deal completed", "earning account"],
+    nepali: ["पैसा कमाउनुहोस्", "कोठाबाट कमाइ", "एजेन्ट कमाइ", "सफल कारोबार", "भाडा पुरस्कार", "कोठा पोस्ट गरेर कमाइ", "प्रमाणित कमाइ", "मासिक आम्दानी", "रुमखोज कमाइ"] } },
+  { id: "listing-rush", name: "Listing Income", nepaliName: "लिस्टिङ कमाइ", emoji: "🏠", description: "Room पोस्टदेखि deal सम्मको earning", words: {
+    english: ["post room and earn", "active room listing", "tenant takes room", "confirm rented deal", "listing earns reward", "twelve active listings", "fast tenant match", "priority room visibility", "approved room listing"],
+    nepali: ["कोठा पोस्ट गरेर कमाउनुहोस्", "सक्रिय कोठा लिस्टिङ", "भाडावालाले कोठा लियो", "सफल डिल पुष्टि", "लिस्टिङबाट पुरस्कार", "बाह्र सक्रिय लिस्टिङ", "छिटो भाडावाला मिलान"] } },
+  { id: "location-hunt", name: "Referral Rewards", nepaliName: "रेफरल पुरस्कार", emoji: "🎁", description: "Invite and Earn सम्बन्धित शब्द", words: {
+    english: ["invite and earn", "referral link", "referred user", "referral reward", "fifty percent commission", "one hundred rupees bonus", "verified referral", "share referral code", "referral earnings"],
+    nepali: ["निमन्त्रणा गरेर कमाउनुहोस्", "रेफरल लिङ्क", "रेफरलबाट आएको प्रयोगकर्ता", "रेफरल पुरस्कार", "पचास प्रतिशत कमिसन", "एक सय रुपैयाँ बोनस", "प्रमाणित रेफरल"] } },
+  { id: "facility-blast", name: "Wallet Blast", nepaliName: "वालेट ब्लास्ट", emoji: "👛", description: "Wallet, payment र withdrawal अभ्यास", words: {
+    english: ["wallet balance", "pending balance", "available balance", "payment request", "payment confirmed", "release request", "release payment", "withdraw earnings", "wallet transaction", "load balance", "escrow payment"],
+    nepali: ["वालेट ब्यालेन्स", "पेन्डिङ रकम", "उपलब्ध रकम", "भुक्तानी अनुरोध", "भुक्तानी पुष्टि", "रकम रिलिज अनुरोध", "कमाइ झिक्नुहोस्", "वालेट कारोबार", "ब्यालेन्स लोड"] } },
+  { id: "job-match", name: "Commission Match", nepaliName: "कमिसन मिलान", emoji: "📈", description: "Commission र successful deal का शब्द", words: {
+    english: ["agent commission", "platform commission", "fixed commission", "full agent earning", "commission per room", "successful rental", "deal reward", "commission released", "earning approved", "admin review"],
+    nepali: ["एजेन्ट कमिसन", "प्लेटफर्म कमिसन", "निश्चित कमिसन", "एजेन्टको पूरा कमाइ", "प्रति कोठा कमिसन", "सफल भाडा", "डिल पुरस्कार", "कमिसन रिलिज", "कमाइ स्वीकृत"] } },
+  { id: "message-sprint", name: "Payment Messages", nepaliName: "भुक्तानी मेसेज", emoji: "💬", description: "Chat बाट earning payment गर्ने वाक्य", words: {
+    english: ["Please send a payment request.", "The tenant confirmed the payment.", "Request the pending balance release.", "The room deal is now successful.", "Your earning has reached the wallet.", "Confirm the rental commission."],
+    nepali: ["कृपया भुक्तानी अनुरोध पठाउनुहोस्।", "भाडावालाले भुक्तानी पुष्टि गर्यो।", "पेन्डिङ रकम रिलिज अनुरोध गर्नुहोस्।", "कोठाको डिल सफल भयो।", "तपाईंको कमाइ वालेटमा आयो।"] } },
+  { id: "nepali-master", name: "Monetization Master", nepaliName: "कमाइ मास्टर", emoji: "🏆", description: "RoomKhoj monetization का पूरा वाक्य", words: {
+    english: ["Activate the Starter Plan for thirty days.", "The Starter Plan supports twelve active room listings.", "A successful rental deal makes the room eligible for earning.", "Monetized profiles receive priority visibility and faster tenant matching.", "Use RoomKhoj payment requests to receive and release earnings safely."],
+    nepali: ["तीस दिनका लागि स्टार्टर योजना सक्रिय गर्नुहोस्।", "स्टार्टर योजनामा बाह्र सक्रिय कोठा लिस्टिङ राख्न मिल्छ।", "सफल भाडा कारोबार भएपछि कोठा कमाइका लागि योग्य हुन्छ।", "मोनिटाइज प्रोफाइलले प्राथमिकता र छिटो भाडावाला मिलान पाउँछ।", "रुमखोज भुक्तानी अनुरोधबाट सुरक्षित रूपमा कमाइ लिनुहोस्।"] } },
 ];
 
 function TypingGame({ language, onLanguageChange }: { language: Language; onLanguageChange: (language: Language) => void }) {
