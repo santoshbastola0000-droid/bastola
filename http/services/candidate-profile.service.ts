@@ -52,6 +52,11 @@ export const candidateProfileService = {
       const response = await api.post(
         "/candidate-profile/public",
         formData,
+        {
+          headers: {
+            "Content-Type": undefined,
+          },
+        },
       );
 
       return response.data;
