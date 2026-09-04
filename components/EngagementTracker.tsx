@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
 import { privateApi } from "@/http/api/privateApi";
 import { useUserStore } from "@/stores/user-store";
 
-const VISIT_KEY = "roomkhoj:engagement-visit";
 const SOURCE_KEY = "roomkhoj:entry-source";
 
 function detectSource() {
@@ -35,6 +35,9 @@ function detectSource() {
 
 export function EngagementTracker() {
   const userId = useUserStore((state) => state.user?.id);
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const lastTrackedRef = useRef<string>("");
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -52,24 +55,24 @@ export function EngagementTracker() {
   }, []);
 
   useEffect(() => {
-    if (!userId) return;
+    if (!userId || !pathname) return;
 
-    const source = detectSource();
-    const sessionKey = `${VISIT_KEY}:${userId}:${source}`;
+    const query = searchParams?.toString();
+    const path = query ? `${pathname}?${query}` : pathname;
+    const trackingKey = `${userId}:${path}`;
 
-    if (sessionStorage.getItem(sessionKey)) return;
+    // Prevent duplicate React renders of the same route while keeping every real navigation.
+    if (lastTrackedRef.current === trackingKey) return;
+    lastTrackedRef.current = trackingKey;
 
     privateApi
       .post("/notifications/engagement/visit", {
-        source,
-        path: `${window.location.pathname}${window.location.search}`,
+        source: detectSource(),
+        path,
         referrer: document.referrer || "",
       })
-      .then(() => {
-        sessionStorage.setItem(sessionKey, "1");
-      })
       .catch(() => undefined);
-  }, [userId]);
+  }, [userId, pathname, searchParams]);
 
   return null;
 }
