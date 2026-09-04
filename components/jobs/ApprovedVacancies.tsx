@@ -8,6 +8,7 @@ import {
   Loader2,
   MapPin,
   Search,
+  UserRound,
   WalletCards,
 } from "lucide-react";
 
@@ -140,13 +141,23 @@ export default function ApprovedVacancies({
           </p>
         </div>
 
-        <a
-          href="/jobs/post"
-          className="inline-flex items-center justify-center gap-2 rounded-xl bg-red-600 px-5 py-3 font-semibold text-white transition hover:bg-red-700"
-        >
-          <BriefcaseBusiness className="h-5 w-5" />
-          Post a Vacancy
-        </a>
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <a
+            href="/jobs/candidates/create"
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-red-200 bg-white px-5 py-3 font-semibold text-red-700 transition hover:bg-red-50"
+          >
+            <UserRound className="h-5 w-5" />
+            Add Candidate / Upload CV
+          </a>
+
+          <a
+            href="/jobs/post"
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-red-600 px-5 py-3 font-semibold text-white transition hover:bg-red-700"
+          >
+            <BriefcaseBusiness className="h-5 w-5" />
+            Post a Vacancy
+          </a>
+        </div>
       </div>
 
       <div className="mt-8 grid gap-3 md:grid-cols-2">
