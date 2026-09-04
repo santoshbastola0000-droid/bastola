@@ -8,6 +8,8 @@ import {
   ArrowLeft,
   BriefcaseBusiness,
   CheckCircle2,
+  Download,
+  FileText,
   Loader2,
   MapPin,
   MessageCircle,
@@ -117,6 +119,20 @@ export default function CandidateDetailPage() {
   }
 
   const primaryJob = candidate.jobs?.[0];
+  const cv = primaryJob?.jobSpecificAnswers?.cv as
+    | {
+        url?: string;
+        originalName?: string;
+      }
+    | undefined;
+  const backendUrl =
+    process.env.NEXT_PUBLIC_BACKEND_URL ||
+    "https://api.roomkhoj.com";
+  const cvUrl = cv?.url
+    ? cv.url.startsWith("http")
+      ? cv.url
+      : `${backendUrl}${cv.url}`
+    : null;
 
   return (
     <>
@@ -227,6 +243,29 @@ export default function CandidateDetailPage() {
                       ),
                     )}
                   </div>
+                </div>
+              )}
+
+              {cvUrl && (
+                <div>
+                  <h2 className="font-bold text-slate-900">
+                    Candidate CV
+                  </h2>
+
+                  <a
+                    href={cvUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-3 flex items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-red-700 transition hover:bg-red-100"
+                  >
+                    <span className="flex min-w-0 items-center gap-3">
+                      <FileText className="h-5 w-5 shrink-0" />
+                      <span className="truncate text-sm font-semibold">
+                        {cv.originalName || "View candidate CV"}
+                      </span>
+                    </span>
+                    <Download className="h-5 w-5 shrink-0" />
+                  </a>
                 </div>
               )}
 
