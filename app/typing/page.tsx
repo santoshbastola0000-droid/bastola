@@ -159,6 +159,47 @@ const NEPALI_WORD_GUIDE = [
   ["Nepal", "नेपाल"], ["RoomKhoj", "रुमखोज"],
 ];
 
+const NEPALI_WORD_ROMAN: Record<string, string> = {
+  "समेत": "samet", "कोठा": "kotha", "घर": "ghar", "पानी": "paani", "भाडा": "bhaada", "कमाइ": "kamai", "कमाई": "kamai",
+  "पैसा": "paisa", "रकम": "rakam", "साथी": "saathi", "नेपाल": "nepal", "रुमखोज": "roomkhoj", "वालेट": "wallet", "काम": "kaam",
+  "नाम": "naam", "बाटो": "baato", "खाली": "khaali", "सफल": "safal", "डिल": "deal", "पोस्ट": "post", "गरेर": "garera",
+  "कमाउनुहोस्": "kamaaunuhos", "मैले": "maile", "कमाएँ": "kamaae", "छ": "chha", "छु": "chhu", "र": "ra", "हरेक": "harek",
+  "दिन": "din", "अभ्यास": "abhyaas", "गर्छु": "garchhu", "नेपाली": "nepali", "टाइप": "type", "गर्न": "garna", "सिक्दै": "sikdai",
+  "ब्यालेन्स": "balance", "पेन्डिङ": "pending", "उपलब्ध": "upalabdha", "भुक्तानी": "bhuktani", "अनुरोध": "anurodh", "पुष्टि": "pushti",
+  "रिलिज": "release", "पुरस्कार": "puraskaar", "एजेन्ट": "agent", "कमिसन": "commission", "प्रमाणित": "pramanit", "मासिक": "maasik",
+  "आम्दानी": "aamdani", "लिस्टिङ": "listing", "भाडावाला": "bhaadawala", "कारोबार": "kaarobaar", "सक्रिय": "sakriya", "योजना": "yojana",
+};
+
+const DEVANAGARI_BASE: Record<string, string> = {
+  "अ":"a", "आ":"aa", "इ":"i", "ई":"ii", "उ":"u", "ऊ":"uu", "ए":"e", "ऐ":"ai", "ओ":"o", "औ":"au",
+  "क":"k", "ख":"kh", "ग":"g", "घ":"gh", "ङ":"ng", "च":"ch", "छ":"chh", "ज":"j", "झ":"jh", "ञ":"ny",
+  "ट":"T", "ठ":"Th", "ड":"D", "ढ":"Dh", "ण":"N", "त":"t", "थ":"th", "द":"d", "ध":"dh", "न":"n",
+  "प":"p", "फ":"ph", "ब":"b", "भ":"bh", "म":"m", "य":"y", "र":"r", "ल":"l", "व":"w", "श":"sh", "ष":"shh", "स":"s", "ह":"h",
+};
+const DEVANAGARI_MATRA: Record<string, string> = { "ा":"aa", "ि":"i", "ी":"ii", "ु":"u", "ू":"uu", "ृ":"ri", "े":"e", "ै":"ai", "ो":"o", "ौ":"au", "ं":"n", "ँ":"n", "ः":"h" };
+
+function romanizeNepaliWord(rawWord: string) {
+  const punctuation = rawWord.match(/[।,.!?]+$/)?.[0] || "";
+  const word = punctuation ? rawWord.slice(0, -punctuation.length) : rawWord;
+  if (NEPALI_WORD_ROMAN[word]) return NEPALI_WORD_ROMAN[word] + punctuation;
+  let result = "";
+  for (let index = 0; index < word.length; index += 1) {
+    const character = word[index];
+    const base = DEVANAGARI_BASE[character];
+    if (!base) { result += DEVANAGARI_MATRA[character] || character; continue; }
+    const next = word[index + 1];
+    if (DEVANAGARI_MATRA[next]) { result += base + DEVANAGARI_MATRA[next]; index += 1; }
+    else if (next === "्") { result += base; index += 1; }
+    else if (/^[क-ह]$/.test(character)) result += base + "a";
+    else result += base;
+  }
+  return result + punctuation;
+}
+
+function romanizeNepaliText(text: string) {
+  return text.split(/(\s+)/).map((part) => /^\s+$/.test(part) ? part : romanizeNepaliWord(part)).join("");
+}
+
 function formatTime(seconds: number) {
   return `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
 }
@@ -175,8 +216,9 @@ export default function TypingPracticePage() {
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   const lesson = LESSONS[language][lessonIndex];
-  const complete = typed === lesson.text;
-  const nextCharacter = lesson.text[typed.length] ?? "";
+  const practiceText = language === "nepali" ? romanizeNepaliText(lesson.text) : lesson.text;
+  const complete = typed.toLowerCase() === practiceText.toLowerCase();
+  const nextCharacter = practiceText[typed.length] ?? "";
 
   useEffect(() => {
     try {
@@ -193,7 +235,7 @@ export default function TypingPracticePage() {
 
   const stats = useMemo(() => {
     let correct = 0;
-    for (let index = 0; index < typed.length; index += 1) if (typed[index] === lesson.text[index]) correct += 1;
+    for (let index = 0; index < typed.length; index += 1) if (typed[index]?.toLowerCase() === practiceText[index]?.toLowerCase()) correct += 1;
     const accuracy = typed.length ? Math.round((correct / typed.length) * 100) : 100;
     const minutes = Math.max(elapsed / 60, 1 / 60);
     return {
@@ -201,9 +243,9 @@ export default function TypingPracticePage() {
       errors: Math.max(0, typed.length - correct),
       accuracy,
       wpm: startedAt ? Math.max(0, Math.round(correct / 5 / minutes)) : 0,
-      progress: Math.round((Math.min(typed.length, lesson.text.length) / lesson.text.length) * 100),
+      progress: Math.round((Math.min(typed.length, practiceText.length) / practiceText.length) * 100),
     };
-  }, [elapsed, lesson.text, startedAt, typed]);
+  }, [elapsed, practiceText, startedAt, typed]);
 
   useEffect(() => {
     if (!complete) return;
@@ -295,7 +337,7 @@ export default function TypingPracticePage() {
 
           <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-7">
             <div onClick={() => inputRef.current?.focus()} className="relative min-h-40 cursor-text rounded-2xl border-2 border-slate-100 bg-slate-50 p-5 text-2xl font-semibold leading-[1.8] tracking-wide sm:p-7 sm:text-3xl">
-              {lesson.text.split("").map((character, index) => {
+              {language === "nepali" ? <RomanNepaliPractice nepaliText={lesson.text} romanText={practiceText} typed={typed} /> : lesson.text.split("").map((character, index) => {
                 const state = index < typed.length ? (typed[index] === character ? "correct" : "wrong") : index === typed.length ? "current" : "pending";
                 return <span key={`${character}-${index}`} className={state === "correct" ? "text-emerald-600" : state === "wrong" ? "rounded bg-red-100 text-red-600 underline decoration-red-400" : state === "current" ? "animate-pulse rounded-sm border-b-4 border-red-500 bg-red-50 text-slate-900" : "text-slate-400"}>{character === " " ? "\u00a0" : character}</span>;
               })}
@@ -305,14 +347,14 @@ export default function TypingPracticePage() {
             <textarea ref={inputRef} value={typed} aria-label="Typing input" autoFocus autoCorrect="off" autoCapitalize="off" spellCheck={false} className="fixed left-[-9999px] top-0 h-px w-px opacity-0" onPaste={(event) => event.preventDefault()} onChange={(event) => {
               if (complete) return;
               if (!startedAt && event.target.value.length) setStartedAt(Date.now());
-              const next = event.target.value.slice(0, lesson.text.length);
+              const next = event.target.value.slice(0, practiceText.length);
               setTyped(next); playKeySound();
             }} />
 
             {complete ? <div className={`mt-5 rounded-2xl border p-5 ${stats.wpm >= lesson.targetWpm && stats.accuracy >= 90 ? "border-emerald-200 bg-emerald-50" : "border-amber-200 bg-amber-50"}`}><div className="flex items-center gap-3"><span className={`grid h-11 w-11 place-items-center rounded-full text-white ${stats.wpm >= lesson.targetWpm && stats.accuracy >= 90 ? "bg-emerald-500" : "bg-amber-500"}`}><Medal className="h-6 w-6" /></span><div><p className="font-black text-slate-900">{stats.wpm >= lesson.targetWpm && stats.accuracy >= 90 ? "Speed target achieved! 🎉" : "Lesson complete—speed फेरि अभ्यास गर्नुहोस्"}</p><p className="text-sm text-slate-600">तपाईंको {stats.wpm} WPM · लक्ष्य {lesson.targetWpm} WPM · {stats.accuracy}% accuracy</p></div></div></div> : <div className="mt-4 flex items-center justify-center gap-2 text-sm text-slate-500"><span className="font-semibold">Next key:</span><kbd className="min-w-9 rounded-lg border border-b-2 border-slate-300 bg-white px-2 py-1 text-center font-black text-slate-900">{nextCharacter === " " ? "Space" : nextCharacter}</kbd>{language === "english" && nextCharacter !== " " ? <span className="hidden sm:inline">· {FINGER_MAP[nextCharacter.toLowerCase()] ?? "Use the nearest finger"}</span> : null}</div>}
 
             {language === "nepali" && <NepaliRomanGuide nextCharacter={nextCharacter} />}
-            <VirtualKeyboard activeKey={language === "nepali" ? (NEPALI_ROMAN[nextCharacter]?.[0] || "") : nextCharacter.toLowerCase()} language={language} />
+            <VirtualKeyboard activeKey={nextCharacter.toLowerCase()} language={language} />
             {language === "nepali" && <div className="mt-3 rounded-2xl bg-indigo-50 p-3 text-center text-xs font-semibold text-indigo-800">Romanized Nepali input छान्नुहोस्। Windows keyboard बदल्न <kbd className="rounded bg-white px-1.5 py-0.5">Win + Space</kbd> प्रयोग गर्न सक्नुहुन्छ। Device अनुसार spelling अलि फरक हुन सक्छ।</div>}
 
             <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-5"><button onClick={reset} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-bold text-slate-600 transition hover:bg-slate-50"><RotateCcw className="h-4 w-4" /> Restart</button><button onClick={nextLesson} className="inline-flex items-center gap-2 rounded-xl bg-red-600 px-5 py-2.5 text-sm font-black text-white shadow-lg shadow-red-200 transition hover:bg-red-700">{complete ? "Continue" : "Skip lesson"}<ChevronRight className="h-4 w-4" /></button></div>
@@ -332,12 +374,30 @@ function Stat({ icon, label, value, tone }: { icon: ReactNode; label: string; va
   return <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4"><span className={`grid h-9 w-9 place-items-center rounded-xl ${colors[tone]}`}>{icon}</span><span><span className="block text-lg font-black leading-none sm:text-xl">{value}</span><span className="mt-1 block text-[11px] font-bold text-slate-400">{label}</span></span></div>;
 }
 
+function RomanNepaliPractice({ nepaliText, romanText, typed }: { nepaliText: string; romanText: string; typed: string }) {
+  const nepaliWords = nepaliText.split(/\s+/);
+  const romanWords = romanText.split(/\s+/);
+  let cursor = 0;
+  return <div className="flex flex-wrap gap-2">{nepaliWords.map((nepaliWord, index) => {
+    const romanWord = romanWords[index] || romanizeNepaliWord(nepaliWord);
+    const start = cursor;
+    const end = start + romanWord.length;
+    const correct = typed.slice(start, end).toLowerCase() === romanWord.toLowerCase();
+    const current = typed.length >= start && typed.length < end;
+    const wrong = current && !romanWord.toLowerCase().startsWith(typed.slice(start).toLowerCase());
+    cursor = end + 1;
+    return <span key={`${nepaliWord}-${index}`} className={`rounded-xl border px-3 py-2 text-center transition ${correct ? "border-emerald-300 bg-emerald-50 shadow-sm" : wrong ? "border-red-300 bg-red-50" : current ? "border-amber-300 bg-amber-50 ring-2 ring-amber-100" : "border-slate-200 bg-white"}`}>
+      <span className={`block text-xl font-black sm:text-2xl ${correct ? "text-emerald-700" : wrong ? "text-red-600" : "text-slate-800"}`}>{nepaliWord}</span>
+      <span className={`block text-[11px] font-black tracking-wide ${correct ? "text-emerald-600" : current ? "text-red-600" : "text-indigo-500"}`}>{romanWord}</span>
+    </span>;
+  })}</div>;
+}
+
 function NepaliRomanGuide({ nextCharacter }: { nextCharacter: string }) {
-  const roman = NEPALI_ROMAN[nextCharacter];
   return <div className="mt-5 rounded-2xl border border-indigo-200 bg-gradient-to-r from-indigo-50 to-violet-50 p-4">
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <div><p className="text-xs font-black uppercase tracking-wider text-indigo-500">Roman → नेपाली guide</p><p className="mt-1 text-sm font-bold text-indigo-950">English letters टाइप गर्दा कुन नेपाली बन्छ हेर्नुहोस्।</p></div>
-      {roman && <div className="flex items-center gap-2 rounded-xl bg-white px-4 py-2 shadow-sm"><kbd className="font-black text-red-600">{roman}</kbd><span className="text-slate-400">→</span><span className="text-2xl font-black text-indigo-900">{nextCharacter}</span></div>}
+      {nextCharacter && <div className="flex items-center gap-2 rounded-xl bg-white px-4 py-2 shadow-sm"><span className="text-xs font-bold text-slate-500">अब थिच्नुहोस्</span><kbd className="min-w-8 rounded-lg bg-red-600 px-2 py-1 text-center font-black text-white">{nextCharacter === " " ? "Space" : nextCharacter}</kbd></div>}
     </div>
     <div className="mt-3 flex gap-2 overflow-x-auto pb-1">{NEPALI_WORD_GUIDE.map(([english, nepali]) => <div key={english} className="min-w-fit rounded-xl border border-indigo-100 bg-white px-3 py-2 text-center shadow-sm"><span className="block text-[10px] font-black text-red-500">{english}</span><span className="block text-sm font-black text-slate-900">{nepali}</span></div>)}</div>
   </div>;
