@@ -79,7 +79,7 @@ import {
   GenderPreference,
 } from "@/types/room.types";
 import { UserRole } from "@/types/user.types";
-import { api } from "@/http/api/api";
+import { privateApi } from "@/http/api/privateApi";
 import { RoomUnlockDialog } from "@/components/rooms/RoomUnlockDialog";
 import { TopUpRequestDialog } from "@/components/wallet/TopUpRequestDialog";
 import { unlockService } from "@/http/services/unlock.service";
@@ -1184,10 +1184,10 @@ export default function PropertyDetailsPage() {
     if (!roomId) return;
     (async () => {
       try {
-        const res = await fetch(
-          `${api.defaults.baseURL}/rooms/${encodeURIComponent(roomId)}`,
+        const res = await privateApi.get(
+          `/rooms/${encodeURIComponent(roomId)}`,
         );
-        const data = await res.json();
+        const data = res.data;
         const loadedRoom = getRoomFromApiResponse(data);
         if (!loadedRoom) {
           setRoom(null);
