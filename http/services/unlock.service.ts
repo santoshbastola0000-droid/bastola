@@ -47,7 +47,8 @@ const unlockService = {
 
   /**
    * Upload any image file to the server and return the stored path/URL.
-   * Used for both QR code uploads (admin) and payment screenshots (user).
+   * Used for QR-code uploads only. Payment screenshots use the dedicated,
+   * protected /unlock/topup endpoint below.
    */
   async uploadFile(file: File): Promise<string> {
     const formData = new FormData();
@@ -57,7 +58,6 @@ const unlockService = {
       headers: { "Content-Type": "multipart/form-data" },
     });
 
-    // Handle different response shapes your backend may return
     const path: string =
       data?.data?.url ??
       data?.data?.path ??
@@ -80,29 +80,17 @@ const unlockService = {
 
   // ─── Top-Up Requests (User) ───────────────────────────────────────────────────
 
-  /**
-   * Upload screenshot first, then create the top-up request in one step.
-   * This is the method called from TopUpRequestDialog.
-   */
   async createTopUpWithScreenshot(
     amount: number,
     screenshot: File,
   ): Promise<TopUpRequest> {
-    // 1. Upload the screenshot image
+    const formData = new FormData();
+    formData.append("amount", String(amount));
+    formData.append("screenshot", screenshot);
 
-    // 2. Create the top-up request with the returned URL
-    const { data } = await privateApi.post(
-      "/unlock/topup",
-      {
-        amount,
-        screenshot,
-      },
-      {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      },
-    );
+    // Do not manually force Content-Type: the browser/axios adapter must add
+    // the multipart boundary itself.
+    const { data } = await privateApi.post("/unlock/topup", formData);
     return data.data;
   },
 
