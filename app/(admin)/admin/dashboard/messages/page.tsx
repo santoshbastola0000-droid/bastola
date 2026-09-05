@@ -2,9 +2,16 @@
 
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Loader2, MessageSquare, Search, ShieldCheck } from "lucide-react";
+import {
+  Loader2,
+  MessageSquare,
+  Search,
+  Send,
+  ShieldCheck,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import {
   ChatMessage,
   MessageConversation,
@@ -30,9 +37,11 @@ export default function AdminMessagesPage() {
   const [selectedConversation, setSelectedConversation] =
     useState<MessageConversation | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [replyText, setReplyText] = useState("");
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [loadingConversations, setLoadingConversations] = useState(false);
   const [loadingMessages, setLoadingMessages] = useState(false);
+  const [sendingReply, setSendingReply] = useState(false);
 
   const loadUsers = async (q = "") => {
     try {
@@ -71,6 +80,7 @@ export default function AdminMessagesPage() {
         setConversations(data.conversations || []);
         setSelectedConversation(null);
         setMessages([]);
+        setReplyText("");
       } catch (error: any) {
         if (!cancelled) {
           toast.error(
@@ -101,6 +111,7 @@ export default function AdminMessagesPage() {
     setSelectedUser(user);
     setSelectedConversation(null);
     setMessages([]);
+    setReplyText("");
     try {
       setLoadingConversations(true);
       const data = await messageService.adminGetUserConversations(user.id);
@@ -116,6 +127,7 @@ export default function AdminMessagesPage() {
 
   const openConversation = async (conversation: MessageConversation) => {
     setSelectedConversation(conversation);
+    setReplyText("");
     try {
       setLoadingMessages(true);
       setMessages(
@@ -129,13 +141,59 @@ export default function AdminMessagesPage() {
     }
   };
 
+  const sendAdminReply = async () => {
+    const content = replyText.trim();
+    if (!content || !selectedConversation || !selectedUser) return;
+
+    const selectedIsParticipant =
+      selectedConversation.userOneId === selectedUser.id ||
+      selectedConversation.userTwoId === selectedUser.id;
+
+    if (!selectedIsParticipant) {
+      toast.error("Selected user यो conversation को participant होइन.");
+      return;
+    }
+
+    try {
+      setSendingReply(true);
+      await messageService.adminReplyAsUser(
+        selectedConversation.id,
+        selectedUser.id,
+        content,
+      );
+      setReplyText("");
+      setMessages(
+        await messageService.adminGetConversationMessages(
+          selectedConversation.id,
+        ),
+      );
+      toast.success(
+        `${selectedUser.name} को account बाट support reply पठाइयो. Users लाई admin action notice देखिन्छ.`,
+      );
+    } catch (error: any) {
+      toast.error(
+        error?.response?.data?.message || "Support reply पठाउन सकिएन.",
+      );
+    } finally {
+      setSendingReply(false);
+    }
+  };
+
+  const canReply = Boolean(
+    selectedUser &&
+      selectedConversation &&
+      (selectedConversation.userOneId === selectedUser.id ||
+        selectedConversation.userTwoId === selectedUser.id),
+  );
+
   return (
     <div className="space-y-5">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Messages</h1>
         <p className="mt-1 text-sm text-gray-500">
           Admin review access. Opening a conversation creates a visible system
-          notice for its users.
+          notice. Support replies sent as a user also create a visible admin
+          audit notice for both participants.
         </p>
       </div>
 
@@ -202,8 +260,7 @@ export default function AdminMessagesPage() {
                   <div className="flex items-center gap-2">
                     <MessageSquare className="h-4 w-4 text-gray-500" />
                     <span className="truncate font-medium text-gray-900">
-                      {conversation.otherUser?.name ||
-                        "Unknown user"}
+                      {conversation.otherUser?.name || "Unknown user"}
                     </span>
                   </div>
                   <p className="mt-1 truncate text-xs text-gray-500">
@@ -281,6 +338,51 @@ export default function AdminMessagesPage() {
               })
             )}
           </div>
+
+          {selectedConversation && selectedUser && (
+            <div className="border-t bg-white p-3">
+              <div className="mb-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                Reply will be sent as <strong>{selectedUser.name}</strong>.
+                RoomKhoj will insert a visible Admin support notice in this chat.
+              </div>
+              <div className="flex items-end gap-2">
+                <textarea
+                  value={replyText}
+                  onChange={(event) => setReplyText(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" && !event.shiftKey) {
+                      event.preventDefault();
+                      if (!sendingReply && canReply && replyText.trim()) {
+                        void sendAdminReply();
+                      }
+                    }
+                  }}
+                  disabled={!canReply || sendingReply}
+                  placeholder={
+                    canReply
+                      ? `Support reply as ${selectedUser.name}`
+                      : "Selected user is not a participant in this chat"
+                  }
+                  maxLength={5000}
+                  rows={2}
+                  className="min-h-[48px] flex-1 resize-none rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none focus:border-primary disabled:bg-gray-100"
+                />
+                <Button
+                  type="button"
+                  onClick={() => void sendAdminReply()}
+                  disabled={!canReply || sendingReply || !replyText.trim()}
+                  className="h-12 rounded-xl px-4"
+                >
+                  {sendingReply ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Send className="h-4 w-4" />
+                  )}
+                  <span className="ml-2 hidden sm:inline">Send</span>
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

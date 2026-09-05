@@ -95,6 +95,23 @@ export const messageService = {
     return response.data || [];
   },
 
+  adminReplyAsUser: async (
+    conversationId: string,
+    userId: string,
+    content: string,
+  ) => {
+    const response = await privateApi.post(
+      `/message/admin/conversations/${conversationId}/reply-as/${userId}`,
+      { content },
+    );
+    return response.data as {
+      success: boolean;
+      sentAsUserId: string;
+      auditNoticeId: string;
+      message: ChatMessage;
+    };
+  },
+
   getCallCredentials: async () => {
     const response = await privateApi.get("/message/call-credentials");
     return response.data as { iceServers: RTCIceServer[] };
