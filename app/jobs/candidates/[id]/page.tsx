@@ -32,6 +32,7 @@ export default function CandidateDetailPage() {
   const id = String(params.id);
   const [contact, setContact] = useState<{ phone?: string | null } | null>(null);
   const [openingMessage, setOpeningMessage] = useState(false);
+  const [openingCv, setOpeningCv] = useState(false);
 
   const { data: candidate, isLoading, error } = useQuery({
     queryKey: ["candidate-profile", id],
@@ -90,6 +91,28 @@ export default function CandidateDetailPage() {
     }
   };
 
+  const openCandidateCv = async () => {
+    try {
+      setOpeningCv(true);
+      const blob = await candidateProfileService.downloadCv(id);
+      const url = URL.createObjectURL(blob);
+      const popup = window.open(url, "_blank", "noopener,noreferrer");
+      if (!popup) {
+        const anchor = document.createElement("a");
+        anchor.href = url;
+        anchor.download = "candidate-cv";
+        document.body.appendChild(anchor);
+        anchor.click();
+        anchor.remove();
+      }
+      window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Candidate CV खोल्न सकिएन।");
+    } finally {
+      setOpeningCv(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <><NavBar /><main className="flex min-h-screen items-center justify-center"><Loader2 className="h-7 w-7 animate-spin text-red-600" /></main></>
@@ -104,8 +127,6 @@ export default function CandidateDetailPage() {
 
   const primaryJob = candidate.jobs?.[0];
   const cv = primaryJob?.jobSpecificAnswers?.cv as { url?: string; originalName?: string } | undefined;
-  const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "https://api.roomkhoj.com";
-  const cvUrl = cv?.url ? (cv.url.startsWith("http") ? cv.url : `${backendUrl}${cv.url}`) : null;
 
   return (
     <>
@@ -177,13 +198,18 @@ export default function CandidateDetailPage() {
                   </div>
                 )}
 
-                {cvUrl && (
+                {cv?.url && (
                   <div>
                     <h2 className="text-lg font-extrabold text-slate-950">Candidate CV</h2>
-                    <a href={cvUrl} target="_blank" rel="noopener noreferrer" className="mt-3 flex items-center justify-between gap-3 rounded-2xl border border-red-200 bg-red-50 p-4 text-red-700 transition hover:bg-red-100">
+                    <button
+                      type="button"
+                      onClick={openCandidateCv}
+                      disabled={openingCv}
+                      className="mt-3 flex w-full items-center justify-between gap-3 rounded-2xl border border-red-200 bg-red-50 p-4 text-left text-red-700 transition hover:bg-red-100 disabled:opacity-60"
+                    >
                       <span className="flex min-w-0 items-center gap-3"><FileText className="h-5 w-5 shrink-0" /><span className="truncate text-sm font-bold">{cv.originalName || "View candidate CV"}</span></span>
-                      <Download className="h-5 w-5 shrink-0" />
-                    </a>
+                      {openingCv ? <Loader2 className="h-5 w-5 shrink-0 animate-spin" /> : <Download className="h-5 w-5 shrink-0" />}
+                    </button>
                   </div>
                 )}
               </div>
