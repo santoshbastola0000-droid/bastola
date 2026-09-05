@@ -22,13 +22,7 @@ export function urlBase64ToUint8Array(
 }
 
 function getApiUrl() {
-  const api = process.env.NEXT_PUBLIC_API_URL;
-
-  if (!api) {
-    throw new Error('NEXT_PUBLIC_API_URL missing');
-  }
-
-  return api;
+  return (process.env.NEXT_PUBLIC_API_URL || '/api').replace(/\/$/, '');
 }
 
 export async function getPushStatus() {
