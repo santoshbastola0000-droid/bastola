@@ -91,7 +91,14 @@ export const candidateProfileService = {
     return response.data;
   },
 
+  downloadCv: async (id: string) => {
+    const response = await privateApi.get(
+      `/candidate-profile/public/${id}/cv`,
+      { responseType: "blob" },
+    );
 
+    return response.data as Blob;
+  },
 
   getAdminCandidates: async () => {
     const response = await privateApi.get(
