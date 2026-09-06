@@ -25,6 +25,14 @@ import {
   Camera,
   ChevronLeft,
   Plus,
+  FileText,
+  MapPin,
+  ContactRound,
+  Store,
+  Zap,
+  BarChart3,
+  CalendarDays,
+  WalletCards,
 } from "lucide-react";
 import { toast } from "sonner";
 import { io, Socket } from "socket.io-client";
@@ -145,6 +153,35 @@ const user = useUserStore(
 
   const [showPlusMenu, setShowPlusMenu] =
     useState(false);
+
+  const insertQuickReply = () => {
+    setDraft("Namaste! RoomKhoj बाट follow-up गर्दैछौं। तपाईंलाई थप room option चाहिएको छ?");
+    setShowPlusMenu(false);
+  };
+
+  const shareCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      toast.error("Location support available छैन.");
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        setDraft(`Location: https://maps.google.com/?q=${latitude},${longitude}`);
+        setShowPlusMenu(false);
+      },
+      () => toast.error("Location access दिनुहोस्."),
+      { enableHighAccuracy: true, timeout: 10000 },
+    );
+  };
+
+  const shareContact = () => {
+    const contact = window.prompt("Contact name / phone");
+    if (!contact?.trim()) return;
+    setDraft(`Contact: ${contact.trim()}`);
+    setShowPlusMenu(false);
+  };
+
   const [paymentActionId, setPaymentActionId] =
     useState<string | null>(null);
 
@@ -1563,8 +1600,9 @@ const user = useUserStore(
                     {onlineUserIds.has(otherUserId) ? "online" : "offline"}
                   </p>
                 </div>
-                <div className="ml-auto flex items-center gap-1.5">
-                  <Button type="button" size="icon" variant="ghost" className="h-10 w-10 rounded-full text-foreground hover:bg-muted" onClick={() => startCall("video")} aria-label="Video call"><Video className="h-5 w-5" /></Button>
+                <div className="ml-auto flex items-center gap-0.5 rounded-full border border-border bg-muted/80 p-1 shadow-sm">
+                  <Button type="button" size="icon" variant="ghost" className="h-9 w-9 rounded-full text-foreground hover:bg-primary/10 hover:text-primary" onClick={() => startCall("video")} aria-label="Video call"><Video className="h-5 w-5" /></Button>
+                  <Button type="button" size="icon" variant="ghost" className="h-9 w-9 rounded-full text-foreground hover:bg-primary/10 hover:text-primary" onClick={() => startCall("audio")} aria-label="Voice call"><Phone className="h-5 w-5" /></Button>
                 </div>
               </header>
               <audio ref={remoteAudioRef} autoPlay playsInline />
@@ -1624,7 +1662,7 @@ const user = useUserStore(
                 </div>
               )}
 
-              <div className="min-h-0 flex-1 space-y-2 overflow-y-auto bg-background bg-[radial-gradient(circle_at_top,_rgba(32,44,51,0.15),_rgba(11,20,26,1)_45%)] px-2.5 py-3 pb-28 sm:px-5 md:px-[6%] md:py-5">
+              <div className="min-h-0 flex-1 space-y-2 overflow-y-auto bg-[#efe9df] bg-[radial-gradient(circle_at_18%_22%,rgba(255,255,255,0.55)_0_1px,transparent_1px),radial-gradient(circle_at_82%_65%,rgba(0,0,0,0.045)_0_1px,transparent_1px)] bg-[length:26px_26px,34px_34px] px-2.5 py-3 pb-28 dark:bg-[#0b141a] sm:px-5 md:px-[6%] md:py-5">
                 {messagesLoading ? (
                   <div className="flex justify-center p-10">
                     <Loader2 className="h-6 w-6 animate-spin text-primary" />
@@ -1653,8 +1691,8 @@ const user = useUserStore(
                             onPointerCancel={clearDeleteHoldTimer}
                             className={`max-w-[84%] rounded-2xl px-3 py-2 text-sm shadow-sm ${
                               mine
-                                ? "rounded-br-md bg-primary text-primary-foreground"
-                                : "rounded-bl-md bg-card text-foreground"
+                                ? "rounded-br-md border border-primary/15 bg-primary/15 text-foreground"
+                                : "rounded-bl-md border border-black/5 bg-white text-slate-900 dark:border-white/10 dark:bg-[#202c33] dark:text-white"
                             }`}
                           >
                             {message.attachment?.type === "ROOM" && message.attachment.url && (
@@ -1767,38 +1805,41 @@ const user = useUserStore(
                 </div>
               )}
 
-              <div className="border-t border-border bg-card px-2.5 py-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] md:px-4 md:py-3">
+              <div className="border-t border-black/5 bg-[#f7f7f7]/95 px-2.5 py-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] backdrop-blur dark:border-white/10 dark:bg-[#202c33]/95 md:px-4 md:py-3">
                 <div className="flex items-end gap-2">
                   <div className="relative">
                     <button
                       type="button"
                       onClick={() => setShowPlusMenu((open) => !open)}
-                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-foreground hover:bg-muted"
+                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-primary transition hover:bg-primary/10"
                       aria-label="Message actions"
                     >
                       <Plus className="h-6 w-6" />
                     </button>
                     {showPlusMenu && (
-                      <div className="absolute bottom-14 left-0 z-50 w-52 rounded-2xl border border-border bg-card p-2 shadow-xl">
+                      <>
                         <button
                           type="button"
-                          onClick={() => {
-                            setShowPlusMenu(false);
-                            mediaInputRef.current?.click();
-                          }}
-                          className="w-full rounded-xl px-3 py-2 text-left text-sm hover:bg-muted"
-                        >
-                          Photo / video
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => void createPaymentRequest()}
-                          disabled={paymentActionId === "create"}
-                          className="mt-1 w-full rounded-xl px-3 py-2 text-left text-sm font-semibold text-primary hover:bg-muted disabled:opacity-50"
-                        >
-                          Request payment
-                        </button>
-                      </div>
+                          className="fixed inset-0 z-40 bg-black/10 md:bg-transparent"
+                          aria-label="Close actions"
+                          onClick={() => setShowPlusMenu(false)}
+                        />
+                        <div className="fixed inset-x-2 bottom-[calc(4.8rem+env(safe-area-inset-bottom))] z-50 rounded-[30px] border border-border/70 bg-[#eef1f6] p-4 pb-5 shadow-2xl dark:bg-[#1f2c33] md:absolute md:bottom-14 md:left-0 md:right-auto md:w-[420px]">
+                          <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-slate-300 md:hidden" />
+                          <div className="grid grid-cols-4 gap-x-2 gap-y-5">
+                            <button type="button" onClick={() => { setShowPlusMenu(false); mediaInputRef.current?.click(); }} className="flex flex-col items-center gap-2 text-center text-xs font-semibold text-foreground"><span className="flex h-14 w-14 items-center justify-center rounded-full bg-white shadow-sm dark:bg-slate-800"><Camera className="h-6 w-6 text-primary" /></span>Camera</button>
+                            <button type="button" onClick={() => { setShowPlusMenu(false); mediaInputRef.current?.click(); }} className="flex flex-col items-center gap-2 text-center text-xs font-semibold text-foreground"><span className="flex h-14 w-14 items-center justify-center rounded-full bg-white shadow-sm dark:bg-slate-800"><ImageIcon className="h-6 w-6 text-primary" /></span>Photos</button>
+                            <button type="button" onClick={() => { setShowPlusMenu(false); toast.info("Document sharing छिट्टै आउँदैछ."); }} className="flex flex-col items-center gap-2 text-center text-xs font-semibold text-foreground"><span className="flex h-14 w-14 items-center justify-center rounded-full bg-white shadow-sm dark:bg-slate-800"><FileText className="h-6 w-6 text-primary" /></span>Document</button>
+                            <button type="button" onClick={shareCurrentLocation} className="flex flex-col items-center gap-2 text-center text-xs font-semibold text-foreground"><span className="flex h-14 w-14 items-center justify-center rounded-full bg-white shadow-sm dark:bg-slate-800"><MapPin className="h-6 w-6 text-primary" /></span>Location</button>
+                            <button type="button" onClick={shareContact} className="flex flex-col items-center gap-2 text-center text-xs font-semibold text-foreground"><span className="flex h-14 w-14 items-center justify-center rounded-full bg-white shadow-sm dark:bg-slate-800"><ContactRound className="h-6 w-6 text-primary" /></span>Contact</button>
+                            <button type="button" onClick={() => { setShowPlusMenu(false); router.push("/rooms"); }} className="flex flex-col items-center gap-2 text-center text-xs font-semibold text-foreground"><span className="flex h-14 w-14 items-center justify-center rounded-full bg-white shadow-sm dark:bg-slate-800"><Store className="h-6 w-6 text-primary" /></span>Catalog</button>
+                            <button type="button" onClick={insertQuickReply} className="flex flex-col items-center gap-2 text-center text-xs font-semibold text-foreground"><span className="flex h-14 w-14 items-center justify-center rounded-full bg-white shadow-sm dark:bg-slate-800"><Zap className="h-6 w-6 text-primary" /></span>Quick replies</button>
+                            <button type="button" onClick={() => { setShowPlusMenu(false); toast.info("Poll feature छिट्टै आउँदैछ."); }} className="flex flex-col items-center gap-2 text-center text-xs font-semibold text-foreground"><span className="flex h-14 w-14 items-center justify-center rounded-full bg-white shadow-sm dark:bg-slate-800"><BarChart3 className="h-6 w-6 text-primary" /></span>Poll</button>
+                            <button type="button" onClick={() => { setShowPlusMenu(false); toast.info("Event feature छिट्टै आउँदैछ."); }} className="flex flex-col items-center gap-2 text-center text-xs font-semibold text-foreground"><span className="flex h-14 w-14 items-center justify-center rounded-full bg-white shadow-sm dark:bg-slate-800"><CalendarDays className="h-6 w-6 text-primary" /></span>Event</button>
+                            <button type="button" onClick={() => void createPaymentRequest()} disabled={paymentActionId === "create"} className="flex flex-col items-center gap-2 text-center text-xs font-semibold text-foreground disabled:opacity-50"><span className="flex h-14 w-14 items-center justify-center rounded-full bg-white shadow-sm dark:bg-slate-800"><WalletCards className="h-6 w-6 text-primary" /></span>Payment</button>
+                          </div>
+                        </div>
+                      </>
                     )}
                   </div>
                   <input
@@ -1809,7 +1850,7 @@ const user = useUserStore(
                     onChange={handleMediaSelect}
                   />
 
-                  <div className="flex min-h-11 flex-1 items-center rounded-[22px] bg-muted px-3">
+                  <div className="flex min-h-11 flex-1 items-center rounded-[24px] border border-black/5 bg-white px-3 shadow-sm dark:border-white/10 dark:bg-[#2a3942]">
                     <textarea
                       value={draft}
                       onChange={(e) => setDraft(e.target.value)}
@@ -1830,11 +1871,11 @@ const user = useUserStore(
                     type="button"
                     size="icon"
                     className="h-11 w-11 rounded-full"
-                    onClick={() => void sendMessage()}
-                    disabled={!draft.trim() || sending}
-                    aria-label="Send message"
+                    onClick={() => draft.trim() ? void sendMessage() : toast.info("Voice message feature छिट्टै आउँदैछ.")}
+                    disabled={sending}
+                    aria-label={draft.trim() ? "Send message" : "Voice message"}
                   >
-                    {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-5 w-5" />}
+                    {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : draft.trim() ? <Send className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
                   </Button>
                 </div>
               </div>
