@@ -10,6 +10,13 @@ export interface Record {
   remarks: string;
   recordYearId: string;
   createdAt: string;
+  entryDate?: string;
+  place?: string;
+  workType?: string;
+  authorizedName?: string;
+  status?: string;
+  userDetails?: string;
+  createdByUserId?: string | null;
 }
 
 export interface RecordYear {
@@ -42,6 +49,12 @@ export interface CreateRecordDTO {
   formCharge: number;
   remarks: string;
   recordYearId: string;
+  entryDate?: string;
+  place?: string;
+  workType?: string;
+  authorizedName?: string;
+  status?: string;
+  userDetails?: string;
 }
 
 export interface RecordsFilter {
@@ -78,4 +91,10 @@ export interface UpdateRecordDTO {
   formCharge?: number;
   remarks?: string;
   recordYearId?: string;
+  entryDate?: string;
+  place?: string;
+  workType?: string;
+  authorizedName?: string;
+  status?: string;
+  userDetails?: string;
 }
