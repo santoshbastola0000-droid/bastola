@@ -38,6 +38,9 @@ export interface ChatMessage {
   type: string;
   deliveredAt?: string | null;
   seenAt?: string | null;
+  editedAt?: string | null;
+  replyToMessageId?: string | null;
+  reactions?: Record<string, string>;
   createdAt: string;
   mediaUrl?: string | null;
   mediaOriginalName?: string | null;
@@ -337,9 +340,11 @@ export const messageService = {
 
   getMessages: async (
     conversationId: string,
+    options?: { before?: string; limit?: number },
   ): Promise<ChatMessage[]> => {
     const response = await privateApi.get(
       `/message/conversations/${conversationId}/messages`,
+      { params: options },
     );
 
     return response.data || [];
@@ -349,12 +354,14 @@ export const messageService = {
     conversationId: string,
     content: string,
     roomId?: string,
+    replyToMessageId?: string,
   ): Promise<ChatMessage> => {
     const response = await privateApi.post(
       `/message/conversations/${conversationId}/messages`,
       {
         content,
         roomId: roomId || undefined,
+        replyToMessageId: replyToMessageId || undefined,
       },
     );
 
@@ -411,6 +418,11 @@ export const messageService = {
       { content },
     );
     return response.data;
+  },
+
+  reactToMessage: async (messageId: string, emoji: string) => {
+    const response = await privateApi.patch(`/message/messages/${messageId}/reaction`, { emoji });
+    return response.data as { messageId: string; conversationId: string; reactions: Record<string, string> };
   },
 
   deleteMessage: async (

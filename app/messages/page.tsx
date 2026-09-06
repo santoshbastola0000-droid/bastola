@@ -167,7 +167,9 @@ const user = useUserStore(
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const { latitude, longitude } = position.coords;
-        setDraft(`Location: https://maps.google.com/?q=${latitude},${longitude}`);
+        const approxLat = Number(latitude.toFixed(2));
+        const approxLng = Number(longitude.toFixed(2));
+        setDraft(`Approx area: https://maps.google.com/?q=${approxLat},${approxLng}`);
         setShowPlusMenu(false);
       },
       () => toast.error("Location access दिनुहोस्."),
@@ -251,6 +253,9 @@ const user = useUserStore(
     useState("");
   const [editingSaving, setEditingSaving] =
     useState(false);
+  const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
+  const [hasOlderMessages, setHasOlderMessages] = useState(false);
+  const [loadingOlder, setLoadingOlder] = useState(false);
 
 
   const [loading, setLoading] =
@@ -309,7 +314,7 @@ const user = useUserStore(
       }
     };
 
-    const intervalId = window.setInterval(syncConversations, 5000);
+    const intervalId = window.setInterval(syncConversations, 20000);
 
     return () => {
       cancelled = true;
@@ -521,6 +526,16 @@ const user = useUserStore(
       },
     );
 
+    nextSocket.on("message:edited", (updated: ChatMessage) => {
+      if (!updated?.id) return;
+      setMessages((prev) => prev.map((m) => m.id === updated.id ? { ...m, ...updated } : m));
+    });
+
+    nextSocket.on("message:reaction", (payload: { messageId: string; reactions: Record<string, string> }) => {
+      if (!payload?.messageId) return;
+      setMessages((prev) => prev.map((m) => m.id === payload.messageId ? { ...m, reactions: payload.reactions || {} } : m));
+    });
+
     nextSocket.on(
       "message:seen",
       (payload: {
@@ -613,6 +628,8 @@ const user = useUserStore(
     return () => {
       nextSocket.off("message:status");
       nextSocket.off("message:deleted");
+      nextSocket.off("message:edited");
+      nextSocket.off("message:reaction");
       nextSocket.off("presence:snapshot");
       nextSocket.off("presence:update");
       nextSocket.disconnect();
@@ -744,12 +761,10 @@ const user = useUserStore(
       setMessagesLoading(true);
 
       try {
-        const data =
-          await messageService.getMessages(
-            conversation.id,
-          );
-
+        const data = await messageService.getMessages(conversation.id, { limit: 50 });
         setMessages(data);
+        setHasOlderMessages(data.length >= 50);
+        setReplyingTo(null);
 
         await messageService.markSeen(
           conversation.id,
@@ -1291,10 +1306,6 @@ const user = useUserStore(
   const startDeleteHold = (
     message: ChatMessage,
   ) => {
-    if (message.senderId !== currentUserId) {
-      return;
-    }
-
     clearDeleteHoldTimer();
 
     deleteHoldTimerRef.current =
@@ -1305,6 +1316,33 @@ const user = useUserStore(
       }, 520);
   };
 
+  const loadOlderMessages = async () => {
+    if (!selected || loadingOlder || !messages.length) return;
+    try {
+      setLoadingOlder(true);
+      const older = await messageService.getMessages(selected.id, { before: messages[0].createdAt, limit: 50 });
+      setMessages((current) => {
+        const ids = new Set(current.map((m) => m.id));
+        return [...older.filter((m) => !ids.has(m.id)), ...current];
+      });
+      setHasOlderMessages(older.length >= 50);
+    } catch {
+      toast.error("Older messages load गर्न सकिएन.");
+    } finally {
+      setLoadingOlder(false);
+    }
+  };
+
+  const reactToMessage = async (message: ChatMessage, emoji: string) => {
+    try {
+      const result = await messageService.reactToMessage(message.id, emoji);
+      setMessages((prev) => prev.map((m) => m.id === message.id ? { ...m, reactions: result.reactions || {} } : m));
+      setMessageAction(null);
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || "Reaction update गर्न सकिएन.");
+    }
+  };
+
   useEffect(() => {
     if (!selected?.id) return;
 
@@ -1312,16 +1350,20 @@ const user = useUserStore(
 
     const syncMessages = async () => {
       try {
-        const data = await messageService.getMessages(selected.id);
+        const data = await messageService.getMessages(selected.id, { limit: 50 });
         if (!cancelled) {
-          setMessages(data);
+          setMessages((current) => {
+            const map = new Map(current.map((m) => [m.id, m]));
+            data.forEach((m) => map.set(m.id, m));
+            return Array.from(map.values()).sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+          });
         }
       } catch {
         // Realtime socket remains primary; polling is only a delivery fallback.
       }
     };
 
-    const intervalId = window.setInterval(syncMessages, 4000);
+    const intervalId = window.setInterval(syncMessages, 20000);
 
     const handleFocus = () => {
       void syncMessages();
@@ -1362,6 +1404,7 @@ const user = useUserStore(
             selected.id,
             text,
             roomAttachmentId,
+            replyingTo?.id,
           );
 
         setMessages((prev) => [
@@ -1370,6 +1413,7 @@ const user = useUserStore(
         ]);
 
         setDraft("");
+        setReplyingTo(null);
 
         loadConversations();
       } catch (error: any) {
@@ -1714,7 +1758,9 @@ const user = useUserStore(
                     No messages yet.
                   </div>
                 ) : (
-                  messages.map(
+                  <>
+                    {hasOlderMessages && <div className="flex justify-center pb-2"><button type="button" onClick={() => void loadOlderMessages()} disabled={loadingOlder} className="rounded-full bg-white/90 px-4 py-2 text-xs font-semibold text-primary shadow-sm dark:bg-[#202c33]">{loadingOlder ? "Loading..." : "Load older messages"}</button></div>}
+                    {messages.map(
                     (message) => {
                       const mine =
                         message.senderId ===
@@ -1736,6 +1782,10 @@ const user = useUserStore(
                                 : "rounded-bl-md border border-black/5 bg-white text-slate-900 dark:border-white/10 dark:bg-[#202c33] dark:text-white"
                             }`}
                           >
+                            {message.replyToMessageId && (() => {
+                              const replied = messages.find((item) => item.id === message.replyToMessageId);
+                              return <div className="mb-2 rounded-lg border-l-4 border-primary bg-black/5 px-2.5 py-2 text-xs dark:bg-white/5"><p className="font-semibold text-primary">Reply</p><p className="mt-0.5 line-clamp-2 opacity-75">{replied?.content || "Earlier message"}</p></div>;
+                            })()}
                             {message.attachment?.type === "ROOM" && message.attachment.url && (
                               <button
                                 type="button"
@@ -1812,6 +1862,10 @@ const user = useUserStore(
 
                             {message.type !== "PAYMENT" && message.content && <p className="whitespace-pre-wrap break-words">{message.content}</p>}
 
+                            {message.reactions && Object.keys(message.reactions).length > 0 && (() => {
+                              const reactionCounts = Object.values(message.reactions).reduce<Record<string, number>>((acc, emoji) => { acc[emoji] = (acc[emoji] || 0) + 1; return acc; }, {});
+                              return <div className="mt-1 flex flex-wrap gap-1">{Object.entries(reactionCounts).map(([emoji, count]) => <span key={emoji} className="rounded-full bg-white/80 px-2 py-0.5 text-xs shadow-sm dark:bg-[#111b21]">{emoji}{count > 1 ? ` ${count}` : ""}</span>)}</div>;
+                            })()}
                             <div className="mt-1 flex items-center justify-end gap-1 text-[10px] opacity-70">
                               {(message as any).editedAt && <span className="mr-1 italic">Edited</span>}
                               <span>{new Date(message.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
@@ -1823,7 +1877,8 @@ const user = useUserStore(
                         </div>
                       );
                     },
-                  )
+                  )}
+                  </>
                 )}
                 <div ref={messagesEndRef} />
               </div>
@@ -1843,6 +1898,15 @@ const user = useUserStore(
                     <Button onClick={() => void uploadMedia()} disabled={mediaSending}>
                       {mediaSending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Send"}
                     </Button>
+                  </div>
+                </div>
+              )}
+
+              {replyingTo && !editingMessageId && (
+                <div className="border-t border-black/5 bg-white/95 px-3 py-2 dark:bg-[#202c33]/95 md:px-4">
+                  <div className="mx-auto flex max-w-3xl items-center gap-2 rounded-xl bg-primary/5 px-3 py-2">
+                    <div className="min-w-0 flex-1 border-l-4 border-primary pl-3"><p className="text-[11px] font-bold text-primary">Replying to</p><p className="truncate text-xs text-muted-foreground">{replyingTo.content || "Message"}</p></div>
+                    <button type="button" onClick={() => setReplyingTo(null)} className="px-2 py-1 text-muted-foreground">✕</button>
                   </div>
                 </div>
               )}
@@ -1950,7 +2014,8 @@ const user = useUserStore(
             </div>
           </div>
           <div className="p-2 text-[16px] font-medium">
-            <button type="button" className="flex w-full items-center gap-4 rounded-xl px-4 py-3 text-left hover:bg-muted" onClick={() => { setDraft(`> ${messageAction.content}\n\n`); setMessageAction(null); }}>↩ <span>Reply</span></button>
+            <div className="mb-2 flex items-center justify-around rounded-2xl bg-muted/70 px-2 py-2">{["👍", "❤️", "😂", "😮", "😢", "🙏"].map((emoji) => <button key={emoji} type="button" onClick={() => void reactToMessage(messageAction, emoji)} className={`flex h-10 w-10 items-center justify-center rounded-full text-2xl ${messageAction.reactions?.[currentUserId] === emoji ? "bg-primary/15 ring-1 ring-primary" : ""}`}>{emoji}</button>)}</div>
+            <button type="button" className="flex w-full items-center gap-4 rounded-xl px-4 py-3 text-left hover:bg-muted" onClick={() => { setReplyingTo(messageAction); setMessageAction(null); }}>↩ <span>Reply</span></button>
             <button type="button" className="flex w-full items-center gap-4 rounded-xl px-4 py-3 text-left hover:bg-muted" onClick={async () => { await navigator.clipboard?.writeText(messageAction.content || ""); setMessageAction(null); toast.success("Copied"); }}>▣ <span>Copy</span></button>
             {messageAction.senderId === currentUserId && Date.now() - new Date(messageAction.createdAt).getTime() <= 60_000 && (messageAction.type === "TEXT" || messageAction.type === "text") && (
               <button type="button" className="flex w-full items-center gap-4 rounded-xl px-4 py-3 text-left text-primary hover:bg-primary/10" onClick={() => void editOwnMessage(messageAction)}>✎ <span>Edit <span className="ml-1 text-xs font-normal text-muted-foreground">(within 1 min)</span></span></button>
