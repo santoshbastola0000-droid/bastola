@@ -1,0 +1,98 @@
+name: Apply message core UI upgrade v2
+
+on:
+  push:
+    paths:
+      - '.github/workflows/message-core-ui-upgrade-v2.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Patch message UI
+        shell: python
+        run: |
+          from pathlib import Path
+
+          p = Path('http/services/message.service.ts')
+          s = p.read_text()
+          s = s.replace('  seenAt?: string | null;\n  createdAt: string;', '  seenAt?: string | null;\n  editedAt?: string | null;\n  replyToMessageId?: string | null;\n  reactions?: Record<string, string>;\n  createdAt: string;')
+          s = s.replace('''  getMessages: async (\n    conversationId: string,\n  ): Promise<ChatMessage[]> => {\n    const response = await privateApi.get(\n      `/message/conversations/${conversationId}/messages`,\n    );''', '''  getMessages: async (\n    conversationId: string,\n    options?: { before?: string; limit?: number },\n  ): Promise<ChatMessage[]> => {\n    const response = await privateApi.get(\n      `/message/conversations/${conversationId}/messages`,\n      { params: options },\n    );''')
+          s = s.replace('''  sendMessage: async (\n    conversationId: string,\n    content: string,\n    roomId?: string,\n  ): Promise<ChatMessage> => {''', '''  sendMessage: async (\n    conversationId: string,\n    content: string,\n    roomId?: string,\n    replyToMessageId?: string,\n  ): Promise<ChatMessage> => {''')
+          s = s.replace('''        content,\n        roomId: roomId || undefined,\n      },''', '''        content,\n        roomId: roomId || undefined,\n        replyToMessageId: replyToMessageId || undefined,\n      },''', 1)
+          if 'reactToMessage: async' not in s:
+            s = s.replace('''  deleteMessage: async (\n    messageId: string,''', '''  reactToMessage: async (messageId: string, emoji: string) => {\n    const response = await privateApi.patch(`/message/messages/${messageId}/reaction`, { emoji });\n    return response.data as { messageId: string; conversationId: string; reactions: Record<string, string> };\n  },\n\n  deleteMessage: async (\n    messageId: string,''')
+          p.write_text(s)
+
+          p = Path('app/messages/page.tsx')
+          s = p.read_text()
+
+          # Never put exact device coordinates into a message.
+          s = s.replace('''        const { latitude, longitude } = position.coords;\n        setDraft(`Location: https://maps.google.com/?q=${latitude},${longitude}`);''', '''        const { latitude, longitude } = position.coords;\n        const approxLat = Number(latitude.toFixed(2));\n        const approxLng = Number(longitude.toFixed(2));\n        setDraft(`Approx area: https://maps.google.com/?q=${approxLat},${approxLng}`);''')
+
+          if 'const [replyingTo, setReplyingTo]' not in s:
+            s = s.replace('''  const [editingSaving, setEditingSaving] =\n    useState(false);''', '''  const [editingSaving, setEditingSaving] =\n    useState(false);\n  const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);\n  const [hasOlderMessages, setHasOlderMessages] = useState(false);\n  const [loadingOlder, setLoadingOlder] = useState(false);''')
+
+          s = s.replace('''        const data =\n          await messageService.getMessages(\n            conversation.id,\n          );\n\n        setMessages(data);''', '''        const data = await messageService.getMessages(conversation.id, { limit: 50 });\n        setMessages(data);\n        setHasOlderMessages(data.length >= 50);\n        setReplyingTo(null);''')
+
+          if '"message:edited"' not in s:
+            s = s.replace('''    nextSocket.on(\n      "message:seen",''', '''    nextSocket.on("message:edited", (updated: ChatMessage) => {\n      if (!updated?.id) return;\n      setMessages((prev) => prev.map((m) => m.id === updated.id ? { ...m, ...updated } : m));\n    });\n\n    nextSocket.on("message:reaction", (payload: { messageId: string; reactions: Record<string, string> }) => {\n      if (!payload?.messageId) return;\n      setMessages((prev) => prev.map((m) => m.id === payload.messageId ? { ...m, reactions: payload.reactions || {} } : m));\n    });\n\n    nextSocket.on(\n      "message:seen",''')
+            s = s.replace('''      nextSocket.off("message:deleted");''', '''      nextSocket.off("message:deleted");\n      nextSocket.off("message:edited");\n      nextSocket.off("message:reaction");''')
+
+          s = s.replace('''  const startDeleteHold = (\n    message: ChatMessage,\n  ) => {\n    if (message.senderId !== currentUserId) {\n      return;\n    }\n\n    clearDeleteHoldTimer();''', '''  const startDeleteHold = (\n    message: ChatMessage,\n  ) => {\n    clearDeleteHoldTimer();''')
+
+          if 'const loadOlderMessages = async' not in s:
+            s = s.replace('''  useEffect(() => {\n    if (!selected?.id) return;\n\n    let cancelled = false;''', '''  const loadOlderMessages = async () => {\n    if (!selected || loadingOlder || !messages.length) return;\n    try {\n      setLoadingOlder(true);\n      const older = await messageService.getMessages(selected.id, { before: messages[0].createdAt, limit: 50 });\n      setMessages((current) => {\n        const ids = new Set(current.map((m) => m.id));\n        return [...older.filter((m) => !ids.has(m.id)), ...current];\n      });\n      setHasOlderMessages(older.length >= 50);\n    } catch {\n      toast.error("Older messages load गर्न सकिएन.");\n    } finally {\n      setLoadingOlder(false);\n    }\n  };\n\n  const reactToMessage = async (message: ChatMessage, emoji: string) => {\n    try {\n      const result = await messageService.reactToMessage(message.id, emoji);\n      setMessages((prev) => prev.map((m) => m.id === message.id ? { ...m, reactions: result.reactions || {} } : m));\n      setMessageAction(null);\n    } catch (error: any) {\n      toast.error(error?.response?.data?.message || "Reaction update गर्न सकिएन.");\n    }\n  };\n\n  useEffect(() => {\n    if (!selected?.id) return;\n\n    let cancelled = false;''')
+
+          s = s.replace('const intervalId = window.setInterval(syncMessages, 4000);', 'const intervalId = window.setInterval(syncMessages, 20000);')
+          s = s.replace('const intervalId = window.setInterval(syncConversations, 5000);', 'const intervalId = window.setInterval(syncConversations, 20000);')
+          s = s.replace('''        const data = await messageService.getMessages(selected.id);\n        if (!cancelled) {\n          setMessages(data);\n        }''', '''        const data = await messageService.getMessages(selected.id, { limit: 50 });\n        if (!cancelled) {\n          setMessages((current) => {\n            const map = new Map(current.map((m) => [m.id, m]));\n            data.forEach((m) => map.set(m.id, m));\n            return Array.from(map.values()).sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());\n          });\n        }''')
+
+          s = s.replace('''          await messageService.sendMessage(\n            selected.id,\n            text,\n            roomAttachmentId,\n          );''', '''          await messageService.sendMessage(\n            selected.id,\n            text,\n            roomAttachmentId,\n            replyingTo?.id,\n          );''')
+          s = s.replace('''        setDraft("");\n\n        loadConversations();''', '''        setDraft("");\n        setReplyingTo(null);\n\n        loadConversations();''')
+
+          # Quoted reply preview in each bubble.
+          token = '''                          >\n                            {message.attachment?.type === "ROOM" && message.attachment.url && ('''
+          if 'Earlier message' not in s and token in s:
+            s = s.replace(token, '''                          >\n                            {message.replyToMessageId && (() => {\n                              const replied = messages.find((item) => item.id === message.replyToMessageId);\n                              return <div className="mb-2 rounded-lg border-l-4 border-primary bg-black/5 px-2.5 py-2 text-xs dark:bg-white/5"><p className="font-semibold text-primary">Reply</p><p className="mt-0.5 line-clamp-2 opacity-75">{replied?.content || "Earlier message"}</p></div>;\n                            })()}\n                            {message.attachment?.type === "ROOM" && message.attachment.url && (''', 1)
+
+          # Show compact reaction summary before the timestamp row.
+          token = '''                            <div className="mt-1 flex items-center justify-end gap-1 text-[10px] opacity-70">'''
+          if 'reactionCounts' not in s and token in s:
+            s = s.replace(token, '''                            {message.reactions && Object.keys(message.reactions).length > 0 && (() => {\n                              const reactionCounts = Object.values(message.reactions).reduce<Record<string, number>>((acc, emoji) => { acc[emoji] = (acc[emoji] || 0) + 1; return acc; }, {});\n                              return <div className="mt-1 flex flex-wrap gap-1">{Object.entries(reactionCounts).map(([emoji, count]) => <span key={emoji} className="rounded-full bg-white/80 px-2 py-0.5 text-xs shadow-sm dark:bg-[#111b21]">{emoji}{count > 1 ? ` ${count}` : ""}</span>)}</div>;\n                            })()}\n                            <div className="mt-1 flex items-center justify-end gap-1 text-[10px] opacity-70">''', 1)
+
+          # Load older control appears at top of loaded messages.
+          if 'Load older messages' not in s:
+            s = s.replace('''                ) : (\n                  messages.map(''', '''                ) : (\n                  <>\n                    {hasOlderMessages && <div className="flex justify-center pb-2"><button type="button" onClick={() => void loadOlderMessages()} disabled={loadingOlder} className="rounded-full bg-white/90 px-4 py-2 text-xs font-semibold text-primary shadow-sm dark:bg-[#202c33]">{loadingOlder ? "Loading..." : "Load older messages"}</button></div>}\n                    {messages.map(''', 1)
+            s = s.replace('''                    },\n                  )\n                )}\n                <div ref={messagesEndRef} />''', '''                    },\n                  )}\n                  </>\n                )}\n                <div ref={messagesEndRef} />''', 1)
+
+          # Reply composer strip.
+          if '{replyingTo && !editingMessageId' not in s:
+            s = s.replace('''              {editingMessageId && (''', '''              {replyingTo && !editingMessageId && (\n                <div className="border-t border-black/5 bg-white/95 px-3 py-2 dark:bg-[#202c33]/95 md:px-4">\n                  <div className="mx-auto flex max-w-3xl items-center gap-2 rounded-xl bg-primary/5 px-3 py-2">\n                    <div className="min-w-0 flex-1 border-l-4 border-primary pl-3"><p className="text-[11px] font-bold text-primary">Replying to</p><p className="truncate text-xs text-muted-foreground">{replyingTo.content || "Message"}</p></div>\n                    <button type="button" onClick={() => setReplyingTo(null)} className="px-2 py-1 text-muted-foreground">✕</button>\n                  </div>\n                </div>\n              )}\n\n              {editingMessageId && (''', 1)
+
+          old_reply = '''            <button type="button" className="flex w-full items-center gap-4 rounded-xl px-4 py-3 text-left hover:bg-muted" onClick={() => { setDraft(`> ${messageAction.content}\\n\\n`); setMessageAction(null); }}>↩ <span>Reply</span></button>'''
+          if old_reply in s:
+            new_reply = '''            <div className="mb-2 flex items-center justify-around rounded-2xl bg-muted/70 px-2 py-2">{["👍", "❤️", "😂", "😮", "😢", "🙏"].map((emoji) => <button key={emoji} type="button" onClick={() => void reactToMessage(messageAction, emoji)} className={`flex h-10 w-10 items-center justify-center rounded-full text-2xl ${messageAction.reactions?.[currentUserId] === emoji ? "bg-primary/15 ring-1 ring-primary" : ""}`}>{emoji}</button>)}</div>\n            <button type="button" className="flex w-full items-center gap-4 rounded-xl px-4 py-3 text-left hover:bg-muted" onClick={() => { setReplyingTo(messageAction); setMessageAction(null); }}>↩ <span>Reply</span></button>'''
+            s = s.replace(old_reply, new_reply, 1)
+
+          p.write_text(s)
+
+      - name: Validate frontend build
+        run: |
+          corepack enable
+          pnpm install --frozen-lockfile
+          pnpm run build
+      - name: Commit frontend upgrade
+        run: |
+          git config user.name "RoomKhoj Bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add app/messages/page.tsx http/services/message.service.ts
+          git diff --cached --quiet && exit 0
+          git commit -m "feat(messages): replies reactions privacy and pagination UI"
+          git push origin main
