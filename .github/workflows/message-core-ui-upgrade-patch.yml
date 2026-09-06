@@ -1,0 +1,175 @@
+name: Apply message core UI upgrade patch
+
+on:
+  push:
+    paths:
+      - '.github/workflows/message-core-ui-upgrade-patch.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Patch frontend message core
+        shell: python
+        run: |
+          from pathlib import Path
+
+          # Service types + APIs.
+          p = Path('http/services/message.service.ts')
+          s = p.read_text()
+          if 'replyToMessageId?: string | null;' not in s:
+            s = s.replace(
+              '  seenAt?: string | null;\n  createdAt: string;',
+              '  seenAt?: string | null;\n  editedAt?: string | null;\n  replyToMessageId?: string | null;\n  reactions?: Record<string, string>;\n  createdAt: string;'
+            )
+
+          old = '''  getMessages: async (\n    conversationId: string,\n  ): Promise<ChatMessage[]> => {\n    const response = await privateApi.get(\n      `/message/conversations/${conversationId}/messages`,\n    );\n\n    return response.data || [];\n  },'''
+          new = '''  getMessages: async (\n    conversationId: string,\n    options?: { before?: string; limit?: number },\n  ): Promise<ChatMessage[]> => {\n    const response = await privateApi.get(\n      `/message/conversations/${conversationId}/messages`,\n      { params: options },\n    );\n\n    return response.data || [];\n  },'''
+          if old in s:
+            s = s.replace(old, new)
+
+          old = '''  sendMessage: async (\n    conversationId: string,\n    content: string,\n    roomId?: string,\n  ): Promise<ChatMessage> => {\n    const response = await privateApi.post(\n      `/message/conversations/${conversationId}/messages`,\n      {\n        content,\n        roomId: roomId || undefined,\n      },\n    );'''
+          new = '''  sendMessage: async (\n    conversationId: string,\n    content: string,\n    roomId?: string,\n    replyToMessageId?: string,\n  ): Promise<ChatMessage> => {\n    const response = await privateApi.post(\n      `/message/conversations/${conversationId}/messages`,\n      {\n        content,\n        roomId: roomId || undefined,\n        replyToMessageId: replyToMessageId || undefined,\n      },\n    );'''
+          if old in s:
+            s = s.replace(old, new)
+
+          anchor = '''  deleteMessage: async (\n    messageId: string,\n  ): Promise<{'''
+          reaction_method = '''  reactToMessage: async (\n    messageId: string,\n    emoji: string,\n  ): Promise<{ messageId: string; conversationId: string; reactions: Record<string, string> }> => {\n    const response = await privateApi.patch(\n      `/message/messages/${messageId}/reaction`,\n      { emoji },\n    );\n    return response.data;\n  },\n\n'''
+          if 'reactToMessage: async' not in s:
+            if anchor not in s:
+              raise SystemExit('service delete anchor not found')
+            s = s.replace(anchor, reaction_method + anchor)
+          p.write_text(s)
+
+          # Page behavior.
+          p = Path('app/messages/page.tsx')
+          s = p.read_text()
+
+          # Exact GPS must never be placed in chat. Approximate to ~1 km.
+          old = '''        const { latitude, longitude } = position.coords;\n        setDraft(`Location: https://maps.google.com/?q=${latitude},${longitude}`);\n        setShowPlusMenu(false);'''
+          new = '''        const { latitude, longitude } = position.coords;\n        const approxLat = Number(latitude.toFixed(2));\n        const approxLng = Number(longitude.toFixed(2));\n        setDraft(`Approx area: https://maps.google.com/?q=${approxLat},${approxLng}`);\n        setShowPlusMenu(false);'''
+          if old in s:
+            s = s.replace(old, new)
+
+          # State for reply + pagination.
+          state_anchor = '''  const [editingSaving, setEditingSaving] =\n    useState(false);\n\n\n  const [loading, setLoading] ='''
+          state_new = '''  const [editingSaving, setEditingSaving] =\n    useState(false);\n  const [replyingTo, setReplyingTo] =\n    useState<ChatMessage | null>(null);\n  const [hasOlderMessages, setHasOlderMessages] =\n    useState(false);\n  const [loadingOlder, setLoadingOlder] =\n    useState(false);\n\n\n  const [loading, setLoading] ='''
+          if 'const [replyingTo, setReplyingTo]' not in s:
+            if state_anchor not in s:
+              raise SystemExit('state anchor not found')
+            s = s.replace(state_anchor, state_new)
+
+          # Conversation load: latest 50 + hasOlder.
+          old = '''        const data =\n          await messageService.getMessages(\n            conversation.id,\n          );\n\n        setMessages(data);'''
+          new = '''        const data =\n          await messageService.getMessages(\n            conversation.id,\n            { limit: 50 },\n          );\n\n        setMessages(data);\n        setHasOlderMessages(data.length >= 50);\n        setReplyingTo(null);'''
+          if old in s:
+            s = s.replace(old, new)
+
+          # Realtime edited + reaction handlers after delete handler block.
+          marker = '''    nextSocket.on(\n      "message:seen",'''
+          realtime = '''    nextSocket.on(\n      "message:edited",\n      (updated: ChatMessage) => {\n        if (!updated?.id) return;\n        setMessages((prev) =>\n          prev.map((message) => message.id === updated.id ? { ...message, ...updated } : message),\n        );\n      },\n    );\n\n    nextSocket.on(\n      "message:reaction",\n      (payload: { messageId: string; reactions: Record<string, string> }) => {\n        if (!payload?.messageId) return;\n        setMessages((prev) =>\n          prev.map((message) => message.id === payload.messageId\n            ? { ...message, reactions: payload.reactions || {} }\n            : message),\n        );\n      },\n    );\n\n'''
+          if '"message:edited"' not in s:
+            if marker not in s:
+              raise SystemExit('socket marker not found')
+            s = s.replace(marker, realtime + marker)
+
+          # Cleanup socket listeners.
+          s = s.replace(
+            '      nextSocket.off("message:deleted");\n      nextSocket.off("presence:snapshot");',
+            '      nextSocket.off("message:deleted");\n      nextSocket.off("message:edited");\n      nextSocket.off("message:reaction");\n      nextSocket.off("presence:snapshot");'
+          )
+
+          # Long press applies to both sides for reply/reaction.
+          s = s.replace(
+            '''  const startDeleteHold = (\n    message: ChatMessage,\n  ) => {\n    if (message.senderId !== currentUserId) {\n      return;\n    }\n\n    clearDeleteHoldTimer();''',
+            '''  const startDeleteHold = (\n    message: ChatMessage,\n  ) => {\n    clearDeleteHoldTimer();'''
+          )
+
+          # Add load older and reaction functions before polling effect.
+          marker = '''  useEffect(() => {\n    if (!selected?.id) return;\n\n    let cancelled = false;'''
+          helpers = '''  const loadOlderMessages = async () => {\n    if (!selected || loadingOlder || !messages.length) return;\n    try {\n      setLoadingOlder(true);\n      const older = await messageService.getMessages(selected.id, {\n        before: messages[0].createdAt,\n        limit: 50,\n      });\n      setMessages((current) => {\n        const existing = new Set(current.map((item) => item.id));\n        return [...older.filter((item) => !existing.has(item.id)), ...current];\n      });\n      setHasOlderMessages(older.length >= 50);\n    } catch {\n      toast.error("Older messages load गर्न सकिएन.");\n    } finally {\n      setLoadingOlder(false);\n    }\n  };\n\n  const reactToMessage = async (message: ChatMessage, emoji: string) => {\n    try {\n      const result = await messageService.reactToMessage(message.id, emoji);\n      setMessages((prev) => prev.map((item) => item.id === message.id\n        ? { ...item, reactions: result.reactions || {} }\n        : item));\n      setMessageAction(null);\n    } catch (error: any) {\n      toast.error(error?.response?.data?.message || "Reaction update गर्न सकिएन.");\n    }\n  };\n\n'''
+          if 'const loadOlderMessages = async' not in s:
+            if marker not in s:
+              raise SystemExit('polling marker not found')
+            s = s.replace(marker, helpers + marker)
+
+          # Polling is fallback, not 4-second primary traffic.
+          s = s.replace('const intervalId = window.setInterval(syncMessages, 4000);', 'const intervalId = window.setInterval(syncMessages, 20000);')
+          s = s.replace('const intervalId = window.setInterval(syncConversations, 5000);', 'const intervalId = window.setInterval(syncConversations, 20000);')
+
+          # Fallback sync only refreshes latest 50 without discarding older history.
+          old = '''        const data = await messageService.getMessages(selected.id);\n        if (!cancelled) {\n          setMessages(data);\n        }'''
+          new = '''        const data = await messageService.getMessages(selected.id, { limit: 50 });\n        if (!cancelled) {\n          setMessages((current) => {\n            const map = new Map(current.map((item) => [item.id, item]));\n            for (const item of data) map.set(item.id, item);\n            return Array.from(map.values()).sort((a, b) =>\n              new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),\n            );\n          });\n        }'''
+          if old in s:
+            s = s.replace(old, new)
+
+          # Send real reply id.
+          old = '''          await messageService.sendMessage(\n            selected.id,\n            text,\n            roomAttachmentId,\n          );'''
+          new = '''          await messageService.sendMessage(\n            selected.id,\n            text,\n            roomAttachmentId,\n            replyingTo?.id,\n          );'''
+          if old in s:
+            s = s.replace(old, new)
+          s = s.replace('        setDraft("");\n\n        loadConversations();', '        setDraft("");\n        setReplyingTo(null);\n\n        loadConversations();')
+
+          # Load older button before message map.
+          old = '''                ) : (\n                  messages.map(\n                    (message) => {'''
+          new = '''                ) : (\n                  <>\n                  {hasOlderMessages && (\n                    <div className="flex justify-center pb-2">\n                      <button type="button" onClick={() => void loadOlderMessages()} disabled={loadingOlder} className="rounded-full bg-white/90 px-4 py-2 text-xs font-semibold text-primary shadow-sm disabled:opacity-60 dark:bg-[#202c33]">\n                        {loadingOlder ? "Loading..." : "Load older messages"}\n                      </button>\n                    </div>\n                  )}\n                  {messages.map(\n                    (message) => {'''
+          if old in s:
+            s = s.replace(old, new)
+          old = '''                    },\n                  )\n                )}\n                <div ref={messagesEndRef} />'''
+          new = '''                    },\n                  )}\n                  </>\n                )}\n                <div ref={messagesEndRef} />'''
+          if old in s:
+            s = s.replace(old, new)
+
+          # Reply preview inside bubble, before room attachment.
+          bubble_anchor = '''                          >\n                            {message.attachment?.type === "ROOM" && message.attachment.url && ('''
+          bubble_new = '''                          >\n                            {message.replyToMessageId && (() => {\n                              const replied = messages.find((item) => item.id === message.replyToMessageId);\n                              return (\n                                <div className="mb-2 rounded-lg border-l-4 border-primary bg-black/5 px-2.5 py-2 text-xs dark:bg-white/5">\n                                  <p className="font-semibold text-primary">Reply</p>\n                                  <p className="mt-0.5 line-clamp-2 opacity-75">{replied?.content || "Earlier message"}</p>\n                                </div>\n                              );\n                            })()}\n                            {message.attachment?.type === "ROOM" && message.attachment.url && ('''
+          if 'replied?.content || "Earlier message"' not in s:
+            if bubble_anchor not in s:
+              raise SystemExit('bubble anchor not found')
+            s = s.replace(bubble_anchor, bubble_new)
+
+          # Reaction chips after timestamp block/before closing bubble.
+          reaction_anchor = '''                            <div className="mt-1 flex items-center justify-end gap-1 text-[10px] opacity-70">\n                              {(message as any).editedAt && <span className="mr-1 italic">Edited</span>\n                              <span>{new Date(message.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>\n                              {mine && (\n                                <CheckCheck className={`h-3.5 w-3.5 ${message.seenAt ? "text-sky-200" : ""}`} />\n                              )}\n                            </div>'''
+          reaction_new = reaction_anchor + '''\n                            {message.reactions && Object.keys(message.reactions).length > 0 && (\n                              <div className="mt-1.5 flex flex-wrap gap-1">\n                                {Object.entries(message.reactions).reduce<Record<string, number>>((acc, [, emoji]) => { acc[emoji] = (acc[emoji] || 0) + 1; return acc; }, {}) &&\n                                  Object.entries(Object.values(message.reactions).reduce<Record<string, number>>((acc, emoji) => { acc[emoji] = (acc[emoji] || 0) + 1; return acc; }, {})).map(([emoji, count]) => (\n                                    <span key={emoji} className="rounded-full border border-black/5 bg-white/80 px-2 py-0.5 text-xs text-slate-800 shadow-sm dark:border-white/10 dark:bg-[#111b21] dark:text-white">{emoji}{count > 1 ? ` ${count}` : ""}</span>\n                                  ))}\n                              </div>\n                            )}'''
+          if 'Object.values(message.reactions).reduce' not in s:
+            if reaction_anchor not in s:
+              raise SystemExit('reaction render anchor not found')
+            s = s.replace(reaction_anchor, reaction_new)
+
+          # Reply composer preview before editing/composer.
+          composer_anchor = '''              {editingMessageId && ('''
+          composer_new = '''              {replyingTo && !editingMessageId && (\n                <div className="border-t border-black/5 bg-white/95 px-3 py-2 backdrop-blur dark:border-white/10 dark:bg-[#202c33]/95 md:px-4">\n                  <div className="mx-auto flex max-w-3xl items-center gap-2 rounded-xl bg-primary/5 px-3 py-2">\n                    <div className="min-w-0 flex-1 border-l-4 border-primary pl-3">\n                      <p className="text-[11px] font-bold text-primary">Replying to</p>\n                      <p className="truncate text-xs text-muted-foreground">{replyingTo.content || "Message"}</p>\n                    </div>\n                    <button type="button" onClick={() => setReplyingTo(null)} className="rounded-full px-2 py-1 text-sm text-muted-foreground">✕</button>\n                  </div>\n                </div>\n              )}\n\n              {editingMessageId && ('''
+          if '{replyingTo && !editingMessageId' not in s:
+            if composer_anchor not in s:
+              raise SystemExit('composer anchor not found')
+            s = s.replace(composer_anchor, composer_new)
+
+          # Action sheet reaction row + real reply.
+          old = '''          <div className="p-2 text-[16px] font-medium">\n            <button type="button" className="flex w-full items-center gap-4 rounded-xl px-4 py-3 text-left hover:bg-muted" onClick={() => { setDraft(`> ${messageAction.content}\\n\\n`); setMessageAction(null); }}>↩ <span>Reply</span></button>'''
+          new = '''          <div className="p-2 text-[16px] font-medium">\n            <div className="mb-2 flex items-center justify-around rounded-2xl bg-muted/70 px-2 py-2">\n              {["👍", "❤️", "😂", "😮", "😢", "🙏"].map((emoji) => (\n                <button key={emoji} type="button" onClick={() => void reactToMessage(messageAction, emoji)} className={`flex h-10 w-10 items-center justify-center rounded-full text-2xl transition hover:scale-110 ${messageAction.reactions?.[currentUserId] === emoji ? "bg-primary/15 ring-1 ring-primary" : ""}`}>{emoji}</button>\n              ))}\n            </div>\n            <button type="button" className="flex w-full items-center gap-4 rounded-xl px-4 py-3 text-left hover:bg-muted" onClick={() => { setReplyingTo(messageAction); setMessageAction(null); }}>↩ <span>Reply</span></button>'''
+          if old in s:
+            s = s.replace(old, new)
+          else:
+            raise SystemExit('action sheet anchor not found')
+
+          p.write_text(s)
+
+      - name: Validate frontend build
+        run: |
+          corepack enable
+          pnpm install --frozen-lockfile
+          pnpm run build
+      - name: Commit frontend upgrade
+        run: |
+          git config user.name "RoomKhoj Bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add app/messages/page.tsx http/services/message.service.ts
+          git diff --cached --quiet && exit 0
+          git commit -m "feat(messages): replies reactions privacy and pagination UI"
+          git push origin main
