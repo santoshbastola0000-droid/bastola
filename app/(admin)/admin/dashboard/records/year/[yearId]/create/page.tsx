@@ -28,6 +28,7 @@ export default function CreateDailyRecordPage() {
   const queryClient = useQueryClient();
   const recordYearId = String(params.yearId || "");
   const [roomSearch, setRoomSearch] = useState("");
+  const [showMoreRooms, setShowMoreRooms] = useState(false);
   const [linkedUserName, setLinkedUserName] = useState("");
   const [linkingUser, setLinkingUser] = useState(false);
 
@@ -60,6 +61,7 @@ export default function CreateDailyRecordPage() {
     queryFn: () => roomService.getAdminRooms({ page: 0, take: 100, search: roomSearch || undefined }),
   });
   const rooms = roomsData?.data || [];
+  const visibleRooms = showMoreRooms || roomSearch.trim() ? rooms : rooms.slice(0, 3);
 
   const toggleRoom = (roomId: string) => {
     const current = form.shownRoomIds || [];
@@ -147,20 +149,29 @@ export default function CreateDailyRecordPage() {
         <Card>
           <CardHeader><CardTitle>Kun kun room customer lai show gareko?</CardTitle></CardHeader>
           <CardContent className="space-y-4">
-            <div className="relative"><Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" /><Input className="pl-9" value={roomSearch} onChange={(e) => setRoomSearch(e.target.value)} placeholder="Search room by title/place..." /></div>
+            <div className="relative"><Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" /><Input className="pl-9" value={roomSearch} onChange={(e) => { setRoomSearch(e.target.value); if (e.target.value.trim()) setShowMoreRooms(true); }} placeholder="Search room by title/place..." /></div>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {roomsLoading ? <p className="text-sm text-muted-foreground">Loading rooms...</p> : rooms.map((room) => {
+              {roomsLoading ? <p className="text-sm text-muted-foreground">Loading rooms...</p> : visibleRooms.map((room) => {
                 const selected = (form.shownRoomIds || []).includes(room.id);
                 return (
                   <button key={room.id} type="button" onClick={() => toggleRoom(room.id)} className={`rounded-lg border p-3 text-left transition ${selected ? "border-green-600 bg-green-50" : "hover:bg-muted/50"}`}>
                     <div className="font-medium line-clamp-1">{room.title}</div>
-                    <div className="mt-1 text-xs text-muted-foreground">{room.address || room.location?.name || "Location not set"}</div>
+                    <div className="mt-1 text-xs text-muted-foreground line-clamp-2">{room.address || room.location?.name || "Location not set"}</div>
                     <div className="mt-1 text-xs">Rs. {Number(room.price || 0).toLocaleString()} • {room.listingStatus}</div>
                     <div className="mt-2 text-xs font-medium">{selected ? "✓ Attached / Shown" : "+ Attach room"}</div>
                   </button>
                 );
               })}
             </div>
+
+            {!roomSearch.trim() && rooms.length > 3 && (
+              <div className="flex justify-center">
+                <Button type="button" variant="outline" onClick={() => setShowMoreRooms((prev) => !prev)}>
+                  {showMoreRooms ? "See less" : `See more rooms (${rooms.length - 3})`}
+                </Button>
+              </div>
+            )}
+
             <p className="text-sm text-muted-foreground">Selected rooms: {(form.shownRoomIds || []).length}</p>
           </CardContent>
         </Card>
