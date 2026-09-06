@@ -243,6 +243,15 @@ const user = useUserStore(
   const [deletingMessageId, setDeletingMessageId] =
     useState<string | null>(null);
 
+  const [messageAction, setMessageAction] =
+    useState<ChatMessage | null>(null);
+  const [editingMessageId, setEditingMessageId] =
+    useState<string | null>(null);
+  const [editingDraft, setEditingDraft] =
+    useState("");
+  const [editingSaving, setEditingSaving] =
+    useState(false);
+
 
   const [loading, setLoading] =
     useState(true);
@@ -1207,6 +1216,37 @@ const user = useUserStore(
     }
   };
 
+  const editOwnMessage = async (message: ChatMessage) => {
+    const ageMs = Date.now() - new Date(message.createdAt).getTime();
+    if (message.senderId !== currentUserId || ageMs > 60_000) {
+      toast.error("Message 1 minute भित्र मात्र edit गर्न मिल्छ.");
+      return;
+    }
+    if (message.type !== "TEXT" && message.type !== "text") {
+      toast.error("Text message मात्र edit गर्न मिल्छ.");
+      return;
+    }
+    setEditingMessageId(message.id);
+    setEditingDraft(message.content || "");
+    setMessageAction(null);
+  };
+
+  const saveEditedMessage = async () => {
+    if (!editingMessageId || !editingDraft.trim() || editingSaving) return;
+    try {
+      setEditingSaving(true);
+      const updated = await messageService.editMessage(editingMessageId, editingDraft.trim());
+      setMessages((prev) => prev.map((item) => item.id === updated.id ? updated : item));
+      setEditingMessageId(null);
+      setEditingDraft("");
+      toast.success("Message edited");
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || "Message edit गर्न सकिएन.");
+    } finally {
+      setEditingSaving(false);
+    }
+  };
+
   const deleteOwnMessage = async (
     message: ChatMessage,
   ) => {
@@ -1218,7 +1258,7 @@ const user = useUserStore(
     }
 
     const confirmed = window.confirm(
-      "Delete this message for everyone?",
+      "Unsend this message for everyone?",
     );
 
     if (!confirmed) return;
@@ -1237,7 +1277,7 @@ const user = useUserStore(
       );
 
       await loadConversations();
-      toast.success("Message deleted");
+      toast.success("Message unsent");
     } catch (error: any) {
       toast.error(
         error?.response?.data?.message ||
@@ -1260,8 +1300,9 @@ const user = useUserStore(
     deleteHoldTimerRef.current =
       window.setTimeout(() => {
         deleteHoldTimerRef.current = null;
-        void deleteOwnMessage(message);
-      }, 650);
+        setMessageAction(message);
+        if (navigator.vibrate) navigator.vibrate(20);
+      }, 520);
   };
 
   useEffect(() => {
@@ -1772,6 +1813,7 @@ const user = useUserStore(
                             {message.type !== "PAYMENT" && message.content && <p className="whitespace-pre-wrap break-words">{message.content}</p>}
 
                             <div className="mt-1 flex items-center justify-end gap-1 text-[10px] opacity-70">
+                              {(message as any).editedAt && <span className="mr-1 italic">Edited</span>}
                               <span>{new Date(message.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
                               {mine && (
                                 <CheckCheck className={`h-3.5 w-3.5 ${message.seenAt ? "text-sky-200" : ""}`} />
@@ -1801,6 +1843,19 @@ const user = useUserStore(
                     <Button onClick={() => void uploadMedia()} disabled={mediaSending}>
                       {mediaSending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Send"}
                     </Button>
+                  </div>
+                </div>
+              )}
+
+              {editingMessageId && (
+                <div className="border-t border-black/5 bg-white/95 px-3 py-2 backdrop-blur dark:border-white/10 dark:bg-[#202c33]/95 md:px-4">
+                  <div className="mx-auto flex max-w-3xl items-center gap-2 rounded-2xl border border-primary/20 bg-primary/5 p-2">
+                    <div className="min-w-0 flex-1 border-l-4 border-primary pl-3">
+                      <p className="text-[11px] font-bold text-primary">Edit message · 1 minute limit</p>
+                      <input value={editingDraft} onChange={(e) => setEditingDraft(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void saveEditedMessage(); } }} autoFocus className="mt-0.5 w-full bg-transparent text-sm outline-none" />
+                    </div>
+                    <Button size="sm" variant="ghost" onClick={() => { setEditingMessageId(null); setEditingDraft(""); }}>Cancel</Button>
+                    <Button size="sm" onClick={() => void saveEditedMessage()} disabled={!editingDraft.trim() || editingSaving}>{editingSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}</Button>
                   </div>
                 </div>
               )}
@@ -1884,6 +1939,30 @@ const user = useUserStore(
         </section>
       </div>
     </main>
+
+    {messageAction && (
+      <div className="fixed inset-0 z-[120] flex items-end justify-center bg-black/20 p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur-[2px] md:items-center" onClick={() => setMessageAction(null)}>
+        <div className="w-full max-w-md overflow-hidden rounded-[28px] bg-white shadow-2xl dark:bg-[#202c33]" onClick={(e) => e.stopPropagation()}>
+          <div className="border-b border-black/5 p-3 dark:border-white/10">
+            <div className="rounded-2xl bg-[#f3f3f3] px-3 py-2 text-sm text-slate-900 dark:bg-[#111b21] dark:text-white">
+              <p className="line-clamp-3 whitespace-pre-wrap break-words">{messageAction.content || "Message"}</p>
+              <p className="mt-1 text-right text-[10px] opacity-60">{new Date(messageAction.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</p>
+            </div>
+          </div>
+          <div className="p-2 text-[16px] font-medium">
+            <button type="button" className="flex w-full items-center gap-4 rounded-xl px-4 py-3 text-left hover:bg-muted" onClick={() => { setDraft(`> ${messageAction.content}\n\n`); setMessageAction(null); }}>↩ <span>Reply</span></button>
+            <button type="button" className="flex w-full items-center gap-4 rounded-xl px-4 py-3 text-left hover:bg-muted" onClick={async () => { await navigator.clipboard?.writeText(messageAction.content || ""); setMessageAction(null); toast.success("Copied"); }}>▣ <span>Copy</span></button>
+            {messageAction.senderId === currentUserId && Date.now() - new Date(messageAction.createdAt).getTime() <= 60_000 && (messageAction.type === "TEXT" || messageAction.type === "text") && (
+              <button type="button" className="flex w-full items-center gap-4 rounded-xl px-4 py-3 text-left text-primary hover:bg-primary/10" onClick={() => void editOwnMessage(messageAction)}>✎ <span>Edit <span className="ml-1 text-xs font-normal text-muted-foreground">(within 1 min)</span></span></button>
+            )}
+            {messageAction.senderId === currentUserId && (
+              <button type="button" className="flex w-full items-center gap-4 rounded-xl px-4 py-3 text-left text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20" onClick={() => { const target = messageAction; setMessageAction(null); void deleteOwnMessage(target); }}>⌫ <span>Unsend / Delete for everyone</span></button>
+            )}
+            <button type="button" className="mt-1 flex w-full items-center justify-center rounded-xl border-t border-black/5 px-4 py-3 text-sm text-muted-foreground hover:bg-muted dark:border-white/10" onClick={() => setMessageAction(null)}>Cancel</button>
+          </div>
+        </div>
+      </div>
+    )}
 
     {callNotice && (
       <div className="fixed left-1/2 top-4 z-[100] -translate-x-1/2 rounded-full bg-black/85 px-4 py-2 text-sm font-medium text-white shadow-lg">

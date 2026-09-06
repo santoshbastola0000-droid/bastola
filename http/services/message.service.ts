@@ -402,6 +402,17 @@ export const messageService = {
     return response.data as { payment: any; message: ChatMessage };
   },
 
+  editMessage: async (
+    messageId: string,
+    content: string,
+  ): Promise<ChatMessage> => {
+    const response = await privateApi.patch(
+      `/message/messages/${messageId}`,
+      { content },
+    );
+    return response.data;
+  },
+
   deleteMessage: async (
     messageId: string,
   ): Promise<{
