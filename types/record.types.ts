@@ -16,6 +16,9 @@ export interface Record {
   authorizedName?: string;
   status?: string;
   userDetails?: string;
+  customerDestination?: string;
+  shownRoomIds?: string[];
+  customerUserId?: string | null;
   createdByUserId?: string | null;
 }
 
@@ -55,6 +58,9 @@ export interface CreateRecordDTO {
   authorizedName?: string;
   status?: string;
   userDetails?: string;
+  customerDestination?: string;
+  shownRoomIds?: string[];
+  customerUserId?: string;
 }
 
 export interface RecordsFilter {
@@ -81,20 +87,4 @@ export interface Pagination {
   count: number;
 }
 
-export interface UpdateRecordDTO {
-  name?: string;
-  customerNumber?: string;
-  roomPlaceNumber?: string;
-  roomPlaceAddress?: string;
-  payMode?: PayMode;
-  paymentStatus?: PaymentStatus;
-  formCharge?: number;
-  remarks?: string;
-  recordYearId?: string;
-  entryDate?: string;
-  place?: string;
-  workType?: string;
-  authorizedName?: string;
-  status?: string;
-  userDetails?: string;
-}
+export interface UpdateRecordDTO extends Partial<CreateRecordDTO> {}
