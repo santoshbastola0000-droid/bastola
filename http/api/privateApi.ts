@@ -33,6 +33,34 @@ privateApi.interceptors.request.use((config) => {
     delete config.headers["content-type"];
   }
 
+  /*
+   * Message Payment now has two wallet-safe actions without changing the
+   * existing messages page contract:
+   *   OK     -> request payment from the other user (no earning-plan limit)
+   *   Cancel -> send available wallet balance now (max Rs. 25,000)
+   *
+   * Both paths stay connected to the backend payment/escrow audit ledger.
+   */
+  if (typeof window !== "undefined" && String(config.method || "").toLowerCase() === "post") {
+    const url = String(config.url || "");
+    const requestMatch = url.match(/^\/message\/conversations\/([^/]+)\/payment-requests$/);
+
+    if (requestMatch) {
+      const wantsPaymentRequest = window.confirm(
+        "Payment\n\nOK = Request payment\nCancel = Send money from wallet (max Rs. 25,000)",
+      );
+
+      config.url = wantsPaymentRequest
+        ? `/message/conversations/${requestMatch[1]}/direct-payment-requests`
+        : `/message/conversations/${requestMatch[1]}/wallet-transfer`;
+    }
+
+    const payMatch = url.match(/^\/message\/payments\/([^/]+)\/pay$/);
+    if (payMatch) {
+      config.url = `/message/direct-payments/${payMatch[1]}/pay`;
+    }
+  }
+
   return config;
 });
 
