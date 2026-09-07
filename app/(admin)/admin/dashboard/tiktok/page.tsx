@@ -7,8 +7,8 @@ import {
   Link2,
   Loader2,
   Music2,
+  Plus,
   Power,
-  RefreshCw,
   ShieldCheck,
   Unplug,
 } from "lucide-react";
@@ -27,7 +27,7 @@ import { adminDashboardService } from "@/http/services/admin-dashboard.service";
 export default function TikTokPublishingPage() {
   const [saving, setSaving] = useState(false);
   const [connecting, setConnecting] = useState(false);
-  const [disconnecting, setDisconnecting] = useState(false);
+  const [disconnectingId, setDisconnectingId] = useState<string | null>(null);
 
   const {
     data: status,
@@ -83,10 +83,10 @@ export default function TikTokPublishingPage() {
     }
   };
 
-  const disconnect = async () => {
+  const disconnectAccount = async (accountId: string) => {
     try {
-      setDisconnecting(true);
-      await adminDashboardService.disconnectTikTok();
+      setDisconnectingId(accountId);
+      await adminDashboardService.disconnectTikTokAccount(accountId);
       await refetch();
       toast.success("TikTok account disconnected भयो");
     } catch (error: any) {
@@ -94,7 +94,7 @@ export default function TikTokPublishingPage() {
         error?.response?.data?.message || "TikTok disconnect गर्न सकिएन",
       );
     } finally {
-      setDisconnecting(false);
+      setDisconnectingId(null);
     }
   };
 
@@ -103,7 +103,7 @@ export default function TikTokPublishingPage() {
       <div>
         <h1 className="text-2xl font-bold md:text-3xl">TikTok Publishing</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          RoomKhoj TikTok account connect गर्नुहोस् र approved room का photo post manage गर्नुहोस्।
+          Multiple RoomKhoj TikTok accounts connect गरेर approved room photos सबै connected accounts मा publish गर्नुहोस्।
         </p>
       </div>
 
@@ -113,14 +113,14 @@ export default function TikTokPublishingPage() {
             <div>
               <CardTitle className="flex items-center gap-2">
                 <Link2 className="h-5 w-5 text-primary" />
-                TikTok Account
+                TikTok Accounts
               </CardTitle>
               <CardDescription className="mt-2">
-                TikTok मा login गरेर RoomKhoj लाई posting permission दिनुहोस्। Access token र refresh token server मा मात्र राखिन्छ।
+                चाहेको जति TikTok account authorize गरेर जोड्न सक्नुहुन्छ। प्रत्येक account को token server मा मात्र सुरक्षित राखिन्छ।
               </CardDescription>
             </div>
             <Badge variant={status?.connected ? "default" : "secondary"}>
-              {status?.connected ? "Connected" : "Not connected"}
+              {status?.connectedCount || 0} connected
             </Badge>
           </div>
         </CardHeader>
@@ -129,73 +129,82 @@ export default function TikTokPublishingPage() {
           {isLoading ? (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" />
-              Loading TikTok status...
+              Loading TikTok accounts...
             </div>
           ) : (
             <>
-              {status?.connected ? (
-                <div className="rounded-xl border bg-muted/30 p-4">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                      <p className="text-xs text-muted-foreground">Connected account</p>
-                      <p className="mt-1 flex items-center gap-2 font-semibold">
-                        <CheckCircle2 className="h-4 w-4 text-green-600" />
-                        {status.account ? `@${status.account.replace(/^@/, "")}` : "TikTok account"}
-                      </p>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        {status.connectionMode === "oauth"
-                          ? "OAuth connected • token auto-refresh enabled"
-                          : "Legacy server token"}
-                      </p>
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-dashed p-4">
+                <div>
+                  <p className="font-semibold">Add another TikTok account</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Add Account थिचेर अर्को TikTok account मा login गरी Authorize/Continue गर्नुहोस्।
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  onClick={connect}
+                  disabled={connecting || !status?.configured}
+                >
+                  {connecting ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Plus className="mr-2 h-4 w-4" />
+                  )}
+                  Add Account
+                </Button>
+              </div>
+
+              {status?.accounts?.length ? (
+                <div className="space-y-3">
+                  {status.accounts.map((account) => (
+                    <div
+                      key={account.id}
+                      className="rounded-xl border bg-muted/20 p-4"
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="flex items-center gap-2 font-semibold">
+                            <CheckCircle2 className="h-4 w-4 shrink-0 text-green-600" />
+                            <span className="truncate">
+                              {account.connectionMode === "legacy_token"
+                                ? account.account
+                                : `@${account.account.replace(/^@/, "")}`}
+                            </span>
+                          </p>
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            {account.connectionMode === "oauth"
+                              ? "OAuth connected • token auto-refresh enabled"
+                              : "Legacy server token"}
+                          </p>
+                          {account.scopes?.length ? (
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              Scope: {account.scopes.join(", ")}
+                            </p>
+                          ) : null}
+                        </div>
+
+                        {account.connectionMode === "oauth" ? (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => disconnectAccount(account.id)}
+                            disabled={disconnectingId === account.id}
+                          >
+                            {disconnectingId === account.id ? (
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            ) : (
+                              <Unplug className="mr-2 h-4 w-4" />
+                            )}
+                            Disconnect
+                          </Button>
+                        ) : null}
+                      </div>
                     </div>
-                    <div className="flex flex-wrap gap-2">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={connect}
-                        disabled={connecting}
-                      >
-                        {connecting ? (
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        ) : (
-                          <RefreshCw className="mr-2 h-4 w-4" />
-                        )}
-                        Reconnect
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={disconnect}
-                        disabled={disconnecting}
-                      >
-                        {disconnecting ? (
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        ) : (
-                          <Unplug className="mr-2 h-4 w-4" />
-                        )}
-                        Disconnect
-                      </Button>
-                    </div>
-                  </div>
+                  ))}
                 </div>
               ) : (
-                <div className="space-y-3 rounded-xl border border-dashed p-5">
-                  <p className="font-semibold">RoomKhoj TikTok account connect गर्नुहोस्</p>
-                  <p className="text-sm text-muted-foreground">
-                    Connect TikTok थिचेपछि TikTok खुल्छ। RoomKhoj को TikTok account login गरेर Authorize/Continue गर्नुहोस्।
-                  </p>
-                  <Button
-                    type="button"
-                    onClick={connect}
-                    disabled={connecting || !status?.configured}
-                  >
-                    {connecting ? (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : (
-                      <Link2 className="mr-2 h-4 w-4" />
-                    )}
-                    Connect TikTok
-                  </Button>
+                <div className="rounded-xl border bg-muted/20 p-5 text-sm text-muted-foreground">
+                  अहिलेसम्म कुनै TikTok account connected छैन। माथिको Add Account button बाट पहिलो account जोड्नुहोस्।
                 </div>
               )}
 
@@ -243,7 +252,7 @@ export default function TikTokPublishingPage() {
                 TikTok Auto Publish
               </CardTitle>
               <CardDescription className="mt-2">
-                ON हुँदा approved room का photos connected TikTok account मा publish हुन्छन्।
+                ON हुँदा approved room का photos सबै connected TikTok accounts मा publish हुन्छन्।
               </CardDescription>
             </div>
             <Badge variant={status?.enabled ? "default" : "secondary"}>
@@ -264,7 +273,7 @@ export default function TikTokPublishingPage() {
           </Button>
           {!status?.connected && (
             <p className="mt-2 text-xs text-muted-foreground">
-              Auto Publish ON गर्न पहिले TikTok account connect गर्नुहोस्।
+              Auto Publish ON गर्न पहिले कम्तीमा एउटा TikTok account connect गर्नुहोस्।
             </p>
           )}
         </CardContent>
