@@ -1,2 +1,0 @@
-Admin Staff Tracking route: /admin/dashboard/staff-tracking
-Staff self-service tracking route: /staff/tracking
