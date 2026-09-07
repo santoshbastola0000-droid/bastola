@@ -2,12 +2,9 @@ import { privateApi } from "../api/privateApi";
 import { WithdrawalStatus, PaymentMethod } from "@/types/wallet.types";
 
 export interface AdminDashboardStats {
-  // User stats
   totalUsers: number;
   newUsersToday: number;
   activeUsers: number;
-
-  // Room stats
   totalRooms: number;
   approvedRooms: number;
   pendingRooms: number;
@@ -15,26 +12,18 @@ export interface AdminDashboardStats {
   availableRooms: number;
   rentedRooms: number;
   archivedRooms: number;
-
-  // Room trends
   roomsAddedToday: number;
   roomsAddedThisWeek: number;
   roomsAddedThisMonth: number;
-
-  // Wallet stats
   totalWalletBalance: number;
   totalPendingBalance: number;
   totalWithdrawn: number;
   totalCommissionEarned: number;
-
-  // Withdrawal stats
   pendingWithdrawals: number;
   approvedWithdrawals: number;
   rejectedWithdrawals: number;
   totalWithdrawalAmount: number;
   pendingWithdrawalAmount: number;
-
-  // Commission stats
   totalCommissionPaid: number;
   pendingCommission: number;
   averageCommissionPerRoom: number;
@@ -79,6 +68,14 @@ export interface RecentRoom {
   createdAt: string;
 }
 
+export interface TikTokPublishingStatus {
+  enabled: boolean;
+  configured: boolean;
+  autoMusic: boolean;
+  privacyLevel: string;
+  name: string;
+}
+
 class AdminDashboardService {
   private readonly baseUrl = "/admin/dashboard";
 
@@ -109,9 +106,7 @@ class AdminDashboardService {
   async getRecentWithdrawals(limit: number = 5): Promise<RecentWithdrawal[]> {
     const response = await privateApi.get(
       `${this.baseUrl}/withdrawals/recent`,
-      {
-        params: { limit },
-      },
+      { params: { limit } },
     );
     return response.data.data;
   }
@@ -122,16 +117,38 @@ class AdminDashboardService {
     });
     return response.data.data;
   }
-  async getInterCallStatus(): Promise<{ enabled: boolean; provider: "twilio"; name: "Inter Call" }> {
+
+  async getInterCallStatus(): Promise<{
+    enabled: boolean;
+    provider: "twilio";
+    name: "Inter Call";
+  }> {
     const response = await privateApi.get("/admin/inter-call");
     return response.data.data;
   }
 
-  async setInterCallEnabled(enabled: boolean): Promise<{ enabled: boolean; provider: "twilio"; name: "Inter Call" }> {
+  async setInterCallEnabled(enabled: boolean): Promise<{
+    enabled: boolean;
+    provider: "twilio";
+    name: "Inter Call";
+  }> {
     const response = await privateApi.patch("/admin/inter-call", { enabled });
     return response.data.data;
   }
 
+  async getTikTokPublishingStatus(): Promise<TikTokPublishingStatus> {
+    const response = await privateApi.get("/admin/tiktok-publishing");
+    return response.data.data;
+  }
+
+  async setTikTokPublishingEnabled(
+    enabled: boolean,
+  ): Promise<TikTokPublishingStatus> {
+    const response = await privateApi.patch("/admin/tiktok-publishing", {
+      enabled,
+    });
+    return response.data.data;
+  }
 }
 
 export const adminDashboardService = new AdminDashboardService();
