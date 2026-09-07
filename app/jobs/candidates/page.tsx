@@ -12,6 +12,7 @@ import {
   Loader2,
   MapPin,
   MessageCircle,
+  Phone,
   Search,
   SlidersHorizontal,
   UserRound,
@@ -28,6 +29,8 @@ export default function CandidatesPage() {
   const [category, setCategory] = useState("");
   const [location, setLocation] = useState("");
   const [openingCvId, setOpeningCvId] = useState<string | null>(null);
+  const [revealingContactId, setRevealingContactId] = useState<string | null>(null);
+  const [revealedContacts, setRevealedContacts] = useState<Record<string, string>>({});
 
   const { data: candidates = [], isLoading, error } = useQuery({
     queryKey: ["public-candidates", category, location, search],
@@ -75,6 +78,34 @@ export default function CandidatesPage() {
       );
     } finally {
       setOpeningCvId(null);
+    }
+  };
+
+  const revealContact = async (candidateId: string) => {
+    if (revealingContactId) return;
+    setRevealingContactId(candidateId);
+
+    try {
+      const data = await candidateProfileService.revealContact(candidateId, {
+        action: "VIEW_CONTACT",
+      });
+
+      if (!data?.phone) {
+        toast.error("यो employee को contact number उपलब्ध छैन।");
+        return;
+      }
+
+      setRevealedContacts((current) => ({
+        ...current,
+        [candidateId]: String(data.phone),
+      }));
+    } catch (err: any) {
+      toast.error(
+        err?.response?.data?.message ||
+          "Contact number देखाउन सकिएन। कृपया login गरेर फेरि प्रयास गर्नुहोस्।",
+      );
+    } finally {
+      setRevealingContactId(null);
     }
   };
 
@@ -183,6 +214,7 @@ export default function CandidatesPage() {
                 candidate.cv ||
                 candidate.cvUrl,
               );
+              const revealedPhone = revealedContacts[candidate.id];
 
               return (
                 <article
@@ -256,6 +288,32 @@ export default function CandidatesPage() {
                             ? "Opening CV..."
                             : `View CV${cvMeta?.originalName ? ` · ${cvMeta.originalName}` : ""}`}
                         </button>
+                      )}
+
+                      {!revealedPhone ? (
+                        <button
+                          type="button"
+                          onClick={() => revealContact(candidate.id)}
+                          disabled={revealingContactId === candidate.id}
+                          className="mb-3 flex w-full items-center justify-center gap-2 rounded-2xl border border-red-200 bg-red-50 px-3 py-3 text-sm font-extrabold text-red-700 transition hover:bg-red-100 disabled:cursor-wait disabled:opacity-70"
+                        >
+                          {revealingContactId === candidate.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Phone className="h-4 w-4" />
+                          )}
+                          {revealingContactId === candidate.id
+                            ? "Showing contact..."
+                            : "Show Contact Number"}
+                        </button>
+                      ) : (
+                        <a
+                          href={`tel:${revealedPhone}`}
+                          className="mb-3 flex w-full items-center justify-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-3 py-3 text-sm font-extrabold text-emerald-800 transition hover:bg-emerald-100"
+                        >
+                          <Phone className="h-4 w-4" />
+                          {revealedPhone}
+                        </a>
                       )}
 
                       <div className="grid grid-cols-2 gap-2">
