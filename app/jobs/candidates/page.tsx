@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
+import { toast } from "sonner";
 import {
   BadgeCheck,
   BriefcaseBusiness,
@@ -26,6 +27,7 @@ export default function CandidatesPage() {
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("");
   const [location, setLocation] = useState("");
+  const [openingCvId, setOpeningCvId] = useState<string | null>(null);
 
   const { data: candidates = [], isLoading, error } = useQuery({
     queryKey: ["public-candidates", category, location, search],
@@ -41,6 +43,40 @@ export default function CandidatesPage() {
     if (isLoading) return "Searching candidates...";
     return `${candidates.length} candidate${candidates.length === 1 ? "" : "s"} found`;
   }, [candidates.length, isLoading]);
+
+  const openCv = async (candidateId: string) => {
+    if (openingCvId) return;
+
+    const previewWindow = window.open("", "_blank");
+    setOpeningCvId(candidateId);
+
+    try {
+      const blob = await candidateProfileService.downloadCv(candidateId);
+      const url = URL.createObjectURL(blob);
+
+      if (previewWindow) {
+        previewWindow.location.href = url;
+      } else {
+        const link = document.createElement("a");
+        link.href = url;
+        link.target = "_blank";
+        link.rel = "noopener noreferrer";
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+      }
+
+      window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } catch (err: any) {
+      previewWindow?.close();
+      toast.error(
+        err?.response?.data?.message ||
+          "CV खोल्न सकिएन। कृपया login गरेर फेरि प्रयास गर्नुहोस्।",
+      );
+    } finally {
+      setOpeningCvId(null);
+    }
+  };
 
   return (
     <>
@@ -205,10 +241,23 @@ export default function CandidatesPage() {
 
                     <div className="mt-auto pt-5">
                       {hasCv && (
-                        <div className="mb-3 inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700">
-                          <FileText className="h-3.5 w-3.5" /> CV uploaded
-                        </div>
+                        <button
+                          type="button"
+                          onClick={() => openCv(candidate.id)}
+                          disabled={openingCvId === candidate.id}
+                          className="mb-3 flex w-full items-center justify-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-3 py-3 text-sm font-extrabold text-emerald-800 transition hover:bg-emerald-100 disabled:cursor-wait disabled:opacity-70"
+                        >
+                          {openingCvId === candidate.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <FileText className="h-4 w-4" />
+                          )}
+                          {openingCvId === candidate.id
+                            ? "Opening CV..."
+                            : `View CV${cvMeta?.originalName ? ` · ${cvMeta.originalName}` : ""}`}
+                        </button>
                       )}
+
                       <div className="grid grid-cols-2 gap-2">
                         <Link
                           href={`/jobs/candidates/${candidate.id}`}
