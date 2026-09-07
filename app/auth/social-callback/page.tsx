@@ -81,9 +81,10 @@ const SocialCallbackPage = () => {
         );
         sessionStorage.removeItem("roomkhoj_post_auth_redirect");
 
+        const needsPhone = String(user.phone || "").startsWith("SOCIAL_");
         const redirect =
-          !user.accountPurpose && user.role === "User"
-            ? "/auth/complete-profile"
+          user.role === "User" && (needsPhone || !user.accountPurpose)
+            ? "/auth/complete-profile?social=1"
             : savedRedirect ||
               (user.role === "Admin"
                 ? "/admin/dashboard"
