@@ -68,10 +68,20 @@ export interface RecentRoom {
   createdAt: string;
 }
 
+export interface TikTokConnectedAccount {
+  id: string;
+  account: string;
+  openId: string | null;
+  scopes: string[];
+  connectionMode: "oauth" | "legacy_token";
+}
+
 export interface TikTokPublishingStatus {
   enabled: boolean;
   configured: boolean;
   connected: boolean;
+  connectedCount: number;
+  accounts: TikTokConnectedAccount[];
   connectionMode: "oauth" | "legacy_token" | "none";
   account: string | null;
   openId: string | null;
@@ -157,6 +167,13 @@ class AdminDashboardService {
 
   async getTikTokConnectUrl(): Promise<{ url: string; redirectUri: string }> {
     const response = await privateApi.get("/admin/tiktok-publishing/connect");
+    return response.data.data;
+  }
+
+  async disconnectTikTokAccount(accountId: string): Promise<TikTokPublishingStatus> {
+    const response = await privateApi.patch(
+      `/admin/tiktok-publishing/accounts/${encodeURIComponent(accountId)}/disconnect`,
+    );
     return response.data.data;
   }
 
