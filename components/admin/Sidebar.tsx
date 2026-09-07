@@ -62,6 +62,7 @@ const navItems: NavItem[] = [
   { title: "Messages", href: "/admin/dashboard/messages", icon: MessageSquare },
   { title: "Notifications", href: "/admin/dashboard/notifications", icon: Bell },
   { title: "Website Notice", href: "/admin/dashboard/site-notice", icon: Megaphone },
+  { title: "TikTok Publish", href: "/admin/dashboard/tiktok", icon: Megaphone },
   { title: "Inter Call", href: "/admin/dashboard#inter-call", icon: PhoneCall },
   { title: "AI Training", href: "/admin/dashboard/ai-call", icon: Bot },
   { title: "Vacancies", href: "/admin/dashboard/vacancies", icon: BriefcaseBusiness },
