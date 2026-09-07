@@ -71,6 +71,11 @@ export interface RecentRoom {
 export interface TikTokPublishingStatus {
   enabled: boolean;
   configured: boolean;
+  connected: boolean;
+  connectionMode: "oauth" | "legacy_token" | "none";
+  account: string | null;
+  openId: string | null;
+  scopes: string[];
   autoMusic: boolean;
   privacyLevel: string;
   name: string;
@@ -147,6 +152,16 @@ class AdminDashboardService {
     const response = await privateApi.patch("/admin/tiktok-publishing", {
       enabled,
     });
+    return response.data.data;
+  }
+
+  async getTikTokConnectUrl(): Promise<{ url: string; redirectUri: string }> {
+    const response = await privateApi.get("/admin/tiktok-publishing/connect");
+    return response.data.data;
+  }
+
+  async disconnectTikTok(): Promise<TikTokPublishingStatus> {
+    const response = await privateApi.patch("/admin/tiktok-publishing/disconnect");
     return response.data.data;
   }
 }
