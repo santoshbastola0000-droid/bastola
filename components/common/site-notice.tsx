@@ -2,17 +2,26 @@
 
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import { BellRing, ExternalLink, X } from "lucide-react";
+import { BellRing, ExternalLink, Trophy, X } from "lucide-react";
+import { api } from "@/http/api/api";
 import {
   DEFAULT_SITE_NOTICE,
+  isSiteNoticeActive,
   readSiteNotice,
   SITE_NOTICE_EVENT,
   type SiteNotice,
 } from "@/lib/site-notice";
 
+type LeaderboardUser = {
+  userId: string;
+  name: string;
+  qualifiedReferrals: string | number;
+};
+
 export function SiteNoticeBanner() {
   const pathname = usePathname();
   const [notice, setNotice] = useState<SiteNotice>(DEFAULT_SITE_NOTICE);
+  const [topReferralName, setTopReferralName] = useState("");
   const [dismissed, setDismissed] = useState(false);
 
   useEffect(() => {
@@ -31,13 +40,33 @@ export function SiteNoticeBanner() {
     };
   }, []);
 
-  const isHomePage = pathname === "/" || pathname === "/rooms";
+  useEffect(() => {
+    let cancelled = false;
 
-  if (!isHomePage || !notice.enabled || !notice.message.trim() || dismissed) {
+    const loadTopReferral = async () => {
+      try {
+        const response = await api.get("/referral/leaderboard");
+        const users = (response.data?.data || []) as LeaderboardUser[];
+        if (!cancelled) setTopReferralName(String(users[0]?.name || "").trim());
+      } catch {
+        if (!cancelled) setTopReferralName("");
+      }
+    };
+
+    void loadTopReferral();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const isHomePage = pathname === "/" || pathname === "/rooms";
+  const hasActiveNotice = isSiteNoticeActive(notice);
+
+  if (!isHomePage || dismissed || (!hasActiveNotice && !topReferralName)) {
     return null;
   }
 
-  const href = notice.link?.trim() || "";
+  const href = hasActiveNotice ? notice.link?.trim() || "" : "";
   const isExternal = /^https?:\/\//i.test(href);
 
   return (
@@ -47,27 +76,36 @@ export function SiteNoticeBanner() {
 
         <div className="flex items-start gap-3 pr-8">
           <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-50 text-red-600 ring-1 ring-red-100">
-            <BellRing className="h-5 w-5" />
+            {hasActiveNotice ? <BellRing className="h-5 w-5" /> : <Trophy className="h-5 w-5" />}
           </div>
 
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-extrabold text-slate-950">
-              {notice.title || "RoomKhoj Notice"}
-            </p>
-            <p className="mt-0.5 text-sm leading-5 text-slate-600">
-              {notice.message}
-            </p>
+            {hasActiveNotice ? (
+              <>
+                <p className="text-sm font-extrabold text-slate-950">
+                  {notice.title || "RoomKhoj Notice"}
+                </p>
+                <p className="mt-0.5 text-sm leading-5 text-slate-600">
+                  {notice.message}
+                </p>
 
-            {href && (
-              <a
-                href={href}
-                target={isExternal ? "_blank" : undefined}
-                rel={isExternal ? "noreferrer" : undefined}
-                className="mt-2 inline-flex items-center gap-1 text-sm font-bold text-red-600 hover:text-red-700"
-              >
-                {notice.linkLabel || "View details"}
-                {isExternal && <ExternalLink className="h-3.5 w-3.5" />}
-              </a>
+                {href && (
+                  <a
+                    href={href}
+                    target={isExternal ? "_blank" : undefined}
+                    rel={isExternal ? "noreferrer" : undefined}
+                    className="mt-2 inline-flex items-center gap-1 text-sm font-bold text-red-600 hover:text-red-700"
+                  >
+                    {notice.linkLabel || "View details"}
+                    {isExternal && <ExternalLink className="h-3.5 w-3.5" />}
+                  </a>
+                )}
+              </>
+            ) : (
+              <>
+                <p className="text-xs font-bold uppercase tracking-wide text-red-600">Top Referral</p>
+                <p className="mt-0.5 truncate text-sm font-extrabold text-slate-950">{topReferralName}</p>
+              </>
             )}
           </div>
         </div>
