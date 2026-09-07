@@ -139,7 +139,15 @@ export default function CandidatesPage() {
 
           <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {candidates.map((candidate: any) => {
-              const hasCv = Boolean(candidate.hasCv || candidate.cv || candidate.cvUrl);
+              const cvMeta = candidate.jobSpecificAnswers?.cv;
+              const hasCv = Boolean(
+                cvMeta?.url ||
+                cvMeta?.originalName ||
+                candidate.hasCv ||
+                candidate.cv ||
+                candidate.cvUrl,
+              );
+
               return (
                 <article
                   key={`${candidate.id}-${candidate.jobProfileId}`}
