@@ -28,6 +28,7 @@ export default function TikTokPublishingPage() {
   const [saving, setSaving] = useState(false);
   const [connecting, setConnecting] = useState(false);
   const [disconnectingId, setDisconnectingId] = useState<string | null>(null);
+  const [disconnectingAll, setDisconnectingAll] = useState(false);
 
   const {
     data: status,
@@ -98,6 +99,21 @@ export default function TikTokPublishingPage() {
     }
   };
 
+  const disconnectAllAccounts = async () => {
+    try {
+      setDisconnectingAll(true);
+      await adminDashboardService.disconnectTikTok();
+      await refetch();
+      toast.success("सबै TikTok accounts disconnected भए");
+    } catch (error: any) {
+      toast.error(
+        error?.response?.data?.message || "सबै TikTok accounts disconnect गर्न सकिएन",
+      );
+    } finally {
+      setDisconnectingAll(false);
+    }
+  };
+
   return (
     <div className="space-y-6 p-4 md:p-6">
       <div>
@@ -119,9 +135,27 @@ export default function TikTokPublishingPage() {
                 चाहेको जति TikTok account authorize गरेर जोड्न सक्नुहुन्छ। प्रत्येक account को token server मा मात्र सुरक्षित राखिन्छ।
               </CardDescription>
             </div>
-            <Badge variant={status?.connected ? "default" : "secondary"}>
-              {status?.connectedCount || 0} connected
-            </Badge>
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant={status?.connected ? "default" : "secondary"}>
+                {status?.connectedCount || 0} connected
+              </Badge>
+              {status?.accounts?.some((account) => account.connectionMode === "oauth") ? (
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="sm"
+                  onClick={disconnectAllAccounts}
+                  disabled={disconnectingAll || Boolean(disconnectingId)}
+                >
+                  {disconnectingAll ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Unplug className="mr-2 h-4 w-4" />
+                  )}
+                  Disconnect All
+                </Button>
+              ) : null}
+            </div>
           </div>
         </CardHeader>
 
@@ -137,13 +171,13 @@ export default function TikTokPublishingPage() {
                 <div>
                   <p className="font-semibold">Add another TikTok account</p>
                   <p className="mt-1 text-sm text-muted-foreground">
-                    Add Account थिचेर अर्को TikTok account मा login गरी Authorize/Continue गर्नुहोस्।
+                    Add Account थिचेर अर्को TikTok account मा login गरी Authorize/Continue गर्नुहोस्। पुरानो account disconnect गरेपछि त्यही account पनि फेरि authorize गरेर add गर्न मिल्छ।
                   </p>
                 </div>
                 <Button
                   type="button"
                   onClick={connect}
-                  disabled={connecting || !status?.configured}
+                  disabled={connecting || !status?.configured || disconnectingAll}
                 >
                   {connecting ? (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -188,7 +222,7 @@ export default function TikTokPublishingPage() {
                             type="button"
                             variant="outline"
                             onClick={() => disconnectAccount(account.id)}
-                            disabled={disconnectingId === account.id}
+                            disabled={disconnectingId === account.id || disconnectingAll}
                           >
                             {disconnectingId === account.id ? (
                               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
