@@ -47,16 +47,14 @@ export const candidateProfileService = {
       const formData = new FormData();
       formData.append("profile", JSON.stringify(data.profile));
       formData.append("job", JSON.stringify(data.job));
-      formData.append("cv", cv);
+      formData.append("cv", cv, cv.name);
 
-      const response = await api.post(
+      // api has application/json as its default Content-Type. postForm makes
+      // Axios send the FormData as real multipart/form-data with the browser's
+      // boundary instead of accidentally posting the CV as JSON.
+      const response = await api.postForm(
         "/candidate-profile/public",
         formData,
-        {
-          headers: {
-            "Content-Type": undefined,
-          },
-        },
       );
 
       return response.data;
