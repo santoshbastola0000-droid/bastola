@@ -15,15 +15,12 @@ import {
 export function MobileBottomNav() {
   const pathname = usePathname();
 
-  const [unreadCount, setUnreadCount] =
-    useState(0);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
     const loadUnread = async () => {
       try {
-        const data =
-          await messageService.getUnreadCount();
-
+        const data = await messageService.getUnreadCount();
         setUnreadCount(data.count || 0);
       } catch {
         setUnreadCount(0);
@@ -41,14 +38,10 @@ export function MobileBottomNav() {
       handleUnreadRefresh,
     );
 
-    const timer = window.setInterval(
-      loadUnread,
-      15000,
-    );
+    const timer = window.setInterval(loadUnread, 15000);
 
     return () => {
       window.clearInterval(timer);
-
       window.removeEventListener(
         "roomkhoj:unread-refresh",
         handleUnreadRefresh,
@@ -56,45 +49,31 @@ export function MobileBottomNav() {
     };
   }, []);
 
-
   const isHome = pathname === "/";
   const isJobs = pathname.startsWith("/jobs");
   const isMessages = pathname.startsWith("/messages");
   const isProfile = pathname.startsWith("/user/dashboard/profile");
-
-  const openChatbot = () => {
-    window.dispatchEvent(
-      new CustomEvent("open-roomkhoj-chatbot")
-    );
-  };
 
   return (
     <nav
       className="
         md:hidden
         fixed bottom-0 left-0 right-0
-        z-[9999]
+        z-[99999]
         border-t border-gray-200
         bg-white
         pb-[env(safe-area-inset-bottom)]
       "
     >
       <div className="relative flex h-[68px] items-center justify-around px-1">
-
         {/* HOME */}
         <Link
           href="/"
           className={`flex min-w-[58px] flex-col items-center justify-center gap-1 text-[11px] ${
-            isHome
-              ? "font-semibold text-black"
-              : "text-gray-500"
+            isHome ? "font-semibold text-black" : "text-gray-500"
           }`}
         >
-          <Home
-            className="h-6 w-6"
-            strokeWidth={isHome ? 2.5 : 2}
-          />
-
+          <Home className="h-6 w-6" strokeWidth={isHome ? 2.5 : 2} />
           <span>Home</span>
         </Link>
 
@@ -102,23 +81,20 @@ export function MobileBottomNav() {
         <Link
           href="/jobs"
           className={`flex min-w-[58px] flex-col items-center justify-center gap-1 text-[11px] ${
-            isJobs
-              ? "font-semibold text-black"
-              : "text-gray-500"
+            isJobs ? "font-semibold text-black" : "text-gray-500"
           }`}
         >
           <BriefcaseBusiness
             className="h-6 w-6"
             strokeWidth={isJobs ? 2.5 : 2}
           />
-
           <span>Jobs</span>
         </Link>
 
-        {/* CENTER ADD BUTTON */}
+        {/* CENTER LIST ROOM BUTTON */}
         <Link
           href="/user/dashboard/rooms/create"
-          aria-label="Add room"
+          aria-label="List room"
           className="
             relative
             -mt-5
@@ -132,27 +108,20 @@ export function MobileBottomNav() {
             transition-transform
           "
         >
-          <Plus
-            className="h-7 w-7"
-            strokeWidth={2.7}
-          />
+          <Plus className="h-7 w-7" strokeWidth={2.7} />
         </Link>
 
         {/* MESSAGES */}
         <Link
           href="/messages"
           className={`flex min-w-[58px] flex-col items-center justify-center gap-1 text-[11px] ${
-            isMessages
-              ? "font-semibold text-black"
-              : "text-gray-500"
+            isMessages ? "font-semibold text-black" : "text-gray-500"
           }`}
         >
           <div className="relative">
             <MessageCircle
               className="h-6 w-6"
-              strokeWidth={
-                isMessages ? 2.5 : 2
-              }
+              strokeWidth={isMessages ? 2.5 : 2}
             />
 
             {unreadCount > 0 && (
@@ -174,13 +143,10 @@ export function MobileBottomNav() {
                   text-white
                 "
               >
-                {unreadCount > 99
-                  ? "99+"
-                  : unreadCount}
+                {unreadCount > 99 ? "99+" : unreadCount}
               </span>
             )}
           </div>
-
           <span>Messages</span>
         </Link>
 
@@ -188,19 +154,15 @@ export function MobileBottomNav() {
         <Link
           href="/user/dashboard/profile"
           className={`flex min-w-[58px] flex-col items-center justify-center gap-1 text-[11px] ${
-            isProfile
-              ? "font-semibold text-black"
-              : "text-gray-500"
+            isProfile ? "font-semibold text-black" : "text-gray-500"
           }`}
         >
           <UserRound
             className="h-6 w-6"
             strokeWidth={isProfile ? 2.5 : 2}
           />
-
           <span>Profile</span>
         </Link>
-
       </div>
     </nav>
   );
