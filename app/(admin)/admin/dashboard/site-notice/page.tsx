@@ -7,6 +7,7 @@ import {
   DEFAULT_SITE_NOTICE,
   readSiteNotice,
   saveSiteNotice,
+  SITE_NOTICE_TTL_MS,
   type SiteNotice,
 } from "@/lib/site-notice";
 
@@ -26,21 +27,33 @@ export default function AdminSiteNoticePage() {
       return;
     }
 
-    saveSiteNotice({
+    const now = Date.now();
+    const next: SiteNotice = {
       ...notice,
       title: notice.title.trim() || "Notice",
       message: notice.message.trim(),
       link: notice.link?.trim() || "",
       linkLabel: notice.linkLabel?.trim() || "View details",
-    });
-    toast.success("Website notice save भयो।");
+      publishedAt: notice.enabled ? new Date(now).toISOString() : "",
+      expiresAt: notice.enabled
+        ? new Date(now + SITE_NOTICE_TTL_MS).toISOString()
+        : "",
+    };
+
+    setNotice(next);
+    saveSiteNotice(next);
+    toast.success(
+      notice.enabled
+        ? "Website notice save भयो। यो 24 घण्टापछि आफैं expire हुन्छ।"
+        : "Website notice off भयो।",
+    );
   };
 
   const clear = () => {
     const next = { ...DEFAULT_SITE_NOTICE };
     setNotice(next);
     saveSiteNotice(next);
-    toast.success("Website notice हटाइयो।");
+    toast.success("Website notice हटाइयो। अब Top Referral देखिन्छ।");
   };
 
   return (
@@ -50,7 +63,7 @@ export default function AdminSiteNoticePage() {
           <BellRing className="h-6 w-6 text-red-600" /> Website Notice
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Rooms page मा देखिने notice, message र optional link यहाँबाट मिलाउनुहोस्।
+          Rooms page मा देखिने notice यहाँबाट मिलाउनुहोस्। Publish भएको notice 24 घण्टापछि स्वतः expire हुन्छ र त्यसपछि Top Referral को नाम देखिन्छ।
         </p>
       </div>
 
@@ -58,7 +71,7 @@ export default function AdminSiteNoticePage() {
         <label className="flex items-center justify-between gap-4 rounded-xl border p-4">
           <div>
             <p className="font-semibold">Show notice</p>
-            <p className="text-xs text-muted-foreground">Off गर्दा public page मा notice देखिँदैन।</p>
+            <p className="text-xs text-muted-foreground">Off गर्दा public page मा Top Referral देखिन्छ।</p>
           </div>
           <input
             type="checkbox"
@@ -126,6 +139,9 @@ export default function AdminSiteNoticePage() {
               {notice.linkLabel || "View details"} →
             </p>
           )}
+          <p className="mt-3 text-xs font-medium text-amber-700">
+            Notice publish भएपछि 24 hours सम्म मात्र देखिन्छ।
+          </p>
         </div>
 
         <div className="flex flex-wrap gap-3">
