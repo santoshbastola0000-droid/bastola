@@ -74,6 +74,7 @@ const navItems: NavItem[] = [
   { title: "Account Monetize", href: "/admin/dashboard/monetization", icon: ShieldCheck },
   { title: "Commission", href: "/admin/dashboard/commission", icon: Percent },
   { title: "Records", href: "/admin/dashboard/records", icon: BarChart },
+  { title: "Staff Tracking", href: "/admin/dashboard/staff-tracking", icon: Users },
   { title: "Chatbot Training", href: "/admin/dashboard/chatbot", icon: Bot },
   { title: "AI Profiles", href: "/admin/dashboard/ai-profiles", icon: Bot },
   { title: "AI Learning", href: "/admin/dashboard/ai-learning", icon: Bot },
