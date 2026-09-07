@@ -374,7 +374,7 @@ export const messageService = {
     amount: number,
   ) => {
     const response = await privateApi.post(
-      `/message/conversations/${conversationId}/payment-requests`,
+      `/message/conversations/${conversationId}/direct-payment-requests`,
       { amount },
     );
     return response.data as { payment: any; message: ChatMessage };
@@ -382,7 +382,7 @@ export const messageService = {
 
   payPaymentRequest: async (paymentId: string) => {
     const response = await privateApi.post(
-      `/message/payments/${paymentId}/pay`,
+      `/message/direct-payments/${paymentId}/pay`,
     );
     return response.data as { payment: any; message: ChatMessage };
   },
