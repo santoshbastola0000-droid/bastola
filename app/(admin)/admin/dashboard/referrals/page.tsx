@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import {
   ChevronDown,
@@ -260,12 +259,12 @@ export default function AdminReferralPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg">
             <Trophy className="h-5 w-5 text-amber-500" />
-            Monthly Leaderboard
+            Top Referral
           </CardTitle>
         </CardHeader>
         <CardContent>
           {leaderboardLoading ? (
-            <Skeleton className="h-48 w-full" />
+            <Skeleton className="h-32 w-full" />
           ) : leaderboard.length === 0 ? (
             <p className="text-sm text-muted-foreground">
               अहिले qualified referral छैन।
@@ -280,22 +279,9 @@ export default function AdminReferralPage() {
                   <span className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-sm font-bold">
                     {index + 1}
                   </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="font-semibold">{user.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {user.referralCode}
-                    </p>
-                  </div>
-                  <p className="text-sm font-semibold">
-                    {user.qualifiedReferrals} verified
+                  <p className="min-w-0 flex-1 truncate font-semibold">
+                    {user.name}
                   </p>
-                  <Link
-                    href={`/admin/dashboard/referrals?userId=${user.userId}`}
-                  >
-                    <Button variant="outline" size="sm" className="cursor-pointer">
-                      Chain
-                    </Button>
-                  </Link>
                 </div>
               ))}
             </div>
