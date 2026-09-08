@@ -272,14 +272,14 @@ export const TABS = [
     label: "Photos",
     labelNp: "फोटो",
     icon: ImageIcon,
-    required: true,
+    required: false,
   },
   {
     value: "contact",
     label: "Contact",
     labelNp: "सम्पर्क",
     icon: User,
-    required: true,
+    required: false,
   },
 ];
 
