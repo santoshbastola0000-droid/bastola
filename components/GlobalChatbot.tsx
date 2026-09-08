@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { Chatbot } from "@/components/user/Chatbot";
-import { RoomKhojLiveCall } from "@/components/user/RoomKhojLiveCall";
+import { ChatGPTStyleVoiceMode } from "@/components/user/ChatGPTStyleVoiceMode";
 import { useUserRole } from "@/stores/user-store";
 import { useUserLocation } from "@/hooks/use-user-location";
 
@@ -26,11 +26,11 @@ export function GlobalChatbot() {
     return null;
   }
 
-  // Show the regular assistant plus the dedicated immersive live-call entry point.
+  // Regular text chatbot + a separate ChatGPT-style continuous conversation mode.
   return (
     <>
       <Chatbot />
-      <RoomKhojLiveCall />
+      <ChatGPTStyleVoiceMode />
     </>
   );
 }
