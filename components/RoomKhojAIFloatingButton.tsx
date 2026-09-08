@@ -29,9 +29,11 @@ type DragState = {
 
 export function RoomKhojAIFloatingButton() {
   const [position, setPosition] = useState<Position | null>(null);
+  const [chatbotOpen, setChatbotOpen] = useState(false);
   const dragRef = useRef<DragState | null>(null);
 
   const openChatbot = () => {
+    setChatbotOpen(true);
     window.dispatchEvent(
       new CustomEvent("open-roomkhoj-chatbot"),
     );
@@ -62,7 +64,6 @@ export function RoomKhojAIFloatingButton() {
 
     return clampPosition({
       x: window.innerWidth - BUTTON_SIZE - 16,
-      // Mobile navbar भन्दा अलि माथि।
       y:
         window.innerHeight -
         BUTTON_SIZE -
@@ -105,10 +106,17 @@ export function RoomKhojAIFloatingButton() {
       );
     };
 
+    const handleChatbotOpened = () => setChatbotOpen(true);
+    const handleChatbotClosed = () => setChatbotOpen(false);
+
     window.addEventListener("resize", handleResize);
+    window.addEventListener("open-roomkhoj-chatbot", handleChatbotOpened);
+    window.addEventListener("close-roomkhoj-chatbot", handleChatbotClosed);
 
     return () => {
       window.removeEventListener("resize", handleResize);
+      window.removeEventListener("open-roomkhoj-chatbot", handleChatbotOpened);
+      window.removeEventListener("close-roomkhoj-chatbot", handleChatbotClosed);
     };
   }, []);
 
@@ -186,6 +194,10 @@ export function RoomKhojAIFloatingButton() {
       openChatbot();
     }
   };
+
+  if (chatbotOpen) {
+    return null;
+  }
 
   return (
     <button
