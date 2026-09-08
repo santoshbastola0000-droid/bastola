@@ -2,8 +2,10 @@ import { z } from "zod";
 import { RoomCategory, TenantType, GenderPreference } from "@/types/room.types";
 
 export const waterSupplyTimingsSchema = z.object({
-  morning: z.string().min(1, "Morning timing is required"),
-  evening: z.string().min(1, "Evening timing is required"),
+  // Some valid water modes only have one slot (morning-only/evening-only),
+  // so blank counterpart values must not block room submission.
+  morning: z.string().optional().default(""),
+  evening: z.string().optional().default(""),
   notes: z.string().optional(),
 });
 
