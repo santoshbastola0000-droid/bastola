@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { Chatbot } from "@/components/user/Chatbot";
+import { RoomKhojLiveCall } from "@/components/user/RoomKhojLiveCall";
 import { useUserRole } from "@/stores/user-store";
 import { useUserLocation } from "@/hooks/use-user-location";
 
@@ -25,6 +26,11 @@ export function GlobalChatbot() {
     return null;
   }
 
-  // Only show chatbot widget on user-facing pages
-  return <Chatbot />;
+  // Show the regular assistant plus the dedicated immersive live-call entry point.
+  return (
+    <>
+      <Chatbot />
+      <RoomKhojLiveCall />
+    </>
+  );
 }
