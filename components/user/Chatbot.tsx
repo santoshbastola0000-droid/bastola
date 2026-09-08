@@ -147,6 +147,14 @@ function sanitizeTitle(text: string): string {
   return cleanText.length > 22 ? cleanText.slice(0, 22) + "..." : cleanText;
 }
 
+function createConversationId(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+
+  return `${Date.now()}_${Math.random().toString(36).slice(2, 12)}`;
+}
+
 export function Chatbot() {
   const userStore = useUserRole() as any;
   const token = useTokenStore((state) => state.token);
@@ -235,7 +243,7 @@ useEffect(() => {
 
   const [showHistorySidebar, setShowHistorySidebar] = useState(false);
   const [sessions, setSessions] = useState<ChatSession[]>([]);
-  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+  const [currentSessionId, setCurrentSessionId] = useState<string>(() => createConversationId());
   const [locationRequested, setLocationRequested] = useState(false);
 
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -268,6 +276,7 @@ useEffect(() => {
   }, []);
 
   useEffect(() => {
+    setCurrentSessionId(createConversationId());
     setMessages(initDefaultMessages());
   }, [loggedInUserId, initDefaultMessages]);
 
@@ -361,7 +370,7 @@ useEffect(() => {
       const firstUserMsg = currentMsgs.find((m) => m.role === "user")?.text || "New Conversation";
       const titleText = sanitizeTitle(firstUserMsg);
 
-      const existingId = currentSessionId || Date.now().toString();
+      const existingId = currentSessionId || createConversationId();
       if (!currentSessionId) {
         setCurrentSessionId(existingId);
       }
@@ -385,7 +394,7 @@ useEffect(() => {
   );
 
   const startNewChat = () => {
-    setCurrentSessionId(null);
+    setCurrentSessionId(createConversationId());
     setMessages(initDefaultMessages());
     setShowHistorySidebar(false);
   };
@@ -1065,6 +1074,11 @@ useEffect(() => {
       return;
     }
 
+    const conversationId = currentSessionId || createConversationId();
+    if (!currentSessionId) {
+      setCurrentSessionId(conversationId);
+    }
+
     const newUserMsg: ChatMessage = {
       id: Date.now().toString(),
       role: "user",
@@ -1094,6 +1108,7 @@ useEffect(() => {
         headers,
         body: JSON.stringify({
           message: textToSend.slice(0, 2000),
+          conversationId,
           guestSessionId:
             loggedInUserId
               ? undefined
