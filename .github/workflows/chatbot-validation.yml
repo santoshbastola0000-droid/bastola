@@ -7,12 +7,18 @@ on:
       - main
       - codex/ai-room-posting-ui
 
+permissions:
+  contents: write
+
 jobs:
   validate:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
+          fetch-depth: 0
       - uses: pnpm/action-setup@v4
         with:
           version: 10
@@ -21,5 +27,73 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Apply live voice hardening
+        if: github.head_ref == 'fix/ai-live-voice-hardening-20260909' || github.ref_name == 'fix/ai-live-voice-hardening-20260909'
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('app/ai/voice/page.tsx')
+          text = p.read_text()
+
+          def replace(old, new):
+              global text
+              if new in text:
+                  return
+              if old not in text:
+                  raise SystemExit(f'Voice patch anchor not found: {old[:100]!r}')
+              text = text.replace(old, new, 1)
+
+          # Do not play audible filler while the microphone recorder is active: it can be
+          # picked up by the same mic and sent back to STT as if the user said it.
+          replace(
+              '''  const speakBackchannel = useCallback(() => {\n    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;\n    const now = performance.now();\n    if (now - backchannelAtRef.current < 2600) return;\n    backchannelAtRef.current = now;\n    const word = BACKCHANNELS[Math.floor(Math.random() * BACKCHANNELS.length)];\n    const utter = new SpeechSynthesisUtterance(word);\n    const voices = window.speechSynthesis.getVoices();\n    utter.voice = voices.find((v) => v.lang.toLowerCase().startsWith("ne")) ||\n      voices.find((v) => v.lang.toLowerCase().startsWith("hi")) || voices[0] || null;\n    utter.lang = utter.voice?.lang || "ne-NP";\n    utter.rate = 0.86;\n    utter.pitch = 0.96;\n    utter.volume = 0.38;\n    window.speechSynthesis.speak(utter);\n  }, []);''',
+              '''  const speakBackchannel = useCallback(() => {\n    const now = performance.now();\n    if (now - backchannelAtRef.current < 2600) return;\n    backchannelAtRef.current = now;\n    const word = BACKCHANNELS[Math.floor(Math.random() * BACKCHANNELS.length)];\n    // Visual backchannel only while recording. Audible filler can leak into the mic\n    // and be transcribed as caller speech even with echo cancellation enabled.\n    setStatus(`${word}… सुन्दैछु, बोलिरहनुहोस्`);\n  }, []);''',
+          )
+
+          # Adaptive browser barge-in: calibrate against current mic noise instead of one fixed RMS.
+          replace(
+              '''      const buf = new Uint8Array(analyser.fftSize);\n      let loudSince = 0;\n      const loop = () => {''',
+              '''      const buf = new Uint8Array(analyser.fftSize);\n      let loudSince = 0;\n      let noiseFloor = 0.012;\n      const loop = () => {''',
+          )
+          replace(
+              '''        const rms = Math.sqrt(sum / buf.length);\n        const now = performance.now();\n        if (rms > 0.06) {''',
+              '''        const rms = Math.sqrt(sum / buf.length);\n        const now = performance.now();\n        noiseFloor = noiseFloor * 0.985 + Math.min(rms, 0.08) * 0.015;\n        const bargeThreshold = Math.max(0.035, Math.min(0.10, noiseFloor * 2.8));\n        if (rms > bargeThreshold) {''',
+          )
+
+          # Adaptive speech VAD: learn room noise before the user starts speaking.
+          replace(
+              '''      let speechStarted = false;\n      let speechStartAt = 0;\n      let lastSpeechAt = performance.now();\n      let pauseBackchannelPlayed = false;''',
+              '''      let speechStarted = false;\n      let speechStartAt = 0;\n      let lastSpeechAt = performance.now();\n      let pauseBackchannelPlayed = false;\n      let noiseFloor = 0.007;\n      let voiceRunMs = 0;\n      let previousFrameAt = performance.now();''',
+          )
+          replace(
+              '''        const rms = Math.sqrt(sum / buf.length);\n        const now = performance.now();\n        if (rms >= 0.022) {\n          if (!speechStarted) { speechStarted = true; speechStartAt = now; }''',
+              '''        const rms = Math.sqrt(sum / buf.length);\n        const now = performance.now();\n        const frameMs = Math.max(8, Math.min(80, now - previousFrameAt));\n        previousFrameAt = now;\n        if (!speechStarted) noiseFloor = noiseFloor * 0.965 + Math.min(rms, 0.05) * 0.035;\n        const speechThreshold = Math.max(0.012, Math.min(0.045, noiseFloor * 2.25));\n        if (rms >= speechThreshold) {\n          voiceRunMs += frameMs;\n          if (!speechStarted && voiceRunMs < 80) {\n            vadFrameRef.current = requestAnimationFrame(loop);\n            return;\n          }\n          if (!speechStarted) { speechStarted = true; speechStartAt = now; }''',
+          )
+          replace(
+              '''        } else if (speechStarted) {\n          const pause = now - lastSpeechAt;''',
+              '''        } else if (speechStarted) {\n          voiceRunMs = 0;\n          const pause = now - lastSpeechAt;''',
+          )
+          replace(
+              '''          if (pause > 520 && pause < 1050 && !pauseBackchannelPlayed && now - speechStartAt > 900) {''',
+              '''          if (pause > 700 && pause < 1350 && !pauseBackchannelPlayed && now - speechStartAt > 1100) {''',
+          )
+          replace(
+              '''          if (pause >= 1250 && now - speechStartAt > 350) {''',
+              '''          if (pause >= 1550 && now - speechStartAt > 350) {''',
+          )
+
+          p.write_text(text)
+          PY
       - run: pnpm exec tsc --noEmit
       - run: pnpm run build
+      - name: Commit validated live voice hardening
+        if: github.head_ref == 'fix/ai-live-voice-hardening-20260909' || github.ref_name == 'fix/ai-live-voice-hardening-20260909'
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app/ai/voice/page.tsx
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Harden live voice listening and barge-in"
+          git push origin HEAD:${{ github.head_ref || github.ref_name }}
