@@ -8,7 +8,6 @@ import {
   Mail,
   Clock,
   Send,
-  CheckCircle,
   AlertCircle,
   Loader2,
   Facebook,
@@ -154,7 +153,7 @@ export default function ContactPage() {
         "We typically respond within 24 hours during business days. For urgent matters, please call us directly.",
     },
     {
-      question: "Can I list my property on RoomServise?",
+      question: "Can I list my property on RoomKhoj?",
       answer:
         "Yes! Contact our team through this form or visit our 'Become a Host' page to get started.",
     },
@@ -181,30 +180,13 @@ export default function ContactPage() {
 
     setSubmitting(true);
 
-    // Simulate API call
-    try {
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-      toast.success("Message sent successfully!", {
-        description: "We'll get back to you within 24 hours.",
-        icon: <CheckCircle className="w-4 h-4 text-green-500" />,
-        duration: 5000,
-      });
-      setFormData({
-        name: "",
-        email: "",
-        phone: "",
-        subject: "general",
-        message: "",
-      });
-      setSelectedSubject("general");
-    } catch (error) {
-      toast.error("Failed to send message. Please try again.", {
-        icon: <AlertCircle className="w-4 h-4 text-red-500" />,
-      });
-    } finally {
-      setSubmitting(false);
-    }
-  };
+    toast.error("Online form delivery is not connected yet.", {
+    description: "Please use the Call Us or Email Us option on this page.",
+    icon: <AlertCircle className="w-4 h-4 text-amber-500" />,
+    duration: 5000,
+  });
+  setSubmitting(false);
+};
 
   // Type guard to check if contact info has action
   const hasAction = (info: ContactInfo): info is ContactInfoWithAction => {
