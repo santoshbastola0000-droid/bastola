@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Bell,
   BriefcaseBusiness,
@@ -14,20 +14,64 @@ import {
   X,
 } from "lucide-react";
 import { SocialFeedScreen } from "@/components/social/SocialFeedScreen";
+import { notificationService } from "@/http/services/notification.service";
 
 export function FeedChrome() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [headerVisible, setHeaderVisible] = useState(true);
+  const lastScrollY = useRef(0);
+
+  useEffect(() => {
+    let active = true;
+    const refresh = async () => {
+      const count = await notificationService.unreadCount().catch(() => 0);
+      if (active) setUnreadCount(count);
+    };
+    void refresh();
+    const timer = window.setInterval(refresh, 15000);
+    const onFocus = () => void refresh();
+    window.addEventListener("focus", onFocus);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+      window.removeEventListener("focus", onFocus);
+    };
+  }, []);
+
+  useEffect(() => {
+    const onScroll = () => {
+      const current = Math.max(0, window.scrollY);
+      const delta = current - lastScrollY.current;
+      if (current < 20) setHeaderVisible(true);
+      else if (delta > 8) setHeaderVisible(false);
+      else if (delta < -6) setHeaderVisible(true);
+      lastScrollY.current = current;
+    };
+    lastScrollY.current = window.scrollY;
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   return (
     <div className="min-h-screen bg-[#f0f2f5]">
-      <header className="sticky top-0 z-[120] border-b border-slate-200 bg-white/95 backdrop-blur">
+      <header
+        className={`sticky top-0 z-[120] border-b border-slate-200 bg-white/95 backdrop-blur transition-transform duration-200 ${
+          headerVisible ? "translate-y-0" : "-translate-y-full"
+        }`}
+      >
         <div className="mx-auto flex h-[58px] max-w-[760px] items-center justify-end gap-2 px-3">
           <Link
             href="/notifications"
-            aria-label="Notifications"
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-800"
+            aria-label={`Notifications${unreadCount ? `, ${unreadCount} unread` : ""}`}
+            className="relative flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-800"
           >
             <Bell className="h-5 w-5" />
+            {unreadCount > 0 && (
+              <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-md bg-red-600 px-1 text-[10px] font-bold leading-none text-white ring-2 ring-white">
+                {unreadCount > 99 ? "99+" : unreadCount}
+              </span>
+            )}
           </Link>
 
           <button
@@ -48,6 +92,7 @@ export function FeedChrome() {
             <MenuLink href="/jobs" label="Jobs" icon={<BriefcaseBusiness className="h-5 w-5" />} onClick={() => setMenuOpen(false)} />
             <MenuLink href="/messages" label="Messages" icon={<MessageCircle className="h-5 w-5" />} onClick={() => setMenuOpen(false)} />
             <MenuLink href="/user/dashboard/profile" label="Profile" icon={<UserRound className="h-5 w-5" />} onClick={() => setMenuOpen(false)} />
+            <MenuLink href="/notifications" label={`Notifications${unreadCount ? ` (${unreadCount})` : ""}`} icon={<Bell className="h-5 w-5" />} onClick={() => setMenuOpen(false)} />
             <MenuLink href="/user/dashboard/rooms/create" label="List Room & Earn" icon={<Plus className="h-5 w-5" />} onClick={() => setMenuOpen(false)} />
           </div>
         )}
