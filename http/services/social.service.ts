@@ -109,10 +109,24 @@ export const socialService = {
     const response = await privateApi.get("/social/feed", {
       params: { limit: 20, before },
     });
-    return response.data as {
-      items: SocialFeedItem[];
-      nextCursor: string | null;
-    };
+    return response.data as { items: SocialFeedItem[]; nextCursor: string | null };
+  },
+
+  async uploadProfilePhoto(file: File) {
+    const form = new FormData();
+    form.append("media", file);
+    const response = await privateApi.post("/social/profile-photo", form);
+    return response.data as { profilePhotoUrl: string; createdAt: string };
+  },
+
+  async myProfilePhoto() {
+    const response = await privateApi.get("/social/profile-photo/me");
+    return response.data as { profilePhotoUrl: string | null; createdAt: string | null };
+  },
+
+  async profilePhoto(userId: string) {
+    const response = await privateApi.get(`/social/profile-photo/${userId}`);
+    return response.data as { profilePhotoUrl: string | null; createdAt: string | null };
   },
 
   async createPost(input: {
@@ -141,16 +155,12 @@ export const socialService = {
   },
 
   async addComment(postId: string, content: string) {
-    const response = await privateApi.post(`/social/posts/${postId}/comments`, {
-      content,
-    });
+    const response = await privateApi.post(`/social/posts/${postId}/comments`, { content });
     return response.data as SocialComment;
   },
 
   async registerShare(postId: string, channel: string) {
-    const response = await privateApi.post(`/social/posts/${postId}/share`, {
-      channel,
-    });
+    const response = await privateApi.post(`/social/posts/${postId}/share`, { channel });
     return response.data as { shareCount: number };
   },
 
@@ -199,9 +209,7 @@ export const socialService = {
   },
 
   async contactSuggestions(hashes: string[]) {
-    const response = await privateApi.post("/social/friend-suggestions/contacts", {
-      hashes,
-    });
+    const response = await privateApi.post("/social/friend-suggestions/contacts", { hashes });
     return response.data as SocialUser[];
   },
 
