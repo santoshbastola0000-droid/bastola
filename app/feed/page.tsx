@@ -1,5 +1,5 @@
-import { SocialFeedScreen } from "@/components/social/SocialFeedScreen";
+import { FeedChrome } from "@/components/social/FeedChrome";
 
 export default function FeedPage() {
-  return <SocialFeedScreen />;
+  return <FeedChrome />;
 }
