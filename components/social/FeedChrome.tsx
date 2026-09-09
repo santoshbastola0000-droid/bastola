@@ -13,6 +13,7 @@ import {
   UsersRound,
   X,
 } from "lucide-react";
+import { Logo } from "@/components/Logo";
 import { SocialFeedScreen } from "@/components/social/SocialFeedScreen";
 import { notificationService } from "@/http/services/notification.service";
 
@@ -60,29 +61,35 @@ export function FeedChrome() {
           headerVisible ? "translate-y-0" : "-translate-y-full"
         }`}
       >
-        <div className="mx-auto flex h-[58px] max-w-[760px] items-center justify-end gap-2 px-3">
-          <Link
-            href="/notifications"
-            aria-label={`Notifications${unreadCount ? `, ${unreadCount} unread` : ""}`}
-            className="relative flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-800"
-          >
-            <Bell className="h-5 w-5" />
-            {unreadCount > 0 && (
-              <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-md bg-red-600 px-1 text-[10px] font-bold leading-none text-white ring-2 ring-white">
-                {unreadCount > 99 ? "99+" : unreadCount}
-              </span>
-            )}
-          </Link>
+        <div className="mx-auto flex h-[58px] max-w-[760px] items-center justify-between gap-2 px-3">
+          <div className="flex min-w-0 items-center">
+            <Logo />
+          </div>
 
-          <button
-            type="button"
-            aria-label="Menu"
-            aria-expanded={menuOpen}
-            onClick={() => setMenuOpen((value) => !value)}
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-800"
-          >
-            {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-6 w-6" />}
-          </button>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/notifications"
+              aria-label={`Notifications${unreadCount ? `, ${unreadCount} unread` : ""}`}
+              className="relative flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-800"
+            >
+              <Bell className="h-5 w-5" />
+              {unreadCount > 0 && (
+                <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-md bg-red-600 px-1 text-[10px] font-bold leading-none text-white ring-2 ring-white">
+                  {unreadCount > 99 ? "99+" : unreadCount}
+                </span>
+              )}
+            </Link>
+
+            <button
+              type="button"
+              aria-label="Menu"
+              aria-expanded={menuOpen}
+              onClick={() => setMenuOpen((value) => !value)}
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-800"
+            >
+              {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-6 w-6" />}
+            </button>
+          </div>
         </div>
 
         {menuOpen && (
