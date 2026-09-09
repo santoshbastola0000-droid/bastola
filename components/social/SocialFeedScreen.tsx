@@ -46,6 +46,7 @@ import {
   SocialUser,
   socialService,
 } from "@/http/services/social.service";
+import { PostReactions } from "@/components/social/PostReactions";
 
 const backendUrl = String(
   process.env.NEXT_PUBLIC_BACKEND_URL || "https://api.roomkhoj.com",
@@ -1031,6 +1032,7 @@ function PostCard({
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const own = post.author.id === currentUserId;
+  void onLike; // legacy callback retained while PostReactions owns reaction state
 
   return (
     <article className="border-y bg-white shadow-sm sm:rounded-xl sm:border">
@@ -1097,35 +1099,16 @@ function PostCard({
         </div>
       )}
 
-      <div className="flex justify-between px-4 py-2 text-sm text-slate-500">
-        <span>{post.likeCount ? `👍 ${post.likeCount}` : ""}</span>
-        <span>
-          {post.commentCount} comments · {post.shareCount} shares
-        </span>
-      </div>
-
-      <div className="grid grid-cols-3 border-t px-2 py-1">
-        <button
-          onClick={() => void onLike()}
-          className={`flex justify-center gap-2 rounded py-2 font-semibold hover:bg-slate-100 ${
-            post.likedByMe ? "text-blue-600" : "text-slate-600"
-          }`}
-        >
-          <Heart className="h-5 w-5" /> Like
-        </button>
-        <button
-          onClick={() => void onToggleComments()}
-          className="flex justify-center gap-2 rounded py-2 font-semibold text-slate-600 hover:bg-slate-100"
-        >
-          <MessageCircle className="h-5 w-5" /> Comment
-        </button>
-        <button
-          onClick={() => void onShare()}
-          className="flex justify-center gap-2 rounded py-2 font-semibold text-slate-600 hover:bg-slate-100"
-        >
-          <Share2 className="h-5 w-5" /> Share
-        </button>
-      </div>
+      <PostReactions
+      postId={post.id}
+      currentUserId={currentUserId}
+      initialLikeCount={post.likeCount}
+      initialLiked={post.likedByMe}
+      commentCount={post.commentCount}
+      shareCount={post.shareCount}
+      onToggleComments={onToggleComments}
+      onShare={onShare}
+    />
 
       {open && (
         <div className="border-t p-3">
