@@ -74,10 +74,13 @@ export function NavBar() {
     refetchOnWindowFocus: true,
   });
 
+  // Keep Rooms permanently as the very first service card. This is the main
+  // RoomKhoj inventory entry and must appear before any Coming Soon services
+  // such as plumbing, cleaning, repairs or internet setup.
   const serviceTiles: {
     key: string; title: string; icon: LucideIcon; href?: string;
   }[] = [
-    { key: "rooms", title: label("Find a room", "कोठा खोज्नुहोस्"), icon: Home, href: "/rooms" },
+    { key: "rooms", title: label("Rooms", "कोठाहरू"), icon: Home, href: "/rooms" },
     { key: "moving", title: label("Room shifting", "कोठा सार्ने सेवा"), icon: Truck },
     { key: "add", title: label("Post a room", "कोठा पोस्ट गर्नुहोस्"), icon: PlusCircle,
       href: protectedHref(user?.role === UserRole.ADMIN ? "/admin/dashboard/rooms/create" : "/user/dashboard/rooms/create") },
@@ -361,15 +364,24 @@ export function NavBar() {
                     </div>
 
                     {isAuthenticated && (
-                      <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-3">
-                        <div className="flex items-center gap-2 px-1 pb-2 text-sm font-bold text-slate-900"><UsersRound className="h-5 w-5 text-red-600" />{label("Switch account", "अकाउन्ट परिवर्तन")}</div>
-                        {otherAccounts.map((account) => <button key={account.id} type="button" disabled={switchingAccountId === account.id} onClick={() => handleSwitchAccount(account)} className="mt-1 flex w-full items-center rounded-xl bg-slate-50 p-3 text-left hover:bg-slate-100 disabled:opacity-60">{switchingAccountId === account.id && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}<span className="min-w-0"><span className="block truncate text-sm font-bold text-slate-900">{account.name || "RoomKhoj user"}</span><span className="block truncate text-xs text-slate-500">{account.email}</span></span></button>)}
-                        <button type="button" onClick={handleAddAccount} className="mt-2 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-sm font-bold text-red-700"><UsersRound className="h-4 w-4" />{label("Add account", "अकाउन्ट थप्नुहोस्")}</button>
+                      <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-4">
+                        <div className="flex items-center gap-2"><UsersRound className="h-5 w-5 text-slate-500" /><p className="font-bold text-slate-900">{label("Switch account", "अकाउन्ट बदल्नुहोस्")}</p></div>
+                        <div className="mt-3 space-y-2">
+                          {otherAccounts.map((account) => (
+                            <button key={account.id} type="button" onClick={() => handleSwitchAccount(account)} disabled={switchingAccountId === account.id} className="flex w-full items-center gap-3 rounded-xl bg-slate-50 p-3 text-left hover:bg-slate-100 disabled:opacity-60">
+                              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-200 text-sm font-bold text-slate-700">{account.name?.slice(0, 1)?.toUpperCase() || "R"}</span>
+                              <span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold text-slate-900">{account.name}</span><span className="block truncate text-xs text-slate-500">{account.email}</span></span>
+                              {switchingAccountId === account.id && <Loader2 className="h-4 w-4 animate-spin" />}
+                            </button>
+                          ))}
+                          <button type="button" onClick={handleAddAccount} className="flex w-full items-center gap-3 rounded-xl border border-dashed border-slate-300 p-3 text-left text-sm font-semibold text-slate-700 hover:bg-slate-50"><PlusCircle className="h-5 w-5" />{label("Add another account", "अर्को अकाउन्ट थप्नुहोस्")}</button>
+                        </div>
                       </div>
                     )}
 
-                    {isAuthenticated && <button type="button" onClick={handleLogout} className="mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-slate-200 p-3 text-sm font-bold text-slate-900 hover:bg-slate-300"><LogOut className="h-4 w-4" aria-hidden="true" />{label("Log out", "लग आउट")}</button>}
-                    <p className="mt-5 text-center text-xs text-slate-400">RoomKhoj · {label("Find your next home", "आफ्नो नयाँ घर खोज्नुहोस्")}</p>
+                    {isAuthenticated && (
+                      <button type="button" onClick={handleLogout} className="mt-4 flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-3 text-sm font-bold text-white hover:bg-slate-800"><LogOut className="h-5 w-5" />{label("Logout", "लगआउट")}</button>
+                    )}
                   </div>
                 </div>
               </SheetContent>
