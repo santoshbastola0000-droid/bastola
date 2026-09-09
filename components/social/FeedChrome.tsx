@@ -45,9 +45,14 @@ export function FeedChrome() {
       const current = Math.max(0, window.scrollY);
       const delta = current - lastScrollY.current;
 
-      if (current < 20) setHeaderVisible(true);
-      else if (delta > 8) setHeaderVisible(true);
-      else if (delta < -6) setHeaderVisible(false);
+      if (current < 20) {
+        setHeaderVisible(true);
+      } else if (delta > 0) {
+        // Keep the header visible no matter how far the user scrolls down the feed.
+        setHeaderVisible(true);
+      } else if (delta < -6) {
+        setHeaderVisible(false);
+      }
 
       lastScrollY.current = current;
     };
