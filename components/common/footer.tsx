@@ -35,7 +35,7 @@ const supportLinks = [
   { href: "/terms", label: "Terms of Service", icon: FileText },
   { href: "/privacy", label: "Privacy Policy", icon: Shield },
   { href: "/cookies", label: "Cookie Policy", icon: BadgeCheck },
-  { href: "/sitemap", label: "Sitemap", icon: FileText },
+  { href: "/site-map", label: "Sitemap", icon: FileText },
 ];
 
 const contactInfo = [
@@ -145,7 +145,7 @@ export default function Footer() {
             <Link href="/cookies" className="hover:text-slate-300">
               Cookies
             </Link>
-            <Link href="/sitemap" className="hover:text-slate-300">
+            <Link href="/site-map" className="hover:text-slate-300">
               Sitemap
             </Link>
           </div>
