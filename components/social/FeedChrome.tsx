@@ -44,11 +44,14 @@ export function FeedChrome() {
     const onScroll = () => {
       const current = Math.max(0, window.scrollY);
       const delta = current - lastScrollY.current;
+
       if (current < 20) setHeaderVisible(true);
-      else if (delta > 8) setHeaderVisible(false);
-      else if (delta < -6) setHeaderVisible(true);
+      else if (delta > 8) setHeaderVisible(true);
+      else if (delta < -6) setHeaderVisible(false);
+
       lastScrollY.current = current;
     };
+
     lastScrollY.current = window.scrollY;
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
