@@ -13,6 +13,9 @@ import {
   Users,
   CircleDollarSign,
   BadgeDollarSign,
+  GitBranch,
+  UserRoundCheck,
+  Clock3,
 } from "lucide-react";
 
 import { privateApi } from "@/http/api/privateApi";
@@ -169,6 +172,8 @@ export default function ReferralPage() {
       </div>
     );
   }
+
+  const directNetworkCount = data.qualifiedReferrals + data.pendingReferrals;
 
   return (
     <div className="space-y-6 p-4 md:p-6">
@@ -337,6 +342,51 @@ export default function ReferralPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Card className="overflow-hidden border-violet-200 bg-gradient-to-br from-violet-50 via-background to-background">
+        <CardHeader className="border-b bg-violet-50/70">
+          <div className="flex items-center gap-3">
+            <div className="rounded-xl bg-violet-100 p-3 text-violet-700">
+              <GitBranch className="h-6 w-6" />
+            </div>
+            <div>
+              <CardTitle className="text-lg">Referral Network / नेटवर्क</CardTitle>
+              <CardDescription>
+                तपाईंले जोडेका user र उनीहरूले पछि जोडेका user हरू referral tree मा chain भएर track हुन्छन्।
+              </CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-5 p-5">
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div className="rounded-xl border bg-background p-4">
+              <div className="mb-2 flex items-center gap-2 text-sm text-muted-foreground">
+                <Users className="h-4 w-4" /> Direct Network
+              </div>
+              <p className="text-2xl font-black">{directNetworkCount}</p>
+            </div>
+            <div className="rounded-xl border bg-background p-4">
+              <div className="mb-2 flex items-center gap-2 text-sm text-muted-foreground">
+                <UserRoundCheck className="h-4 w-4" /> Verified
+              </div>
+              <p className="text-2xl font-black">{data.qualifiedReferrals}</p>
+            </div>
+            <div className="rounded-xl border bg-background p-4">
+              <div className="mb-2 flex items-center gap-2 text-sm text-muted-foreground">
+                <Clock3 className="h-4 w-4" /> Pending
+              </div>
+              <p className="text-2xl font-black">{data.pendingReferrals}</p>
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-violet-200 bg-violet-50/70 p-4 text-sm">
+            <p className="font-bold text-violet-950">Network flow</p>
+            <p className="mt-2 text-violet-900">
+              तपाईं → B → C जस्तो referral chain बनेमा B तपाईंको direct member हुन्छ र C B को referral भएर network tree मा तल जोडिन्छ। Backend tree ले 10 level सम्म relation track गर्छ।
+            </p>
+          </div>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
