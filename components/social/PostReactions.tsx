@@ -14,6 +14,7 @@ const REACTIONS: Array<{
   label: string;
 }> = [
   { type: "LOVE", emoji: "❤️", label: "Love" },
+  { type: "LIKE", emoji: "👍", label: "Like" },
   { type: "HAHA", emoji: "😂", label: "Haha" },
   { type: "WOW", emoji: "😮", label: "Wow" },
   { type: "SAD", emoji: "😢", label: "Sad" },
@@ -64,7 +65,7 @@ export function PostReactions({
         setReaction(mine.reaction);
       }
     } catch {
-      // Reaction summary remains usable even if the optional name preview fails.
+      // Keep the reaction controls usable if the optional name preview fails.
     }
   };
 
@@ -97,7 +98,7 @@ export function PostReactions({
         : await socialService.toggleLike(postId, "LOVE");
       await applySummary(summary);
     } catch {
-      // Keep the current UI state if the request fails.
+      // Keep the current UI if the network request fails.
     }
   };
 
@@ -107,7 +108,7 @@ export function PostReactions({
       const summary = await socialService.toggleLike(postId, type);
       await applySummary(summary);
     } catch {
-      // Keep the current UI state if the request fails.
+      // Keep the current UI if the network request fails.
     }
   };
 
@@ -135,7 +136,7 @@ export function PostReactions({
     const names = likers.slice(0, 2).map((entry) => entry.user.name).filter(Boolean);
     if (!names.length) return `${likeCount} reactions`;
     const rest = Math.max(0, likeCount - names.length);
-    return rest ? `${names.join(", ")} +${rest}` : names.join(", ");
+    return rest ? `${names.join(", ")} and ${rest} others` : names.join(", ");
   }, [likeCount, likers]);
 
   const reactionEmoji =
@@ -143,7 +144,7 @@ export function PostReactions({
 
   return (
     <>
-      <div className="flex min-h-9 items-center justify-between gap-3 px-4 py-2 text-xs text-slate-500">
+      <div className="flex min-h-9 items-center justify-between gap-3 px-4 py-2 text-[13px] text-slate-500">
         <button
           type="button"
           onClick={async () => {
@@ -165,7 +166,7 @@ export function PostReactions({
         <div className="relative">
           {pickerOpen && (
             <div
-              className="absolute bottom-[46px] left-1/2 z-40 flex -translate-x-1/2 items-center gap-1 rounded-full border border-slate-200 bg-white px-2 py-1.5 shadow-2xl"
+              className="absolute bottom-[48px] left-1/2 z-40 flex -translate-x-1/2 items-center gap-1 rounded-full border border-slate-200 bg-white px-2 py-1.5 shadow-2xl"
               onPointerLeave={() => setPickerOpen(false)}
             >
               {REACTIONS.map((item) => (
@@ -190,34 +191,31 @@ export function PostReactions({
             onPointerLeave={cancelLongPress}
             onContextMenu={(event) => event.preventDefault()}
             onClick={() => void tapHeart()}
-            className={`flex w-full select-none items-center justify-center gap-2 rounded py-2 font-semibold hover:bg-slate-100 ${
+            className={`flex w-full select-none items-center justify-center gap-2 rounded py-2 text-[14px] font-semibold hover:bg-slate-100 ${
               liked ? "text-red-500" : "text-slate-600"
             }`}
           >
-            <Heart
-              className="h-5 w-5"
-              fill={liked ? "currentColor" : "none"}
-            />
-            <span className="hidden sm:inline">Like</span>
+            <Heart className="h-5 w-5" fill={liked ? "currentColor" : "none"} />
+            <span>Like</span>
           </button>
         </div>
 
         <button
           type="button"
           onClick={() => void onToggleComments()}
-          className="flex justify-center gap-2 rounded py-2 font-semibold text-slate-600 hover:bg-slate-100"
+          className="flex justify-center gap-2 rounded py-2 text-[14px] font-semibold text-slate-600 hover:bg-slate-100"
         >
           <MessageCircle className="h-5 w-5" />
-          <span className="hidden sm:inline">Comment</span>
+          <span>Comment</span>
         </button>
 
         <button
           type="button"
           onClick={() => void onShare()}
-          className="flex justify-center gap-2 rounded py-2 font-semibold text-slate-600 hover:bg-slate-100"
+          className="flex justify-center gap-2 rounded py-2 text-[14px] font-semibold text-slate-600 hover:bg-slate-100"
         >
           <Share2 className="h-5 w-5" />
-          <span className="hidden sm:inline">Share</span>
+          <span>Share</span>
         </button>
       </div>
 
@@ -225,22 +223,18 @@ export function PostReactions({
         <div className="fixed inset-0 z-[250] flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4">
           <div className="max-h-[70vh] w-full max-w-md overflow-hidden rounded-t-2xl bg-white shadow-2xl sm:rounded-2xl">
             <div className="flex items-center justify-between border-b px-4 py-3">
-              <b>Reactions · {likeCount}</b>
-              <button
-                type="button"
-                onClick={() => setListOpen(false)}
-                className="rounded-full p-2 hover:bg-slate-100"
-              >
+              <b className="text-[15px]">Reactions · {likeCount}</b>
+              <button type="button" onClick={() => setListOpen(false)} className="rounded-full p-2 hover:bg-slate-100">
                 <X className="h-5 w-5" />
               </button>
             </div>
             <div className="max-h-[58vh] overflow-y-auto p-2">
               {likers.map((entry) => (
                 <div key={`${entry.user.id}-${entry.createdAt}`} className="flex items-center gap-3 rounded-xl px-3 py-2 hover:bg-slate-50">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 font-bold text-slate-600">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-[13px] font-bold text-slate-600">
                     {entry.user.name.slice(0, 1).toUpperCase()}
                   </div>
-                  <span className="min-w-0 flex-1 truncate text-sm font-semibold">
+                  <span className="min-w-0 flex-1 truncate text-[14px] font-semibold">
                     {entry.user.name}
                   </span>
                   <span className="text-xl">
