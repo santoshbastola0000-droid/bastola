@@ -106,7 +106,14 @@ function SocialHeader({
         visible ? "translate-y-0" : "-translate-y-full"
       }`}
     >
-      <div className="mx-auto flex h-[58px] max-w-[760px] items-center justify-end gap-2 px-3">
+      <div className="mx-auto flex h-[58px] max-w-[760px] items-center gap-2 px-3">
+        <Link href="/feed" aria-label="RoomKhoj feed" className="mr-auto flex items-center">
+          <img
+            src="/roomkhoj-logo.png"
+            alt="RoomKhoj"
+            className="h-9 w-auto max-w-[150px] object-contain"
+          />
+        </Link>
         <Link
           href="/notifications"
           aria-label="Notifications"
