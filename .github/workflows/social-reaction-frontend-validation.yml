@@ -1,6 +1,13 @@
 name: Social Reaction Frontend Validation
 
 on:
+  push:
+    branches:
+      - feature/social-reactions-v1
+    paths:
+      - "components/social/**"
+      - "http/services/social.service.ts"
+      - ".github/workflows/social-reaction-frontend-validation.yml"
   pull_request:
     paths:
       - "components/social/**"
