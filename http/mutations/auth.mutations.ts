@@ -14,13 +14,26 @@ import { privateApi } from "../api/privateApi";
 const consumePostAuthRedirect = (): string | null => {
   if (typeof window === "undefined") return null;
 
-  const target = sessionStorage.getItem(
-    "roomkhoj_post_auth_redirect",
-  );
+  const target = String(
+    sessionStorage.getItem("roomkhoj_post_auth_redirect") || "",
+  ).trim();
   sessionStorage.removeItem("roomkhoj_post_auth_redirect");
 
-  return target?.startsWith("/property/") ? target : null;
+  // Preserve explicit deep-link intent (room/job/message/etc.) but never allow
+  // an external/open redirect or an auth-loop target.
+  if (
+    target.startsWith("/") &&
+    !target.startsWith("//") &&
+    !target.startsWith("/auth/")
+  ) {
+    return target;
+  }
+
+  return null;
 };
+
+const defaultSignedInRoute = (role?: string) =>
+  role === "Admin" ? "/admin/dashboard" : role === "User" ? "/feed" : "/";
 
 /**
  * Login Mutation - Send OTP to email
@@ -45,13 +58,9 @@ export const useLoginMutation = () => {
         duration: 3000,
       });
 
-      // Navigate to verification page with email
       router.push(`/auth/verify/email?email=${encodeURIComponent(email)}`);
     },
-    onError: (
-      error: AxiosError<any>,
-      email: string,
-    ) => {
+    onError: (error: AxiosError<any>, email: string) => {
       const errorData = error.response?.data;
       const statusCode = error.response?.status;
       const message = String(errorData?.message || "");
@@ -86,14 +95,11 @@ export const useLoginMutation = () => {
         });
 
         router.push(
-          `/auth/register?email=${encodeURIComponent(
-            email.trim().toLowerCase(),
-          )}`,
+          `/auth/register?email=${encodeURIComponent(email.trim().toLowerCase())}`,
         );
         return;
       }
 
-      // Generic error for other cases
       toast.error(errorData?.message || "Login failed", {
         description: errorData?.error || "Please try again later.",
         style: {
@@ -106,17 +112,14 @@ export const useLoginMutation = () => {
     },
   });
 };
-/**
- * Register Mutation - Create account and send OTP
- */
+
+/** Register Mutation - Create account and send OTP */
 export const useRegisterMutation = () => {
   const router = useRouter();
 
   return useMutation({
     mutationKey: [AUTH_QUERY_KEYS.REGISTER],
-    mutationFn: async (
-      data: TRegister & { referralCode?: string },
-    ) => {
+    mutationFn: async (data: TRegister & { referralCode?: string }) => {
       const response = await api.post("/user", data);
       return {
         ...response.data,
@@ -167,7 +170,6 @@ export const useRegisterMutation = () => {
   });
 };
 
-
 interface PasswordLoginData {
   identifier: string;
   password: string;
@@ -208,15 +210,7 @@ export const usePasswordLoginMutation = () => {
       });
 
       const redirectTarget = consumePostAuthRedirect();
-      if (redirectTarget) {
-        router.push(redirectTarget);
-      } else if (userData?.role === "Admin") {
-        router.push("/admin/dashboard");
-      } else if (userData?.role === "User") {
-        router.push("/user/dashboard");
-      } else {
-        router.push("/");
-      }
+      router.push(redirectTarget || defaultSignedInRoute(userData?.role));
     },
     onError: (error: AxiosError<any>) => {
       toast.error("Login failed", {
@@ -229,17 +223,11 @@ export const usePasswordLoginMutation = () => {
   });
 };
 
-/**
- * Verify Mutation - Verify OTP and get token with user role
- */
 interface VerifyData {
   email: string;
   otp: string;
 }
 
-/**
- * Fetch Active User Function
- */
 const fetchActiveUser = async (token: string) => {
   try {
     privateApi.defaults.headers.common["Authorization"] = `Bearer ${token}`;
@@ -263,28 +251,12 @@ export const useVerifyMutation = () => {
       return response.data;
     },
     onSuccess: async (data) => {
-      const {
-        accessToken,
-        challengeToken,
-        requiresTwoFactor,
-      } = data.data || {};
+      const { accessToken, challengeToken, requiresTwoFactor } = data.data || {};
 
-      /*
-       * Admin 2FA enabled:
-       * accessToken अझै आएको हुँदैन।
-       * Temporary challengeToken लिएर 2FA page मा जाने।
-       */
-      if (
-        requiresTwoFactor &&
-        challengeToken
-      ) {
+      if (requiresTwoFactor && challengeToken) {
         if (typeof window !== "undefined") {
-          sessionStorage.setItem(
-            "admin_2fa_challenge",
-            challengeToken,
-          );
+          sessionStorage.setItem("admin_2fa_challenge", challengeToken);
         }
-
         router.push("/auth/2fa");
         return;
       }
@@ -295,10 +267,7 @@ export const useVerifyMutation = () => {
       }
 
       setToken(accessToken);
-
-      const userData =
-        await fetchActiveUser(accessToken);
-
+      const userData = await fetchActiveUser(accessToken);
       setUser(userData);
 
       toast.success(ToastText.Verify.success.title, {
@@ -311,29 +280,12 @@ export const useVerifyMutation = () => {
         duration: 3000,
       });
 
-      const role = userData?.role;
-      const cameFromReferral =
-        typeof window !== "undefined" &&
-        sessionStorage.getItem("roomkhoj_signup_has_referral") === "1";
-
       if (typeof window !== "undefined") {
         sessionStorage.removeItem("roomkhoj_signup_has_referral");
       }
 
       const redirectTarget = consumePostAuthRedirect();
-      if (redirectTarget) {
-        router.push(redirectTarget);
-      } else if (role === "Admin") {
-        router.push("/admin/dashboard");
-      } else if (role === "User") {
-        router.push(
-          cameFromReferral
-            ? "/user/dashboard/referrals?welcome=1"
-            : "/user/dashboard",
-        );
-      } else {
-        router.push("/");
-      }
+      router.push(redirectTarget || defaultSignedInRoute(userData?.role));
     },
     onError: (error: AxiosError<any>) => {
       const errorData = error.response?.data;
@@ -365,9 +317,6 @@ export const useVerifyMutation = () => {
   });
 };
 
-/**
- * Resend Verification Mutation
- */
 export const useResendVerificationMutation = () => {
   return useMutation({
     mutationKey: [AUTH_QUERY_KEYS.RESEND],
@@ -407,7 +356,6 @@ export const useVerifyEmailMutation = () => {
     mutationKey: [AUTH_QUERY_KEYS.VERIFY],
     mutationFn: async (token: string) => {
       const response = await api.post("/user/verify", { token });
-
       return response.data;
     },
     onSuccess: (data) => {
@@ -427,7 +375,6 @@ export const useVerifyEmailMutation = () => {
         },
       });
     },
-
     onError: (error: any) => {
       toast.dismiss();
       toast.error("Verification failed", {
