@@ -1,0 +1,106 @@
+name: Apply Social Reaction UI
+
+on:
+  push:
+    branches:
+      - feature/social-feed-final-ui
+    paths:
+      - .github/workflows/apply-social-reaction-ui.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/social-feed-final-ui
+          fetch-depth: 0
+
+      - name: Patch SocialFeedScreen
+        shell: python
+        run: |
+          from pathlib import Path
+
+          path = Path("components/social/SocialFeedScreen.tsx")
+          text = path.read_text()
+
+          import_old = '''} from "@/http/services/social.service";'''
+          import_new = '''} from "@/http/services/social.service";
+          import { PostReactions } from "@/components/social/PostReactions";'''
+          if 'PostReactions' not in text:
+              if import_old not in text:
+                  raise SystemExit("social service import anchor not found")
+              text = text.replace(import_old, import_new, 1)
+
+          old = '''      <div className="flex justify-between px-4 py-2 text-sm text-slate-500">
+                <span>{post.likeCount ? `👍 ${post.likeCount}` : ""}</span>
+                <span>
+                  {post.commentCount} comments · {post.shareCount} shares
+                </span>
+              </div>
+
+              <div className="grid grid-cols-3 border-t px-2 py-1">
+                <button
+                  onClick={() => void onLike()}
+                  className={`flex justify-center gap-2 rounded py-2 font-semibold hover:bg-slate-100 ${
+                    post.likedByMe ? "text-blue-600" : "text-slate-600"
+                  }`}
+                >
+                  <Heart className="h-5 w-5" /> Like
+                </button>
+                <button
+                  onClick={() => void onToggleComments()}
+                  className="flex justify-center gap-2 rounded py-2 font-semibold text-slate-600 hover:bg-slate-100"
+                >
+                  <MessageCircle className="h-5 w-5" /> Comment
+                </button>
+                <button
+                  onClick={() => void onShare()}
+                  className="flex justify-center gap-2 rounded py-2 font-semibold text-slate-600 hover:bg-slate-100"
+                >
+                  <Share2 className="h-5 w-5" /> Share
+                </button>
+              </div>'''
+
+          new = '''      <PostReactions
+                postId={post.id}
+                currentUserId={currentUserId}
+                initialLikeCount={post.likeCount}
+                initialLiked={post.likedByMe}
+                commentCount={post.commentCount}
+                shareCount={post.shareCount}
+                onToggleComments={onToggleComments}
+                onShare={onShare}
+              />'''
+
+          if old not in text:
+              if '<PostReactions' not in text:
+                  raise SystemExit("reaction bar anchor not found")
+          else:
+              text = text.replace(old, new, 1)
+
+          marker = '''  const [menuOpen, setMenuOpen] = useState(false);
+            const own = post.author.id === currentUserId;'''
+          marker_new = '''  const [menuOpen, setMenuOpen] = useState(false);
+            const own = post.author.id === currentUserId;
+            void onLike; // kept for backward-compatible parent props while reactions own the UI'''
+          if marker in text and 'backward-compatible parent props' not in text:
+              text = text.replace(marker, marker_new, 1)
+
+          path.write_text(text)
+
+      - name: Remove one-time workflow and commit
+        run: |
+          rm .github/workflows/apply-social-reaction-ui.yml
+          git config user.name "RoomKhoj Automation"
+          git config user.email "actions@users.noreply.github.com"
+          git add components/social/SocialFeedScreen.tsx .github/workflows/apply-social-reaction-ui.yml
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git commit -m "Integrate Facebook-style social reactions"
+          git push origin HEAD:feature/social-feed-final-ui
