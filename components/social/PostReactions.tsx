@@ -8,6 +8,10 @@ import {
   socialService,
 } from "@/http/services/social.service";
 
+const backendUrl = String(
+  process.env.NEXT_PUBLIC_BACKEND_URL || "https://api.roomkhoj.com",
+).replace(/\/$/, "");
+
 const REACTIONS: Array<{
   type: SocialReactionType;
   emoji: string;
@@ -20,6 +24,13 @@ const REACTIONS: Array<{
   { type: "SAD", emoji: "😢", label: "Sad" },
   { type: "ANGRY", emoji: "😡", label: "Angry" },
 ];
+
+function profilePhoto(value?: string | null) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  if (/^https?:\/\//i.test(raw)) return raw;
+  return `${backendUrl}${raw.startsWith("/") ? raw : `/${raw}`}`;
+}
 
 export function PostReactions({
   postId,
@@ -48,6 +59,7 @@ export function PostReactions({
   const [likers, setLikers] = useState<SocialReactionEntry[]>([]);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [listOpen, setListOpen] = useState(false);
+  const [loadingList, setLoadingList] = useState(false);
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressed = useRef(false);
 
@@ -112,6 +124,18 @@ export function PostReactions({
     }
   };
 
+  const openReactionList = async () => {
+    if (!likeCount) return;
+    setListOpen(true);
+    setLoadingList(true);
+    try {
+      const rows = await socialService.likes(postId, 100);
+      setLikers(rows);
+    } finally {
+      setLoadingList(false);
+    }
+  };
+
   const startLongPress = () => {
     longPressed.current = false;
     if (longPressTimer.current) clearTimeout(longPressTimer.current);
@@ -147,15 +171,35 @@ export function PostReactions({
       <div className="flex min-h-9 items-center justify-between gap-3 px-4 py-2 text-[13px] text-slate-500">
         <button
           type="button"
-          onClick={async () => {
-            if (!likeCount) return;
-            const rows = await socialService.likes(postId, 50).catch(() => []);
-            if (rows.length) setLikers(rows);
-            setListOpen(true);
-          }}
-          className="min-w-0 truncate text-left hover:underline"
+          onClick={() => void openReactionList()}
+          className="flex min-w-0 items-center gap-2 text-left hover:underline"
+          aria-label={likeCount ? `View ${likeCount} reactions` : "No reactions"}
         >
-          {likeCount ? `${reactionEmoji} ${previewText}` : ""}
+          {likeCount > 0 && (
+            <>
+              <div className="flex -space-x-2">
+                {likers.slice(0, 3).map((entry) => {
+                  const photo = profilePhoto(entry.user.profilePhotoUrl);
+                  return photo ? (
+                    <img
+                      key={entry.user.id}
+                      src={photo}
+                      alt={entry.user.name}
+                      className="h-6 w-6 rounded-full border-2 border-white bg-slate-100 object-cover"
+                    />
+                  ) : (
+                    <span
+                      key={entry.user.id}
+                      className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-white bg-slate-200 text-[9px] font-bold text-slate-600"
+                    >
+                      {entry.user.name.slice(0, 1).toUpperCase()}
+                    </span>
+                  );
+                })}
+              </div>
+              <span className="truncate">{reactionEmoji} {previewText}</span>
+            </>
+          )}
         </button>
         <span className="shrink-0">
           {commentCount} comments · {shareCount} shares
@@ -220,28 +264,61 @@ export function PostReactions({
       </div>
 
       {listOpen && (
-        <div className="fixed inset-0 z-[250] flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4">
-          <div className="max-h-[70vh] w-full max-w-md overflow-hidden rounded-t-2xl bg-white shadow-2xl sm:rounded-2xl">
+        <div
+          className="fixed inset-0 z-[250] flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4"
+          onClick={() => setListOpen(false)}
+        >
+          <div
+            className="max-h-[72vh] w-full max-w-md overflow-hidden rounded-t-2xl bg-white shadow-2xl sm:rounded-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
             <div className="flex items-center justify-between border-b px-4 py-3">
-              <b className="text-[15px]">Reactions · {likeCount}</b>
+              <div>
+                <b className="text-[15px]">Reactions</b>
+                <p className="text-xs text-slate-500">{likeCount} people reacted</p>
+              </div>
               <button type="button" onClick={() => setListOpen(false)} className="rounded-full p-2 hover:bg-slate-100">
                 <X className="h-5 w-5" />
               </button>
             </div>
-            <div className="max-h-[58vh] overflow-y-auto p-2">
-              {likers.map((entry) => (
-                <div key={`${entry.user.id}-${entry.createdAt}`} className="flex items-center gap-3 rounded-xl px-3 py-2 hover:bg-slate-50">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-[13px] font-bold text-slate-600">
-                    {entry.user.name.slice(0, 1).toUpperCase()}
+            <div className="max-h-[60vh] overflow-y-auto p-2">
+              {loadingList && (
+                <div className="px-3 py-5 text-center text-sm text-slate-500">Loading reactions...</div>
+              )}
+              {!loadingList && likers.length === 0 && (
+                <div className="px-3 py-5 text-center text-sm text-slate-500">No reactions yet.</div>
+              )}
+              {!loadingList && likers.map((entry) => {
+                const photo = profilePhoto(entry.user.profilePhotoUrl);
+                const emoji = REACTIONS.find((item) => item.type === entry.reaction)?.emoji || "❤️";
+                const label = REACTIONS.find((item) => item.type === entry.reaction)?.label || "Love";
+                return (
+                  <div key={`${entry.user.id}-${entry.createdAt}`} className="flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-slate-50">
+                    <div className="relative shrink-0">
+                      {photo ? (
+                        <img
+                          src={photo}
+                          alt={entry.user.name}
+                          className="h-11 w-11 rounded-full bg-slate-100 object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-11 w-11 items-center justify-center rounded-full bg-slate-200 text-[14px] font-bold text-slate-600">
+                          {entry.user.name.slice(0, 1).toUpperCase()}
+                        </div>
+                      )}
+                      <span className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full border-2 border-white bg-white text-sm shadow-sm">
+                        {emoji}
+                      </span>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-[14px] font-semibold text-slate-900">
+                        {entry.user.name}
+                      </div>
+                      <div className="text-xs text-slate-500">{label}</div>
+                    </div>
                   </div>
-                  <span className="min-w-0 flex-1 truncate text-[14px] font-semibold">
-                    {entry.user.name}
-                  </span>
-                  <span className="text-xl">
-                    {REACTIONS.find((item) => item.type === entry.reaction)?.emoji || "❤️"}
-                  </span>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>
