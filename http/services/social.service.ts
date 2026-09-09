@@ -11,7 +11,13 @@ export type SocialUser = {
   nearbyLabel?: string;
 };
 
-export type SocialReactionType = "LOVE" | "HAHA" | "WOW" | "SAD" | "ANGRY";
+export type SocialReactionType =
+  | "LIKE"
+  | "LOVE"
+  | "HAHA"
+  | "WOW"
+  | "SAD"
+  | "ANGRY";
 
 export type SocialReactionEntry = {
   user: SocialUser;
@@ -95,6 +101,7 @@ export type SocialStory = {
 export type SocialComment = {
   id: string;
   postId: string;
+  parentCommentId?: string | null;
   content: string;
   createdAt: string;
   author: SocialUser;
@@ -184,24 +191,21 @@ export const socialService = {
     return response.data as { success: boolean };
   },
 
-  async toggleLike(postId: string, reaction?: SocialReactionType) {
-    const response = await privateApi.post(
-      `/social/posts/${postId}/like`,
-      reaction ? { reaction } : {},
-    );
+  async toggleLike(postId: string, reaction: SocialReactionType = "LOVE") {
+    const response = await privateApi.post(`/social/posts/${postId}/reaction`, {
+      reaction,
+    });
     return response.data as SocialReactionSummary;
   },
 
   async removeLike(postId: string) {
-    const response = await privateApi.delete(`/social/posts/${postId}/like`);
+    const response = await privateApi.delete(`/social/posts/${postId}/reaction`);
     return response.data as SocialReactionSummary;
   },
 
-  async likes(postId: string, limit = 50) {
-    const response = await privateApi.get(`/social/posts/${postId}/likes`, {
-      params: { limit },
-    });
-    return response.data as SocialReactionEntry[];
+  async likes(postId: string, _limit = 50) {
+    const response = await privateApi.get(`/social/posts/${postId}/reactions`);
+    return (response.data as SocialReactionEntry[]).slice(0, _limit);
   },
 
   async comments(postId: string) {
@@ -209,8 +213,19 @@ export const socialService = {
     return response.data as SocialComment[];
   },
 
-  async addComment(postId: string, content: string) {
-    const response = await privateApi.post(`/social/posts/${postId}/comments`, { content });
+  async addComment(postId: string, content: string, parentCommentId?: string) {
+    const response = await privateApi.post(`/social/posts/${postId}/comments`, {
+      content,
+      parentCommentId,
+    });
+    return response.data as SocialComment;
+  },
+
+  async replyComment(commentId: string, postId: string, content: string) {
+    const response = await privateApi.post(`/social/comments/${commentId}/reply`, {
+      postId,
+      content,
+    });
     return response.data as SocialComment;
   },
 
