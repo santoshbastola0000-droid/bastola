@@ -83,6 +83,17 @@ export type SocialFeedItem =
         salaryMax?: number | null;
         experience?: string | null;
       };
+    }
+  | {
+      type: "SERVICE";
+      id: string;
+      createdAt: string;
+      service: {
+        key: string;
+        title: string;
+        body: string;
+        href: string;
+      };
     };
 
 export type SocialStory = {
