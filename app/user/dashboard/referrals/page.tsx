@@ -13,9 +13,6 @@ import {
   Users,
   CircleDollarSign,
   BadgeDollarSign,
-  GitBranch,
-  UserRoundCheck,
-  Clock3,
 } from "lucide-react";
 
 import { privateApi } from "@/http/api/privateApi";
@@ -36,6 +33,7 @@ import {
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
+import ReferralNetworkInfo from "./ReferralNetworkInfo";
 
 type ReferralStats = {
   referralCode: string;
@@ -49,7 +47,9 @@ type ReferralStats = {
 export default function ReferralPage() {
   const [copied, setCopied] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
-  const [selectedReferralType, setSelectedReferralType] = useState<"SIGNUP" | "MONETIZATION">("MONETIZATION");
+  const [selectedReferralType, setSelectedReferralType] = useState<
+    "SIGNUP" | "MONETIZATION"
+  >("MONETIZATION");
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["my-referral-stats"],
@@ -67,7 +67,6 @@ export default function ReferralPage() {
 
   const copyLink = async () => {
     if (!data?.referralLink) return;
-
     try {
       await navigator.clipboard.writeText(data.referralLink);
       setCopied(true);
@@ -80,7 +79,6 @@ export default function ReferralPage() {
 
   const shareReferral = async () => {
     if (!data?.referralLink) return;
-
     const shareData = {
       title: "Join RoomKhoj",
       text: getShareText(),
@@ -91,7 +89,7 @@ export default function ReferralPage() {
       try {
         await navigator.share(shareData);
       } catch {
-        // User cancelled the share menu; no action needed.
+        // User cancelled the share menu.
       }
       return;
     }
@@ -102,9 +100,7 @@ export default function ReferralPage() {
 
   const shareWhatsApp = () => {
     if (!data?.referralLink) return;
-
-    const message = getShareText() + " " + data.referralLink;
-
+    const message = `${getShareText()} ${data.referralLink}`;
     window.open(
       `https://wa.me/?text=${encodeURIComponent(message)}`,
       "_blank",
@@ -114,7 +110,6 @@ export default function ReferralPage() {
 
   const shareFacebook = () => {
     if (!data?.referralLink) return;
-
     window.open(
       `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(
         data.referralLink,
@@ -126,13 +121,10 @@ export default function ReferralPage() {
 
   const shareTelegram = () => {
     if (!data?.referralLink) return;
-
-    const message = getShareText();
-
     window.open(
       `https://t.me/share/url?url=${encodeURIComponent(
         data.referralLink,
-      )}&text=${encodeURIComponent(message)}`,
+      )}&text=${encodeURIComponent(getShareText())}`,
       "_blank",
       "noopener,noreferrer",
     );
@@ -140,11 +132,8 @@ export default function ReferralPage() {
 
   const shareViber = () => {
     if (!data?.referralLink) return;
-
-    const message = getShareText() + " " + data.referralLink;
-
-    window.location.href =
-      `viber://forward?text=${encodeURIComponent(message)}`;
+    const message = `${getShareText()} ${data.referralLink}`;
+    window.location.href = `viber://forward?text=${encodeURIComponent(message)}`;
   };
 
   if (isLoading) {
@@ -182,14 +171,18 @@ export default function ReferralPage() {
           <Gift className="h-7 w-7 text-primary" />
           Invite & Earn
         </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          आफ्नो link share गर्नुहोस्। हरेक verified नयाँ account मा Rs. 5 wallet reward पाउनुहोस्।
+        <p className="mt-1 text-sm leading-6 text-muted-foreground">
+          आफ्नो एउटै referral link share गर्नुहोस्। Verified signup मा Rs. 5 र referral user ले Starter monetize गरेपछि 50% commission कमाउन सकिन्छ।
         </p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
         <Card
-          className={`cursor-pointer transition-all ${selectedReferralType === "MONETIZATION" ? "border-primary ring-2 ring-primary/20" : ""}`}
+          className={`cursor-pointer transition-all ${
+            selectedReferralType === "MONETIZATION"
+              ? "border-primary ring-2 ring-primary/20"
+              : ""
+          }`}
           onClick={() => setSelectedReferralType("MONETIZATION")}
         >
           <CardContent className="p-5">
@@ -201,16 +194,18 @@ export default function ReferralPage() {
                 <div className="flex items-center justify-between gap-3">
                   <h2 className="font-black">Account Monetize Referral</h2>
                   {selectedReferralType === "MONETIZATION" && (
-                    <span className="rounded-full bg-primary/10 px-2 py-1 text-[10px] font-bold text-primary">SELECTED</span>
+                    <span className="rounded-full bg-primary/10 px-2 py-1 text-[10px] font-bold text-primary">
+                      SELECTED
+                    </span>
                   )}
                 </div>
                 <p className="mt-2 text-sm text-muted-foreground">
-                  Referral user ले paid Account Monetize activate गरेपछि तपाईंलाई monetization fee को 50% commission आउँछ।
+                  तपाईंको referral link बाट आएको user ले paid Starter Account Monetize activate गरेपछि तपाईंलाई fee को 50% commission आउँछ।
                 </p>
                 <div className="mt-3 space-y-1 text-sm font-semibold">
-                  <p>• Rs. 499 Starter भए तपाईंलाई Rs. 249.50</p>
-                  <p>• Referred user लाई Rs. 100 cashback</p>
-                  <p>• Successful monetization payment भएपछि मात्र reward</p>
+                  <p>• Rs. 499 Starter → तपाईंलाई Rs. 249.50</p>
+                  <p>• Referred user → Rs. 100 cashback</p>
+                  <p>• Successful payment भएपछि मात्र commission</p>
                 </div>
               </div>
             </div>
@@ -218,7 +213,11 @@ export default function ReferralPage() {
         </Card>
 
         <Card
-          className={`cursor-pointer transition-all ${selectedReferralType === "SIGNUP" ? "border-primary ring-2 ring-primary/20" : ""}`}
+          className={`cursor-pointer transition-all ${
+            selectedReferralType === "SIGNUP"
+              ? "border-primary ring-2 ring-primary/20"
+              : ""
+          }`}
           onClick={() => setSelectedReferralType("SIGNUP")}
         >
           <CardContent className="p-5">
@@ -230,11 +229,13 @@ export default function ReferralPage() {
                 <div className="flex items-center justify-between gap-3">
                   <h2 className="font-black">Verified Signup Referral</h2>
                   {selectedReferralType === "SIGNUP" && (
-                    <span className="rounded-full bg-primary/10 px-2 py-1 text-[10px] font-bold text-primary">SELECTED</span>
+                    <span className="rounded-full bg-primary/10 px-2 py-1 text-[10px] font-bold text-primary">
+                      SELECTED
+                    </span>
                   )}
                 </div>
                 <p className="mt-2 text-sm text-muted-foreground">
-                  साथीले referral link बाट नयाँ account बनाएर OTP verify गरेपछि normal referral reward आउँछ।
+                  साथीले तपाईंको यही referral link बाट account बनाएर OTP verify गरेपछि normal referral reward आउँछ।
                 </p>
                 <div className="mt-3 space-y-1 text-sm font-semibold">
                   <p>• Rs. {data.rewardPerVerifiedReferral} per verified signup</p>
@@ -251,16 +252,16 @@ export default function ReferralPage() {
         <CardHeader>
           <CardTitle>तपाईंको Referral Link</CardTitle>
           <CardDescription>
-            {selectedReferralType === "MONETIZATION"
-              ? "Account Monetize referral का लागि यो link share गर्नुहोस्।"
-              : "Verified signup referral का लागि यो link share गर्नुहोस्।"}
+            यही एउटै link Verified Signup र Account Monetize referral दुवैका लागि प्रयोग हुन्छ।
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="break-all rounded-xl border bg-background p-3 font-mono text-sm">
             {data.referralLink}
           </div>
-
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm leading-6 text-amber-950">
+            <b>ध्यान दिनुहोस्:</b> user ले यही link बाट register गर्नुपर्छ। त्यसपछि OTP verify गर्दा Rs. 5 signup reward track हुन्छ; पछि उसैले Starter monetize गरेमा 50% monetization commission पनि यही referral relation बाट track हुन्छ।
+          </div>
           <div className="flex flex-col gap-3 sm:flex-row">
             <Button onClick={copyLink} className="cursor-pointer">
               {copied ? (
@@ -270,7 +271,6 @@ export default function ReferralPage() {
               )}
               {copied ? "Copied" : "Copy Link"}
             </Button>
-
             <Button
               variant="outline"
               onClick={() => setShareOpen(true)}
@@ -291,13 +291,10 @@ export default function ReferralPage() {
             </div>
             <div>
               <p className="text-2xl font-bold">{data.qualifiedReferrals}</p>
-              <p className="text-sm text-muted-foreground">
-                Qualified referrals
-              </p>
+              <p className="text-sm text-muted-foreground">Qualified referrals</p>
             </div>
           </CardContent>
         </Card>
-
         <Card>
           <CardContent className="flex items-center gap-4 p-5">
             <div className="rounded-xl bg-amber-100 p-3 text-amber-700">
@@ -305,13 +302,10 @@ export default function ReferralPage() {
             </div>
             <div>
               <p className="text-2xl font-bold">{data.pendingReferrals}</p>
-              <p className="text-sm text-muted-foreground">
-                Pending verification
-              </p>
+              <p className="text-sm text-muted-foreground">Pending verification</p>
             </div>
           </CardContent>
         </Card>
-
         <Card>
           <CardContent className="flex items-center gap-4 p-5">
             <div className="rounded-xl bg-blue-100 p-3 text-blue-700">
@@ -321,13 +315,10 @@ export default function ReferralPage() {
               <p className="text-2xl font-bold">
                 Rs. {Number(data.totalReferralEarnings || 0).toLocaleString()}
               </p>
-              <p className="text-sm text-muted-foreground">
-                Total referral earnings
-              </p>
+              <p className="text-sm text-muted-foreground">Total referral earnings</p>
             </div>
           </CardContent>
         </Card>
-
         <Card>
           <CardContent className="flex items-center gap-4 p-5">
             <div className="rounded-xl bg-emerald-100 p-3 text-emerald-700">
@@ -335,77 +326,36 @@ export default function ReferralPage() {
             </div>
             <div>
               <p className="text-base font-bold">Monthly Prize</p>
-              <p className="text-sm text-muted-foreground">
-                Top referrer wins Rs. 10,000*
-              </p>
+              <p className="text-sm text-muted-foreground">Top referrer wins Rs. 10,000*</p>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      <Card className="overflow-hidden border-violet-200 bg-gradient-to-br from-violet-50 via-background to-background">
-        <CardHeader className="border-b bg-violet-50/70">
-          <div className="flex items-center gap-3">
-            <div className="rounded-xl bg-violet-100 p-3 text-violet-700">
-              <GitBranch className="h-6 w-6" />
-            </div>
-            <div>
-              <CardTitle className="text-lg">Referral Network / नेटवर्क</CardTitle>
-              <CardDescription>
-                तपाईंले जोडेका user र उनीहरूले पछि जोडेका user हरू referral tree मा chain भएर track हुन्छन्।
-              </CardDescription>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-5 p-5">
-          <div className="grid gap-3 sm:grid-cols-3">
-            <div className="rounded-xl border bg-background p-4">
-              <div className="mb-2 flex items-center gap-2 text-sm text-muted-foreground">
-                <Users className="h-4 w-4" /> Direct Network
-              </div>
-              <p className="text-2xl font-black">{directNetworkCount}</p>
-            </div>
-            <div className="rounded-xl border bg-background p-4">
-              <div className="mb-2 flex items-center gap-2 text-sm text-muted-foreground">
-                <UserRoundCheck className="h-4 w-4" /> Verified
-              </div>
-              <p className="text-2xl font-black">{data.qualifiedReferrals}</p>
-            </div>
-            <div className="rounded-xl border bg-background p-4">
-              <div className="mb-2 flex items-center gap-2 text-sm text-muted-foreground">
-                <Clock3 className="h-4 w-4" /> Pending
-              </div>
-              <p className="text-2xl font-black">{data.pendingReferrals}</p>
-            </div>
-          </div>
-
-          <div className="rounded-xl border border-violet-200 bg-violet-50/70 p-4 text-sm">
-            <p className="font-bold text-violet-950">Network flow</p>
-            <p className="mt-2 text-violet-900">
-              तपाईं → B → C जस्तो referral chain बनेमा B तपाईंको direct member हुन्छ र C B को referral भएर network tree मा तल जोडिन्छ। Backend tree ले 10 level सम्म relation track गर्छ।
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+      <ReferralNetworkInfo
+        referralLink={data.referralLink}
+        directNetworkCount={directNetworkCount}
+        qualifiedReferrals={data.qualifiedReferrals}
+        pendingReferrals={data.pendingReferrals}
+      />
 
       <Card>
         <CardHeader>
           <CardTitle className="text-lg">How it works</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3 text-sm text-muted-foreground">
-          <p>1. आफ्नो referral link share गर्नुहोस्।</p>
-          <p>2. हरेक नयाँ user ले OTP verify गरेपछि तपाईंको wallet मा Rs. {data.rewardPerVerifiedReferral} credit हुन्छ।</p>
-          <p>3. Verified signup मात्र count हुन्छ; duplicate वा self-referral मानिँदैन।</p>
-          <p>4. सबैभन्दा धेरै qualified referral ल्याउनेले monthly Rs. 10,000 जित्ने मौका पाउँछ।</p>
+          <p>1. माथि देखिएको आफ्नो referral link share गर्नुहोस्।</p>
+          <p>2. नयाँ user यही link बाट register गरेर OTP verify गरेपछि Rs. {data.rewardPerVerifiedReferral} wallet reward आउँछ।</p>
+          <p>3. त्यही referred user ले Starter monetize गरेपछि Rs. 499 को 50% = Rs. 249.50 commission आउँछ।</p>
+          <p>4. Verified signup मात्र count हुन्छ; duplicate वा self-referral मानिँदैन।</p>
+          <p>5. सबैभन्दा धेरै qualified referral ल्याउनेले monthly Rs. 10,000 जित्ने मौका पाउँछ।</p>
         </CardContent>
       </Card>
 
       <Dialog open={shareOpen} onOpenChange={setShareOpen}>
         <DialogContent className="w-[94vw] max-w-xl overflow-hidden rounded-3xl p-0">
           <DialogHeader className="border-b px-6 py-5 text-left">
-            <DialogTitle className="text-center text-xl">
-              Share & Earn
-            </DialogTitle>
+            <DialogTitle className="text-center text-xl">Share & Earn</DialogTitle>
             <DialogDescription className="text-center">
               {selectedReferralType === "MONETIZATION"
                 ? "Account Monetize referral share गर्नुहोस् — 50% commission + referred user लाई Rs. 100 cashback."
@@ -414,90 +364,50 @@ export default function ReferralPage() {
           </DialogHeader>
 
           <div className="grid grid-cols-3 gap-x-3 gap-y-6 px-5 py-7 sm:grid-cols-6">
-            <button
-              type="button"
-              onClick={copyLink}
-              className="group flex flex-col items-center gap-2"
-            >
+            <button type="button" onClick={copyLink} className="group flex flex-col items-center gap-2">
               <span className="flex h-14 w-14 items-center justify-center rounded-full bg-blue-600 text-white transition-transform group-hover:scale-105">
-                {copied ? (
-                  <Check className="h-6 w-6" />
-                ) : (
-                  <Copy className="h-6 w-6" />
-                )}
+                {copied ? <Check className="h-6 w-6" /> : <Copy className="h-6 w-6" />}
               </span>
-              <span className="text-xs font-medium">
-                {copied ? "Copied" : "Copy"}
-              </span>
+              <span className="text-xs font-medium">{copied ? "Copied" : "Copy"}</span>
             </button>
 
-            <button
-              type="button"
-              onClick={shareWhatsApp}
-              className="group flex flex-col items-center gap-2"
-            >
+            <button type="button" onClick={shareWhatsApp} className="group flex flex-col items-center gap-2">
               <span className="flex h-14 w-14 items-center justify-center rounded-full bg-[#25D366] text-white transition-transform group-hover:scale-105">
                 <MessageCircle className="h-7 w-7" />
               </span>
               <span className="text-xs font-medium">WhatsApp</span>
             </button>
 
-            <button
-              type="button"
-              onClick={shareFacebook}
-              className="group flex flex-col items-center gap-2"
-            >
-              <span className="flex h-14 w-14 items-center justify-center rounded-full bg-[#1877F2] text-2xl font-black text-white transition-transform group-hover:scale-105">
-                f
-              </span>
+            <button type="button" onClick={shareFacebook} className="group flex flex-col items-center gap-2">
+              <span className="flex h-14 w-14 items-center justify-center rounded-full bg-[#1877F2] text-2xl font-black text-white transition-transform group-hover:scale-105">f</span>
               <span className="text-xs font-medium">Facebook</span>
             </button>
 
-            <button
-              type="button"
-              onClick={shareReferral}
-              className="group flex flex-col items-center gap-2"
-            >
+            <button type="button" onClick={shareReferral} className="group flex flex-col items-center gap-2">
               <span className="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-[#00B2FF] to-[#6A5CFF] text-white transition-transform group-hover:scale-105">
                 <MessageCircle className="h-7 w-7" />
               </span>
               <span className="text-xs font-medium">Messenger</span>
             </button>
 
-            <button
-              type="button"
-              onClick={shareTelegram}
-              className="group flex flex-col items-center gap-2"
-            >
+            <button type="button" onClick={shareTelegram} className="group flex flex-col items-center gap-2">
               <span className="flex h-14 w-14 items-center justify-center rounded-full bg-[#229ED9] text-white transition-transform group-hover:scale-105">
                 <Send className="h-6 w-6" />
               </span>
               <span className="text-xs font-medium">Telegram</span>
             </button>
 
-            <button
-              type="button"
-              onClick={shareViber}
-              className="group flex flex-col items-center gap-2"
-            >
-              <span className="flex h-14 w-14 items-center justify-center rounded-full bg-[#7360F2] text-xl font-bold text-white transition-transform group-hover:scale-105">
-                V
-              </span>
+            <button type="button" onClick={shareViber} className="group flex flex-col items-center gap-2">
+              <span className="flex h-14 w-14 items-center justify-center rounded-full bg-[#7360F2] text-xl font-bold text-white transition-transform group-hover:scale-105">V</span>
               <span className="text-xs font-medium">Viber</span>
             </button>
           </div>
 
           <div className="border-t bg-muted/40 px-5 py-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={shareReferral}
-              className="w-full cursor-pointer rounded-xl"
-            >
+            <Button type="button" variant="outline" onClick={shareReferral} className="w-full cursor-pointer rounded-xl">
               <Share2 className="mr-2 h-4 w-4" />
               More Apps
             </Button>
-
             <p className="mt-3 text-center text-xs text-muted-foreground">
               {selectedReferralType === "MONETIZATION"
                 ? "Monetization referral reward successful paid activation पछि मात्र credit हुन्छ।"
@@ -506,7 +416,6 @@ export default function ReferralPage() {
           </div>
         </DialogContent>
       </Dialog>
-
     </div>
   );
 }
