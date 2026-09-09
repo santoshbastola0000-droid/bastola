@@ -1,5 +1,5 @@
-import { SocialFeedClean } from "@/components/social/SocialFeedClean";
+import { FacebookStyleFeed } from "@/components/social/FacebookStyleFeed";
 
 export default function FeedPage() {
-  return <SocialFeedClean />;
+  return <FacebookStyleFeed />;
 }
