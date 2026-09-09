@@ -11,6 +11,21 @@ export type SocialUser = {
   nearbyLabel?: string;
 };
 
+export type SocialReactionType = "LOVE" | "HAHA" | "WOW" | "SAD" | "ANGRY";
+
+export type SocialReactionEntry = {
+  user: SocialUser;
+  reaction: SocialReactionType;
+  createdAt: string;
+};
+
+export type SocialReactionSummary = {
+  liked: boolean;
+  reaction: SocialReactionType | null;
+  likeCount: number;
+  likePreview?: SocialReactionEntry[];
+};
+
 export type SocialPost = {
   id: string;
   userId: string;
@@ -26,6 +41,7 @@ export type SocialPost = {
   commentCount: number;
   shareCount: number;
   likedByMe: boolean;
+  reactionByMe?: SocialReactionType | null;
 };
 
 export type SocialFeedItem =
@@ -168,9 +184,24 @@ export const socialService = {
     return response.data as { success: boolean };
   },
 
-  async toggleLike(postId: string) {
-    const response = await privateApi.post(`/social/posts/${postId}/like`);
-    return response.data as { liked: boolean; likeCount: number };
+  async toggleLike(postId: string, reaction?: SocialReactionType) {
+    const response = await privateApi.post(
+      `/social/posts/${postId}/like`,
+      reaction ? { reaction } : {},
+    );
+    return response.data as SocialReactionSummary;
+  },
+
+  async removeLike(postId: string) {
+    const response = await privateApi.delete(`/social/posts/${postId}/like`);
+    return response.data as SocialReactionSummary;
+  },
+
+  async likes(postId: string, limit = 50) {
+    const response = await privateApi.get(`/social/posts/${postId}/likes`, {
+      params: { limit },
+    });
+    return response.data as SocialReactionEntry[];
   },
 
   async comments(postId: string) {
