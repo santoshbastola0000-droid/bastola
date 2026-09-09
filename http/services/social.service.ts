@@ -214,9 +214,11 @@ export const socialService = {
     return response.data as SocialReactionSummary;
   },
 
-  async likes(postId: string, _limit = 50) {
-    const response = await privateApi.get(`/social/posts/${postId}/reactions`);
-    return (response.data as SocialReactionEntry[]).slice(0, _limit);
+  async likes(postId: string, limit = 50) {
+    const response = await privateApi.get(`/social/posts/${postId}/reactions`, {
+      params: { limit },
+    });
+    return response.data as SocialReactionEntry[];
   },
 
   async comments(postId: string) {
