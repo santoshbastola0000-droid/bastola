@@ -104,6 +104,22 @@ export type SocialPreferences = {
   jobVisitorEarningEmailOptIn: boolean;
 };
 
+export type SocialRelation = {
+  targetUserId: string;
+  blocked: boolean;
+  muted: boolean;
+};
+
+export type SocialReport = {
+  id: string;
+  reporterUserId: string;
+  targetType: "POST" | "COMMENT" | "STORY" | "USER";
+  targetId: string;
+  reason: string;
+  status: "OPEN" | "REVIEWED" | "DISMISSED";
+  createdAt: string;
+};
+
 export const socialService = {
   async feed(before?: string) {
     const response = await privateApi.get("/social/feed", {
@@ -144,6 +160,14 @@ export const socialService = {
     return response.data;
   },
 
+  async updatePost(
+    postId: string,
+    input: { content?: string; visibility?: "PUBLIC" | "FRIENDS" },
+  ) {
+    const response = await privateApi.patch(`/social/posts/${postId}`, input);
+    return response.data as { success: boolean };
+  },
+
   async toggleLike(postId: string) {
     const response = await privateApi.post(`/social/posts/${postId}/like`);
     return response.data as { liked: boolean; likeCount: number };
@@ -157,6 +181,16 @@ export const socialService = {
   async addComment(postId: string, content: string) {
     const response = await privateApi.post(`/social/posts/${postId}/comments`, { content });
     return response.data as SocialComment;
+  },
+
+  async updateComment(commentId: string, content: string) {
+    const response = await privateApi.patch(`/social/comments/${commentId}`, { content });
+    return response.data as { success: boolean; content: string; updatedAt: string };
+  },
+
+  async deleteComment(commentId: string) {
+    const response = await privateApi.delete(`/social/comments/${commentId}`);
+    return response.data as { success: boolean };
   },
 
   async registerShare(postId: string, channel: string) {
@@ -190,6 +224,11 @@ export const socialService = {
   async viewStory(storyId: string) {
     const response = await privateApi.post(`/social/stories/${storyId}/view`);
     return response.data;
+  },
+
+  async deleteStory(storyId: string) {
+    const response = await privateApi.delete(`/social/stories/${storyId}`);
+    return response.data as { success: boolean };
   },
 
   async friendRequests() {
@@ -252,6 +291,22 @@ export const socialService = {
     return response.data;
   },
 
+  async relations() {
+    const response = await privateApi.get("/social/relations");
+    return response.data as SocialRelation[];
+  },
+
+  async updateRelation(
+    targetUserId: string,
+    input: { blocked?: boolean; muted?: boolean },
+  ) {
+    const response = await privateApi.patch(
+      `/social/relations/${targetUserId}`,
+      input,
+    );
+    return response.data as SocialRelation;
+  },
+
   async preferences() {
     const response = await privateApi.get("/social/preferences");
     return response.data as SocialPreferences;
@@ -269,6 +324,24 @@ export const socialService = {
   }) {
     const response = await privateApi.post("/social/reports", input);
     return response.data;
+  },
+
+  async adminReports(status: "OPEN" | "REVIEWED" | "DISMISSED" = "OPEN") {
+    const response = await privateApi.get("/social/admin/reports", {
+      params: { status, limit: 100 },
+    });
+    return response.data as SocialReport[];
+  },
+
+  async moderateReport(
+    reportId: string,
+    action: "REMOVE_TARGET" | "REVIEWED" | "DISMISSED",
+  ) {
+    const response = await privateApi.post(
+      `/social/admin/reports/${reportId}/moderate`,
+      { action },
+    );
+    return response.data as { success: boolean; status: string };
   },
 };
 
