@@ -7,6 +7,19 @@ import { privateApi } from "@/http/api/privateApi";
 import useTokenStore from "@/store";
 import { useUserStore } from "@/stores/user-store";
 
+function safeSavedRedirect() {
+  const raw = String(
+    sessionStorage.getItem("roomkhoj_post_auth_redirect") || "",
+  ).trim();
+  sessionStorage.removeItem("roomkhoj_post_auth_redirect");
+
+  return raw.startsWith("/") &&
+    !raw.startsWith("//") &&
+    !raw.startsWith("/auth/")
+    ? raw
+    : null;
+}
+
 const SocialCallbackPage = () => {
   const router = useRouter();
   const params = useSearchParams();
@@ -76,11 +89,7 @@ const SocialCallbackPage = () => {
           // Account history is optional; login must still complete.
         }
 
-        const savedRedirect = sessionStorage.getItem(
-          "roomkhoj_post_auth_redirect",
-        );
-        sessionStorage.removeItem("roomkhoj_post_auth_redirect");
-
+        const savedRedirect = safeSavedRedirect();
         const redirect =
           !user.accountPurpose && user.role === "User"
             ? "/auth/complete-profile"
@@ -88,7 +97,7 @@ const SocialCallbackPage = () => {
               (user.role === "Admin"
                 ? "/admin/dashboard"
                 : user.role === "User"
-                  ? "/user/dashboard"
+                  ? "/feed"
                   : "/");
 
         if (!cancelled) {
