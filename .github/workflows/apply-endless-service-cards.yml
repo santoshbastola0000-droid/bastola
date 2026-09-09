@@ -1,0 +1,100 @@
+name: Apply Endless Service Cards
+
+on:
+  push:
+    branches:
+      - feature/social-reactions-v1
+    paths:
+      - .github/workflows/apply-endless-service-cards.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/social-reactions-v1
+          fetch-depth: 0
+
+      - name: Patch social service card support
+        shell: python
+        run: |
+          from pathlib import Path
+
+          service = Path('http/services/social.service.ts')
+          text = service.read_text()
+          job_end = '''    };
+
+export type SocialStory = {'''
+          if 'type: "SERVICE"' not in text:
+              old = '''    };
+
+export type SocialStory = {'''
+              insert = '''    }
+  | {
+      type: "SERVICE";
+      id: string;
+      createdAt: string;
+      service: {
+        key: string;
+        title: string;
+        description: string;
+        actionLabel: string;
+        actionUrl: string;
+      };
+    };
+
+export type SocialStory = {'''
+              if old not in text:
+                  raise SystemExit('feed union anchor not found')
+              text = text.replace(old, insert, 1)
+          service.write_text(text)
+
+          screen = Path('components/social/SocialFeedScreen.tsx')
+          ui = screen.read_text()
+          old_map = '''          if (item.type === "ROOM") return <RoomCard key={`room-${item.id}`} item={item} />;
+          if (item.type === "JOB") return <JobCard key={`job-${item.id}`} item={item} />;
+          const post = item.post;'''
+          new_map = '''          if (item.type === "ROOM") return <RoomCard key={`room-${item.id}`} item={item} />;
+          if (item.type === "JOB") return <JobCard key={`job-${item.id}`} item={item} />;
+          if (item.type === "SERVICE") return <ServiceCard key={item.id} item={item} />;
+          const post = item.post;'''
+          if old_map not in ui:
+              raise SystemExit('feed render anchor not found')
+          ui = ui.replace(old_map, new_map, 1)
+
+          marker = '''function JobCard({ item }: { item: Extract<SocialFeedItem, { type: "JOB" }> }) {'''
+          service_card = '''function ServiceCard({ item }: { item: Extract<SocialFeedItem, { type: "SERVICE" }> }) {
+  return (
+    <section className="border-y bg-white p-4 shadow-sm sm:rounded-xl sm:border">
+      <div className="text-[11px] font-bold uppercase tracking-wide text-blue-600">RoomKhoj service</div>
+      <div className="mt-1 text-[17px] font-semibold leading-tight">{item.service.title}</div>
+      <p className="mt-1.5 text-[14px] leading-[1.35] text-slate-600">{item.service.description}</p>
+      <Link
+        href={item.service.actionUrl}
+        className="mt-3 inline-flex rounded-lg bg-blue-600 px-4 py-2 text-[13px] font-bold text-white"
+      >
+        {item.service.actionLabel}
+      </Link>
+    </section>
+  );
+}
+
+function JobCard({ item }: { item: Extract<SocialFeedItem, { type: "JOB" }> }) {'''
+          if 'function ServiceCard(' not in ui:
+              if marker not in ui:
+                  raise SystemExit('service card anchor not found')
+              ui = ui.replace(marker, service_card, 1)
+          screen.write_text(ui)
+
+      - name: Remove workflow and commit
+        run: |
+          rm .github/workflows/apply-endless-service-cards.yml
+          git config user.name "RoomKhoj Automation"
+          git config user.email "actions@users.noreply.github.com"
+          git add components/social/SocialFeedScreen.tsx http/services/social.service.ts .github/workflows/apply-endless-service-cards.yml
+          git commit -m "Render endless RoomKhoj service cards in social feed"
+          git push origin HEAD:feature/social-reactions-v1
