@@ -102,20 +102,13 @@ export default function LiveVoicePage() {
   }, [stopBargeMonitor]);
 
   const speakBackchannel = useCallback(() => {
-    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
     const now = performance.now();
     if (now - backchannelAtRef.current < 2600) return;
     backchannelAtRef.current = now;
     const word = BACKCHANNELS[Math.floor(Math.random() * BACKCHANNELS.length)];
-    const utter = new SpeechSynthesisUtterance(word);
-    const voices = window.speechSynthesis.getVoices();
-    utter.voice = voices.find((v) => v.lang.toLowerCase().startsWith("ne")) ||
-      voices.find((v) => v.lang.toLowerCase().startsWith("hi")) || voices[0] || null;
-    utter.lang = utter.voice?.lang || "ne-NP";
-    utter.rate = 0.86;
-    utter.pitch = 0.96;
-    utter.volume = 0.38;
-    window.speechSynthesis.speak(utter);
+    // Visual backchannel only while recording. Audible filler can leak into the mic
+    // and be transcribed as caller speech even with echo cancellation enabled.
+    setStatus(`${word}… सुन्दैछु, बोलिरहनुहोस्`);
   }, []);
 
   const startBargeMonitor = useCallback(async () => {
@@ -134,6 +127,7 @@ export default function LiveVoicePage() {
       ctx.createMediaStreamSource(stream).connect(analyser);
       const buf = new Uint8Array(analyser.fftSize);
       let loudSince = 0;
+      let noiseFloor = 0.012;
       const loop = () => {
         if (!activeRef.current || (!audioRef.current && !("speechSynthesis" in window && window.speechSynthesis.speaking))) {
           stopBargeMonitor();
@@ -147,7 +141,9 @@ export default function LiveVoicePage() {
         }
         const rms = Math.sqrt(sum / buf.length);
         const now = performance.now();
-        if (rms > 0.06) {
+        noiseFloor = noiseFloor * 0.985 + Math.min(rms, 0.08) * 0.015;
+        const bargeThreshold = Math.max(0.035, Math.min(0.10, noiseFloor * 2.8));
+        if (rms > bargeThreshold) {
           if (!loudSince) loudSince = now;
           if (now - loudSince > 170) {
             void fadeStopAssistant().then(() => startListening());
@@ -303,6 +299,9 @@ export default function LiveVoicePage() {
       let speechStartAt = 0;
       let lastSpeechAt = performance.now();
       let pauseBackchannelPlayed = false;
+      let noiseFloor = 0.007;
+      let voiceRunMs = 0;
+      let previousFrameAt = performance.now();
 
       recorder.ondataavailable = (e) => { if (e.data.size) chunksRef.current.push(e.data); };
       recorder.onstop = async () => {
@@ -339,19 +338,29 @@ export default function LiveVoicePage() {
         }
         const rms = Math.sqrt(sum / buf.length);
         const now = performance.now();
-        if (rms >= 0.022) {
+        const frameMs = Math.max(8, Math.min(80, now - previousFrameAt));
+        previousFrameAt = now;
+        if (!speechStarted) noiseFloor = noiseFloor * 0.965 + Math.min(rms, 0.05) * 0.035;
+        const speechThreshold = Math.max(0.012, Math.min(0.045, noiseFloor * 2.25));
+        if (rms >= speechThreshold) {
+          voiceRunMs += frameMs;
+          if (!speechStarted && voiceRunMs < 80) {
+            vadFrameRef.current = requestAnimationFrame(loop);
+            return;
+          }
           if (!speechStarted) { speechStarted = true; speechStartAt = now; }
           lastSpeechAt = now;
           pauseBackchannelPlayed = false;
           if ("speechSynthesis" in window && window.speechSynthesis.speaking) window.speechSynthesis.cancel();
           setStatus("सुन्दैछु… बोलिरहनुहोस्");
         } else if (speechStarted) {
+          voiceRunMs = 0;
           const pause = now - lastSpeechAt;
-          if (pause > 520 && pause < 1050 && !pauseBackchannelPlayed && now - speechStartAt > 900) {
+          if (pause > 700 && pause < 1350 && !pauseBackchannelPlayed && now - speechStartAt > 1100) {
             pauseBackchannelPlayed = true;
             speakBackchannel();
           }
-          if (pause >= 1250 && now - speechStartAt > 350) {
+          if (pause >= 1550 && now - speechStartAt > 350) {
             recorder.stop();
             return;
           }
