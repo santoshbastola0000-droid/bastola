@@ -32,6 +32,15 @@ function profilePhoto(value?: string | null) {
   return `${backendUrl}${raw.startsWith("/") ? raw : `/${raw}`}`;
 }
 
+function reactionButtonColor(reaction: SocialReactionType | null) {
+  if (reaction === "LIKE") return "text-blue-600";
+  if (reaction === "LOVE") return "text-red-500";
+  if (reaction === "HAHA" || reaction === "WOW") return "text-amber-600";
+  if (reaction === "SAD") return "text-amber-600";
+  if (reaction === "ANGRY") return "text-orange-600";
+  return "text-slate-600";
+}
+
 export function PostReactions({
   postId,
   currentUserId,
@@ -238,13 +247,13 @@ export function PostReactions({
             onContextMenu={(event) => event.preventDefault()}
             onClick={() => void tapHeart()}
             className={`flex w-full select-none items-center justify-center gap-2 rounded py-2 text-[14px] font-semibold hover:bg-slate-100 disabled:opacity-60 ${
-              liked ? "text-red-500" : "text-slate-600"
+              liked ? reactionButtonColor(reaction) : "text-slate-600"
             }`}
           >
-            {liked && reaction && reaction !== "LOVE" ? (
+            {liked && reaction ? (
               <span className="text-xl leading-none" aria-hidden="true">{reactionEmoji}</span>
             ) : (
-              <Heart className="h-5 w-5" fill={liked ? "currentColor" : "none"} />
+              <Heart className="h-5 w-5" fill="none" />
             )}
             <span>{liked ? reactionLabel : "Like"}</span>
           </button>
