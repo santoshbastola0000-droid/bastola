@@ -18,9 +18,35 @@ import { SocialFeedScreen } from "@/components/social/SocialFeedScreen";
 import { notificationService } from "@/http/services/notification.service";
 import { socialService } from "@/http/services/social.service";
 
-function feedSignature(items: unknown[]) {
+function feedSignature(items: any[]) {
   try {
-    return JSON.stringify(items);
+    // Polling should remount the feed only for structural/content changes such as
+    // add/delete/edit. Reaction/comment/share state is managed locally by each
+    // post and must not be overwritten by a polling request racing the mutation.
+    return JSON.stringify(
+      items.map((item) => {
+        if (item?.type === "POST") {
+          return {
+            type: item.type,
+            id: item.post?.id,
+            content: item.post?.content,
+            mediaUrls: item.post?.mediaUrls,
+            visibility: item.post?.visibility,
+            updatedAt: item.post?.updatedAt,
+          };
+        }
+        if (item?.type === "ROOM") {
+          return { type: item.type, id: item.id, room: item.room };
+        }
+        if (item?.type === "JOB") {
+          return { type: item.type, id: item.id, job: item.job };
+        }
+        if (item?.type === "SERVICE") {
+          return { type: item.type, id: item.id, service: item.service };
+        }
+        return { type: item?.type, id: item?.id };
+      }),
+    );
   } catch {
     return String(items.length);
   }
