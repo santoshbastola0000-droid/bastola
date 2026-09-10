@@ -60,31 +60,39 @@ export function PostReactions({
   const [pickerOpen, setPickerOpen] = useState(false);
   const [listOpen, setListOpen] = useState(false);
   const [loadingList, setLoadingList] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressed = useRef(false);
 
   const loadLikers = async (limit = 3) => {
-    if (!likeCount) {
+    if (!initialLikeCount && !liked) {
       setLikers([]);
       return;
     }
     try {
-      const rows = await socialService.likes(postId, limit);
-      setLikers(rows);
-      const mine = rows.find((entry) => entry.user.id === currentUserId);
+      const rows = await socialService.likes(postId, 100);
+      setLikers(rows.slice(0, limit));
+      const mine = rows.find((entry) => String(entry.user.id) === String(currentUserId));
       if (mine) {
         setLiked(true);
         setReaction(mine.reaction);
+      } else if (!initialLiked) {
+        setLiked(false);
+        setReaction(null);
       }
     } catch {
-      // Keep the reaction controls usable if the optional name preview fails.
+      setLiked(initialLiked);
+      if (initialLiked && !reaction) setReaction("LOVE");
     }
   };
 
   useEffect(() => {
+    setLikeCount(initialLikeCount);
+    setLiked(initialLiked);
+    setReaction(initialLiked ? "LOVE" : null);
     void loadLikers(3);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [postId, initialLikeCount]);
+  }, [postId, initialLikeCount, initialLiked, currentUserId]);
 
   const applySummary = async (summary: {
     liked: boolean;
@@ -95,7 +103,7 @@ export function PostReactions({
     setLiked(summary.liked);
     setReaction(summary.reaction);
     setLikeCount(summary.likeCount);
-    if (summary.likePreview) setLikers(summary.likePreview);
+    if (summary.likePreview) setLikers(summary.likePreview.slice(0, 3));
     else await loadLikers(3);
   };
 
@@ -104,23 +112,27 @@ export function PostReactions({
       longPressed.current = false;
       return;
     }
+    if (submitting) return;
+    setSubmitting(true);
     try {
       const summary = liked
         ? await socialService.removeLike(postId)
         : await socialService.toggleLike(postId, "LOVE");
       await applySummary(summary);
-    } catch {
-      // Keep the current UI if the network request fails.
+    } finally {
+      setSubmitting(false);
     }
   };
 
   const chooseReaction = async (type: SocialReactionType) => {
+    if (submitting) return;
     setPickerOpen(false);
+    setSubmitting(true);
     try {
       const summary = await socialService.toggleLike(postId, type);
       await applySummary(summary);
-    } catch {
-      // Keep the current UI if the network request fails.
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -163,8 +175,9 @@ export function PostReactions({
     return rest ? `${names.join(", ")} and ${rest} others` : names.join(", ");
   }, [likeCount, likers]);
 
-  const reactionEmoji =
-    REACTIONS.find((item) => item.type === reaction)?.emoji || "❤️";
+  const selectedReaction = REACTIONS.find((item) => item.type === reaction);
+  const reactionEmoji = selectedReaction?.emoji || "❤️";
+  const reactionLabel = selectedReaction?.label || "Like";
 
   return (
     <>
@@ -229,18 +242,23 @@ export function PostReactions({
 
           <button
             type="button"
+            disabled={submitting}
             onPointerDown={startLongPress}
             onPointerUp={cancelLongPress}
             onPointerCancel={cancelLongPress}
             onPointerLeave={cancelLongPress}
             onContextMenu={(event) => event.preventDefault()}
             onClick={() => void tapHeart()}
-            className={`flex w-full select-none items-center justify-center gap-2 rounded py-2 text-[14px] font-semibold hover:bg-slate-100 ${
+            className={`flex w-full select-none items-center justify-center gap-2 rounded py-2 text-[14px] font-semibold hover:bg-slate-100 disabled:opacity-60 ${
               liked ? "text-red-500" : "text-slate-600"
             }`}
           >
-            <Heart className="h-5 w-5" fill={liked ? "currentColor" : "none"} />
-            <span>Like</span>
+            {liked && reaction && reaction !== "LOVE" ? (
+              <span className="text-xl leading-none" aria-hidden="true">{reactionEmoji}</span>
+            ) : (
+              <Heart className="h-5 w-5" fill={liked ? "currentColor" : "none"} />
+            )}
+            <span>{liked ? reactionLabel : "Like"}</span>
           </button>
         </div>
 
