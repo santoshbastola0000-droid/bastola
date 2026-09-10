@@ -66,6 +66,7 @@ export function PostReactions({
   const [filter, setFilter] = useState<"ALL" | SocialReactionType>("ALL");
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressed = useRef(false);
+  const activePostId = useRef(postId);
 
   const loadLikers = async (limit = 3) => {
     try {
@@ -85,12 +86,17 @@ export function PostReactions({
   };
 
   useEffect(() => {
-    setLikeCount(initialLikeCount);
-    setLiked(initialLiked);
-    setReaction(initialLiked ? "LIKE" : null);
+    if (activePostId.current !== postId) {
+      activePostId.current = postId;
+      setLikeCount(initialLikeCount);
+      setLiked(initialLiked);
+      setReaction(initialLiked ? "LIKE" : null);
+    }
     void loadLikers(3);
+    // Do not reset local reaction state merely because the parent feed still has stale
+    // initialLikeCount/initialLiked values after an optimistic update.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [postId, initialLikeCount, initialLiked, currentUserId]);
+  }, [postId, currentUserId]);
 
   const applySummary = async (summary: {
     liked: boolean;
@@ -116,7 +122,6 @@ export function PostReactions({
     const previousReaction = reaction;
     const previousCount = likeCount;
 
-    // Immediate mobile feedback so the tap never feels dead.
     if (liked) {
       setLiked(false);
       setReaction(null);
