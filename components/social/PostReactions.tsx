@@ -61,6 +61,7 @@ export function PostReactions({
   const [listOpen, setListOpen] = useState(false);
   const [loadingList, setLoadingList] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [filter, setFilter] = useState<"ALL" | SocialReactionType>("ALL");
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressed = useRef(false);
 
@@ -138,6 +139,7 @@ export function PostReactions({
 
   const openReactionList = async () => {
     if (!likeCount) return;
+    setFilter("ALL");
     setListOpen(true);
     setLoadingList(true);
     try {
@@ -167,13 +169,18 @@ export function PostReactions({
     }
   };
 
-  const previewText = useMemo(() => {
-    if (!likeCount) return "";
-    const names = likers.slice(0, 2).map((entry) => entry.user.name).filter(Boolean);
-    if (!names.length) return `${likeCount} reactions`;
-    const rest = Math.max(0, likeCount - names.length);
-    return rest ? `${names.join(", ")} and ${rest} others` : names.join(", ");
-  }, [likeCount, likers]);
+  const reactionCounts = useMemo(() => {
+    const counts = new Map<SocialReactionType, number>();
+    for (const entry of likers) {
+      counts.set(entry.reaction, (counts.get(entry.reaction) || 0) + 1);
+    }
+    return counts;
+  }, [likers]);
+
+  const filteredLikers = useMemo(
+    () => (filter === "ALL" ? likers : likers.filter((entry) => entry.reaction === filter)),
+    [filter, likers],
+  );
 
   const selectedReaction = REACTIONS.find((item) => item.type === reaction);
   const reactionEmoji = selectedReaction?.emoji || "❤️";
@@ -185,32 +192,13 @@ export function PostReactions({
         <button
           type="button"
           onClick={() => void openReactionList()}
-          className="flex min-w-0 items-center gap-2 text-left hover:underline"
+          className="flex min-w-0 items-center gap-1.5 text-left hover:underline"
           aria-label={likeCount ? `View ${likeCount} reactions` : "No reactions"}
         >
           {likeCount > 0 && (
             <>
-              <div className="flex -space-x-2">
-                {likers.slice(0, 3).map((entry) => {
-                  const photo = profilePhoto(entry.user.profilePhotoUrl);
-                  return photo ? (
-                    <img
-                      key={entry.user.id}
-                      src={photo}
-                      alt={entry.user.name}
-                      className="h-6 w-6 rounded-full border-2 border-white bg-slate-100 object-cover"
-                    />
-                  ) : (
-                    <span
-                      key={entry.user.id}
-                      className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-white bg-slate-200 text-[9px] font-bold text-slate-600"
-                    >
-                      {entry.user.name.slice(0, 1).toUpperCase()}
-                    </span>
-                  );
-                })}
-              </div>
-              <span className="truncate">{reactionEmoji} {previewText}</span>
+              <span className="text-base leading-none" aria-hidden="true">{reactionEmoji}</span>
+              <span>{likeCount} reactions</span>
             </>
           )}
         </button>
@@ -283,44 +271,87 @@ export function PostReactions({
 
       {listOpen && (
         <div
-          className="fixed inset-0 z-[250] flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4"
+          className="fixed inset-0 z-[250] flex items-end justify-center bg-black/35"
           onClick={() => setListOpen(false)}
         >
           <div
-            className="max-h-[72vh] w-full max-w-md overflow-hidden rounded-t-2xl bg-white shadow-2xl sm:rounded-2xl"
+            className="max-h-[82vh] w-full overflow-hidden rounded-t-[28px] bg-white shadow-[0_-16px_50px_rgba(15,23,42,0.18)] sm:max-w-lg sm:rounded-[28px]"
             onClick={(event) => event.stopPropagation()}
           >
-            <div className="flex items-center justify-between border-b px-4 py-3">
-              <div>
-                <b className="text-[15px]">Reactions</b>
-                <p className="text-xs text-slate-500">{likeCount} people reacted</p>
-              </div>
-              <button type="button" onClick={() => setListOpen(false)} className="rounded-full p-2 hover:bg-slate-100">
+            <div className="relative px-4 pb-3 pt-3">
+              <div className="mx-auto h-1.5 w-16 rounded-full bg-slate-400" />
+              <button
+                type="button"
+                onClick={() => setListOpen(false)}
+                className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 hover:bg-slate-200"
+                aria-label="Close reactions"
+              >
                 <X className="h-5 w-5" />
               </button>
             </div>
-            <div className="max-h-[60vh] overflow-y-auto p-2">
+
+            <div className="flex items-center gap-6 border-b px-5 pb-3 text-[15px] font-bold text-slate-950">
+              <button
+                type="button"
+                onClick={() => setFilter("ALL")}
+                className={`flex items-center gap-2 rounded-full px-3 py-2 ${filter === "ALL" ? "bg-blue-50 text-blue-600" : "hover:bg-slate-50"}`}
+              >
+                <span>{likeCount}</span>
+                <span className="flex items-center -space-x-1">
+                  {REACTIONS.filter((item) => reactionCounts.get(item.type)).slice(0, 3).map((item) => (
+                    <span key={item.type} className="text-base leading-none">{item.emoji}</span>
+                  ))}
+                </span>
+              </button>
+              <span>{commentCount} comments</span>
+              <span>{shareCount} shares</span>
+            </div>
+
+            <div className="flex items-center gap-2 overflow-x-auto px-5 py-3">
+              <button
+                type="button"
+                onClick={() => setFilter("ALL")}
+                className={`shrink-0 rounded-full px-3 py-2 text-sm font-semibold ${filter === "ALL" ? "bg-slate-100 text-slate-950" : "text-slate-600 hover:bg-slate-50"}`}
+              >
+                All reactions
+              </button>
+              {REACTIONS.map((item) => {
+                const count = reactionCounts.get(item.type) || 0;
+                if (!count) return null;
+                return (
+                  <button
+                    key={item.type}
+                    type="button"
+                    onClick={() => setFilter(item.type)}
+                    className={`shrink-0 rounded-full px-3 py-2 text-sm font-semibold ${filter === item.type ? "bg-slate-100 text-slate-950" : "text-slate-600 hover:bg-slate-50"}`}
+                  >
+                    {item.emoji} {count}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="max-h-[60vh] overflow-y-auto px-3 pb-[calc(env(safe-area-inset-bottom)+20px)]">
               {loadingList && (
-                <div className="px-3 py-5 text-center text-sm text-slate-500">Loading reactions...</div>
+                <div className="px-3 py-7 text-center text-sm text-slate-500">Loading reactions...</div>
               )}
-              {!loadingList && likers.length === 0 && (
-                <div className="px-3 py-5 text-center text-sm text-slate-500">No reactions yet.</div>
+              {!loadingList && filteredLikers.length === 0 && (
+                <div className="px-3 py-7 text-center text-sm text-slate-500">No reactions yet.</div>
               )}
-              {!loadingList && likers.map((entry) => {
+              {!loadingList && filteredLikers.map((entry) => {
                 const photo = profilePhoto(entry.user.profilePhotoUrl);
                 const emoji = REACTIONS.find((item) => item.type === entry.reaction)?.emoji || "❤️";
-                const label = REACTIONS.find((item) => item.type === entry.reaction)?.label || "Love";
                 return (
-                  <div key={`${entry.user.id}-${entry.createdAt}`} className="flex items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-slate-50">
+                  <div key={`${entry.user.id}-${entry.createdAt}`} className="flex items-center gap-3 rounded-2xl px-2 py-2.5 hover:bg-slate-50">
                     <div className="relative shrink-0">
                       {photo ? (
                         <img
                           src={photo}
                           alt={entry.user.name}
-                          className="h-11 w-11 rounded-full bg-slate-100 object-cover"
+                          className="h-12 w-12 rounded-full bg-slate-100 object-cover"
                         />
                       ) : (
-                        <div className="flex h-11 w-11 items-center justify-center rounded-full bg-slate-200 text-[14px] font-bold text-slate-600">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-200 text-[14px] font-bold text-slate-600">
                           {entry.user.name.slice(0, 1).toUpperCase()}
                         </div>
                       )}
@@ -328,12 +359,24 @@ export function PostReactions({
                         {emoji}
                       </span>
                     </div>
+
                     <div className="min-w-0 flex-1">
-                      <div className="truncate text-[14px] font-semibold text-slate-900">
+                      <div className="truncate text-[15px] font-semibold text-slate-950">
                         {entry.user.name}
                       </div>
-                      <div className="text-xs text-slate-500">{label}</div>
                     </div>
+
+                    {String(entry.user.id) !== String(currentUserId) && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          window.location.href = `/messages?userId=${encodeURIComponent(entry.user.id)}`;
+                        }}
+                        className="shrink-0 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+                      >
+                        Message
+                      </button>
+                    )}
                   </div>
                 );
               })}
