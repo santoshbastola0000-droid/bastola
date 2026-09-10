@@ -47,35 +47,31 @@ export const userService = {
   ): Promise<PaginatedUserResponse> => {
     const params = new URLSearchParams();
 
-    if (filters.page !== undefined)
-      params.append("page", filters.page.toString());
-    if (filters.take !== undefined)
-      params.append("take", filters.take.toString());
+    if (filters.page !== undefined) params.append("page", filters.page.toString());
+    if (filters.take !== undefined) params.append("take", filters.take.toString());
     if (filters.search) params.append("search", filters.search);
     if (filters.role) params.append("role", filters.role);
-    if (filters.accountPurpose) {
-      params.append("accountPurpose", filters.accountPurpose);
-    }
-    if (filters.onlineStatus) {
-      params.append("onlineStatus", filters.onlineStatus);
-    }
-    if (filters.locationPermission) {
-      params.append("locationPermission", filters.locationPermission);
-    }
-    if (filters.notificationPermission) {
-      params.append("notificationPermission", filters.notificationPermission);
-    }
-    if (filters.microphonePermission) {
-      params.append("microphonePermission", filters.microphonePermission);
-    }
-    if (filters.cameraPermission) {
-      params.append("cameraPermission", filters.cameraPermission);
-    }
+    if (filters.accountPurpose) params.append("accountPurpose", filters.accountPurpose);
+    if (filters.onlineStatus) params.append("onlineStatus", filters.onlineStatus);
+    if (filters.locationPermission) params.append("locationPermission", filters.locationPermission);
+    if (filters.notificationPermission) params.append("notificationPermission", filters.notificationPermission);
+    if (filters.microphonePermission) params.append("microphonePermission", filters.microphonePermission);
+    if (filters.cameraPermission) params.append("cameraPermission", filters.cameraPermission);
 
-    const response = await privateApi.get<PaginatedUserResponse>(
-      `/user?${params.toString()}`,
-    );
+    const response = await privateApi.get<PaginatedUserResponse>(`/user?${params.toString()}`);
     return response.data;
+  },
+
+  setUserBanned: async (
+    userId: string,
+    isBanned: boolean,
+    reason?: string,
+  ): Promise<{ id: string; isBanned: boolean; bannedAt: string | null; banReason: string | null }> => {
+    const response = await privateApi.patch(`/user/${userId}/ban`, {
+      isBanned,
+      reason: reason || undefined,
+    });
+    return response.data.data;
   },
 
   adminCreditWallet: async (
@@ -96,15 +92,8 @@ export const userService = {
 
   releasePendingBalance: async (
     userId: string,
-  ): Promise<{
-    releasedAmount: number;
-    balance: number;
-    pendingBalance: number;
-  }> => {
-    const response = await privateApi.post(
-      `/wallet/admin/users/${userId}/release-pending`,
-      {},
-    );
+  ): Promise<{ releasedAmount: number; balance: number; pendingBalance: number }> => {
+    const response = await privateApi.post(`/wallet/admin/users/${userId}/release-pending`, {});
     return response.data.data;
   },
 
@@ -122,14 +111,9 @@ export const userService = {
     userIds: string[],
   ): Promise<Record<string, UserEngagementSummary>> => {
     if (!userIds.length) return {};
-    const response = await privateApi.get(
-      "/notifications/admin/engagement-summary",
-      {
-        params: {
-          userIds: userIds.join(","),
-        },
-      },
-    );
+    const response = await privateApi.get("/notifications/admin/engagement-summary", {
+      params: { userIds: userIds.join(",") },
+    });
     return response.data || {};
   },
 
@@ -137,10 +121,9 @@ export const userService = {
     userId: string,
     limit = 200,
   ): Promise<UserVisitHistoryItem[]> => {
-    const response = await privateApi.get(
-      `/notifications/admin/users/${userId}/visits`,
-      { params: { limit } },
-    );
+    const response = await privateApi.get(`/notifications/admin/users/${userId}/visits`, {
+      params: { limit },
+    });
     return response.data || [];
   },
 
