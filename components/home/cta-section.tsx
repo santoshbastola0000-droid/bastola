@@ -58,7 +58,7 @@ export function CTASection() {
 
             <p className="text-white/70 text-lg mt-6 max-w-lg leading-relaxed">
               Join thousands of happy tenants who found their dream homes
-              through RoomServise. Start exploring today and discover your
+              through RoomKhoj. Start exploring today and discover your
               perfect match.
             </p>
 

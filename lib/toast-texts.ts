@@ -31,7 +31,7 @@ export const Register = {
 export const Verify = {
   success: {
     title: "OTP verified! ✨",
-    description: "Welcome to RentalServise! You can now start exploring.",
+    description: "Welcome to RoomKhoj! You can now start exploring.",
   },
   expired: {
     title: "OTP expired",

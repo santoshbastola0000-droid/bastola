@@ -194,7 +194,7 @@ export function AdminSidebar({
           </div>
           {!isCollapsed && (
             <div>
-              <h2 className="font-bold text-lg">RentalServise</h2>
+              <h2 className="font-bold text-lg">RoomKhoj</h2>
               <p className="text-xs text-gray-400">Admin Panel</p>
             </div>
           )}
