@@ -27,6 +27,7 @@ import {
 import { toast } from "sonner";
 
 import { useUserStore } from "@/stores/user-store";
+import { profileService } from "@/http/services/profile.service";
 import {
   SocialFeedItem,
   SocialGroup,
@@ -44,9 +45,10 @@ const backendUrl = String(
 ).replace(/\/$/, "");
 
 function media(value?: string | null) {
-  const raw = String(value || "");
+  const raw = String(value || "").trim();
   if (!raw) return "";
-  if (/^https?:\/\//i.test(raw)) return raw;
+  if (/^(https?:)?\/\//i.test(raw)) return raw.startsWith("//") ? `https:${raw}` : raw;
+  if (/^(data:|blob:)/i.test(raw)) return raw;
   return `${backendUrl}${raw.startsWith("/") ? raw : `/${raw}`}`;
 }
 
@@ -75,18 +77,22 @@ function Avatar({
   const photo = media(src || user?.profilePhotoUrl);
   const dimensions =
     size === "lg" ? "h-14 w-14" : size === "sm" ? "h-8 w-8" : "h-10 w-10";
-  if (photo) {
+  const textSize = size === "lg" ? "text-[16px]" : size === "sm" ? "text-[10px]" : "text-[13px]";
+  const [failed, setFailed] = useState(false);
+
+  if (photo && !failed) {
     return (
       <img
         src={photo}
         alt={user?.name || "Profile"}
-        className={`${dimensions} shrink-0 rounded-full bg-slate-100 object-cover`}
+        onError={() => setFailed(true)}
+        className={`${dimensions} shrink-0 rounded-full border border-slate-200 bg-slate-100 object-cover shadow-sm`}
       />
     );
   }
   return (
     <div
-      className={`${dimensions} flex shrink-0 items-center justify-center rounded-full bg-slate-200 text-[13px] font-bold text-slate-600`}
+      className={`${dimensions} ${textSize} flex shrink-0 items-center justify-center rounded-full border border-slate-200 bg-slate-200 font-bold text-slate-600 shadow-sm`}
     >
       {String(user?.name || "R").slice(0, 1).toUpperCase()}
     </div>
@@ -182,12 +188,13 @@ export function SocialFeedScreen() {
     if (!user) return;
     setLoading(true);
     try {
-      const [feed, storyRows, friendRows, groupRows, profile, prefs] = await Promise.all([
+      const [feed, storyRows, friendRows, groupRows, socialPhoto, profile, prefs] = await Promise.all([
         socialService.feed(),
         socialService.stories().catch(() => []),
         socialService.friendRequests().catch(() => []),
         socialService.groups().catch(() => []),
         socialService.myProfilePhoto().catch(() => ({ profilePhotoUrl: null, createdAt: null })),
+        profileService.getProfile(String(user.id)).catch(() => null),
         socialService.preferences().catch(() => null),
       ]);
       setItems(feed.items || []);
@@ -195,7 +202,7 @@ export function SocialFeedScreen() {
       setStories(storyRows || []);
       setRequests(friendRows || []);
       setGroups(groupRows || []);
-      setMyPhoto(profile.profilePhotoUrl || null);
+      setMyPhoto(socialPhoto.profilePhotoUrl || profile?.user?.profilePhotoUrl || (user as any)?.profilePhotoUrl || null);
 
       if (prefs?.allowNearbySuggestions) {
         const nearby = await socialService.nearbySuggestions().catch(() => ({ enabled: false, suggestions: [] }));
@@ -331,9 +338,17 @@ export function SocialFeedScreen() {
           postInput={postInput}
           profileInput={profileInput}
           onProfilePhoto={async (file) => {
-            const result = await socialService.uploadProfilePhoto(file);
-            setMyPhoto(result.profilePhotoUrl);
-            toast.success("Profile photo updated");
+            try {
+              const result = await profileService.uploadProfilePhoto(file);
+              const nextPhoto = result?.profilePhotoUrl || result?.user?.profilePhotoUrl || result?.data?.profilePhotoUrl || null;
+              if (nextPhoto) setMyPhoto(nextPhoto);
+              else await load();
+              toast.success("Profile photo updated");
+            } catch {
+              const result = await socialService.uploadProfilePhoto(file);
+              setMyPhoto(result.profilePhotoUrl);
+              toast.success("Profile photo updated");
+            }
           }}
         />
 
@@ -610,11 +625,7 @@ function PostCard({
   onChanged: () => void | Promise<void>;
 }) {
   const [postMenu, setPostMenu] = useState(false);
-  const [activeMediaIndex, setActiveMediaIndex] = useState(0);
   const own = post.author.id === currentUserId;
-  const hasMultiplePhotos =
-    post.mediaUrls.length > 1 &&
-    post.mediaTypes.every((type) => type !== "VIDEO");
 
   return (
     <article className="border-y bg-white font-sans text-slate-950 shadow-sm sm:rounded-xl sm:border">
@@ -677,54 +688,7 @@ function PostCard({
         </p>
       )}
 
-      {hasMultiplePhotos ? (
-        <div className="relative bg-black">
-          <div
-            className="flex snap-x snap-mandatory overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-            onScroll={(event) => {
-              const width = event.currentTarget.clientWidth;
-              if (!width) return;
-              const nextIndex = Math.round(event.currentTarget.scrollLeft / width);
-              setActiveMediaIndex(Math.max(0, Math.min(post.mediaUrls.length - 1, nextIndex)));
-            }}
-          >
-            {post.mediaUrls.map((url, index) => (
-              <div key={`${url}-${index}`} className="flex w-full shrink-0 snap-center items-center justify-center bg-black">
-                <img
-                  src={media(url)}
-                  alt={`Post photo ${index + 1}`}
-                  className="max-h-[680px] min-h-[320px] w-full object-contain"
-                />
-              </div>
-            ))}
-          </div>
-
-          <div className="absolute right-3 top-3 rounded-full bg-black/55 px-2.5 py-1 text-[12px] font-bold text-white backdrop-blur-sm">
-            {activeMediaIndex + 1}/{post.mediaUrls.length}
-          </div>
-
-          <div className="pointer-events-none absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-black/35 px-2 py-1 backdrop-blur-sm">
-            {post.mediaUrls.map((_, index) => (
-              <span
-                key={index}
-                className={`block rounded-full transition-all ${
-                  index === activeMediaIndex ? "h-2 w-2 bg-white" : "h-1.5 w-1.5 bg-white/45"
-                }`}
-              />
-            ))}
-          </div>
-        </div>
-      ) : post.mediaUrls.length > 0 ? (
-        <div className={post.mediaUrls.length > 1 ? "grid grid-cols-2 gap-0.5" : ""}>
-          {post.mediaUrls.slice(0, 4).map((url, index) =>
-            post.mediaTypes[index] === "VIDEO" ? (
-              <video key={url} src={media(url)} controls className="max-h-[640px] w-full bg-black object-contain" />
-            ) : (
-              <img key={url} src={media(url)} alt="Post" className="max-h-[640px] w-full object-cover" />
-            ),
-          )}
-        </div>
-      ) : null}
+      <PostMedia post={post} />
 
       <PostReactions
         postId={post.id}
@@ -739,6 +703,56 @@ function PostCard({
 
       {commentsOpen && <CommentThread postId={post.id} currentUserId={currentUserId} />}
     </article>
+  );
+}
+
+function PostMedia({ post }: { post: SocialPost }) {
+  const [active, setActive] = useState(0);
+  const scroller = useRef<HTMLDivElement>(null);
+  const allImages = post.mediaUrls.length > 1 && post.mediaTypes.every((type) => type === "IMAGE");
+
+  if (!post.mediaUrls.length) return null;
+
+  if (!allImages) {
+    return (
+      <div className={post.mediaUrls.length > 1 ? "grid grid-cols-2 gap-0.5" : ""}>
+        {post.mediaUrls.slice(0, 4).map((url, index) =>
+          post.mediaTypes[index] === "VIDEO" ? (
+            <video key={url} src={media(url)} controls className="max-h-[640px] w-full bg-black object-contain" />
+          ) : (
+            <img key={url} src={media(url)} alt="Post" className="max-h-[640px] w-full object-cover" />
+          ),
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative bg-black">
+      <div
+        ref={scroller}
+        onScroll={(event) => {
+          const el = event.currentTarget;
+          const width = el.clientWidth || 1;
+          setActive(Math.max(0, Math.min(post.mediaUrls.length - 1, Math.round(el.scrollLeft / width))));
+        }}
+        className="flex snap-x snap-mandatory overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      >
+        {post.mediaUrls.map((url, index) => (
+          <div key={`${url}-${index}`} className="w-full shrink-0 snap-center">
+            <img src={media(url)} alt={`Post photo ${index + 1}`} className="max-h-[680px] w-full object-contain" />
+          </div>
+        ))}
+      </div>
+      <div className="absolute right-3 top-3 rounded-full bg-black/60 px-2.5 py-1 text-xs font-bold text-white">
+        {active + 1}/{post.mediaUrls.length}
+      </div>
+      <div className="pointer-events-none absolute bottom-3 left-1/2 flex -translate-x-1/2 gap-1.5">
+        {post.mediaUrls.map((_, index) => (
+          <span key={index} className={`h-1.5 w-1.5 rounded-full ${index === active ? "bg-white" : "bg-white/45"}`} />
+        ))}
+      </div>
+    </div>
   );
 }
 
