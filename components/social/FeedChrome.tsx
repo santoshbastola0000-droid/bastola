@@ -16,12 +16,25 @@ import {
 import { Logo } from "@/components/Logo";
 import { SocialFeedScreen } from "@/components/social/SocialFeedScreen";
 import { notificationService } from "@/http/services/notification.service";
+import { socialService } from "@/http/services/social.service";
+
+function feedSignature(items: unknown[]) {
+  try {
+    return JSON.stringify(items);
+  } catch {
+    return String(items.length);
+  }
+}
 
 export function FeedChrome() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [headerVisible, setHeaderVisible] = useState(true);
+  const [feedVersion, setFeedVersion] = useState(0);
   const lastScrollY = useRef(0);
+  const feedSnapshotRef = useRef<string | null>(null);
+  const feedPollBusyRef = useRef(false);
+  const restoreScrollRef = useRef<number | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -39,6 +52,72 @@ export function FeedChrome() {
       window.removeEventListener("focus", onFocus);
     };
   }, []);
+
+  useEffect(() => {
+    let active = true;
+
+    const checkFeed = async () => {
+      if (
+        !active ||
+        feedPollBusyRef.current ||
+        document.visibilityState !== "visible" ||
+        !navigator.onLine
+      ) {
+        return;
+      }
+
+      feedPollBusyRef.current = true;
+      try {
+        const feed = await socialService.feed();
+        if (!active) return;
+
+        const nextSignature = feedSignature(feed.items || []);
+        const previousSignature = feedSnapshotRef.current;
+        feedSnapshotRef.current = nextSignature;
+
+        if (previousSignature !== null && previousSignature !== nextSignature) {
+          restoreScrollRef.current = window.scrollY;
+          setFeedVersion((value) => value + 1);
+        }
+      } catch {
+        // Feed polling is best-effort. The normal feed request still handles visible errors.
+      } finally {
+        feedPollBusyRef.current = false;
+      }
+    };
+
+    void checkFeed();
+    const timer = window.setInterval(() => void checkFeed(), 1000);
+    const onFocus = () => void checkFeed();
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") void checkFeed();
+    };
+
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
+  }, []);
+
+  useEffect(() => {
+    const y = restoreScrollRef.current;
+    if (y === null) return;
+
+    const restore = () => {
+      window.scrollTo({ top: y, behavior: "auto" });
+      restoreScrollRef.current = null;
+    };
+
+    const first = window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(restore);
+    });
+    return () => window.cancelAnimationFrame(first);
+  }, [feedVersion]);
 
   useEffect(() => {
     const onScroll = () => {
@@ -114,7 +193,7 @@ export function FeedChrome() {
       </header>
 
       <div className="[&>div>header]:hidden">
-        <SocialFeedScreen />
+        <SocialFeedScreen key={feedVersion} />
       </div>
     </div>
   );
