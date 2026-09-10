@@ -610,7 +610,11 @@ function PostCard({
   onChanged: () => void | Promise<void>;
 }) {
   const [postMenu, setPostMenu] = useState(false);
+  const [activeMediaIndex, setActiveMediaIndex] = useState(0);
   const own = post.author.id === currentUserId;
+  const hasMultiplePhotos =
+    post.mediaUrls.length > 1 &&
+    post.mediaTypes.every((type) => type !== "VIDEO");
 
   return (
     <article className="border-y bg-white font-sans text-slate-950 shadow-sm sm:rounded-xl sm:border">
@@ -673,7 +677,44 @@ function PostCard({
         </p>
       )}
 
-      {post.mediaUrls.length > 0 && (
+      {hasMultiplePhotos ? (
+        <div className="relative bg-black">
+          <div
+            className="flex snap-x snap-mandatory overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            onScroll={(event) => {
+              const width = event.currentTarget.clientWidth;
+              if (!width) return;
+              const nextIndex = Math.round(event.currentTarget.scrollLeft / width);
+              setActiveMediaIndex(Math.max(0, Math.min(post.mediaUrls.length - 1, nextIndex)));
+            }}
+          >
+            {post.mediaUrls.map((url, index) => (
+              <div key={`${url}-${index}`} className="flex w-full shrink-0 snap-center items-center justify-center bg-black">
+                <img
+                  src={media(url)}
+                  alt={`Post photo ${index + 1}`}
+                  className="max-h-[680px] min-h-[320px] w-full object-contain"
+                />
+              </div>
+            ))}
+          </div>
+
+          <div className="absolute right-3 top-3 rounded-full bg-black/55 px-2.5 py-1 text-[12px] font-bold text-white backdrop-blur-sm">
+            {activeMediaIndex + 1}/{post.mediaUrls.length}
+          </div>
+
+          <div className="pointer-events-none absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-black/35 px-2 py-1 backdrop-blur-sm">
+            {post.mediaUrls.map((_, index) => (
+              <span
+                key={index}
+                className={`block rounded-full transition-all ${
+                  index === activeMediaIndex ? "h-2 w-2 bg-white" : "h-1.5 w-1.5 bg-white/45"
+                }`}
+              />
+            ))}
+          </div>
+        </div>
+      ) : post.mediaUrls.length > 0 ? (
         <div className={post.mediaUrls.length > 1 ? "grid grid-cols-2 gap-0.5" : ""}>
           {post.mediaUrls.slice(0, 4).map((url, index) =>
             post.mediaTypes[index] === "VIDEO" ? (
@@ -683,7 +724,7 @@ function PostCard({
             ),
           )}
         </div>
-      )}
+      ) : null}
 
       <PostReactions
         postId={post.id}
