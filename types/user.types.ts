@@ -28,6 +28,9 @@ export interface UserDetail {
   name: string;
   email: string;
   isVerified: boolean;
+  isBanned?: boolean;
+  bannedAt?: string | null;
+  banReason?: string | null;
   role: UserRole;
   phone: string;
   accountPurpose?: "FIND_ROOM" | "POST_ROOM" | "FIND_JOB" | "POST_JOB" | null;
