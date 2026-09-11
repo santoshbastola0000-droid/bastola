@@ -352,6 +352,25 @@ export function SocialFeedScreen() {
           }}
         />
 
+        <Link
+          href="/rooms"
+          aria-label="Browse available rooms and open room cards"
+          className="flex items-center gap-3 border-y border-red-100 bg-white px-4 py-3 shadow-sm transition-colors hover:bg-red-50/60 sm:rounded-xl sm:border"
+        >
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-red-50 text-red-600">
+            <MapPin className="h-6 w-6" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="text-[16px] font-bold text-slate-950">Browse Rooms</div>
+            <div className="mt-0.5 text-[12px] font-medium leading-4 text-slate-500">
+              Tap here to see all available room cards
+            </div>
+          </div>
+          <span className="shrink-0 rounded-full bg-red-600 px-3 py-2 text-[12px] font-bold text-white">
+            View rooms →
+          </span>
+        </Link>
+
         {people.length > 0 && (
           <PeopleStrip
             people={people.slice(0, 10)}
