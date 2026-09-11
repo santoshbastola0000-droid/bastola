@@ -85,6 +85,8 @@ function Avatar({
       <img
         src={photo}
         alt={user?.name || "Profile"}
+        loading="lazy"
+        decoding="async"
         onError={() => setFailed(true)}
         className={`${dimensions} shrink-0 rounded-full border border-slate-200 bg-slate-100 object-cover shadow-sm`}
       />
@@ -188,26 +190,11 @@ export function SocialFeedScreen() {
     if (!user) return;
     setLoading(true);
     try {
-      const [feed, storyRows, friendRows, groupRows, socialPhoto, profile, prefs] = await Promise.all([
-        socialService.feed(),
-        socialService.stories().catch(() => []),
-        socialService.friendRequests().catch(() => []),
-        socialService.groups().catch(() => []),
-        socialService.myProfilePhoto().catch(() => ({ profilePhotoUrl: null, createdAt: null })),
-        profileService.getProfile(String(user.id)).catch(() => null),
-        socialService.preferences().catch(() => null),
-      ]);
+      // Critical path: only wait for the actual feed. Stories, groups, profile
+      // data and suggestions are useful, but they must never block Home.
+      const feed = await socialService.feed();
       setItems(feed.items || []);
       setNextCursor(feed.nextCursor || null);
-      setStories(storyRows || []);
-      setRequests(friendRows || []);
-      setGroups(groupRows || []);
-      setMyPhoto(socialPhoto.profilePhotoUrl || profile?.user?.profilePhotoUrl || (user as any)?.profilePhotoUrl || null);
-
-      if (prefs?.allowNearbySuggestions) {
-        const nearby = await socialService.nearbySuggestions().catch(() => ({ enabled: false, suggestions: [] }));
-        setSuggestions(nearby.suggestions || []);
-      }
     } catch (error: any) {
       toast.error(error?.response?.data?.message || "Feed load failed");
     } finally {
@@ -215,9 +202,52 @@ export function SocialFeedScreen() {
     }
   }, [user]);
 
+  const loadSecondary = useCallback(async () => {
+    if (!user) return;
+
+    const [storyRows, friendRows, groupRows, socialPhoto, profile, prefs] =
+      await Promise.all([
+        socialService.stories().catch(() => []),
+        socialService.friendRequests().catch(() => []),
+        socialService.groups().catch(() => []),
+        socialService
+          .myProfilePhoto()
+          .catch(() => ({ profilePhotoUrl: null, createdAt: null })),
+        profileService.getProfile(String(user.id)).catch(() => null),
+        socialService.preferences().catch(() => null),
+      ]);
+
+    setStories(storyRows || []);
+    setRequests(friendRows || []);
+    setGroups(groupRows || []);
+    setMyPhoto(
+      socialPhoto.profilePhotoUrl ||
+        profile?.user?.profilePhotoUrl ||
+        (user as any)?.profilePhotoUrl ||
+        null,
+    );
+
+    if (prefs?.allowNearbySuggestions) {
+      const nearby = await socialService
+        .nearbySuggestions()
+        .catch(() => ({ enabled: false, suggestions: [] }));
+      setSuggestions(nearby.suggestions || []);
+    }
+  }, [user]);
+
   useEffect(() => {
-    void load();
-  }, [load]);
+    let active = true;
+
+    const boot = async () => {
+      await load();
+      if (active) void loadSecondary();
+    };
+
+    void boot();
+    return () => {
+      active = false;
+    };
+  }, [load, loadSecondary]);
 
   const loadMore = useCallback(async () => {
     if (!nextCursor || loadingMore) return;
@@ -342,7 +372,7 @@ export function SocialFeedScreen() {
               const result = await profileService.uploadProfilePhoto(file);
               const nextPhoto = result?.profilePhotoUrl || result?.user?.profilePhotoUrl || result?.data?.profilePhotoUrl || null;
               if (nextPhoto) setMyPhoto(nextPhoto);
-              else await load();
+              else await loadSecondary();
               toast.success("Profile photo updated");
             } catch {
               const result = await socialService.uploadProfilePhoto(file);
@@ -484,9 +514,9 @@ function StoryCarousel({
             className="relative h-[176px] w-[108px] shrink-0 overflow-hidden rounded-xl bg-slate-900"
           >
             {story.mediaType === "VIDEO" ? (
-              <video src={media(story.mediaUrl)} muted className="h-full w-full object-cover opacity-85" />
+              <video src={media(story.mediaUrl)} muted preload="none" className="h-full w-full object-cover opacity-85" />
             ) : (
-              <img src={media(story.mediaUrl)} alt="Story" className="h-full w-full object-cover" />
+              <img src={media(story.mediaUrl)} alt="Story" loading="lazy" decoding="async" className="h-full w-full object-cover" />
             )}
             <div className="absolute left-2 top-2 rounded-full border-[3px] border-blue-600 bg-white p-[1px]">
               <Avatar user={story.author} size="sm" />
@@ -737,9 +767,9 @@ function PostMedia({ post }: { post: SocialPost }) {
       <div className={post.mediaUrls.length > 1 ? "grid grid-cols-2 gap-0.5" : ""}>
         {post.mediaUrls.slice(0, 4).map((url, index) =>
           post.mediaTypes[index] === "VIDEO" ? (
-            <video key={url} src={media(url)} controls className="max-h-[640px] w-full bg-black object-contain" />
+            <video key={url} src={media(url)} controls preload="metadata" className="max-h-[640px] w-full bg-black object-contain" />
           ) : (
-            <img key={url} src={media(url)} alt="Post" className="max-h-[640px] w-full object-cover" />
+            <img key={url} src={media(url)} alt="Post" loading="lazy" decoding="async" className="max-h-[640px] w-full object-cover" />
           ),
         )}
       </div>
@@ -759,7 +789,7 @@ function PostMedia({ post }: { post: SocialPost }) {
       >
         {post.mediaUrls.map((url, index) => (
           <div key={`${url}-${index}`} className="w-full shrink-0 snap-center">
-            <img src={media(url)} alt={`Post photo ${index + 1}`} className="max-h-[680px] w-full object-contain" />
+            <img src={media(url)} alt={`Post photo ${index + 1}`} loading="lazy" decoding="async" className="max-h-[680px] w-full object-contain" />
           </div>
         ))}
       </div>
@@ -811,7 +841,7 @@ function PeopleStrip({
 function RoomCard({ item }: { item: Extract<SocialFeedItem, { type: "ROOM" }> }) {
   return (
     <Link href={`/property/${item.room.id}`} className="block overflow-hidden border-y bg-white shadow-sm sm:rounded-xl sm:border">
-      {item.room.image && <img src={media(item.room.image)} alt={item.room.title} className="max-h-[420px] w-full object-cover" />}
+      {item.room.image && <img src={media(item.room.image)} alt={item.room.title} loading="lazy" decoding="async" className="max-h-[420px] w-full object-cover" />}
       <div className="p-3">
         <div className="text-[11px] font-bold uppercase tracking-wide text-red-600">Room near you</div>
         <div className="mt-0.5 text-[16px] font-semibold leading-tight">{item.room.title}</div>
