@@ -5,8 +5,8 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { Bell, Menu } from "lucide-react";
 import { Logo } from "@/components/Logo";
-import { MobileMenuDrawer } from "@/components/social/MobileMenuDrawer";
 import { FeedNetworkOptimizer } from "@/components/social/FeedNetworkOptimizer";
+import { SocialFeedScreen } from "@/components/social/SocialFeedScreen";
 import { notificationService } from "@/http/services/notification.service";
 import { socialService } from "@/http/services/social.service";
 import { useUserStore } from "@/stores/user-store";
@@ -16,38 +16,12 @@ import {
 } from "@/lib/network-quality";
 import styles from "./FeedChrome.module.css";
 
-function FeedSkeleton() {
-  return (
-    <div className="mx-auto max-w-[720px] space-y-2 pb-24 sm:px-3" aria-label="Loading feed">
-      <section className="border-y bg-white px-3 py-4 shadow-sm sm:rounded-xl sm:border">
-        <div className="flex gap-3 overflow-hidden">
-          {[0, 1, 2, 3].map((item) => (
-            <div key={item} className="h-[150px] w-[96px] shrink-0 animate-pulse rounded-xl bg-slate-200" />
-          ))}
-        </div>
-      </section>
-      {[0, 1, 2].map((item) => (
-        <section key={item} className="border-y bg-white p-3 shadow-sm sm:rounded-xl sm:border">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 animate-pulse rounded-full bg-slate-200" />
-            <div className="flex-1 space-y-2">
-              <div className="h-3 w-32 animate-pulse rounded bg-slate-200" />
-              <div className="h-2.5 w-20 animate-pulse rounded bg-slate-100" />
-            </div>
-          </div>
-          <div className="mt-3 h-52 animate-pulse rounded-xl bg-slate-100" />
-        </section>
-      ))}
-    </div>
-  );
-}
-
-const SocialFeedScreen = dynamic(
-  () => import("@/components/social/SocialFeedScreen").then((module) => module.SocialFeedScreen),
-  {
-    ssr: false,
-    loading: FeedSkeleton,
-  },
+const MobileMenuDrawer = dynamic(
+  () =>
+    import("@/components/social/MobileMenuDrawer").then(
+      (module) => module.MobileMenuDrawer,
+    ),
+  { ssr: false },
 );
 
 function feedSignature(items: any[]) {
@@ -103,20 +77,32 @@ export function FeedChrome() {
 
   useEffect(() => {
     let active = true;
+    let interval: number | undefined;
+
     const refresh = async () => {
       const count = await notificationService.unreadCount().catch(() => 0);
       if (active) setUnreadCount(count);
     };
-    void refresh();
-    const timer = window.setInterval(
-      refresh,
-      networkProfile.liteMode ? 45_000 : 20_000,
-    );
+
+    // Notifications are secondary to the feed. Give the first feed request a
+    // short head start so slow mobile connections do not split bandwidth across
+    // another API call during the critical home-page load.
+    const initialDelay = window.setTimeout(() => {
+      if (!active) return;
+      void refresh();
+      interval = window.setInterval(
+        refresh,
+        networkProfile.liteMode ? 45_000 : 20_000,
+      );
+    }, networkProfile.liteMode ? 2_000 : 1_000);
+
     const onFocus = () => void refresh();
     window.addEventListener("focus", onFocus);
+
     return () => {
       active = false;
-      window.clearInterval(timer);
+      window.clearTimeout(initialDelay);
+      if (interval !== undefined) window.clearInterval(interval);
       window.removeEventListener("focus", onFocus);
     };
   }, [networkProfile.liteMode]);
@@ -258,11 +244,13 @@ export function FeedChrome() {
         </div>
       </header>
 
-      <MobileMenuDrawer
-        open={menuOpen}
-        onClose={() => setMenuOpen(false)}
-        userName={user?.name}
-      />
+      {menuOpen && (
+        <MobileMenuDrawer
+          open={menuOpen}
+          onClose={() => setMenuOpen(false)}
+          userName={user?.name}
+        />
+      )}
 
       <div className="[&>div>header]:hidden">
         <SocialFeedScreen key={feedVersion} />
