@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useUserStore } from "@/stores/user-store";
 import { motion } from "framer-motion";
@@ -20,6 +20,10 @@ import { RoomStatus, type Room } from "@/types/room.types";
 import { UserRole } from "@/types/user.types";
 import { formatPriceNPR, resolveImageUrl } from "@/lib/utils";
 import { amenityIcons, categoryConfig } from "@/lib/room-utils";
+import {
+  getNetworkProfile,
+  onNetworkProfileChange,
+} from "@/lib/network-quality";
 import { toast } from "sonner";
 
 interface PropertyCardProps {
@@ -38,8 +42,15 @@ export function PropertyCard({
   const [imgLoaded, setImgLoaded] = useState(false);
   const [saved, setSaved] = useState(false);
   const [imageIndex, setImageIndex] = useState(0);
+  const [videoRequested, setVideoRequested] = useState(false);
+  const [networkProfile, setNetworkProfile] = useState(() => getNetworkProfile());
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
   const touchGestureRef = useRef<"horizontal" | "vertical" | null>(null);
+
+  useEffect(
+    () => onNetworkProfileChange(() => setNetworkProfile(getNetworkProfile())),
+    [],
+  );
 
   const catCfg = categoryConfig[room.category] ?? {
     label: room.category,
@@ -118,6 +129,7 @@ export function PropertyCard({
     if (images.length <= 1) return;
     setImgLoaded(false);
     setImgError(false);
+    setVideoRequested(false);
     setImageIndex((current) => (current + 1) % images.length);
   };
 
@@ -125,6 +137,7 @@ export function PropertyCard({
     if (images.length <= 1) return;
     setImgLoaded(false);
     setImgError(false);
+    setVideoRequested(false);
     setImageIndex((current) => (current - 1 + images.length) % images.length);
   };
 
@@ -197,12 +210,16 @@ export function PropertyCard({
 
   return (
     <motion.article
-      initial={{ opacity: 0, y: 14 }}
+      initial={networkProfile.liteMode ? false : { opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{
-        duration: 0.32,
-        delay: Math.min(index, 8) * 0.03,
-      }}
+      transition={
+        networkProfile.liteMode
+          ? { duration: 0 }
+          : {
+              duration: 0.32,
+              delay: Math.min(index, 8) * 0.03,
+            }
+      }
       onClick={openRoom}
       onKeyDown={(event) => {
         if (event.key === "Enter") {
@@ -228,26 +245,50 @@ export function PropertyCard({
           touchGestureRef.current = null;
         }}
       >
-        {!imgLoaded && (
-          <div className="absolute inset-0 animate-pulse bg-slate-200" />
+        {!imgLoaded && !isVideo && (
+          <div
+            className={`absolute inset-0 bg-slate-200 ${
+              networkProfile.liteMode ? "" : "animate-pulse"
+            }`}
+          />
         )}
 
         {imageUrl ? (
           isVideo ? (
-            <video
-              src={imageUrl}
-              controls
-              muted
-              playsInline
-              preload="metadata"
-              onLoadedData={() => setImgLoaded(true)}
-              className="h-full w-full object-cover"
-            />
+            networkProfile.liteMode && !videoRequested ? (
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setVideoRequested(true);
+                }}
+                className="absolute inset-0 flex h-full w-full flex-col items-center justify-center gap-2 bg-gradient-to-br from-slate-100 via-white to-slate-100 text-slate-700"
+                aria-label="Load room video"
+              >
+                <span className="flex h-12 w-12 items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-slate-200">
+                  ▶
+                </span>
+                <span className="text-[11px] font-bold">Tap to load video</span>
+                <span className="text-[9px] text-slate-500">Data saver mode</span>
+              </button>
+            ) : (
+              <video
+                src={imageUrl}
+                controls
+                muted
+                playsInline
+                preload={networkProfile.liteMode ? "none" : "metadata"}
+                onLoadedData={() => setImgLoaded(true)}
+                className="h-full w-full object-cover"
+              />
+            )
           ) : (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={imageUrl}
               alt={room.title}
+              loading={index < 2 ? "eager" : "lazy"}
+              decoding="async"
               onLoad={() => setImgLoaded(true)}
               onError={() => {
                 setImgError(true);
@@ -323,6 +364,8 @@ export function PropertyCard({
                 <img
                   src={ownerPhotoUrl}
                   alt={ownerName}
+                  loading="lazy"
+                  decoding="async"
                   className="h-full w-full object-cover"
                 />
               ) : (
