@@ -206,14 +206,63 @@ export function FeedChrome() {
         </div>
 
         {menuOpen && (
-          <div className="absolute right-3 top-[54px] z-[130] w-64 rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl">
-            <MenuLink href="/feed" label="Feed" icon={<UsersRound className="h-5 w-5" />} onClick={() => setMenuOpen(false)} />
-            <MenuLink href="/rooms" label="Rooms" icon={<Plus className="h-5 w-5" />} onClick={() => setMenuOpen(false)} />
-            <MenuLink href="/jobs" label="Jobs" icon={<BriefcaseBusiness className="h-5 w-5" />} onClick={() => setMenuOpen(false)} />
-            <MenuLink href="/messages" label="Messages" icon={<MessageCircle className="h-5 w-5" />} onClick={() => setMenuOpen(false)} />
-            <MenuLink href="/user/dashboard/profile" label="Profile" icon={<UserRound className="h-5 w-5" />} onClick={() => setMenuOpen(false)} />
-            <MenuLink href="/notifications" label={`Notifications${unreadCount ? ` (${unreadCount})` : ""}`} icon={<Bell className="h-5 w-5" />} onClick={() => setMenuOpen(false)} />
-            <MenuLink href="/user/dashboard/rooms/create" label="List Room & Earn" icon={<Plus className="h-5 w-5" />} onClick={() => setMenuOpen(false)} />
+          <div className="absolute right-3 top-[54px] z-[130] max-h-[calc(100dvh-72px)] w-[min(92vw,360px)] overflow-y-auto rounded-2xl border border-slate-200 bg-slate-50 p-2.5 shadow-2xl">
+            <div className="px-1 pb-2 pt-1">
+              <div className="text-[16px] font-black text-slate-950">Quick menu</div>
+              <div className="mt-0.5 text-[12px] font-medium text-slate-500">Choose where you want to go</div>
+            </div>
+            <div className="space-y-2">
+              <MenuLink
+                href="/feed"
+                label="Feed"
+                description="See posts, rooms and updates"
+                icon={<UsersRound className="h-5 w-5" />}
+                onClick={() => setMenuOpen(false)}
+              />
+              <MenuLink
+                href="/rooms"
+                label="Browse Rooms"
+                description="See all available room cards"
+                icon={<Plus className="h-5 w-5" />}
+                onClick={() => setMenuOpen(false)}
+              />
+              <MenuLink
+                href="/jobs"
+                label="Jobs"
+                description="Browse available job vacancies"
+                icon={<BriefcaseBusiness className="h-5 w-5" />}
+                onClick={() => setMenuOpen(false)}
+              />
+              <MenuLink
+                href="/messages"
+                label="Messages"
+                description="Open your chats and conversations"
+                icon={<MessageCircle className="h-5 w-5" />}
+                onClick={() => setMenuOpen(false)}
+              />
+              <MenuLink
+                href="/user/dashboard/profile"
+                label="Profile"
+                description="View and manage your profile"
+                icon={<UserRound className="h-5 w-5" />}
+                onClick={() => setMenuOpen(false)}
+              />
+              <MenuLink
+                href="/notifications"
+                label={`Notifications${unreadCount ? ` (${unreadCount})` : ""}`}
+                description="See your latest alerts"
+                icon={<Bell className="h-5 w-5" />}
+                onClick={() => setMenuOpen(false)}
+              />
+              <MenuLink
+                href="/user/dashboard/rooms/create"
+                label="List Room & Earn"
+                description="Post your room and reach tenants"
+                icon={<Plus className="h-5 w-5" />}
+                onClick={() => setMenuOpen(false)}
+                highlight
+              />
+            </div>
           </div>
         )}
       </header>
@@ -228,23 +277,38 @@ export function FeedChrome() {
 function MenuLink({
   href,
   label,
+  description,
   icon,
   onClick,
+  highlight = false,
 }: {
   href: string;
   label: string;
+  description: string;
   icon: React.ReactNode;
   onClick: () => void;
+  highlight?: boolean;
 }) {
   return (
     <Link
       href={href}
       onClick={onClick}
-      className="flex items-center gap-3 rounded-xl px-3 py-3 font-semibold text-slate-800 hover:bg-slate-100"
+      className={`flex items-center gap-3 rounded-xl border px-3 py-3 shadow-sm transition-colors ${
+        highlight
+          ? "border-red-200 bg-red-50 hover:bg-red-100/70"
+          : "border-slate-200 bg-white hover:border-red-100 hover:bg-red-50/60"
+      }`}
     >
-      {icon}
-      <span>{label}</span>
-      <ChevronRight className="ml-auto h-4 w-4 text-slate-400" />
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-50 text-red-600">
+        {icon}
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="truncate text-[14px] font-bold text-slate-950">{label}</div>
+        <div className="mt-0.5 line-clamp-2 text-[11px] font-medium leading-4 text-slate-500">
+          {description}
+        </div>
+      </div>
+      <ChevronRight className="h-5 w-5 shrink-0 text-red-600" />
     </Link>
   );
 }
