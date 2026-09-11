@@ -6,6 +6,8 @@ import { Bell, Menu } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { SocialFeedScreen } from "@/components/social/SocialFeedScreen";
 import { MobileMenuDrawer } from "@/components/social/MobileMenuDrawer";
+import { SocialMusicControls } from "@/components/social/SocialMusicControls";
+import { StoryMusicBridge } from "@/components/social/StoryMusicBridge";
 import { notificationService } from "@/http/services/notification.service";
 import { socialService } from "@/http/services/social.service";
 import { useUserStore } from "@/stores/user-store";
@@ -24,6 +26,8 @@ function feedSignature(items: any[]) {
             id: item.post?.id,
             content: item.post?.content,
             mediaUrls: item.post?.mediaUrls,
+            musicUrl: item.post?.musicUrl,
+            musicTitle: item.post?.musicTitle,
             visibility: item.post?.visibility,
             updatedAt: item.post?.updatedAt,
           };
@@ -206,9 +210,13 @@ export function FeedChrome() {
         userName={user?.name}
       />
 
+      {user && <SocialMusicControls />}
+
       <div className="[&>div>header]:hidden">
         <SocialFeedScreen key={feedVersion} />
       </div>
+
+      <StoryMusicBridge />
     </div>
   );
 }
