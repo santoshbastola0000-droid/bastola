@@ -2,21 +2,13 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import {
-  Bell,
-  BriefcaseBusiness,
-  ChevronRight,
-  Menu,
-  MessageCircle,
-  Plus,
-  UserRound,
-  UsersRound,
-  X,
-} from "lucide-react";
+import { Bell, Menu } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { SocialFeedScreen } from "@/components/social/SocialFeedScreen";
+import { MobileMenuDrawer } from "@/components/social/MobileMenuDrawer";
 import { notificationService } from "@/http/services/notification.service";
 import { socialService } from "@/http/services/social.service";
+import { useUserStore } from "@/stores/user-store";
 
 function feedSignature(items: any[]) {
   try {
@@ -53,6 +45,7 @@ function feedSignature(items: any[]) {
 }
 
 export function FeedChrome() {
+  const user = useUserStore((state) => state.user);
   const [menuOpen, setMenuOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [headerVisible, setHeaderVisible] = useState(true);
@@ -197,118 +190,24 @@ export function FeedChrome() {
               type="button"
               aria-label="Menu"
               aria-expanded={menuOpen}
-              onClick={() => setMenuOpen((value) => !value)}
+              onClick={() => setMenuOpen(true)}
               className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-800"
             >
-              {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-6 w-6" />}
+              <Menu className="h-6 w-6" />
             </button>
           </div>
         </div>
-
-        {menuOpen && (
-          <div className="absolute right-3 top-[54px] z-[130] max-h-[calc(100dvh-72px)] w-[min(92vw,360px)] overflow-y-auto rounded-2xl border border-slate-200 bg-slate-50 p-2.5 shadow-2xl">
-            <div className="px-1 pb-2 pt-1">
-              <div className="text-[16px] font-black text-slate-950">Quick menu</div>
-              <div className="mt-0.5 text-[12px] font-medium text-slate-500">Choose where you want to go</div>
-            </div>
-            <div className="space-y-2">
-              <MenuLink
-                href="/feed"
-                label="Feed"
-                description="See posts, rooms and updates"
-                icon={<UsersRound className="h-5 w-5" />}
-                onClick={() => setMenuOpen(false)}
-              />
-              <MenuLink
-                href="/rooms"
-                label="Browse Rooms"
-                description="See all available room cards"
-                icon={<Plus className="h-5 w-5" />}
-                onClick={() => setMenuOpen(false)}
-              />
-              <MenuLink
-                href="/jobs"
-                label="Jobs"
-                description="Browse available job vacancies"
-                icon={<BriefcaseBusiness className="h-5 w-5" />}
-                onClick={() => setMenuOpen(false)}
-              />
-              <MenuLink
-                href="/messages"
-                label="Messages"
-                description="Open your chats and conversations"
-                icon={<MessageCircle className="h-5 w-5" />}
-                onClick={() => setMenuOpen(false)}
-              />
-              <MenuLink
-                href="/user/dashboard/profile"
-                label="Profile"
-                description="View and manage your profile"
-                icon={<UserRound className="h-5 w-5" />}
-                onClick={() => setMenuOpen(false)}
-              />
-              <MenuLink
-                href="/notifications"
-                label={`Notifications${unreadCount ? ` (${unreadCount})` : ""}`}
-                description="See your latest alerts"
-                icon={<Bell className="h-5 w-5" />}
-                onClick={() => setMenuOpen(false)}
-              />
-              <MenuLink
-                href="/user/dashboard/rooms/create"
-                label="List Room & Earn"
-                description="Post your room and reach tenants"
-                icon={<Plus className="h-5 w-5" />}
-                onClick={() => setMenuOpen(false)}
-                highlight
-              />
-            </div>
-          </div>
-        )}
       </header>
+
+      <MobileMenuDrawer
+        open={menuOpen}
+        onClose={() => setMenuOpen(false)}
+        userName={user?.name}
+      />
 
       <div className="[&>div>header]:hidden">
         <SocialFeedScreen key={feedVersion} />
       </div>
     </div>
-  );
-}
-
-function MenuLink({
-  href,
-  label,
-  description,
-  icon,
-  onClick,
-  highlight = false,
-}: {
-  href: string;
-  label: string;
-  description: string;
-  icon: React.ReactNode;
-  onClick: () => void;
-  highlight?: boolean;
-}) {
-  return (
-    <Link
-      href={href}
-      onClick={onClick}
-      className={`flex items-center gap-3 rounded-xl border px-3 py-3 shadow-sm transition-colors ${
-        highlight
-          ? "border-red-200 bg-red-50 hover:bg-red-100/70"
-          : "border-slate-200 bg-white hover:border-red-100 hover:bg-red-50/60"
-      }`}
-    >
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-50 text-red-600">
-        {icon}
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="truncate text-[14px] font-bold text-slate-950">{label}</div>
-        <div className="mt-0.5 line-clamp-2 text-[11px] font-medium leading-4 text-slate-500">
-          {description}
-        </div>
-      </div>
-      <ChevronRight className="h-5 w-5 shrink-0 text-red-600" />
-    </Link>
   );
 }
