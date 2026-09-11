@@ -3,6 +3,10 @@ import useTokenStore from "@/store";
 import { toast } from "sonner";
 import { useUserStore } from "@/stores/user-store";
 import { api, browserApiBaseUrl } from "@/http/api/api";
+import {
+  clearPendingSocialMusic,
+  getPendingSocialMusic,
+} from "@/lib/social-music-selection";
 
 const MANUAL_LOGOUT_KEY = "roomkhoj_manual_logout_at";
 
@@ -64,6 +68,51 @@ privateApi.interceptors.request.use((config) => {
   return config;
 });
 
+async function attachPendingSocialMusic(response: any) {
+  if (typeof window === "undefined") return response;
+
+  const method = String(response?.config?.method || "").toLowerCase();
+  const url = String(response?.config?.url || "").split("?")[0];
+  if (method !== "post") return response;
+
+  const target = url === "/social/posts" ? "post" : url === "/social/stories" ? "story" : null;
+  if (!target) return response;
+
+  const music = getPendingSocialMusic(target);
+  if (!music?.musicUrl) return response;
+
+  const payload = response?.data?.data ?? response?.data;
+  const id = String(payload?.id || "").trim();
+  if (!id) return response;
+
+  // Consume it once so a failed attach can never leak onto the user's next post/story.
+  clearPendingSocialMusic(target);
+
+  try {
+    const attachUrl =
+      target === "post"
+        ? `/social-music/posts/${encodeURIComponent(id)}`
+        : `/social-music/stories/${encodeURIComponent(id)}`;
+    await privateApi.patch(attachUrl, music);
+
+    if (response?.data?.data) {
+      response.data.data = { ...response.data.data, ...music };
+    } else if (response?.data && typeof response.data === "object") {
+      response.data = { ...response.data, ...music };
+    }
+
+    window.dispatchEvent(new CustomEvent("roomkhoj:social-music-attached", {
+      detail: { target, id, music },
+    }));
+  } catch (error: any) {
+    toast.error(`${target === "post" ? "Post" : "Story"} created, but music could not be attached`, {
+      description: error?.response?.data?.message || "Please try adding music again.",
+    });
+  }
+
+  return response;
+}
+
 async function refreshAccessToken(): Promise<string | null> {
   if (!refreshPromise) {
     refreshPromise = api
@@ -117,7 +166,7 @@ function redirectToLogin() {
 }
 
 privateApi.interceptors.response.use(
-  (response) => response,
+  attachPendingSocialMusic,
   async (error: AxiosError) => {
     const originalRequest = error.config as RetriableRequest | undefined;
     const isUnauthorized = error.response?.status === 401;
