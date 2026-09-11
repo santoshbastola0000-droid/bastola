@@ -3,6 +3,7 @@ import useTokenStore from "@/store";
 import { toast } from "sonner";
 import { useUserStore } from "@/stores/user-store";
 import { api, browserApiBaseUrl } from "@/http/api/api";
+import { optimizeFormDataImages } from "@/lib/image-upload-optimizer";
 
 const MANUAL_LOGOUT_KEY = "roomkhoj_manual_logout_at";
 
@@ -19,7 +20,7 @@ export const privateApi = api.create({
 let refreshPromise: Promise<string | null> | null = null;
 let isRedirecting = false;
 
-privateApi.interceptors.request.use((config) => {
+privateApi.interceptors.request.use(async (config) => {
   const token = useTokenStore.getState().token;
 
   (config as RetriableRequest)._hadAuthToken = Boolean(token);
@@ -29,6 +30,7 @@ privateApi.interceptors.request.use((config) => {
   }
 
   if (typeof FormData !== "undefined" && config.data instanceof FormData) {
+    config.data = await optimizeFormDataImages(config.data);
     delete config.headers["Content-Type"];
     delete config.headers["content-type"];
   }
