@@ -1,0 +1,83 @@
+.primaryTheme :global(.bg-blue-50) {
+  background-color: #fef2f2 !important;
+}
+
+.primaryTheme :global(.bg-blue-100) {
+  background-color: #fee2e2 !important;
+}
+
+.primaryTheme :global(.bg-blue-200) {
+  background-color: #fecaca !important;
+}
+
+.primaryTheme :global(.bg-blue-500) {
+  background-color: #ef4444 !important;
+}
+
+.primaryTheme :global(.bg-blue-600) {
+  background-color: #dc2626 !important;
+}
+
+.primaryTheme :global(.bg-blue-700) {
+  background-color: #b91c1c !important;
+}
+
+.primaryTheme :global(.text-blue-500) {
+  color: #ef4444 !important;
+}
+
+.primaryTheme :global(.text-blue-600) {
+  color: #dc2626 !important;
+}
+
+.primaryTheme :global(.text-blue-700) {
+  color: #b91c1c !important;
+}
+
+.primaryTheme :global(.text-blue-800) {
+  color: #991b1b !important;
+}
+
+.primaryTheme :global(.border-blue-100) {
+  border-color: #fee2e2 !important;
+}
+
+.primaryTheme :global(.border-blue-200) {
+  border-color: #fecaca !important;
+}
+
+.primaryTheme :global(.border-blue-500) {
+  border-color: #ef4444 !important;
+}
+
+.primaryTheme :global(.border-blue-600) {
+  border-color: #dc2626 !important;
+}
+
+.primaryTheme :global(.ring-blue-500) {
+  --tw-ring-color: #ef4444 !important;
+}
+
+.primaryTheme :global(.ring-blue-600) {
+  --tw-ring-color: #dc2626 !important;
+}
+
+.primaryTheme :global(.hover\:bg-blue-50:hover) {
+  background-color: #fef2f2 !important;
+}
+
+.primaryTheme :global(.hover\:bg-blue-100:hover) {
+  background-color: #fee2e2 !important;
+}
+
+.primaryTheme :global(.hover\:bg-blue-700:hover) {
+  background-color: #b91c1c !important;
+}
+
+.primaryTheme :global(.focus\:border-blue-500:focus) {
+  border-color: #ef4444 !important;
+}
+
+.primaryTheme :global(.focus\:ring-blue-500:focus) {
+  --tw-ring-color: #ef4444 !important;
+}

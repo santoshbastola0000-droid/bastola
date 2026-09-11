@@ -9,6 +9,7 @@ import { MobileMenuDrawer } from "@/components/social/MobileMenuDrawer";
 import { notificationService } from "@/http/services/notification.service";
 import { socialService } from "@/http/services/social.service";
 import { useUserStore } from "@/stores/user-store";
+import styles from "./FeedChrome.module.css";
 
 function feedSignature(items: any[]) {
   try {
@@ -161,7 +162,7 @@ export function FeedChrome() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#f0f2f5]">
+    <div className={`${styles.primaryTheme} min-h-screen bg-[#f0f2f5]`}>
       <header
         className={`sticky top-0 z-[120] border-b border-slate-200 bg-white/95 backdrop-blur transition-transform duration-200 ${
           headerVisible ? "translate-y-0" : "-translate-y-full"
