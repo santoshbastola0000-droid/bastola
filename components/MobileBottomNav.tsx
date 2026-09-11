@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { messageService } from "@/http/services/message.service";
+import { useUserStore } from "@/stores/user-store";
 import {
   Home,
   BriefcaseBusiness,
@@ -14,6 +15,7 @@ import {
 
 export function MobileBottomNav() {
   const pathname = usePathname();
+  const user = useUserStore((state) => state.user);
   const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
@@ -37,7 +39,12 @@ export function MobileBottomNav() {
     };
   }, []);
 
-  const isFeed = pathname.startsWith("/feed");
+  // Guests should land on the public room cards first. Once signed in,
+  // the same Feed tab opens the social feed as before.
+  const feedHref = user ? "/feed" : "/rooms";
+  const isFeed = user
+    ? pathname.startsWith("/feed")
+    : pathname.startsWith("/rooms");
   const isJobs = pathname.startsWith("/jobs");
   const isMessages = pathname.startsWith("/messages");
   const isProfile = pathname.startsWith("/user/dashboard/profile");
@@ -46,7 +53,7 @@ export function MobileBottomNav() {
     <nav className="md:hidden fixed bottom-0 left-0 right-0 z-[99999] border-t border-gray-200 bg-white pb-[env(safe-area-inset-bottom)]">
       <div className="relative flex h-[68px] items-center justify-around px-1">
         <Link
-          href="/feed"
+          href={feedHref}
           className={`flex min-w-[58px] flex-col items-center justify-center gap-1 text-[11px] ${
             isFeed ? "font-semibold text-black" : "text-gray-500"
           }`}
