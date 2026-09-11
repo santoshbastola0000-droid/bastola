@@ -1,15 +1,54 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { Bell, Menu } from "lucide-react";
 import { Logo } from "@/components/Logo";
-import { SocialFeedScreen } from "@/components/social/SocialFeedScreen";
 import { MobileMenuDrawer } from "@/components/social/MobileMenuDrawer";
+import { FeedNetworkOptimizer } from "@/components/social/FeedNetworkOptimizer";
 import { notificationService } from "@/http/services/notification.service";
 import { socialService } from "@/http/services/social.service";
 import { useUserStore } from "@/stores/user-store";
+import {
+  getNetworkProfile,
+  onNetworkProfileChange,
+} from "@/lib/network-quality";
 import styles from "./FeedChrome.module.css";
+
+function FeedSkeleton() {
+  return (
+    <div className="mx-auto max-w-[720px] space-y-2 pb-24 sm:px-3" aria-label="Loading feed">
+      <section className="border-y bg-white px-3 py-4 shadow-sm sm:rounded-xl sm:border">
+        <div className="flex gap-3 overflow-hidden">
+          {[0, 1, 2, 3].map((item) => (
+            <div key={item} className="h-[150px] w-[96px] shrink-0 animate-pulse rounded-xl bg-slate-200" />
+          ))}
+        </div>
+      </section>
+      {[0, 1, 2].map((item) => (
+        <section key={item} className="border-y bg-white p-3 shadow-sm sm:rounded-xl sm:border">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 animate-pulse rounded-full bg-slate-200" />
+            <div className="flex-1 space-y-2">
+              <div className="h-3 w-32 animate-pulse rounded bg-slate-200" />
+              <div className="h-2.5 w-20 animate-pulse rounded bg-slate-100" />
+            </div>
+          </div>
+          <div className="mt-3 h-52 animate-pulse rounded-xl bg-slate-100" />
+        </section>
+      ))}
+    </div>
+  );
+}
+
+const SocialFeedScreen = dynamic(
+  () => import("@/components/social/SocialFeedScreen").then((module) => module.SocialFeedScreen),
+  {
+    ssr: false,
+    loading: FeedSkeleton,
+  },
+);
 
 function feedSignature(items: any[]) {
   try {
@@ -51,10 +90,16 @@ export function FeedChrome() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [headerVisible, setHeaderVisible] = useState(true);
   const [feedVersion, setFeedVersion] = useState(0);
+  const [networkProfile, setNetworkProfile] = useState(() => getNetworkProfile());
   const lastScrollY = useRef(0);
   const feedSnapshotRef = useRef<string | null>(null);
   const feedPollBusyRef = useRef(false);
   const restoreScrollRef = useRef<number | null>(null);
+
+  useEffect(
+    () => onNetworkProfileChange(() => setNetworkProfile(getNetworkProfile())),
+    [],
+  );
 
   useEffect(() => {
     let active = true;
@@ -63,7 +108,10 @@ export function FeedChrome() {
       if (active) setUnreadCount(count);
     };
     void refresh();
-    const timer = window.setInterval(refresh, 15000);
+    const timer = window.setInterval(
+      refresh,
+      networkProfile.liteMode ? 45_000 : 20_000,
+    );
     const onFocus = () => void refresh();
     window.addEventListener("focus", onFocus);
     return () => {
@@ -71,7 +119,7 @@ export function FeedChrome() {
       window.clearInterval(timer);
       window.removeEventListener("focus", onFocus);
     };
-  }, []);
+  }, [networkProfile.liteMode]);
 
   useEffect(() => {
     let active = true;
@@ -100,14 +148,18 @@ export function FeedChrome() {
           setFeedVersion((value) => value + 1);
         }
       } catch {
-        // Feed polling is best-effort. The normal feed request still handles visible errors.
+        // Feed polling is best-effort. The visible feed request handles errors.
       } finally {
         feedPollBusyRef.current = false;
       }
     };
 
-    void checkFeed();
-    const timer = window.setInterval(() => void checkFeed(), 1000);
+    // Do not duplicate the initial feed request. Start background checks only
+    // after the first interval; weak connections get a much wider interval.
+    const timer = window.setInterval(
+      () => void checkFeed(),
+      networkProfile.pollIntervalMs,
+    );
     const onFocus = () => void checkFeed();
     const onVisibilityChange = () => {
       if (document.visibilityState === "visible") void checkFeed();
@@ -122,7 +174,7 @@ export function FeedChrome() {
       window.removeEventListener("focus", onFocus);
       document.removeEventListener("visibilitychange", onVisibilityChange);
     };
-  }, []);
+  }, [networkProfile.pollIntervalMs]);
 
   useEffect(() => {
     const y = restoreScrollRef.current;
@@ -162,7 +214,13 @@ export function FeedChrome() {
   }, []);
 
   return (
-    <div className={`${styles.primaryTheme} min-h-screen bg-[#f0f2f5]`}>
+    <div
+      data-roomkhoj-feed-root="true"
+      data-lite-mode={networkProfile.liteMode ? "true" : "false"}
+      className={`${styles.primaryTheme} min-h-screen bg-[#f0f2f5]`}
+    >
+      <FeedNetworkOptimizer />
+
       <header
         className={`sticky top-0 z-[120] border-b border-slate-200 bg-white/95 backdrop-blur transition-transform duration-200 ${
           headerVisible ? "translate-y-0" : "-translate-y-full"
