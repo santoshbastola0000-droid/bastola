@@ -1,4 +1,4 @@
-import type { AxiosError, InternalAxiosRequestConfig } from "axios";
+import type { AxiosError, AxiosResponse, InternalAxiosRequestConfig } from "axios";
 import useTokenStore from "@/store";
 import { toast } from "sonner";
 import { useUserStore } from "@/stores/user-store";
@@ -20,6 +20,37 @@ export const privateApi = api.create({
 
 let refreshPromise: Promise<string | null> | null = null;
 let isRedirecting = false;
+let feedGate: Promise<void> | null = null;
+let releaseFeedGate: (() => void) | null = null;
+
+const LITE_DEFERRED_GETS = [
+  "/social/stories",
+  "/social/friend-requests",
+  "/social/groups",
+  "/social/profile-photo/me",
+  "/social/preferences",
+  "/social/friend-suggestions/nearby",
+];
+
+function isDeferredLiteRequest(url: string) {
+  return (
+    LITE_DEFERRED_GETS.includes(url) ||
+    /^\/user\/profile\/[^/]+$/.test(url)
+  );
+}
+
+function beginFeedGate() {
+  if (feedGate) return;
+  feedGate = new Promise<void>((resolve) => {
+    releaseFeedGate = resolve;
+  });
+}
+
+function endFeedGate() {
+  releaseFeedGate?.();
+  releaseFeedGate = null;
+  feedGate = null;
+}
 
 privateApi.interceptors.request.use(async (config) => {
   const token = useTokenStore.getState().token;
@@ -32,11 +63,11 @@ privateApi.interceptors.request.use(async (config) => {
 
   const requestUrl = String(config.url || "").split("?")[0];
   const requestMethod = String(config.method || "get").toLowerCase();
+  const profile = getNetworkProfile();
 
   // Keep the first feed payload small. 2G/Save-Data gets 6 items, 3G gets 8,
   // and fast connections get 12. Infinite scroll still loads more on demand.
   if (requestMethod === "get" && requestUrl === "/social/feed") {
-    const profile = getNetworkProfile();
     const requested = Number((config.params as any)?.limit || profile.feedLimit);
     config.params = {
       ...(config.params || {}),
@@ -45,6 +76,20 @@ privateApi.interceptors.request.use(async (config) => {
         Number.isFinite(requested) && requested > 0 ? requested : profile.feedLimit,
       ),
     };
+
+    // On weak connections, let the visible feed finish before lower-priority
+    // stories/profile/groups requests compete for the same radio bandwidth.
+    if (profile.liteMode && !(config.params as any)?.before) beginFeedGate();
+  } else if (
+    requestMethod === "get" &&
+    profile.liteMode &&
+    feedGate &&
+    isDeferredLiteRequest(requestUrl)
+  ) {
+    await Promise.race([
+      feedGate,
+      new Promise<void>((resolve) => window.setTimeout(resolve, 3500)),
+    ]);
   }
 
   if (typeof FormData !== "undefined" && config.data instanceof FormData) {
@@ -83,6 +128,12 @@ privateApi.interceptors.request.use(async (config) => {
 
   return config;
 });
+
+function handleSuccessfulResponse(response: AxiosResponse) {
+  const url = String(response.config?.url || "").split("?")[0];
+  if (url === "/social/feed") endFeedGate();
+  return response;
+}
 
 async function refreshAccessToken(): Promise<string | null> {
   if (!refreshPromise) {
@@ -137,8 +188,11 @@ function redirectToLogin() {
 }
 
 privateApi.interceptors.response.use(
-  (response) => response,
+  handleSuccessfulResponse,
   async (error: AxiosError) => {
+    const errorUrl = String(error.config?.url || "").split("?")[0];
+    if (errorUrl === "/social/feed") endFeedGate();
+
     const originalRequest = error.config as RetriableRequest | undefined;
     const isUnauthorized = error.response?.status === 401;
 
