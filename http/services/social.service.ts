@@ -1,5 +1,11 @@
 import { privateApi } from "@/http/api/privateApi";
 
+export type SocialMusic = {
+  musicUrl?: string | null;
+  musicTitle?: string | null;
+  musicArtist?: string | null;
+};
+
 export type SocialUser = {
   id: string;
   name: string;
@@ -32,7 +38,7 @@ export type SocialReactionSummary = {
   likePreview?: SocialReactionEntry[];
 };
 
-export type SocialPost = {
+export type SocialPost = SocialMusic & {
   id: string;
   userId: string;
   content?: string | null;
@@ -96,7 +102,7 @@ export type SocialFeedItem =
       };
     };
 
-export type SocialStory = {
+export type SocialStory = SocialMusic & {
   id: string;
   mediaUrl: string;
   mediaType: "IMAGE" | "VIDEO";
@@ -179,6 +185,28 @@ export const socialService = {
     return response.data as { profilePhotoUrl: string | null; createdAt: string | null };
   },
 
+  async uploadMusic(file: File) {
+    const form = new FormData();
+    form.append("music", file);
+    const response = await privateApi.post("/social-music/upload", form);
+    return response.data as Required<Pick<SocialMusic, "musicUrl" | "musicTitle">> & Pick<SocialMusic, "musicArtist">;
+  },
+
+  async attachPostMusic(postId: string, music: SocialMusic) {
+    const response = await privateApi.patch(`/social-music/posts/${postId}`, music);
+    return response.data as { success: boolean } & SocialMusic;
+  },
+
+  async attachStoryMusic(storyId: string, music: SocialMusic) {
+    const response = await privateApi.patch(`/social-music/stories/${storyId}`, music);
+    return response.data as { success: boolean } & SocialMusic;
+  },
+
+  async postMusic(postId: string) {
+    const response = await privateApi.get(`/social-music/posts/${postId}`);
+    return response.data as SocialMusic;
+  },
+
   async createPost(input: {
     content: string;
     visibility: "PUBLIC" | "FRIENDS" | "GROUP";
@@ -191,7 +219,7 @@ export const socialService = {
     if (input.groupId) form.append("groupId", input.groupId);
     input.files.forEach((file) => form.append("media", file));
     const response = await privateApi.post("/social/posts", form);
-    return response.data;
+    return response.data as SocialPost;
   },
 
   async updatePost(
@@ -264,7 +292,18 @@ export const socialService = {
 
   async stories() {
     const response = await privateApi.get("/social/stories");
-    return response.data as SocialStory[];
+    const stories = (response.data || []) as SocialStory[];
+    if (!stories.length) return stories;
+
+    try {
+      const musicResponse = await privateApi.get("/social-music/stories", {
+        params: { ids: stories.map((story) => story.id).join(",") },
+      });
+      const musicMap = (musicResponse.data || {}) as Record<string, SocialMusic>;
+      return stories.map((story) => ({ ...story, ...(musicMap[story.id] || {}) }));
+    } catch {
+      return stories;
+    }
   },
 
   async createStory(input: {
