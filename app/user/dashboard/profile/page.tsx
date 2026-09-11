@@ -62,6 +62,14 @@ type ActivityTab =
   | "shares"
   | "about";
 
+const PROFILE_IMAGE_MAX_BYTES = 20 * 1024 * 1024;
+const COVER_IMAGE_MAX_BYTES = 30 * 1024 * 1024;
+const IMAGE_FILE_NAME = /\.(?:jpe?g|png|webp|gif|heic|heif)$/i;
+
+function isImageFile(file: File) {
+  return file.type.startsWith("image/") || IMAGE_FILE_NAME.test(file.name);
+}
+
 export default function ProfilePage() {
   const router = useRouter();
 
@@ -156,6 +164,9 @@ export default function ProfilePage() {
     uploadingCover,
     setUploadingCover,
   ] = useState(false);
+
+  const [profilePhotoFailed, setProfilePhotoFailed] = useState(false);
+  const [coverPhotoFailed, setCoverPhotoFailed] = useState(false);
 
   const [tab, setTab] =
     useState<ActivityTab>("rooms");
@@ -590,12 +601,19 @@ export default function ProfilePage() {
   const uploadProfilePhoto = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
-    if (!file.type.startsWith("image/")) {
-      toast.error("Image मात्र select गर्नुहोस्");
+    if (!isImageFile(file)) {
+      toast.error("JPG, PNG, WEBP, HEIC वा HEIF photo select गर्नुहोस्");
+      event.target.value = "";
+      return;
+    }
+    if (file.size > PROFILE_IMAGE_MAX_BYTES) {
+      toast.error("Profile photo 20 MB भन्दा सानो हुनुपर्छ");
+      event.target.value = "";
       return;
     }
     try {
       setUploadingProfile(true);
+      setProfilePhotoFailed(false);
       await profileService.uploadProfilePhoto(file);
       await loadProfile();
       toast.success("Profile photo updated");
@@ -612,12 +630,19 @@ export default function ProfilePage() {
   const uploadCoverPhoto = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
-    if (!file.type.startsWith("image/")) {
-      toast.error("Image मात्र select गर्नुहोस्");
+    if (!isImageFile(file)) {
+      toast.error("JPG, PNG, WEBP, HEIC वा HEIF photo select गर्नुहोस्");
+      event.target.value = "";
+      return;
+    }
+    if (file.size > COVER_IMAGE_MAX_BYTES) {
+      toast.error("Cover photo 30 MB भन्दा सानो हुनुपर्छ");
+      event.target.value = "";
       return;
     }
     try {
       setUploadingCover(true);
+      setCoverPhotoFailed(false);
       await profileService.uploadCoverPhoto(file);
       await loadProfile();
       toast.success("Cover photo updated");
@@ -715,10 +740,15 @@ export default function ProfilePage() {
 
       <Card className="overflow-hidden rounded-3xl border-0 shadow-sm">
         <div className="relative h-44 bg-gradient-to-br from-red-500 via-rose-500 to-pink-600 sm:h-64">
-          {coverPhoto && (
-            <img src={coverPhoto} alt="" className="h-full w-full object-cover" />
+          {coverPhoto && !coverPhotoFailed && (
+            <img
+              src={coverPhoto}
+              alt="Profile cover"
+              onError={() => setCoverPhotoFailed(true)}
+              className="h-full w-full object-cover"
+            />
           )}
-          <input ref={coverInputRef} type="file" accept="image/*" className="hidden" onChange={uploadCoverPhoto} />
+          <input ref={coverInputRef} type="file" accept="image/*,.heic,.heif" className="hidden" onChange={uploadCoverPhoto} />
           <Button type="button" size="sm" variant="secondary" className="absolute bottom-3 right-3 gap-2 rounded-full shadow" disabled={uploadingCover} onClick={() => coverInputRef.current?.click()}>
             {uploadingCover ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
             Change Cover
@@ -730,10 +760,19 @@ export default function ProfilePage() {
             <div className="flex items-end gap-4">
               <div className="relative">
                 <div className="h-28 w-28 overflow-hidden rounded-full border-4 border-background bg-gradient-to-br from-red-500 to-rose-600 shadow-xl sm:h-36 sm:w-36">
-                  {profilePhoto ? <img src={profilePhoto} alt="" className="h-full w-full object-cover" /> : <div className="flex h-full w-full items-center justify-center text-3xl font-bold text-white">{initials}</div>}
+                  {profilePhoto && !profilePhotoFailed ? (
+                    <img
+                      src={profilePhoto}
+                      alt={`${profile.user.name} profile photo`}
+                      onError={() => setProfilePhotoFailed(true)}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center text-3xl font-bold text-white">{initials}</div>
+                  )}
                 </div>
                 {profile.user.isVerified && <div className="absolute bottom-1 right-1 flex h-7 w-7 items-center justify-center rounded-full border-2 border-background bg-blue-500"><BadgeCheck className="h-4 w-4 text-white" /></div>}
-                <input ref={profileInputRef} type="file" accept="image/*" className="hidden" onChange={uploadProfilePhoto} />
+                <input ref={profileInputRef} type="file" accept="image/*,.heic,.heif" className="hidden" onChange={uploadProfilePhoto} />
                 <button type="button" disabled={uploadingProfile} onClick={() => profileInputRef.current?.click()} className="absolute bottom-1 left-1 flex h-9 w-9 items-center justify-center rounded-full border-2 border-background bg-background shadow">
                   {uploadingProfile ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
                 </button>
