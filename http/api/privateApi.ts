@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { useUserStore } from "@/stores/user-store";
 import { api, browserApiBaseUrl } from "@/http/api/api";
 import { optimizeFormDataImages } from "@/lib/image-upload-optimizer";
+import { getNetworkProfile } from "@/lib/network-quality";
 
 const MANUAL_LOGOUT_KEY = "roomkhoj_manual_logout_at";
 
@@ -29,6 +30,23 @@ privateApi.interceptors.request.use(async (config) => {
     config.headers.Authorization = `Bearer ${token}`;
   }
 
+  const requestUrl = String(config.url || "").split("?")[0];
+  const requestMethod = String(config.method || "get").toLowerCase();
+
+  // Keep the first feed payload small. 2G/Save-Data gets 6 items, 3G gets 8,
+  // and fast connections get 12. Infinite scroll still loads more on demand.
+  if (requestMethod === "get" && requestUrl === "/social/feed") {
+    const profile = getNetworkProfile();
+    const requested = Number((config.params as any)?.limit || profile.feedLimit);
+    config.params = {
+      ...(config.params || {}),
+      limit: Math.min(
+        profile.feedLimit,
+        Number.isFinite(requested) && requested > 0 ? requested : profile.feedLimit,
+      ),
+    };
+  }
+
   if (typeof FormData !== "undefined" && config.data instanceof FormData) {
     config.data = await optimizeFormDataImages(config.data);
     delete config.headers["Content-Type"];
@@ -43,7 +61,7 @@ privateApi.interceptors.request.use(async (config) => {
    *
    * Both paths stay connected to the backend payment/escrow audit ledger.
    */
-  if (typeof window !== "undefined" && String(config.method || "").toLowerCase() === "post") {
+  if (typeof window !== "undefined" && requestMethod === "post") {
     const url = String(config.url || "");
     const requestMatch = url.match(/^\/message\/conversations\/([^/]+)\/payment-requests$/);
 
