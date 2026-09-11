@@ -86,3 +86,14 @@
 .primaryTheme :global(button.select-none.text-blue-600) {
   color: #2563eb !important;
 }
+
+/* Save CPU/GPU work on 2G/3G/Save-Data devices. */
+.primaryTheme[data-lite-mode="true"] :global(.animate-pulse),
+.primaryTheme[data-lite-mode="true"] :global(.animate-spin) {
+  animation-duration: 2.2s !important;
+}
+
+.primaryTheme[data-lite-mode="true"] :global(.transition-all),
+.primaryTheme[data-lite-mode="true"] :global(.transition-transform) {
+  transition-duration: 0ms !important;
+}
