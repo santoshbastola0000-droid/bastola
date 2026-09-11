@@ -9,7 +9,27 @@ import RegisterForm from "@/components/auth/RegisterForm";
 
 const POPUP_DELAYS_MS = [5_000, 30_000, 60_000];
 
+// These destinations require an authenticated RoomKhoj account. Guests should
+// stay on the page they are browsing and get the login popup immediately,
+// instead of navigating into a protected screen and seeing a loader/redirect.
+const PROTECTED_PATH_PREFIXES = [
+  "/feed",
+  "/messages",
+  "/notifications",
+  "/user/dashboard",
+  "/jobs/post",
+  "/property/",
+];
+
 type AuthView = "LOGIN" | "REGISTER";
+
+function isProtectedPath(pathname: string) {
+  return PROTECTED_PATH_PREFIXES.some((prefix) =>
+    prefix.endsWith("/")
+      ? pathname.startsWith(prefix)
+      : pathname === prefix || pathname.startsWith(`${prefix}/`),
+  );
+}
 
 export function GuestLoginPopup() {
   const pathname = usePathname();
@@ -19,6 +39,54 @@ export function GuestLoginPopup() {
   const showCountRef = useRef(0);
 
   const isAuthPage = pathname.startsWith("/auth");
+
+  useEffect(() => {
+    if (token || isAuthPage) return;
+
+    const openLogin = () => {
+      setView("LOGIN");
+      setOpen(true);
+    };
+
+    const handleOpenLogin = () => openLogin();
+
+    const handleProtectedLinkClick = (event: MouseEvent) => {
+      if (event.defaultPrevented || event.button !== 0) return;
+      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+
+      const anchor = target.closest("a[href]") as HTMLAnchorElement | null;
+      if (!anchor) return;
+      if (anchor.hasAttribute("download")) return;
+
+      const rawHref = anchor.getAttribute("href");
+      if (!rawHref || rawHref.startsWith("#")) return;
+      if (/^(mailto:|tel:|sms:|javascript:)/i.test(rawHref)) return;
+
+      let url: URL;
+      try {
+        url = new URL(anchor.href, window.location.href);
+      } catch {
+        return;
+      }
+
+      if (url.origin !== window.location.origin || !isProtectedPath(url.pathname)) return;
+
+      event.preventDefault();
+      event.stopPropagation();
+      openLogin();
+    };
+
+    window.addEventListener("roomkhoj:open-login", handleOpenLogin);
+    document.addEventListener("click", handleProtectedLinkClick, true);
+
+    return () => {
+      window.removeEventListener("roomkhoj:open-login", handleOpenLogin);
+      document.removeEventListener("click", handleProtectedLinkClick, true);
+    };
+  }, [token, isAuthPage]);
 
   useEffect(() => {
     if (token || isAuthPage || open) return;
@@ -40,9 +108,10 @@ export function GuestLoginPopup() {
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-end justify-center bg-slate-950/55 p-3 sm:items-center sm:p-4"
+      className="fixed inset-0 z-[100000] flex items-end justify-center bg-slate-950/55 p-3 sm:items-center sm:p-4"
       role="dialog"
       aria-modal="true"
+      aria-label="Login required"
     >
       <div className="relative max-h-[calc(100dvh-1.5rem)] w-full max-w-lg overflow-y-auto rounded-3xl bg-white shadow-2xl">
         <button
@@ -57,6 +126,9 @@ export function GuestLoginPopup() {
         <div className="px-6 pb-2 pt-7 sm:px-8">
           <p className="text-center text-sm font-semibold text-primary">
             ROOMKHOJ
+          </p>
+          <p className="mt-2 text-center text-sm font-medium text-slate-500">
+            Log in to continue
           </p>
 
           <div className="mt-5 grid grid-cols-2 rounded-xl bg-slate-100 p-1">
