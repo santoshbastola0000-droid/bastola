@@ -7,6 +7,7 @@ export interface PublicProfileUser {
   location?: string | null;
   website?: string | null;
   isVerified?: boolean;
+  isProfileVerified?: boolean;
   isPremium?: boolean;
   profilePhotoUrl?: string | null;
   coverPhotoUrl?: string | null;
@@ -29,11 +30,27 @@ export const profileService = {
   getProfile: async (
     userId: string,
   ): Promise<PublicProfile> => {
-    const res = await privateApi.get(
-      `/user/profile/${userId}`,
+    const [profileResponse, verificationResponse] = await Promise.all([
+      privateApi.get(`/user/profile/${userId}`),
+      privateApi
+        .get(`/profile-verification/${userId}`)
+        .catch(() => ({ data: { isProfileVerified: false } })),
+    ]);
+
+    const isProfileVerified = Boolean(
+      verificationResponse.data?.isProfileVerified,
     );
 
-    return res.data;
+    return {
+      ...profileResponse.data,
+      user: {
+        ...profileResponse.data.user,
+        // Profile badge is controlled only by admin. Account/email
+        // verification remains separate and continues to control login.
+        isVerified: isProfileVerified,
+        isProfileVerified,
+      },
+    };
   },
 
   updateProfile: async (
