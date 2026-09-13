@@ -67,18 +67,25 @@ export function PostReactions({
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressed = useRef(false);
   const activePostId = useRef(postId);
+  const submittingRef = useRef(false);
+  const interactionVersionRef = useRef(0);
 
-  const loadLikers = async (limit = 3) => {
+  const loadLikers = async (limit = 3, syncMyReaction = true) => {
+    const requestVersion = interactionVersionRef.current;
     try {
       const rows = await socialService.likes(postId, 100);
       setLikers(rows.slice(0, limit));
-      const mine = rows.find((entry) => String(entry.user.id) === String(currentUserId));
-      if (mine) {
-        setLiked(true);
-        setReaction(mine.reaction);
-      } else {
-        setLiked(false);
-        setReaction(null);
+
+      // The reactions endpoint is capped, so absence from this list must never
+      // be interpreted as "not liked". The feed response and mutation summary
+      // are authoritative for liked/count state. We only use the list to recover
+      // the exact reaction emoji when this user's row is present.
+      if (syncMyReaction && requestVersion === interactionVersionRef.current) {
+        const mine = rows.find((entry) => String(entry.user.id) === String(currentUserId));
+        if (mine) {
+          setLiked(true);
+          setReaction(mine.reaction);
+        }
       }
     } catch {
       // Keep the locally known state if the list call fails.
@@ -87,12 +94,13 @@ export function PostReactions({
 
   useEffect(() => {
     if (activePostId.current !== postId) {
+      interactionVersionRef.current += 1;
       activePostId.current = postId;
       setLikeCount(initialLikeCount);
       setLiked(initialLiked);
       setReaction(initialLiked ? "LIKE" : null);
     }
-    void loadLikers(3);
+    void loadLikers(3, true);
     // Do not reset local reaction state merely because the parent feed still has stale
     // initialLikeCount/initialLiked values after an optimistic update.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -108,7 +116,7 @@ export function PostReactions({
     setReaction(summary.reaction);
     setLikeCount(summary.likeCount);
     if (summary.likePreview) setLikers(summary.likePreview.slice(0, 3));
-    else await loadLikers(3);
+    else await loadLikers(3, false);
   };
 
   const tapLike = async () => {
@@ -116,11 +124,14 @@ export function PostReactions({
       longPressed.current = false;
       return;
     }
-    if (submitting) return;
+    if (submittingRef.current) return;
 
     const previousLiked = liked;
     const previousReaction = reaction;
     const previousCount = likeCount;
+
+    interactionVersionRef.current += 1;
+    submittingRef.current = true;
 
     if (liked) {
       setLiked(false);
@@ -143,17 +154,20 @@ export function PostReactions({
       setReaction(previousReaction);
       setLikeCount(previousCount);
     } finally {
+      submittingRef.current = false;
       setSubmitting(false);
     }
   };
 
   const chooseReaction = async (type: SocialReactionType) => {
-    if (submitting) return;
+    if (submittingRef.current) return;
     setPickerOpen(false);
     const previousLiked = liked;
     const previousReaction = reaction;
     const previousCount = likeCount;
 
+    interactionVersionRef.current += 1;
+    submittingRef.current = true;
     setLiked(true);
     setReaction(type);
     if (!previousLiked) setLikeCount((count) => count + 1);
@@ -167,6 +181,7 @@ export function PostReactions({
       setReaction(previousReaction);
       setLikeCount(previousCount);
     } finally {
+      submittingRef.current = false;
       setSubmitting(false);
     }
   };
@@ -230,7 +245,7 @@ export function PostReactions({
           {pickerOpen && (
             <div className="absolute bottom-[48px] left-1/2 z-40 flex -translate-x-1/2 items-center gap-1 rounded-full border border-slate-200 bg-white px-2 py-1.5 shadow-2xl">
               {REACTIONS.map((item) => (
-                <button key={item.type} type="button" title={item.label} onClick={() => void chooseReaction(item.type)} className="flex h-10 w-10 items-center justify-center rounded-full text-2xl transition active:scale-110">
+                <button key={item.type} type="button" title={item.label} disabled={submitting} onClick={() => void chooseReaction(item.type)} className="flex h-10 w-10 items-center justify-center rounded-full text-2xl transition active:scale-110 disabled:opacity-50">
                   {item.emoji}
                 </button>
               ))}
@@ -240,6 +255,7 @@ export function PostReactions({
           <button
             type="button"
             aria-busy={submitting}
+            disabled={submitting}
             onTouchStart={startLongPress}
             onTouchEnd={cancelLongPress}
             onTouchCancel={cancelLongPress}
@@ -249,7 +265,7 @@ export function PostReactions({
             onContextMenu={(event) => event.preventDefault()}
             onClick={() => void tapLike()}
             style={{ touchAction: "manipulation", WebkitTapHighlightColor: "transparent" }}
-            className={`flex w-full select-none items-center justify-center gap-2 rounded py-2 text-[14px] font-semibold hover:bg-slate-100 active:bg-slate-100 ${liked ? reactionButtonColor(reaction) : "text-slate-600"}`}
+            className={`flex w-full select-none items-center justify-center gap-2 rounded py-2 text-[14px] font-semibold hover:bg-slate-100 active:bg-slate-100 disabled:cursor-wait disabled:opacity-70 ${liked ? reactionButtonColor(reaction) : "text-slate-600"}`}
           >
             {liked && reaction ? <span className="text-xl leading-none">{reactionEmoji}</span> : <Heart className="h-5 w-5" fill="none" />}
             <span>{liked ? reactionLabel : "Like"}</span>
