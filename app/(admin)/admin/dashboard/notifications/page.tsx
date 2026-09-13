@@ -7,9 +7,12 @@ import {
   Link2,
   Loader2,
   Mail,
+  MousePointerClick,
+  Percent,
   RefreshCw,
   Search,
   Send,
+  UsersRound,
   XCircle,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -30,11 +33,44 @@ type BroadcastJob = {
   sent: number;
   failed: number;
   pending: number;
+  clicked?: number;
+  ctr?: number;
   status: string;
   createdAt?: string;
 };
 
+type ClickAnalytics = {
+  summary: {
+    sent: number;
+    clicked: number;
+    uniqueClickers: number;
+    ctr: number;
+    lastClickedAt?: string | null;
+  };
+  channels: Record<
+    "EMAIL" | "PUSH",
+    { sent: number; clicked: number; ctr: number }
+  >;
+  recentClicks: Array<{
+    id: string;
+    userId: string;
+    channel: string;
+    kind?: string | null;
+    title: string;
+    destinationUrl?: string | null;
+    sentAt?: string;
+    clickedAt?: string | null;
+  }>;
+};
+
 const ALL_USERS = "__ALL_USERS__";
+
+function formatDate(value?: string | null) {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  return date.toLocaleString();
+}
 
 export default function AdminNotificationsPage() {
   const [users, setUsers] = useState<UserOption[]>([]);
@@ -52,6 +88,8 @@ export default function AdminNotificationsPage() {
   const [broadcasting, setBroadcasting] = useState(false);
   const [jobs, setJobs] = useState<BroadcastJob[]>([]);
   const [loadingJobs, setLoadingJobs] = useState(false);
+  const [analytics, setAnalytics] = useState<ClickAnalytics | null>(null);
+  const [loadingAnalytics, setLoadingAnalytics] = useState(false);
 
   useEffect(() => {
     privateApi
@@ -75,11 +113,27 @@ export default function AdminNotificationsPage() {
     }
   };
 
+  const loadAnalytics = async (silent = false) => {
+    try {
+      if (!silent) setLoadingAnalytics(true);
+      const response = await privateApi.get("/notifications/admin/click-analytics", {
+        params: { limit: 30 },
+      });
+      setAnalytics(response.data || null);
+    } catch {
+      if (!silent) toast.error("Notification click analytics load हुन सकेन");
+    } finally {
+      if (!silent) setLoadingAnalytics(false);
+    }
+  };
+
   useEffect(() => {
     void loadJobs(true);
+    void loadAnalytics(true);
     const timer = window.setInterval(() => {
       void loadJobs(true);
-    }, 3000);
+      void loadAnalytics(true);
+    }, 5000);
     return () => window.clearInterval(timer);
   }, []);
 
@@ -114,7 +168,7 @@ export default function AdminNotificationsPage() {
         const job = response.data as BroadcastJob;
         toast.success(`${job?.total || 0} users को broadcast queue तयार भयो।`);
         setMessage("");
-        await loadJobs(true);
+        await Promise.all([loadJobs(true), loadAnalytics(true)]);
       } catch (error: any) {
         toast.error(error?.response?.data?.message || "सबै users लाई पठाउन सकेन");
       } finally {
@@ -141,6 +195,7 @@ export default function AdminNotificationsPage() {
             : "Notification inbox मा पठाइयो।",
       );
       setMessage("");
+      await loadAnalytics(true);
     } catch (error: any) {
       toast.error(error?.response?.data?.message || "Notification पठाउन सकेन");
     } finally {
@@ -167,7 +222,7 @@ export default function AdminNotificationsPage() {
       const job = response.data as BroadcastJob;
       toast.success(`${job?.total || 0} users को email queue तयार भयो।`);
       setEmailMessage("");
-      await loadJobs(true);
+      await Promise.all([loadJobs(true), loadAnalytics(true)]);
     } catch (error: any) {
       toast.error(error?.response?.data?.message || "Broadcast email queue गर्न सकेन");
     } finally {
@@ -175,19 +230,121 @@ export default function AdminNotificationsPage() {
     }
   }
 
+  const summary = analytics?.summary;
+  const emailStats = analytics?.channels?.EMAIL;
+  const pushStats = analytics?.channels?.PUSH;
+
   return (
     <main className="mx-auto max-w-5xl space-y-6 p-4 sm:p-6">
-      <div className="flex items-start gap-3">
-        <div className="rounded-xl bg-primary/10 p-2 text-primary">
-          <Bell className="h-5 w-5" />
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start gap-3">
+          <div className="rounded-xl bg-primary/10 p-2 text-primary">
+            <Bell className="h-5 w-5" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold">Notify Users</h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Notifications पठाउनुहोस् र users ले कति click गरे live monitor गर्नुहोस्।
+            </p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-2xl font-bold">Notify Users</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Single user notification र सबै users लाई queued email broadcast यहीँबाट पठाउन सकिन्छ।
-          </p>
-        </div>
+        <button
+          type="button"
+          onClick={() => void Promise.all([loadAnalytics(), loadJobs()])}
+          className="inline-flex h-9 shrink-0 items-center gap-2 rounded-lg border px-3 text-sm"
+        >
+          <RefreshCw className={`h-4 w-4 ${loadingAnalytics || loadingJobs ? "animate-spin" : ""}`} />
+          Refresh
+        </button>
       </div>
+
+      <section className="rounded-2xl border bg-white p-5 shadow-sm sm:p-6">
+        <div className="mb-4 flex items-start justify-between gap-3">
+          <div>
+            <h2 className="font-bold">Notification Click Analytics</h2>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Email र push notification खोल्ने users को tracking. CTR = Clicks ÷ delivered notifications.
+            </p>
+          </div>
+          {summary?.lastClickedAt ? (
+            <span className="text-right text-[11px] text-muted-foreground">
+              Last click<br />{formatDate(summary.lastClickedAt)}
+            </span>
+          ) : null}
+        </div>
+
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <div className="rounded-xl border bg-slate-50 p-4">
+            <Bell className="mb-2 h-4 w-4 text-slate-600" />
+            <div className="text-2xl font-bold">{summary?.sent ?? 0}</div>
+            <div className="text-xs text-muted-foreground">Delivered</div>
+          </div>
+          <div className="rounded-xl border bg-blue-50 p-4">
+            <MousePointerClick className="mb-2 h-4 w-4 text-blue-700" />
+            <div className="text-2xl font-bold text-blue-800">{summary?.clicked ?? 0}</div>
+            <div className="text-xs text-blue-700">Total clicks</div>
+          </div>
+          <div className="rounded-xl border bg-emerald-50 p-4">
+            <UsersRound className="mb-2 h-4 w-4 text-emerald-700" />
+            <div className="text-2xl font-bold text-emerald-800">{summary?.uniqueClickers ?? 0}</div>
+            <div className="text-xs text-emerald-700">Users clicked</div>
+          </div>
+          <div className="rounded-xl border bg-violet-50 p-4">
+            <Percent className="mb-2 h-4 w-4 text-violet-700" />
+            <div className="text-2xl font-bold text-violet-800">{Number(summary?.ctr || 0).toFixed(1)}%</div>
+            <div className="text-xs text-violet-700">Click-through rate</div>
+          </div>
+        </div>
+
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <div className="rounded-xl border p-4">
+            <div className="mb-2 flex items-center gap-2 font-semibold">
+              <Bell className="h-4 w-4" /> Push
+            </div>
+            <div className="grid grid-cols-3 gap-2 text-center text-sm">
+              <div className="rounded-lg bg-slate-50 p-2"><b>{pushStats?.sent ?? 0}</b><div className="text-[11px] text-muted-foreground">Delivered</div></div>
+              <div className="rounded-lg bg-slate-50 p-2"><b>{pushStats?.clicked ?? 0}</b><div className="text-[11px] text-muted-foreground">Clicked</div></div>
+              <div className="rounded-lg bg-slate-50 p-2"><b>{Number(pushStats?.ctr || 0).toFixed(1)}%</b><div className="text-[11px] text-muted-foreground">CTR</div></div>
+            </div>
+          </div>
+          <div className="rounded-xl border p-4">
+            <div className="mb-2 flex items-center gap-2 font-semibold">
+              <Mail className="h-4 w-4" /> Email
+            </div>
+            <div className="grid grid-cols-3 gap-2 text-center text-sm">
+              <div className="rounded-lg bg-slate-50 p-2"><b>{emailStats?.sent ?? 0}</b><div className="text-[11px] text-muted-foreground">Sent</div></div>
+              <div className="rounded-lg bg-slate-50 p-2"><b>{emailStats?.clicked ?? 0}</b><div className="text-[11px] text-muted-foreground">Clicked</div></div>
+              <div className="rounded-lg bg-slate-50 p-2"><b>{Number(emailStats?.ctr || 0).toFixed(1)}%</b><div className="text-[11px] text-muted-foreground">CTR</div></div>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-5">
+          <h3 className="mb-2 text-sm font-semibold">Recent notification clicks</h3>
+          {!analytics?.recentClicks?.length ? (
+            <p className="rounded-xl bg-slate-50 p-4 text-sm text-muted-foreground">
+              अहिलेसम्म tracked notification click छैन। नयाँ push/email बाट click भएपछि यहाँ देखिन्छ।
+            </p>
+          ) : (
+            <div className="divide-y overflow-hidden rounded-xl border">
+              {analytics.recentClicks.slice(0, 10).map((click) => (
+                <div key={click.id} className="flex flex-wrap items-center justify-between gap-3 p-3 text-sm">
+                  <div className="min-w-0">
+                    <p className="truncate font-medium">{click.title}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {click.channel} · User {click.userId.slice(0, 8)}…
+                    </p>
+                  </div>
+                  <div className="text-right text-xs text-muted-foreground">
+                    <div className="font-medium text-emerald-700">Clicked</div>
+                    <div>{formatDate(click.clickedAt)}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
 
       <section className="rounded-2xl border bg-white p-5 shadow-sm sm:p-6">
         <div className="mb-5 flex items-center gap-2">
@@ -195,7 +352,7 @@ export default function AdminNotificationsPage() {
           <div>
             <h2 className="font-bold">Broadcast Email to All Users</h2>
             <p className="text-xs text-muted-foreground">
-              Email भएका सबै users लाई batch/queue मा पठाइन्छ। तल Sent, Failed र Pending live track हुन्छ।
+              Email भएका सबै users लाई batch/queue मा पठाइन्छ। Sent, Failed, Pending र Clicked live track हुन्छ।
             </p>
           </div>
         </div>
@@ -242,8 +399,8 @@ export default function AdminNotificationsPage() {
       <section className="rounded-2xl border bg-white p-5 shadow-sm sm:p-6">
         <div className="mb-4 flex items-center justify-between gap-3">
           <div>
-            <h2 className="font-bold">Broadcast Delivery Tracking</h2>
-            <p className="text-xs text-muted-foreground">हरेक broadcast को live queue progress</p>
+            <h2 className="font-bold">Broadcast Delivery & Click Tracking</h2>
+            <p className="text-xs text-muted-foreground">हरेक broadcast को queue progress र click rate</p>
           </div>
           <button
             type="button"
@@ -275,7 +432,7 @@ export default function AdminNotificationsPage() {
                     <div className="h-full bg-black transition-all" style={{ width: `${Math.min(percent, 100)}%` }} />
                   </div>
 
-                  <div className="mt-3 grid grid-cols-3 gap-2 text-center text-sm">
+                  <div className="mt-3 grid grid-cols-2 gap-2 text-center text-sm sm:grid-cols-5">
                     <div className="rounded-lg bg-emerald-50 p-2 text-emerald-700">
                       <CheckCircle2 className="mx-auto mb-1 h-4 w-4" />
                       <b>{job.sent}</b><div className="text-[11px]">Sent</div>
@@ -287,6 +444,14 @@ export default function AdminNotificationsPage() {
                     <div className="rounded-lg bg-amber-50 p-2 text-amber-700">
                       <Loader2 className={`mx-auto mb-1 h-4 w-4 ${job.pending > 0 ? "animate-spin" : ""}`} />
                       <b>{job.pending}</b><div className="text-[11px]">Pending</div>
+                    </div>
+                    <div className="rounded-lg bg-blue-50 p-2 text-blue-700">
+                      <MousePointerClick className="mx-auto mb-1 h-4 w-4" />
+                      <b>{job.clicked ?? 0}</b><div className="text-[11px]">Clicked</div>
+                    </div>
+                    <div className="rounded-lg bg-violet-50 p-2 text-violet-700">
+                      <Percent className="mx-auto mb-1 h-4 w-4" />
+                      <b>{Number(job.ctr || 0).toFixed(1)}%</b><div className="text-[11px]">CTR</div>
                     </div>
                   </div>
                 </div>
@@ -336,7 +501,7 @@ export default function AdminNotificationsPage() {
 
         {userId === ALL_USERS && (
           <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
-            All Users selected: Send गर्दा email भएका सबै users लाई queue मा पठाइन्छ र माथिको Delivery Tracking मा progress देखिन्छ।
+            All Users selected: Send गर्दा email भएका सबै users लाई queue मा पठाइन्छ र माथिको tracking मा delivery/click progress देखिन्छ।
           </div>
         )}
 
