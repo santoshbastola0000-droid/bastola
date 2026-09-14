@@ -203,14 +203,30 @@ export const socialService = {
   },
 
   async toggleLike(postId: string, reaction: SocialReactionType = "LOVE") {
-    const response = await privateApi.post(`/social/posts/${postId}/reaction`, {
-      reaction,
-    });
+    const send = () =>
+      privateApi.post(`/social/posts/${postId}/reaction`, {
+        reaction,
+      });
+
+    // Reaction POST is idempotent on the API. Retry once so a brief mobile/network
+    // failure does not make the optimistic Like appear and then immediately vanish.
+    let response;
+    try {
+      response = await send();
+    } catch {
+      response = await send();
+    }
     return response.data as SocialReactionSummary;
   },
 
   async removeLike(postId: string) {
-    const response = await privateApi.delete(`/social/posts/${postId}/reaction`);
+    const remove = () => privateApi.delete(`/social/posts/${postId}/reaction`);
+    let response;
+    try {
+      response = await remove();
+    } catch {
+      response = await remove();
+    }
     return response.data as SocialReactionSummary;
   },
 
