@@ -231,11 +231,45 @@ export function PostReactions({
   const reactionEmoji = selectedReaction?.emoji || "👍";
   const reactionLabel = selectedReaction?.label || "Like";
 
+  const reactionSummary = useMemo(() => {
+    if (!likeCount) return "";
+    if (!likers.length) return `${likeCount} ${likeCount === 1 ? "reaction" : "reactions"}`;
+
+    const names = likers.slice(0, 2).map((entry) =>
+      String(entry.user.id) === String(currentUserId) ? "You" : entry.user.name,
+    );
+    const remaining = Math.max(0, likeCount - names.length);
+
+    if (remaining > 0) {
+      return `${names.join(" and ")} and ${remaining} ${remaining === 1 ? "other" : "others"}`;
+    }
+    return names.join(" and ");
+  }, [currentUserId, likeCount, likers]);
+
+  const summaryEmojis = useMemo(() => {
+    const unique: string[] = [];
+    for (const entry of likers) {
+      const emoji = REACTIONS.find((item) => item.type === entry.reaction)?.emoji || "👍";
+      if (!unique.includes(emoji)) unique.push(emoji);
+      if (unique.length === 3) break;
+    }
+    return unique;
+  }, [likers]);
+
   return (
     <>
       <div className="flex min-h-9 items-center justify-between gap-3 px-4 py-2 text-[13px] text-slate-500">
         <button type="button" onClick={() => void openReactionList()} className="flex min-w-0 items-center gap-1.5 text-left hover:underline">
-          {likeCount > 0 && <><span className="text-base leading-none">{reactionEmoji}</span><span>{likeCount} reactions</span></>}
+          {likeCount > 0 && (
+            <>
+              <span className="flex shrink-0 items-center -space-x-1 text-base leading-none">
+                {(summaryEmojis.length ? summaryEmojis : [reactionEmoji]).map((emoji, index) => (
+                  <span key={`${emoji}-${index}`}>{emoji}</span>
+                ))}
+              </span>
+              <span className="truncate">{reactionSummary}</span>
+            </>
+          )}
         </button>
         <span className="shrink-0">{commentCount} comments · {shareCount} shares</span>
       </div>
