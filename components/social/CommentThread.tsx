@@ -9,8 +9,19 @@ import {
   socialService,
 } from "@/http/services/social.service";
 
+const backendUrl = String(
+  process.env.NEXT_PUBLIC_BACKEND_URL || "https://api.roomkhoj.com",
+).replace(/\/$/, "");
+
 function initials(user?: SocialUser | null) {
   return String(user?.name || "R").slice(0, 1).toUpperCase();
+}
+
+function profilePhoto(value?: string | null) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  if (/^https?:\/\//i.test(raw)) return raw;
+  return `${backendUrl}${raw.startsWith("/") ? raw : `/${raw}`}`;
 }
 
 function ago(value: string) {
@@ -48,6 +59,7 @@ export function CommentThread({
   };
 
   useEffect(() => {
+    setLoading(true);
     void load();
   }, [postId]);
 
@@ -67,14 +79,34 @@ export function CommentThread({
     return map;
   }, [comments]);
 
+  const commenterNames = useMemo(() => {
+    const names: string[] = [];
+    const seen = new Set<string>();
+    for (const comment of comments) {
+      const id = String(comment.author?.id || "");
+      if (!id || seen.has(id)) continue;
+      seen.add(id);
+      names.push(comment.author?.name || "RoomKhoj User");
+    }
+    return names;
+  }, [comments]);
+
+  const commenterSummary = useMemo(() => {
+    if (!commenterNames.length) return "";
+    if (commenterNames.length === 1) return `${commenterNames[0]} commented`;
+    if (commenterNames.length === 2) return `${commenterNames[0]} and ${commenterNames[1]} commented`;
+    return `${commenterNames[0]}, ${commenterNames[1]} and ${commenterNames.length - 2} others commented`;
+  }, [commenterNames]);
+
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     const content = draft.trim();
     if (!content || sending) return;
     setSending(true);
     try {
-      const created = replyTo
-        ? await socialService.replyComment(replyTo.id, postId, content)
+      const rootParentId = replyTo?.parentCommentId || replyTo?.id;
+      const created = rootParentId
+        ? await socialService.replyComment(rootParentId, postId, content)
         : await socialService.addComment(postId, content);
       setComments((current) => [...current, created]);
       setDraft("");
@@ -108,6 +140,15 @@ export function CommentThread({
 
   return (
     <section className="border-t bg-white px-3 pb-3 pt-2">
+      {!loading && comments.length > 0 && (
+        <div className="mb-2 rounded-xl bg-slate-50 px-3 py-2">
+          <div className="text-[13px] font-semibold text-slate-900">
+            Comments · {comments.length}
+          </div>
+          <div className="mt-0.5 text-[12px] text-slate-500">{commenterSummary}</div>
+        </div>
+      )}
+
       {loading ? (
         <div className="py-3 text-center text-[13px] text-slate-400">Loading comments…</div>
       ) : roots.length === 0 ? (
@@ -133,7 +174,7 @@ export function CommentThread({
                         comment={reply}
                         currentUserId={currentUserId}
                         compact
-                        onReply={() => setReplyTo(comment)}
+                        onReply={() => setReplyTo(reply)}
                         onEdit={() => void edit(reply)}
                         onDelete={() => void remove(reply)}
                       />
@@ -147,8 +188,8 @@ export function CommentThread({
       )}
 
       {replyTo && (
-        <div className="mt-2 flex items-center justify-between rounded-lg bg-slate-50 px-3 py-1.5 text-[12px] text-slate-500">
-          <span>Replying to <b className="text-slate-700">{replyTo.author.name}</b></span>
+        <div className="mt-2 flex items-center justify-between rounded-lg bg-blue-50 px-3 py-1.5 text-[12px] text-slate-600">
+          <span>Replying to <b className="text-slate-800">{replyTo.author.name}</b></span>
           <button type="button" onClick={() => setReplyTo(null)} className="font-semibold text-blue-600">
             Cancel
           </button>
@@ -195,12 +236,23 @@ function CommentRow({
   onEdit: () => void;
   onDelete: () => void;
 }) {
-  const mine = comment.author.id === currentUserId;
+  const mine = String(comment.author.id) === String(currentUserId);
+  const photo = profilePhoto(comment.author.profilePhotoUrl);
+  const avatarSize = compact ? "h-7 w-7" : "h-8 w-8";
+
   return (
     <div className="flex items-start gap-2">
-      <div className={`${compact ? "h-7 w-7" : "h-8 w-8"} flex shrink-0 items-center justify-center rounded-full bg-slate-200 text-[11px] font-bold text-slate-600`}>
-        {initials(comment.author)}
-      </div>
+      {photo ? (
+        <img
+          src={photo}
+          alt={comment.author.name}
+          className={`${avatarSize} shrink-0 rounded-full bg-slate-100 object-cover`}
+        />
+      ) : (
+        <div className={`${avatarSize} flex shrink-0 items-center justify-center rounded-full bg-slate-200 text-[11px] font-bold text-slate-600`}>
+          {initials(comment.author)}
+        </div>
+      )}
       <div className="min-w-0 flex-1">
         <div className="inline-block max-w-full rounded-2xl bg-slate-100 px-3 py-2 align-top">
           <div className="text-[13px] font-semibold leading-tight text-slate-950">{comment.author.name}</div>
@@ -208,7 +260,7 @@ function CommentRow({
         </div>
         <div className="mt-0.5 flex items-center gap-3 pl-2 text-[11px] font-medium text-slate-500">
           <span>{ago(comment.createdAt)}</span>
-          <button type="button" onClick={onReply} className="hover:underline">
+          <button type="button" onClick={onReply} className="font-semibold text-slate-600 hover:underline">
             Reply
           </button>
           {mine && (
