@@ -7,10 +7,18 @@ import { optimizeFormDataImages } from "@/lib/image-upload-optimizer";
 import { getNetworkProfile } from "@/lib/network-quality";
 
 const MANUAL_LOGOUT_KEY = "roomkhoj_manual_logout_at";
+const FEED_CACHE_PREFIX = "roomkhoj_social_feed_cache";
+const FEED_CACHE_TTL_MS = 15 * 60 * 1000;
 
 type RetriableRequest = InternalAxiosRequestConfig & {
   _retry?: boolean;
   _hadAuthToken?: boolean;
+  _networkRetryCount?: number;
+};
+
+type CachedFeed = {
+  savedAt: number;
+  data: unknown;
 };
 
 export const privateApi = api.create({
@@ -50,6 +58,88 @@ function endFeedGate() {
   releaseFeedGate?.();
   releaseFeedGate = null;
   feedGate = null;
+}
+
+function feedCacheKey() {
+  if (typeof window === "undefined") return null;
+  const userId = String(useUserStore.getState().user?.id || "").trim();
+  if (!userId) return null;
+  return `${FEED_CACHE_PREFIX}:${userId}`;
+}
+
+function cacheFirstFeed(data: unknown) {
+  const key = feedCacheKey();
+  if (!key) return;
+
+  try {
+    const payload: CachedFeed = { savedAt: Date.now(), data };
+    window.sessionStorage.setItem(key, JSON.stringify(payload));
+  } catch {
+    // Storage can be unavailable in private/restricted browsing. Network flow
+    // should keep working normally even when cache persistence is blocked.
+  }
+}
+
+function readCachedFirstFeed() {
+  const key = feedCacheKey();
+  if (!key) return null;
+
+  try {
+    const raw = window.sessionStorage.getItem(key);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as CachedFeed;
+    if (!parsed?.savedAt || Date.now() - parsed.savedAt > FEED_CACHE_TTL_MS) {
+      window.sessionStorage.removeItem(key);
+      return null;
+    }
+    return parsed.data ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function sleep(ms: number) {
+  return new Promise<void>((resolve) => setTimeout(resolve, ms));
+}
+
+function waitBrieflyForOnline(maxWaitMs = 4500) {
+  if (
+    typeof window === "undefined" ||
+    typeof navigator === "undefined" ||
+    navigator.onLine
+  ) {
+    return Promise.resolve();
+  }
+
+  return new Promise<void>((resolve) => {
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      window.removeEventListener("online", finish);
+      window.clearTimeout(timer);
+      resolve();
+    };
+    const timer = window.setTimeout(finish, maxWaitMs);
+    window.addEventListener("online", finish, { once: true });
+  });
+}
+
+function isTransientNetworkFailure(error: AxiosError) {
+  if (error.code === "ERR_CANCELED" || error.code === "CanceledError") return false;
+  const status = error.response?.status;
+  if (!status) return true;
+  return status === 408 || status === 425 || status === 502 || status === 503 || status === 504;
+}
+
+function networkRetryLimit(request: RetriableRequest) {
+  const method = String(request.method || "get").toLowerCase();
+  if (method !== "get" && method !== "head") return 0;
+
+  const profile = getNetworkProfile();
+  const url = String(request.url || "").split("?")[0];
+  if (url === "/social/feed") return profile.verySlow ? 2 : profile.liteMode ? 2 : 1;
+  return profile.verySlow ? 2 : profile.liteMode ? 1 : 0;
 }
 
 privateApi.interceptors.request.use(async (config) => {
@@ -131,7 +221,10 @@ privateApi.interceptors.request.use(async (config) => {
 
 function handleSuccessfulResponse(response: AxiosResponse) {
   const url = String(response.config?.url || "").split("?")[0];
-  if (url === "/social/feed") endFeedGate();
+  if (url === "/social/feed") {
+    endFeedGate();
+    if (!(response.config?.params as any)?.before) cacheFirstFeed(response.data);
+  }
   return response;
 }
 
@@ -190,10 +283,42 @@ function redirectToLogin() {
 privateApi.interceptors.response.use(
   handleSuccessfulResponse,
   async (error: AxiosError) => {
-    const errorUrl = String(error.config?.url || "").split("?")[0];
+    const originalRequest = error.config as RetriableRequest | undefined;
+    const errorUrl = String(originalRequest?.url || "").split("?")[0];
     if (errorUrl === "/social/feed") endFeedGate();
 
-    const originalRequest = error.config as RetriableRequest | undefined;
+    if (originalRequest && isTransientNetworkFailure(error)) {
+      const retryCount = originalRequest._networkRetryCount || 0;
+      const retryLimit = networkRetryLimit(originalRequest);
+
+      if (retryCount < retryLimit) {
+        originalRequest._networkRetryCount = retryCount + 1;
+        await waitBrieflyForOnline();
+        const profile = getNetworkProfile();
+        const baseDelay = profile.verySlow ? 850 : profile.liteMode ? 600 : 350;
+        await sleep(baseDelay * Math.pow(2, retryCount));
+        return privateApi(originalRequest);
+      }
+
+      // If the first feed cannot refresh after safe retries, show the most
+      // recent session copy instead of leaving the user with a blank screen.
+      if (
+        errorUrl === "/social/feed" &&
+        !(originalRequest.params as any)?.before
+      ) {
+        const cachedFeed = readCachedFirstFeed();
+        if (cachedFeed) {
+          return {
+            data: cachedFeed,
+            status: 200,
+            statusText: "OK (cached)",
+            headers: {},
+            config: originalRequest,
+          } as AxiosResponse;
+        }
+      }
+    }
+
     const isUnauthorized = error.response?.status === 401;
 
     if (
