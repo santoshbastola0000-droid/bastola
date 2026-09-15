@@ -193,3 +193,14 @@
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
+
+/* Room form: community/religion preference fields are no longer shown. */
+section:has([aria-label="Owner community"]),
+section:has(textarea[placeholder*="Hindu family preferred"]) {
+  display: none !important;
+}
+
+[data-slot="separator"]:has(+ section:has([aria-label="Owner community"])),
+[data-slot="separator"]:has(+ section:has(textarea[placeholder*="Hindu family preferred"])) {
+  display: none !important;
+}
