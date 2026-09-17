@@ -22,6 +22,7 @@ import {
   MessageSquare,
   ShieldAlert,
   Gift,
+  MapPin,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -70,6 +71,11 @@ const navItems = [
     icon: CheckCircle,
   },
   { title: "Wallet", href: "/user/dashboard/wallet", icon: Wallet },
+  {
+    title: "Staff Tracking",
+    href: "/staff/tracking",
+    icon: MapPin,
+  },
   {
     title: "Invite & Earn",
     href: "/user/dashboard/referrals",
