@@ -8,6 +8,7 @@ import {
   CircleCheck,
   Clock,
   GitFork,
+  MousePointerClick,
   Search,
   Trophy,
   Users,
@@ -37,6 +38,27 @@ type ReferralNode = {
   referralStatus?: "PENDING" | "QUALIFIED" | "REJECTED";
   children: ReferralNode[];
   hasMore?: boolean;
+};
+
+type ReferralOfferClickAnalytics = {
+  summary: {
+    clicks: number;
+    uniqueClickers: number;
+    lastClickedAt: string | null;
+  };
+  recentClicks: Array<{
+    id: string;
+    userId: string;
+    name: string;
+    email: string | null;
+    phoneNumber: string | null;
+    clickedAt: string | null;
+    createdAt: string;
+    metadata?: {
+      placement?: string;
+      fromPath?: string;
+    };
+  }>;
 };
 
 function ReferralTreeNode({
@@ -186,6 +208,18 @@ export default function AdminReferralPage() {
     },
   });
 
+  const { data: offerClicks, isLoading: offerClicksLoading } = useQuery({
+    queryKey: ["header-referral-offer-clicks"],
+    queryFn: async () => {
+      const response = await privateApi.get(
+        "/notifications/admin/referral-offer-clicks",
+        { params: { limit: 100 } },
+      );
+      return response.data as ReferralOfferClickAnalytics;
+    },
+    refetchInterval: 30_000,
+  });
+
   const {
     data: treeData,
     isLoading: treeLoading,
@@ -210,6 +244,65 @@ export default function AdminReferralPage() {
           Mobile र desktop दुवैमा को कसको referral बाट आयो र कसले क-कसलाई ल्यायो हेर्नुहोस्।
         </p>
       </div>
+
+      <Card className="border-amber-200 bg-gradient-to-br from-amber-50/70 to-rose-50/50">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <MousePointerClick className="h-5 w-5 text-rose-500" />
+            Header Refer & Earn Offer Clicks
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {offerClicksLoading ? (
+            <Skeleton className="h-36 w-full" />
+          ) : (
+            <>
+              <div className="grid gap-3 sm:grid-cols-3">
+                <div className="rounded-xl border bg-white p-3">
+                  <p className="text-xs text-muted-foreground">Total clicks</p>
+                  <p className="mt-1 text-2xl font-black">{offerClicks?.summary.clicks || 0}</p>
+                </div>
+                <div className="rounded-xl border bg-white p-3">
+                  <p className="text-xs text-muted-foreground">Unique users</p>
+                  <p className="mt-1 text-2xl font-black">{offerClicks?.summary.uniqueClickers || 0}</p>
+                </div>
+                <div className="rounded-xl border bg-white p-3">
+                  <p className="text-xs text-muted-foreground">Last click</p>
+                  <p className="mt-1 text-sm font-bold">
+                    {offerClicks?.summary.lastClickedAt
+                      ? new Date(offerClicks.summary.lastClickedAt).toLocaleString()
+                      : "No clicks yet"}
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-4 max-h-72 overflow-y-auto rounded-xl border bg-white">
+                {offerClicks?.recentClicks?.length ? (
+                  offerClicks.recentClicks.map((click) => (
+                    <div
+                      key={click.id}
+                      className="flex flex-col gap-1 border-b px-3 py-2 text-sm last:border-b-0 sm:flex-row sm:items-center sm:justify-between"
+                    >
+                      <div className="min-w-0">
+                        <p className="truncate font-semibold">{click.name || "RoomKhoj user"}</p>
+                        <p className="truncate text-xs text-muted-foreground">
+                          {click.phoneNumber || click.email || click.userId}
+                        </p>
+                      </div>
+                      <div className="text-xs text-muted-foreground sm:text-right">
+                        <p>{click.clickedAt ? new Date(click.clickedAt).toLocaleString() : "-"}</p>
+                        <p>{click.metadata?.placement || "HEADER"} · {click.metadata?.fromPath || "/"}</p>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <p className="p-4 text-sm text-muted-foreground">अहिलेसम्म offer click भएको छैन।</p>
+                )}
+              </div>
+            </>
+          )}
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
