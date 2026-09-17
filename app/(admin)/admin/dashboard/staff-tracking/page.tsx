@@ -32,9 +32,19 @@ import {
 } from "@/http/services/staff-tracking.service";
 
 const money = (value: unknown) =>
-  `Rs. ${Number(value || 0).toLocaleString()}`;
+  `Rs. ${Number(value || 0).toLocaleString(undefined, {
+    maximumFractionDigits: 2,
+  })}`;
 
-const threeHoursMs = 3 * 60 * 60 * 1000;
+const weekdays = [
+  "SUNDAY",
+  "MONDAY",
+  "TUESDAY",
+  "WEDNESDAY",
+  "THURSDAY",
+  "FRIDAY",
+  "SATURDAY",
+];
 
 function formatLocation(point?: any) {
   if (!point) return "No location";
@@ -46,7 +56,7 @@ function formatLocation(point?: any) {
 
 function locationCheckState(row: any) {
   if (row.staffType !== "MARKETING" || !row.sessionId) {
-    return { state: "not-required", label: "Not required", detail: "Reception staff" };
+    return { state: "not-required", label: "Not required", detail: "No active marketing session" };
   }
 
   const referenceRaw = row.lastLocationAt || row.startedAt;
@@ -57,18 +67,20 @@ function locationCheckState(row: any) {
   const reference = new Date(referenceRaw).getTime();
   const now = row.endedAt ? new Date(row.endedAt).getTime() : Date.now();
   const gapMs = Math.max(0, now - reference);
+  const intervalHours = Number(row.trackingIntervalHours || 3);
+  const limitMs = intervalHours * 60 * 60 * 1000;
   const hours = gapMs / (60 * 60 * 1000);
 
-  if (row.status === "ACTIVE" && gapMs > threeHoursMs) {
+  if (row.status === "ACTIVE" && gapMs > limitMs) {
     return {
       state: "missed",
-      label: "3H check missed",
+      label: `${intervalHours}H check missed`,
       detail: `${hours.toFixed(1)}h since last GPS`,
     };
   }
 
   if (row.status === "ACTIVE") {
-    const remaining = Math.max(0, (threeHoursMs - gapMs) / (60 * 60 * 1000));
+    const remaining = Math.max(0, (limitMs - gapMs) / (60 * 60 * 1000));
     return {
       state: "ok",
       label: "GPS OK",
@@ -77,9 +89,27 @@ function locationCheckState(row: any) {
   }
 
   return {
-    state: gapMs > threeHoursMs ? "review" : "ok",
-    label: gapMs > threeHoursMs ? "Review gap" : "Completed",
+    state: gapMs > limitMs ? "review" : "ok",
+    label: gapMs > limitMs ? "Review gap" : "Completed",
     detail: `${hours.toFixed(1)}h final GPS gap`,
+  };
+}
+
+function calendarBreakdown(profile: any, date: string) {
+  const [year, month] = date.split("-").map(Number);
+  const calendarDays = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  const offDay = String(profile?.weeklyOffDay || "SATURDAY").toUpperCase();
+  let weeklyOffDays = 0;
+  for (let day = 1; day <= calendarDays; day += 1) {
+    const weekday = weekdays[new Date(Date.UTC(year, month - 1, day)).getUTCDay()];
+    if (weekday === offDay) weeklyOffDays += 1;
+  }
+  const workDays = Math.max(1, calendarDays - weeklyOffDays);
+  return {
+    calendarDays,
+    weeklyOffDays,
+    workDays,
+    dailyRate: Number(profile?.monthlySalary || 0) / workDays,
   };
 }
 
@@ -95,33 +125,22 @@ export default function StaffTrackingAdminPage() {
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [saving, setSaving] = useState(false);
   const [routeData, setRouteData] = useState<any>(null);
-  const [startLocations, setStartLocations] = useState<Record<string, any>>({});
   const [form, setForm] = useState({
     monthlySalary: "",
-    allowedStartTime: "09:00",
+    allowedStartTime: "13:00",
     expectedEndTime: "17:00",
+    maxRadiusKm: "2",
+    trackingIntervalHours: "3",
+    startGraceMinutes: "15",
+    checkoutGraceMinutes: "15",
+    weeklyOffDay: "SATURDAY",
+    offDayBonus: "100",
   });
 
   const load = async () => {
     try {
       setLoading(true);
-      const dashboardRows = await staffTrackingService.dashboard(type, date);
-      setRows(dashboardRows);
-
-      if (type === "MARKETING") {
-        const nextStartLocations: Record<string, any> = {};
-        const sessionRows = dashboardRows.filter((row: any) => row.sessionId);
-        await Promise.allSettled(
-          sessionRows.map(async (row: any) => {
-            const route = await staffTrackingService.route(row.sessionId);
-            const firstPoint = route?.points?.[0] || null;
-            if (firstPoint) nextStartLocations[row.sessionId] = firstPoint;
-          }),
-        );
-        setStartLocations(nextStartLocations);
-      } else {
-        setStartLocations({});
-      }
+      setRows(await staffTrackingService.dashboard(type, date));
     } catch (error: any) {
       toast.error(error?.response?.data?.message || "Staff tracking load failed");
     } finally {
@@ -183,16 +202,34 @@ export default function StaffTrackingAdminPage() {
     () => profiles.filter((profile) => profile.active).length,
     [profiles],
   );
+  const creditedToday = useMemo(
+    () => rows.reduce((sum, r) => sum + (r.creditStatus === "CREDITED" ? Number(r.creditAmount || 0) : 0), 0),
+    [rows],
+  );
+  const noCreditCount = useMemo(
+    () => rows.filter((r) => r.creditStatus === "NO_CREDIT").length,
+    [rows],
+  );
+
+  const resetForm = (staffType: StaffType = type) => {
+    setForm({
+      monthlySalary: "",
+      allowedStartTime: staffType === "MARKETING" ? "13:00" : "09:00",
+      expectedEndTime: "17:00",
+      maxRadiusKm: "2",
+      trackingIntervalHours: "3",
+      startGraceMinutes: "15",
+      checkoutGraceMinutes: "15",
+      weeklyOffDay: "SATURDAY",
+      offDayBonus: "100",
+    });
+  };
 
   const clearSelection = () => {
     setSelectedUser(null);
     setSearch("");
     setUserResults([]);
-    setForm({
-      monthlySalary: "",
-      allowedStartTime: "09:00",
-      expectedEndTime: "17:00",
-    });
+    resetForm();
   };
 
   const selectUser = (user: any) => {
@@ -200,16 +237,19 @@ export default function StaffTrackingAdminPage() {
     setSearch(user.name || user.phoneNumber || user.email || "Selected user");
     setUserResults([]);
 
-    const existingProfile = profiles.find(
-      (profile) => profile.userId === user.id,
-    );
-
+    const existingProfile = profiles.find((profile) => profile.userId === user.id);
     if (existingProfile) {
       setType(existingProfile.staffType);
       setForm({
         monthlySalary: String(existingProfile.monthlySalary || ""),
-        allowedStartTime: String(existingProfile.allowedStartTime || "09:00").slice(0, 5),
+        allowedStartTime: String(existingProfile.allowedStartTime || "13:00").slice(0, 5),
         expectedEndTime: String(existingProfile.expectedEndTime || "17:00").slice(0, 5),
+        maxRadiusKm: String(existingProfile.maxRadiusKm || 2),
+        trackingIntervalHours: String(existingProfile.trackingIntervalHours || 3),
+        startGraceMinutes: String(existingProfile.startGraceMinutes || 15),
+        checkoutGraceMinutes: String(existingProfile.checkoutGraceMinutes || 15),
+        weeklyOffDay: String(existingProfile.weeklyOffDay || "SATURDAY"),
+        offDayBonus: String(existingProfile.offDayBonus || 100),
       });
     }
   };
@@ -224,6 +264,13 @@ export default function StaffTrackingAdminPage() {
       staffType: profile.staffType,
       active: profile.active,
     });
+  };
+
+  const changeType = (nextType: StaffType) => {
+    setType(nextType);
+    if (!selectedUser || !profiles.some((profile) => profile.userId === selectedUser.id)) {
+      resetForm(nextType);
+    }
   };
 
   const saveStaff = async () => {
@@ -242,6 +289,12 @@ export default function StaffTrackingAdminPage() {
         expectedEndTime: form.expectedEndTime,
         timezone: "Asia/Kathmandu",
         active: true,
+        maxRadiusKm: Number(form.maxRadiusKm || 2),
+        trackingIntervalHours: Number(form.trackingIntervalHours || 3),
+        startGraceMinutes: Number(form.startGraceMinutes || 15),
+        checkoutGraceMinutes: Number(form.checkoutGraceMinutes || 15),
+        weeklyOffDay: form.weeklyOffDay,
+        offDayBonus: Number(form.offDayBonus || 100),
       });
 
       toast.success(`${selectedUser.name} staff tracking मा save भयो`);
@@ -263,13 +316,21 @@ export default function StaffTrackingAdminPage() {
     }
   };
 
+  const selectedCalendar = calendarBreakdown(
+    {
+      monthlySalary: form.monthlySalary,
+      weeklyOffDay: form.weeklyOffDay,
+    },
+    date,
+  );
+
   return (
     <div className="space-y-5 p-4 md:p-6">
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-2xl font-bold">Staff Tracking System</h1>
           <p className="text-sm text-muted-foreground">
-            Start location, live GPS gap र 3-hour location check status एउटै ठाउँबाट हेर्नुहोस्।
+            Marketing 1–5 shift, 2 km work-zone, GPS verification र daily wallet credit एउटै ठाउँबाट manage गर्नुहोस्।
           </p>
         </div>
         <div className="flex gap-2">
@@ -287,29 +348,30 @@ export default function StaffTrackingAdminPage() {
 
       <div className="grid grid-cols-2 gap-2 rounded-xl bg-muted p-1 md:w-[420px]">
         <button
-          onClick={() => setType("MARKETING")}
-          className={`rounded-lg px-4 py-2.5 text-sm font-semibold ${type === "MARKETING" ? "bg-background shadow" : "text-muted-foreground"}`}
+          onClick={() => changeType("MARKETING")}
+          className={`rounded-lg px-4 py-2.5 text-sm font-semibold ${
+            type === "MARKETING" ? "bg-background shadow" : "text-muted-foreground"
+          }`}
         >
           Marketing
         </button>
         <button
-          onClick={() => setType("RECEPTION")}
-          className={`rounded-lg px-4 py-2.5 text-sm font-semibold ${type === "RECEPTION" ? "bg-background shadow" : "text-muted-foreground"}`}
+          onClick={() => changeType("RECEPTION")}
+          className={`rounded-lg px-4 py-2.5 text-sm font-semibold ${
+            type === "RECEPTION" ? "bg-background shadow" : "text-muted-foreground"
+          }`}
         >
           Reception
         </button>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
         <Stat icon={Users} label="Saved staff" value={activeSavedCount} />
         <Stat icon={Clock3} label="Working now" value={activeCount} />
         <Stat icon={Clock3} label="Tracked hours" value={(totalMinutes / 60).toFixed(1)} />
-        <Stat
-          icon={Banknote}
-          label="Monthly salary total"
-          value={money(rows.reduce((sum, r) => sum + Number(r.monthlySalary || 0), 0))}
-        />
-        <Stat icon={AlertTriangle} label="3H GPS review" value={missedCount} />
+        <Stat icon={Banknote} label="Credited today" value={money(creditedToday)} />
+        <Stat icon={AlertTriangle} label="No credit" value={noCreditCount} />
+        <Stat icon={AlertTriangle} label="GPS review" value={missedCount} />
       </div>
 
       <Card>
@@ -375,9 +437,8 @@ export default function StaffTrackingAdminPage() {
             </div>
           )}
 
-          <div className="grid gap-3 md:grid-cols-3">
-            <div>
-              <Label>Monthly Salary</Label>
+          <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-4">
+            <Field label="Monthly Salary">
               <Input
                 type="number"
                 min="0"
@@ -385,28 +446,93 @@ export default function StaffTrackingAdminPage() {
                 onChange={(e) => setForm((f) => ({ ...f, monthlySalary: e.target.value }))}
                 placeholder="25000"
               />
-            </div>
-            <div>
-              <Label>Allowed Start Time</Label>
+            </Field>
+            <Field label="Allowed Start Time">
               <Input
                 type="time"
                 value={form.allowedStartTime}
                 onChange={(e) => setForm((f) => ({ ...f, allowedStartTime: e.target.value }))}
               />
-            </div>
-            <div>
-              <Label>Expected End Time</Label>
+            </Field>
+            <Field label="Expected End / Final GPS">
               <Input
                 type="time"
                 value={form.expectedEndTime}
                 onChange={(e) => setForm((f) => ({ ...f, expectedEndTime: e.target.value }))}
               />
-            </div>
+            </Field>
+            <Field label="Work Radius (km)">
+              <Input
+                type="number"
+                min="0.1"
+                step="0.1"
+                value={form.maxRadiusKm}
+                onChange={(e) => setForm((f) => ({ ...f, maxRadiusKm: e.target.value }))}
+              />
+            </Field>
+            <Field label="GPS Check Every (hours)">
+              <Input
+                type="number"
+                min="1"
+                max="12"
+                value={form.trackingIntervalHours}
+                onChange={(e) => setForm((f) => ({ ...f, trackingIntervalHours: e.target.value }))}
+              />
+            </Field>
+            <Field label="Start Grace (minutes)">
+              <Input
+                type="number"
+                min="0"
+                max="120"
+                value={form.startGraceMinutes}
+                onChange={(e) => setForm((f) => ({ ...f, startGraceMinutes: e.target.value }))}
+              />
+            </Field>
+            <Field label="5 PM Checkout Grace (minutes)">
+              <Input
+                type="number"
+                min="0"
+                max="120"
+                value={form.checkoutGraceMinutes}
+                onChange={(e) => setForm((f) => ({ ...f, checkoutGraceMinutes: e.target.value }))}
+              />
+            </Field>
+            <Field label="Weekly Off Day">
+              <select
+                value={form.weeklyOffDay}
+                onChange={(e) => setForm((f) => ({ ...f, weeklyOffDay: e.target.value }))}
+                className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+              >
+                {weekdays.map((day) => (
+                  <option key={day} value={day}>
+                    {day}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Off-day Extra Credit">
+              <Input
+                type="number"
+                min="0"
+                value={form.offDayBonus}
+                onChange={(e) => setForm((f) => ({ ...f, offDayBonus: e.target.value }))}
+              />
+            </Field>
           </div>
+
+          {type === "MARKETING" && (
+            <div className="grid gap-2 rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm sm:grid-cols-2 lg:grid-cols-5">
+              <Policy label="Month" value={`${selectedCalendar.calendarDays} days`} />
+              <Policy label="Work days" value={`${selectedCalendar.workDays} days`} />
+              <Policy label="Weekly off" value={`${selectedCalendar.weeklyOffDays} days/month`} />
+              <Policy label="Normal daily credit" value={money(selectedCalendar.dailyRate)} />
+              <Policy label="Off-day work credit" value={`${money(selectedCalendar.dailyRate)} + ${money(form.offDayBonus)}`} />
+            </div>
+          )}
 
           <div className="flex flex-col gap-3 rounded-lg border bg-muted/40 p-3 text-sm md:flex-row md:items-center md:justify-between">
             <span>
-              Marketing staff को GPS work session भित्र मात्र track हुन्छ। 3 घण्टाभन्दा बढी GPS नआए payroll review flag देखिन्छ।
+              Marketing default: 13:00–17:00, 2 km radius, 3-hour GPS check, Saturday weekly off। Shift end मा valid location आए मात्र daily rate wallet मा credit हुन्छ; weekly off मा काम गरे configured +Rs.100 bonus थपिन्छ।
             </span>
             <Button onClick={() => void saveStaff()} disabled={saving || !selectedUser}>
               {saving ? "Saving..." : "Save to Staff Tracking"}
@@ -426,24 +552,32 @@ export default function StaffTrackingAdminPage() {
             <div className="py-6 text-center text-sm text-muted-foreground">No saved staff found.</div>
           ) : (
             <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
-              {profiles.map((profile) => (
-                <button
-                  key={profile.id}
-                  type="button"
-                  onClick={() => editSavedProfile(profile)}
-                  className="rounded-xl border p-3 text-left transition hover:border-primary hover:bg-primary/5"
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <b className="truncate">{profile.name}</b>
-                    <Badge variant={profile.active ? "default" : "secondary"}>
-                      {profile.active ? "Active" : "Inactive"}
-                    </Badge>
-                  </div>
-                  <div className="mt-1 text-xs text-muted-foreground">
-                    {profile.staffType} · {money(profile.monthlySalary)} · {String(profile.allowedStartTime).slice(0, 5)}–{String(profile.expectedEndTime).slice(0, 5)}
-                  </div>
-                </button>
-              ))}
+              {profiles.map((profile) => {
+                const cal = calendarBreakdown(profile, date);
+                return (
+                  <button
+                    key={profile.id}
+                    type="button"
+                    onClick={() => editSavedProfile(profile)}
+                    className="rounded-xl border p-3 text-left transition hover:border-primary hover:bg-primary/5"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <b className="truncate">{profile.name}</b>
+                      <Badge variant={profile.active ? "default" : "secondary"}>
+                        {profile.active ? "Active" : "Inactive"}
+                      </Badge>
+                    </div>
+                    <div className="mt-1 text-xs text-muted-foreground">
+                      {profile.staffType} · {money(profile.monthlySalary)} · {String(profile.allowedStartTime).slice(0, 5)}–{String(profile.expectedEndTime).slice(0, 5)}
+                    </div>
+                    {profile.staffType === "MARKETING" && (
+                      <div className="mt-2 text-xs text-slate-600">
+                        {Number(profile.maxRadiusKm || 2)} km · {profile.weeklyOffDay || "SATURDAY"} off · +{money(profile.offDayBonus || 100)} off-day · {cal.workDays}/{cal.calendarDays} work days
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
             </div>
           )}
         </CardContent>
@@ -455,7 +589,7 @@ export default function StaffTrackingAdminPage() {
         </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[1280px] text-sm">
+            <table className="w-full min-w-[1450px] text-sm">
               <thead className="bg-muted">
                 <tr>
                   <Th>Staff</Th>
@@ -464,9 +598,11 @@ export default function StaffTrackingAdminPage() {
                   <Th>Start</Th>
                   {type === "MARKETING" && <Th>Start location</Th>}
                   {type === "MARKETING" && <Th>Last location</Th>}
-                  {type === "MARKETING" && <Th>3-hour GPS</Th>}
+                  {type === "MARKETING" && <Th>2 km zone</Th>}
+                  {type === "MARKETING" && <Th>GPS check</Th>}
                   <Th>End</Th>
                   <Th>Worked</Th>
+                  {type === "MARKETING" && <Th>Wallet credit</Th>}
                   {type === "MARKETING" && <Th>Visits</Th>}
                   <Th>Status</Th>
                   <Th>Action</Th>
@@ -474,10 +610,11 @@ export default function StaffTrackingAdminPage() {
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td colSpan={12} className="p-8 text-center">Loading...</td></tr>
+                  <tr><td colSpan={14} className="p-8 text-center">Loading...</td></tr>
                 ) : rows.map((r) => {
                   const check = locationCheckState(r);
-                  const startPoint = r.sessionId ? startLocations[r.sessionId] : null;
+                  const maxDistance = Number(r.maxDistanceKm || 0);
+                  const outCount = Number(r.outOfRadiusCount || 0);
                   return (
                     <tr key={r.staffProfileId} className="border-t">
                       <Td>
@@ -489,10 +626,9 @@ export default function StaffTrackingAdminPage() {
                       <Td>{r.startedAt ? new Date(r.startedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "-"}</Td>
                       {type === "MARKETING" && (
                         <Td>
-                          {startPoint ? (
+                          {r.startLatitude != null ? (
                             <div>
-                              <span className="inline-flex items-center gap-1"><MapPin className="h-3.5 w-3.5" />{formatLocation(startPoint)}</span>
-                              <div className="text-xs text-muted-foreground">{new Date(startPoint.receivedAt).toLocaleTimeString()}</div>
+                              <span className="inline-flex items-center gap-1"><MapPin className="h-3.5 w-3.5" />{formatLocation({ latitude: r.startLatitude, longitude: r.startLongitude })}</span>
                             </div>
                           ) : "No start GPS"}
                         </Td>
@@ -502,9 +638,20 @@ export default function StaffTrackingAdminPage() {
                           {r.lastLocationAt ? (
                             <div>
                               <span className="inline-flex items-center gap-1"><MapPin className="h-3.5 w-3.5" />{Number(r.lastLatitude).toFixed(5)}, {Number(r.lastLongitude).toFixed(5)}</span>
-                              <div className="text-xs text-muted-foreground">{new Date(r.lastLocationAt).toLocaleTimeString()}</div>
+                              <div className="text-xs text-muted-foreground">{new Date(r.lastLocationAt).toLocaleTimeString()} · {Number(r.lastDistanceKm || 0).toFixed(2)} km</div>
                             </div>
                           ) : "No location"}
+                        </Td>
+                      )}
+                      {type === "MARKETING" && (
+                        <Td>
+                          <Badge
+                            variant="outline"
+                            className={outCount > 0 ? "border-red-200 bg-red-50 text-red-700" : "border-emerald-200 bg-emerald-50 text-emerald-700"}
+                          >
+                            {outCount > 0 ? `${outCount} outside` : "Inside zone"}
+                          </Badge>
+                          <div className="mt-1 text-xs text-muted-foreground">Max {maxDistance.toFixed(2)} / {Number(r.maxRadiusKm || 2)} km</div>
                         </Td>
                       )}
                       {type === "MARKETING" && (
@@ -526,6 +673,28 @@ export default function StaffTrackingAdminPage() {
                       )}
                       <Td>{r.endedAt ? new Date(r.endedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "-"}</Td>
                       <Td>{Number(r.totalMinutes || 0)} min</Td>
+                      {type === "MARKETING" && (
+                        <Td>
+                          <Badge
+                            variant="outline"
+                            className={
+                              r.creditStatus === "CREDITED"
+                                ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                                : r.creditStatus === "NO_CREDIT"
+                                  ? "border-red-200 bg-red-50 text-red-700"
+                                  : "border-slate-200 bg-slate-50 text-slate-600"
+                            }
+                          >
+                            {r.creditStatus || "PENDING"}
+                          </Badge>
+                          {r.creditStatus === "CREDITED" && (
+                            <div className="mt-1 font-semibold text-emerald-700">+{money(r.creditAmount)}</div>
+                          )}
+                          {r.creditReason && (
+                            <div className="mt-1 max-w-[260px] text-xs text-muted-foreground">{r.creditReason}</div>
+                          )}
+                        </Td>
+                      )}
                       {type === "MARKETING" && <Td>{r.visitCount || 0}</Td>}
                       <Td><Badge variant={r.status === "ACTIVE" ? "default" : "secondary"}>{r.status || "NO SESSION"}</Badge></Td>
                       <Td>
@@ -539,7 +708,7 @@ export default function StaffTrackingAdminPage() {
                   );
                 })}
                 {!loading && rows.length === 0 && (
-                  <tr><td colSpan={12} className="p-8 text-center text-muted-foreground">No staff found.</td></tr>
+                  <tr><td colSpan={14} className="p-8 text-center text-muted-foreground">No staff found.</td></tr>
                 )}
               </tbody>
             </table>
@@ -547,12 +716,12 @@ export default function StaffTrackingAdminPage() {
         </CardContent>
       </Card>
 
-      <Card className="border-amber-200 bg-amber-50/40">
+      <Card className="border-blue-200 bg-blue-50/40">
         <CardContent className="p-4 text-sm">
           <div className="flex items-start gap-2">
-            <AlertTriangle className="mt-0.5 h-5 w-5 flex-shrink-0 text-amber-600" />
+            <CheckCircle2 className="mt-0.5 h-5 w-5 flex-shrink-0 text-blue-700" />
             <div>
-              <b>Payroll review rule:</b> 3 घण्टाभन्दा बढी GPS gap भए admin मा review flag आउँछ। GPS/browser/network failure हुन सक्ने भएकाले system ले आफैं salary काट्दैन; payroll adjustment गर्नु अघि admin ले कारण verify गर्नुहोस्।
+              <b>Wallet credit rule:</b> Marketing staff ले configured start window भित्र काम सुरु गरेको, GPS gap configured limit ननाघेको, start location बाट work radius बाहिर नगएको र shift end (+ grace) भित्र final location server मा पठाएको अवस्थामा मात्र daily salary rate wallet मा credit हुन्छ। Weekly off मा काम गरे normal daily rate माथि configured bonus थपिन्छ।
             </div>
           </div>
         </CardContent>
@@ -566,30 +735,42 @@ export default function StaffTrackingAdminPage() {
               <Button variant="ghost" onClick={() => setRouteData(null)}>Close</Button>
             </div>
           </CardHeader>
-          <CardContent>
-            <div className="mb-4 rounded-xl border bg-muted/50 p-3 text-sm">
-              <b>Start location:</b> {formatLocation(routeData.points?.[0])}
-              {routeData.points?.[0]?.receivedAt && (
-                <span className="ml-2 text-muted-foreground">· {new Date(routeData.points[0].receivedAt).toLocaleString()}</span>
-              )}
+          <CardContent className="space-y-4">
+            <div className="grid gap-3 md:grid-cols-3">
+              <Policy label="Start location" value={formatLocation(routeData.points?.[0])} />
+              <Policy label="Work radius" value={`${Number(routeData.session?.maxRadiusKm || 2)} km`} />
+              <Policy
+                label="Wallet credit"
+                value={routeData.credit ? `${routeData.credit.eligible ? "CREDITED" : "NO CREDIT"} ${routeData.credit.eligible ? money(routeData.credit.totalAmount) : ""}` : "Pending"}
+              />
             </div>
-            <p className="mb-3 text-sm text-muted-foreground">
-              Website background GPS guarantee गर्दैन। Browser बन्द/suspend वा permission blocked भए gap आउन सक्छ।
+
+            {routeData.credit?.reason && (
+              <div className={`rounded-lg border p-3 text-sm ${routeData.credit.eligible ? "border-emerald-200 bg-emerald-50 text-emerald-800" : "border-red-200 bg-red-50 text-red-800"}`}>
+                {routeData.credit.reason}
+              </div>
+            )}
+
+            <p className="text-sm text-muted-foreground">
+              Browser बन्द/suspend वा permission blocked भए GPS gap आउन सक्छ। Server मा प्राप्त भएको point मात्र यहाँ देखाइन्छ।
             </p>
+
             <div className="grid gap-3 md:grid-cols-2">
               <div>
                 <h3 className="mb-2 font-semibold">Location points ({routeData.points?.length || 0})</h3>
-                <div className="max-h-72 space-y-1 overflow-y-auto text-xs">
+                <div className="max-h-80 space-y-1 overflow-y-auto text-xs">
                   {routeData.points?.map((p: any) => (
-                    <div key={p.id} className="rounded border p-2">
-                      {Number(p.latitude).toFixed(5)}, {Number(p.longitude).toFixed(5)} · ±{Math.round(Number(p.accuracy || 0))}m · {new Date(p.receivedAt).toLocaleString()}
+                    <div key={p.id} className={`rounded border p-2 ${p.withinRadius === false ? "border-red-200 bg-red-50" : ""}`}>
+                      <div className="font-semibold">{p.source || "AUTO"} · {Number(p.distanceFromStartKm || 0).toFixed(2)} km · {p.withinRadius === false ? "OUTSIDE" : "inside"}</div>
+                      <div>{Number(p.latitude).toFixed(5)}, {Number(p.longitude).toFixed(5)} · ±{Math.round(Number(p.accuracy || 0))}m</div>
+                      <div className="text-muted-foreground">{new Date(p.receivedAt).toLocaleString()}</div>
                     </div>
                   ))}
                 </div>
               </div>
               <div>
                 <h3 className="mb-2 font-semibold">Visits ({routeData.visits?.length || 0})</h3>
-                <div className="max-h-72 space-y-1 overflow-y-auto text-xs">
+                <div className="max-h-80 space-y-1 overflow-y-auto text-xs">
                   {routeData.visits?.map((v: any) => (
                     <div key={v.id} className="rounded border p-2">
                       <b>{v.leadName || "Field visit"}</b>
@@ -611,10 +792,33 @@ function Stat({ icon: Icon, label, value }: any) {
   return (
     <Card>
       <CardContent className="flex items-center gap-3 p-4">
-        <span className="rounded-lg bg-primary/10 p-2"><Icon className="h-5 w-5 text-primary" /></span>
-        <div><div className="text-xs text-muted-foreground">{label}</div><div className="text-xl font-bold">{value}</div></div>
+        <span className="rounded-lg bg-primary/10 p-2">
+          <Icon className="h-5 w-5 text-primary" />
+        </span>
+        <div>
+          <div className="text-xs text-muted-foreground">{label}</div>
+          <div className="text-xl font-bold">{value}</div>
+        </div>
       </CardContent>
     </Card>
+  );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <Label>{label}</Label>
+      {children}
+    </div>
+  );
+}
+
+function Policy({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg border bg-background/70 p-2.5">
+      <div className="text-[11px] text-muted-foreground">{label}</div>
+      <div className="mt-0.5 font-semibold">{value}</div>
+    </div>
   );
 }
 
