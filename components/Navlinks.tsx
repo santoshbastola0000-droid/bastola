@@ -10,8 +10,10 @@ import {
   Compass,
   BriefcaseBusiness,
   UsersRound,
+  Gift,
 } from "lucide-react";
 import { useLanguage } from "@/components/providers/LanguageProvider";
+import { privateApi } from "@/http/api/privateApi";
 
 interface NavLinksProps {
   variant?: "desktop" | "mobile";
@@ -42,6 +44,8 @@ export function NavLinks({
           contact: "सम्पर्क",
           adminDashboard: "एडमिन ड्यासबोर्ड",
           myDashboard: "मेरो ड्यासबोर्ड",
+          refer: "Refer & Earn",
+          earnUpTo: "रु १०,००० सम्म",
         }
       : {
           home: "Home",
@@ -52,12 +56,18 @@ export function NavLinks({
           contact: "Contact",
           adminDashboard: "Admin Dashboard",
           myDashboard: "My Dashboard",
+          refer: "Refer & Earn",
+          earnUpTo: "Up to Rs. 10,000",
         };
 
   const isActive = (path: string) =>
     path === "/feed" ? pathname.startsWith("/feed") : pathname === path;
 
   const normalizedRole = String(userRole || "").toUpperCase();
+  const showReferralOffer = normalizedRole !== "ADMIN";
+  const referralHref = isAuthenticated
+    ? "/user/dashboard/referrals"
+    : "/auth/login?redirect=%2Fuser%2Fdashboard%2Freferrals";
 
   const getDashboardLink = () =>
     normalizedRole === "ADMIN" ? "/admin/dashboard" : "/user/dashboard";
@@ -88,9 +98,55 @@ export function NavLinks({
 
   const links = isAuthenticated ? authLinks : publicLinks;
 
+  const handleReferralClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
+    onItemClick?.();
+    if (!isAuthenticated) return;
+
+    event.preventDefault();
+    let redirected = false;
+    const redirect = () => {
+      if (redirected) return;
+      redirected = true;
+      window.location.assign("/user/dashboard/referrals");
+    };
+    const fallback = window.setTimeout(redirect, 650);
+
+    void privateApi
+      .post("/notifications/engagement/referral-offer-click", {
+        placement: variant === "mobile" ? "HEADER_MOBILE_MENU" : "HEADER_DESKTOP",
+        fromPath: pathname,
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        window.clearTimeout(fallback);
+        redirect();
+      });
+  };
+
   if (variant === "mobile") {
     return (
-      <div className="space-y-1">
+      <div className="space-y-2">
+        {showReferralOffer && (
+          <Link
+            href={referralHref}
+            onClick={handleReferralClick}
+            className="group relative mb-3 flex overflow-hidden rounded-2xl border border-amber-300/70 bg-gradient-to-r from-amber-400 via-orange-500 to-rose-500 p-[1px] shadow-lg shadow-orange-500/20"
+          >
+            <span className="absolute -left-10 top-0 h-full w-10 -skew-x-12 animate-[shimmer_2.4s_infinite] bg-white/40 blur-sm" />
+            <span className="flex w-full items-center gap-3 rounded-[15px] bg-gradient-to-r from-amber-50 to-rose-50 px-4 py-3">
+              <span className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-rose-500 text-white shadow-md">
+                <span className="absolute inset-0 animate-ping rounded-full bg-amber-400/30" />
+                <Gift className="relative h-5 w-5 animate-bounce" />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-black text-slate-950">{labels.refer}</span>
+                <span className="block text-xs font-bold text-rose-600">{labels.earnUpTo}</span>
+              </span>
+              <Sparkles className="h-5 w-5 animate-pulse text-amber-500" />
+            </span>
+          </Link>
+        )}
+
         {links.map((link) => (
           <Link
             key={link.href}
@@ -137,6 +193,27 @@ export function NavLinks({
           <span className="absolute inset-x-4 -bottom-1 h-0.5 scale-x-0 bg-[var(--primary)] transition-transform duration-300 group-hover:scale-x-100" />
         </Link>
       ))}
+
+      {showReferralOffer && (
+        <Link
+          href={referralHref}
+          onClick={handleReferralClick}
+          title="Refer friends and earn up to Rs. 10,000"
+          className="group relative ml-1 hidden min-w-[128px] overflow-hidden rounded-xl border border-amber-300/70 bg-gradient-to-r from-amber-400 via-orange-500 to-rose-500 p-[1px] shadow-md shadow-orange-500/20 transition hover:-translate-y-0.5 hover:shadow-lg lg:flex"
+        >
+          <span className="absolute -left-12 top-0 h-full w-10 -skew-x-12 animate-[shimmer_2.4s_infinite] bg-white/50 blur-sm" />
+          <span className="flex w-full items-center gap-2 rounded-[11px] bg-white/95 px-2.5 py-1.5">
+            <span className="relative flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-rose-500 text-white">
+              <span className="absolute inset-0 animate-ping rounded-full bg-amber-400/30" />
+              <Gift className="relative h-3.5 w-3.5 group-hover:animate-bounce" />
+            </span>
+            <span className="leading-none">
+              <span className="block text-[11px] font-black text-slate-900">{labels.refer}</span>
+              <span className="mt-1 block whitespace-nowrap text-[9px] font-extrabold text-rose-600">{labels.earnUpTo}</span>
+            </span>
+          </span>
+        </Link>
+      )}
     </nav>
   );
 }
