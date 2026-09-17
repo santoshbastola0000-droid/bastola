@@ -11,6 +11,12 @@ export interface StaffProfile {
   expectedEndTime: string;
   timezone: string;
   active: boolean;
+  maxRadiusKm?: number | string;
+  trackingIntervalHours?: number;
+  startGraceMinutes?: number;
+  checkoutGraceMinutes?: number;
+  weeklyOffDay?: string;
+  offDayBonus?: number | string;
   name?: string;
   email?: string;
   phoneNumber?: string;
@@ -18,21 +24,42 @@ export interface StaffProfile {
 
 export const staffTrackingService = {
   getMe: async () => (await privateApi.get("/staff-tracking/me")).data,
-  start: async (payload: any) => (await privateApi.post("/staff-tracking/start", payload)).data,
-  pingLocation: async (payload: any) => (await privateApi.post("/staff-tracking/location", payload)).data,
-  addVisit: async (payload: any) => (await privateApi.post("/staff-tracking/visit", payload)).data,
-  end: async (payload: any) => (await privateApi.post("/staff-tracking/end", payload)).data,
+  start: async (payload: any) =>
+    (await privateApi.post("/staff-tracking/start", payload)).data,
+  pingLocation: async (payload: any) =>
+    (await privateApi.post("/staff-tracking/location", payload)).data,
+  addVisit: async (payload: any) =>
+    (await privateApi.post("/staff-tracking/visit", payload)).data,
+  end: async (payload: any) =>
+    (await privateApi.post("/staff-tracking/end", payload)).data,
 
   searchUsers: async (q: string) =>
     (await privateApi.get("/staff-tracking/admin/users", { params: { q } })).data,
   listProfiles: async (type?: StaffType | "") =>
-    (await privateApi.get("/staff-tracking/admin/profiles", { params: { type: type || "" } })).data,
+    (
+      await privateApi.get("/staff-tracking/admin/profiles", {
+        params: { type: type || "" },
+      })
+    ).data,
   saveProfile: async (payload: any) =>
     (await privateApi.post("/staff-tracking/admin/profiles", payload)).data,
   dashboard: async (type?: StaffType | "", date?: string) =>
-    (await privateApi.get("/staff-tracking/admin/dashboard", { params: { type: type || "", date: date || "" } })).data,
+    (
+      await privateApi.get("/staff-tracking/admin/dashboard", {
+        params: { type: type || "", date: date || "" },
+      })
+    ).data,
   monthly: async (profileId: string, month?: string) =>
-    (await privateApi.get(`/staff-tracking/admin/profiles/${profileId}/monthly`, { params: { month } })).data,
+    (
+      await privateApi.get(
+        `/staff-tracking/admin/profiles/${profileId}/monthly`,
+        { params: { month } },
+      )
+    ).data,
   route: async (sessionId: string) =>
-    (await privateApi.get(`/staff-tracking/admin/sessions/${sessionId}/route`)).data,
+    (
+      await privateApi.get(
+        `/staff-tracking/admin/sessions/${sessionId}/route`,
+      )
+    ).data,
 };
