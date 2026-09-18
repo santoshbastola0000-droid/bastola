@@ -190,9 +190,9 @@ export function CommentThread({
       )}
 
       {replyTo && (
-        <div className="mt-2 flex items-center justify-between rounded-lg bg-blue-50 px-3 py-1.5 text-[12px] text-slate-600">
+        <div className="mt-2 flex items-center justify-between rounded-lg bg-red-50 px-3 py-1.5 text-[12px] text-slate-600">
           <span>Replying to <b className="text-slate-800">{replyTo.author.name}</b></span>
-          <button type="button" onClick={() => setReplyTo(null)} className="font-semibold text-blue-600">
+          <button type="button" onClick={() => setReplyTo(null)} className="font-semibold text-red-600">
             Cancel
           </button>
         </div>
@@ -221,7 +221,7 @@ export function CommentThread({
           <button
             type="submit"
             disabled={sending || !draft.trim()}
-            className="ml-1 text-blue-600 disabled:opacity-40"
+            className="ml-1 text-red-600 disabled:opacity-40"
           >
             <Send className="h-4 w-4" />
           </button>
