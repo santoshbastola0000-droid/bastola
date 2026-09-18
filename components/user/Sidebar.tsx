@@ -38,7 +38,7 @@ import { LogoutConfirmDialog } from "@/components/LogoutConfirmDialog";
 const navItems = [
   { title: "Dashboard", href: "/user/dashboard", icon: Home },
   { title: "Profile", href: "/user/dashboard/profile", icon: UserCircle },
-  { title: "People", href: "/user/dashboard/people", icon: Users },
+  { title: "Friends", href: "/user/dashboard/people", icon: Users },
   {
     title: "Alert Preferences",
     href: "/user/dashboard/preferences",
