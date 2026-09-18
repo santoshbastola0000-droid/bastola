@@ -150,6 +150,19 @@ function isFollowerInboxNotification(
   );
 }
 
+function isActivityInboxNotification(
+  item: UserNotification,
+) {
+  const type = String(
+    item?.type || "",
+  ).toUpperCase();
+
+  return (
+    type.startsWith("SOCIAL_") ||
+    type.includes("STORY")
+  );
+}
+
 function parseEscrowCard(message: ChatMessage): EscrowCard | null {
   if (message.type !== "PAYMENT") return null;
   const [marker, id, status, amount, fee, agentAmount] =
@@ -1778,8 +1791,7 @@ const user = useUserStore(
 
   const activityNotifications =
     inboxNotifications.filter(
-      (item) =>
-        !isFollowerInboxNotification(item),
+      isActivityInboxNotification,
     );
 
   const latestActivityNotification =
