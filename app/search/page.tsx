@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { BriefcaseBusiness, Building2, Loader2, Search, UserRound, Wrench } from "lucide-react";
@@ -18,7 +18,7 @@ function media(value?: string | null) {
   return `${backendUrl}${raw.startsWith("/") ? raw : `/${raw}`}`;
 }
 
-export default function SearchPage() {
+function SearchContent() {
   const params = useSearchParams();
   const router = useRouter();
   const initial = String(params.get("q") || "");
@@ -220,6 +220,20 @@ export default function SearchPage() {
         </div>
       </main>
     </>
+  );
+}
+
+export default function SearchPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center bg-slate-50">
+          <Loader2 className="h-7 w-7 animate-spin text-primary" />
+        </div>
+      }
+    >
+      <SearchContent />
+    </Suspense>
   );
 }
 
