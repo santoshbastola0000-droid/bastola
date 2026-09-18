@@ -96,7 +96,7 @@ export function MobileBottomNav() {
   }
 
   return (
-    <nav className="md:hidden fixed bottom-0 left-0 right-0 z-[99999] border-t border-gray-200 bg-white pb-[env(safe-area-inset-bottom)]">
+    <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 border-t border-gray-200 bg-white pb-[env(safe-area-inset-bottom)]">
       <div className="relative flex h-[68px] items-center justify-around px-1">
         <Link
           href={feedHref}
