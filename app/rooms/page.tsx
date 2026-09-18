@@ -38,6 +38,8 @@ import { PropertyCard } from "@/components/rooms/PropertyCard";
 import { NavBar } from "@/components/common/navbar";
 import Footer from "@/components/common/footer";
 import { roomService } from "@/http/services/room.service";
+import { socialService } from "@/http/services/social.service";
+import { useUserStore } from "@/stores/user-store";
 import { RoomCategory, RoomStatus, type Room } from "@/types/room.types";
 import { cn } from "@/lib/utils";
 import {
@@ -357,6 +359,7 @@ function AnimatedCard({
 function RoomsContent() {
   const router = useRouter();
   const pathname = usePathname();
+  const user = useUserStore((state) => state.user);
   const searchParams = useSearchParams();
 
   const applySavedLocation = useCallback(() => {
@@ -773,7 +776,24 @@ function RoomsContent() {
   const handleSearch = (val: string) => {
     setSearchInput(val);
     if (searchRef.current) clearTimeout(searchRef.current);
-    searchRef.current = setTimeout(() => updateFilters({ search: val }), 420);
+    searchRef.current = setTimeout(() => {
+      updateFilters({ search: val });
+      const query = val.trim();
+      if (user && query.length >= 2) {
+        const current = filtersRef.current;
+        void socialService.trackSearch({
+          query,
+          context: "ROOM",
+          filters: {
+            categories: current.categories,
+            minPrice: current.minPrice,
+            maxPrice: current.maxPrice,
+            allowsWomen: current.allowsWomen,
+            radius: current.radius,
+          },
+        }).catch(() => undefined);
+      }
+    }, 420);
   };
 
   const handleLocateClick = () => {
