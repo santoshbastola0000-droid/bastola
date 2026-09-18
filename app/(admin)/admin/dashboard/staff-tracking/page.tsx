@@ -26,6 +26,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import {
   staffTrackingService,
   StaffType,
@@ -124,6 +125,7 @@ export default function StaffTrackingAdminPage() {
   const [userResults, setUserResults] = useState<any[]>([]);
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [saving, setSaving] = useState(false);
+  const [accessBusyUserId, setAccessBusyUserId] = useState<string | null>(null);
   const [routeData, setRouteData] = useState<any>(null);
   const [form, setForm] = useState({
     monthlySalary: "",
@@ -304,6 +306,45 @@ export default function StaffTrackingAdminPage() {
       toast.error(error?.response?.data?.message || "Staff save failed");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const toggleStaffAccess = async (
+    profile: any,
+    active: boolean,
+  ) => {
+    try {
+      setAccessBusyUserId(profile.userId);
+      await staffTrackingService.setAccess(profile.userId, active);
+
+      setProfiles((current) =>
+        current.map((item) =>
+          item.userId === profile.userId
+            ? { ...item, active }
+            : item,
+        ),
+      );
+
+      setRows((current) =>
+        current.map((item) =>
+          item.userId === profile.userId
+            ? { ...item, active }
+            : item,
+        ),
+      );
+
+      toast.success(
+        active
+          ? `${profile.name} को Staff Tracking sidebar ON भयो`
+          : `${profile.name} को Staff Tracking sidebar OFF भयो`,
+      );
+    } catch (error: any) {
+      toast.error(
+        error?.response?.data?.message ||
+          "Staff Tracking access update failed",
+      );
+    } finally {
+      setAccessBusyUserId(null);
     }
   };
 
@@ -555,27 +596,53 @@ export default function StaffTrackingAdminPage() {
               {profiles.map((profile) => {
                 const cal = calendarBreakdown(profile, date);
                 return (
-                  <button
+                  <div
                     key={profile.id}
-                    type="button"
-                    onClick={() => editSavedProfile(profile)}
-                    className="rounded-xl border p-3 text-left transition hover:border-primary hover:bg-primary/5"
+                    className="rounded-xl border p-3 transition hover:border-primary hover:bg-primary/5"
                   >
-                    <div className="flex items-center justify-between gap-2">
-                      <b className="truncate">{profile.name}</b>
-                      <Badge variant={profile.active ? "default" : "secondary"}>
-                        {profile.active ? "Active" : "Inactive"}
-                      </Badge>
-                    </div>
-                    <div className="mt-1 text-xs text-muted-foreground">
-                      {profile.staffType} · {money(profile.monthlySalary)} · {String(profile.allowedStartTime).slice(0, 5)}–{String(profile.expectedEndTime).slice(0, 5)}
-                    </div>
-                    {profile.staffType === "MARKETING" && (
-                      <div className="mt-2 text-xs text-slate-600">
-                        {Number(profile.maxRadiusKm || 2)} km · {profile.weeklyOffDay || "SATURDAY"} off · +{money(profile.offDayBonus || 100)} off-day · {cal.workDays}/{cal.calendarDays} work days
+                    <button
+                      type="button"
+                      onClick={() => editSavedProfile(profile)}
+                      className="block w-full text-left"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <b className="truncate">{profile.name}</b>
+                        <Badge variant={profile.active ? "default" : "secondary"}>
+                          {profile.active ? "Allowed" : "Hidden"}
+                        </Badge>
                       </div>
-                    )}
-                  </button>
+                      <div className="mt-1 text-xs text-muted-foreground">
+                        {profile.staffType} · {money(profile.monthlySalary)} · {String(profile.allowedStartTime).slice(0, 5)}–{String(profile.expectedEndTime).slice(0, 5)}
+                      </div>
+                      {profile.staffType === "MARKETING" && (
+                        <div className="mt-2 text-xs text-slate-600">
+                          {Number(profile.maxRadiusKm || 2)} km · {profile.weeklyOffDay || "SATURDAY"} off · +{money(profile.offDayBonus || 100)} off-day · {cal.workDays}/{cal.calendarDays} work days
+                        </div>
+                      )}
+                    </button>
+
+                    <div className="mt-3 flex items-center justify-between gap-3 border-t pt-3">
+                      <div>
+                        <div className="text-xs font-bold text-foreground">
+                          Staff Tracking sidebar
+                        </div>
+                        <div className="text-[11px] text-muted-foreground">
+                          {profile.active
+                            ? "यो user लाई sidebar र tracking access देखिन्छ"
+                            : "यो user बाट sidebar र tracking access hide छ"}
+                        </div>
+                      </div>
+
+                      <Switch
+                        checked={Boolean(profile.active)}
+                        disabled={accessBusyUserId === profile.userId}
+                        onCheckedChange={(checked) =>
+                          void toggleStaffAccess(profile, Boolean(checked))
+                        }
+                        aria-label={`Staff Tracking access for ${profile.name}`}
+                      />
+                    </div>
+                  </div>
                 );
               })}
             </div>
