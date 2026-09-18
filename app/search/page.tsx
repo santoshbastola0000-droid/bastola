@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { BriefcaseBusiness, Building2, Loader2, Search, UserRound, Wrench } from "lucide-react";
 import { NavBar } from "@/components/common/navbar";
-import { socialService, type GlobalSearchResult } from "@/http/services/social.service";
+import { socialService, type GlobalSearchResult, type SearchSuggestion } from "@/http/services/social.service";
 
 const backendUrl = String(
   process.env.NEXT_PUBLIC_BACKEND_URL || "https://api.roomkhoj.com",
@@ -25,10 +25,17 @@ export default function SearchPage() {
   const [query, setQuery] = useState(initial);
   const [loading, setLoading] = useState(Boolean(initial.trim()));
   const [result, setResult] = useState<GlobalSearchResult | null>(null);
+  const [smartSuggestions, setSmartSuggestions] = useState<SearchSuggestion[]>([]);
 
   useEffect(() => {
     setQuery(initial);
     const q = initial.trim();
+
+    socialService
+      .searchSuggestions(q, "GLOBAL", 8)
+      .then(setSmartSuggestions)
+      .catch(() => setSmartSuggestions([]));
+
     if (q.length < 2) {
       setResult(null);
       setLoading(false);
@@ -40,7 +47,21 @@ export default function SearchPage() {
     socialService
       .search(q, 20)
       .then((data) => {
-        if (!cancelled) setResult(data);
+        if (cancelled) return;
+        setResult(data);
+        const resultCount =
+          data.users.length +
+          data.posts.length +
+          data.rooms.length +
+          data.jobs.length +
+          data.services.length;
+        void socialService
+          .trackSearch({
+            query: q,
+            context: "GLOBAL",
+            resultCount,
+          })
+          .catch(() => undefined);
       })
       .catch(() => {
         if (!cancelled) setResult(null);
@@ -94,6 +115,22 @@ export default function SearchPage() {
               </button>
             </div>
           </form>
+
+          {smartSuggestions.length > 0 && (
+            <div className="mb-5 flex flex-wrap gap-2">
+              {smartSuggestions.map((item) => (
+                <button
+                  key={item.source + ":" + item.query}
+                  type="button"
+                  onClick={() => router.push(`/search?q=${encodeURIComponent(item.query)}`)}
+                  className="rounded-full border border-red-100 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-red-200 hover:bg-red-50"
+                  title={item.source === "PERSONAL" ? "Based on your search history" : "Popular search"}
+                >
+                  {item.query}
+                </button>
+              ))}
+            </div>
+          )}
 
           {loading ? (
             <div className="flex justify-center py-20"><Loader2 className="h-7 w-7 animate-spin text-red-600" /></div>
