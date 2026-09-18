@@ -183,10 +183,12 @@ export function FeedChrome() {
 
       if (current < 20) {
         setHeaderVisible(true);
-      } else if (delta > 0) {
-        setHeaderVisible(true);
-      } else if (delta < -6) {
+      } else if (delta > 7) {
+        // Finger swipes up / page moves down: header scrolls away.
         setHeaderVisible(false);
+      } else if (delta < -7) {
+        // Finger swipes down / page moves up: bring create/search/bell back.
+        setHeaderVisible(true);
       }
 
       lastScrollY.current = current;
