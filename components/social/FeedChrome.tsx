@@ -230,19 +230,28 @@ export function FeedChrome() {
           <button
             type="button"
             aria-label="Create post"
-            onClick={() =>
-              document
-                .getElementById("feed-composer")
-                ?.scrollIntoView({ behavior: "smooth", block: "center" })
-            }
+            onClick={() => {
+              const composer = document.getElementById("feed-composer");
+              composer?.scrollIntoView({
+                behavior: "smooth",
+                block: "center",
+              });
+
+              window.setTimeout(() => {
+                const input = composer?.querySelector<HTMLInputElement>(
+                  'input[placeholder*="What"]',
+                );
+                input?.focus();
+              }, 350);
+            }}
             className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-950 transition active:scale-95"
           >
             <Plus className="h-6 w-6" strokeWidth={2.5} />
           </button>
 
           <Link
-            href="/rooms"
-            aria-label="Search rooms"
+            href="/search"
+            aria-label="Search RoomKhoj"
             className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-950 transition active:scale-95"
           >
             <Search className="h-6 w-6" strokeWidth={2.4} />
