@@ -8,6 +8,7 @@ import { useUserStore } from "@/stores/user-store";
 import {
   Home,
   BriefcaseBusiness,
+  Clapperboard,
   MessageCircle,
   UserRound,
 } from "lucide-react";
@@ -46,6 +47,7 @@ export function MobileBottomNav() {
     ? pathname.startsWith("/feed")
     : pathname.startsWith("/rooms");
   const isJobs = pathname.startsWith("/jobs");
+  const isReels = pathname.startsWith("/reels");
   const isMessages = pathname.startsWith("/messages");
   const isProfile = pathname.startsWith("/user/dashboard/profile");
 
@@ -131,6 +133,15 @@ export function MobileBottomNav() {
           >
             <BriefcaseBusiness className="h-6 w-6" strokeWidth={isJobs ? 2.6 : 2.1} />
             <span>Jobs</span>
+          </Link>
+
+          <Link
+            href="/reels"
+            className={itemClass(isReels)}
+            aria-label="Reels"
+          >
+            <Clapperboard className="h-6 w-6" strokeWidth={isReels ? 2.6 : 2.1} />
+            <span>Reels</span>
           </Link>
 
           <Link
