@@ -41,7 +41,7 @@ import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { UserAvatar } from "@/components/UserAvatar";
 import { UserRole } from "@/types/user.types";
 import { useLanguage } from "@/components/providers/LanguageProvider";
-import { socialService, type GlobalSearchResult } from "@/http/services/social.service";
+import { socialService, type GlobalSearchResult, type SearchSuggestion } from "@/http/services/social.service";
 
 export function NavBar() {
   const [scrolled, setScrolled] = useState(false);
@@ -53,6 +53,7 @@ export function NavBar() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchSuggestions, setSearchSuggestions] = useState<GlobalSearchResult | null>(null);
+  const [historySuggestions, setHistorySuggestions] = useState<SearchSuggestion[]>([]);
   const { language } = useLanguage();
   const label = (english: string, nepali: string) => language === "ne" ? nepali : english;
 
@@ -127,18 +128,26 @@ export function NavBar() {
     const query = searchQuery.trim();
     if (query.length < 2) {
       setSearchSuggestions(null);
+      setHistorySuggestions([]);
       setSearchLoading(false);
       return;
     }
     const timer = window.setTimeout(() => {
       setSearchLoading(true);
-      socialService.search(query, 5)
-        .then(setSearchSuggestions)
-        .catch(() => setSearchSuggestions(null))
+      Promise.all([
+        socialService.search(query, 5).catch(() => null),
+        isAuthenticated
+          ? socialService.searchSuggestions(query, "GLOBAL", 4).catch(() => [])
+          : Promise.resolve([]),
+      ])
+        .then(([results, history]) => {
+          setSearchSuggestions(results);
+          setHistorySuggestions(history);
+        })
         .finally(() => setSearchLoading(false));
     }, 250);
     return () => window.clearTimeout(timer);
-  }, [searchQuery]);
+  }, [searchQuery, isAuthenticated]);
 
   const submitGlobalSearch = (event?: FormEvent) => {
     event?.preventDefault();
@@ -205,13 +214,34 @@ export function NavBar() {
               {searchOpen && searchQuery.trim().length >= 2 && (
                 <div className="absolute left-0 top-12 z-[200] w-[360px] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
                   {searchLoading && <div className="flex items-center gap-2 px-4 py-4 text-sm text-slate-500"><Loader2 className="h-4 w-4 animate-spin" />Searching…</div>}
+                  {!searchLoading && historySuggestions.length > 0 && (
+                    <div className="border-b border-slate-100 bg-red-50/40 px-3 py-2">
+                      <div className="mb-1 text-[10px] font-bold uppercase tracking-wide text-slate-400">Suggested searches</div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {historySuggestions.map((item) => (
+                          <button
+                            key={item.source + ":" + item.query}
+                            type="button"
+                            onClick={() => {
+                              setSearchQuery(item.query);
+                              setSearchOpen(false);
+                              router.push(`/search?q=${encodeURIComponent(item.query)}`);
+                            }}
+                            className="rounded-full border border-red-100 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-red-50"
+                          >
+                            {item.query}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   {!searchLoading && suggestionItems.map((item) => (
                     <Link key={item.href + item.label} href={item.href} onClick={() => setSearchOpen(false)} className="block border-b border-slate-100 px-4 py-3 hover:bg-slate-50">
                       <div className="truncate text-sm font-semibold text-slate-950">{item.label}</div>
                       <div className="mt-0.5 text-xs text-slate-500">{item.sub}</div>
                     </Link>
                   ))}
-                  {!searchLoading && suggestionItems.length === 0 && <div className="px-4 py-4 text-sm text-slate-500">No suggestion found</div>}
+                  {!searchLoading && suggestionItems.length === 0 && historySuggestions.length === 0 && <div className="px-4 py-4 text-sm text-slate-500">No suggestion found</div>}
                   <button type="button" onClick={() => submitGlobalSearch()} className="w-full bg-slate-50 px-4 py-3 text-left text-sm font-bold text-red-600 hover:bg-red-50">
                     Search all results for “{searchQuery.trim()}”
                   </button>
