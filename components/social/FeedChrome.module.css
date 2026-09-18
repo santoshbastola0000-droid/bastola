@@ -6,62 +6,62 @@
   --feed-primary-soft: #e7f3ff;
 }
 
-.primaryTheme :global(.bg-blue-50) {
-  background-color: #eff6ff !important;
+.primaryTheme :global(.bg-red-50) {
+  background-color: #fef2f2 !important;
 }
 
-.primaryTheme :global(.bg-blue-100) {
-  background-color: #dbeafe !important;
+.primaryTheme :global(.bg-red-100) {
+  background-color: #fee2e2 !important;
 }
 
-.primaryTheme :global(.bg-blue-200) {
+.primaryTheme :global(.bg-red-200) {
   background-color: #bfdbfe !important;
 }
 
-.primaryTheme :global(.bg-blue-500) {
+.primaryTheme :global(.bg-red-500) {
   background-color: #3b82f6 !important;
 }
 
-.primaryTheme :global(.bg-blue-600) {
+.primaryTheme :global(.bg-red-600) {
   background-color: var(--feed-primary) !important;
 }
 
-.primaryTheme :global(.bg-blue-700) {
+.primaryTheme :global(.bg-red-700) {
   background-color: var(--feed-primary-dark) !important;
 }
 
-.primaryTheme :global(.text-blue-500) {
+.primaryTheme :global(.text-red-500) {
   color: #3b82f6 !important;
 }
 
-.primaryTheme :global(.text-blue-600),
-.primaryTheme :global(.text-blue-700),
-.primaryTheme :global(.text-blue-800) {
+.primaryTheme :global(.text-red-600),
+.primaryTheme :global(.text-red-700),
+.primaryTheme :global(.text-red-800) {
   color: var(--feed-primary) !important;
 }
 
-.primaryTheme :global(.border-blue-100) {
-  border-color: #dbeafe !important;
+.primaryTheme :global(.border-red-100) {
+  border-color: #fee2e2 !important;
 }
 
-.primaryTheme :global(.border-blue-200) {
+.primaryTheme :global(.border-red-200) {
   border-color: #bfdbfe !important;
 }
 
-.primaryTheme :global(.border-blue-500),
-.primaryTheme :global(.border-blue-600) {
+.primaryTheme :global(.border-red-500),
+.primaryTheme :global(.border-red-600) {
   border-color: var(--feed-primary) !important;
 }
 
-.primaryTheme :global(.ring-blue-500),
-.primaryTheme :global(.ring-blue-600) {
+.primaryTheme :global(.ring-red-500),
+.primaryTheme :global(.ring-red-600) {
   --tw-ring-color: var(--feed-primary) !important;
 }
 
 /* Existing feed cards used red as the old primary accent. Re-skin those
    accents to the new feed blue without changing destructive/error states globally. */
 .primaryTheme :global(.bg-red-50) {
-  background-color: #eff6ff !important;
+  background-color: #fef2f2 !important;
 }
 
 .primaryTheme :global(.bg-red-600) {
@@ -75,17 +75,17 @@
 
 .primaryTheme :global(.border-red-100),
 .primaryTheme :global(.border-red-200) {
-  border-color: #dbeafe !important;
+  border-color: #fee2e2 !important;
 }
 
 .primaryTheme :global(.hover\:bg-red-50\/60:hover),
 .primaryTheme :global(.hover\:bg-red-50:hover) {
-  background-color: #eff6ff !important;
+  background-color: #fef2f2 !important;
 }
 
 /* Like is a semantic social reaction and stays blue. */
-.primaryTheme :global(button.select-none.text-blue-600) {
-  color: #2563eb !important;
+.primaryTheme :global(button.select-none.text-red-600) {
+  color: #dc2626 !important;
 }
 
 /* Crisp media rendering and stable card geometry. */
