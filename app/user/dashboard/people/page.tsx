@@ -30,6 +30,8 @@ type Person = {
   isVerified?: boolean;
   isPremium?: boolean;
   profilePhotoUrl?: string | null;
+  mutualFriends?: number;
+  reason?: string;
 };
 
 export default function PeoplePage() {
@@ -83,7 +85,20 @@ export default function PeoplePage() {
   };
 
   useEffect(() => {
-    loadPeople();
+    const loadSuggestions = async () => {
+      try {
+        setLoading(true);
+        const response = await privateApi.get("/friend/suggestions");
+        const rows = Array.isArray(response.data) ? response.data : [];
+        setPeople(rows);
+        setFriendStatus(Object.fromEntries(rows.map((person: Person) => [person.id, "NONE"])));
+      } catch {
+        await loadPeople();
+      } finally {
+        setLoading(false);
+      }
+    };
+    void loadSuggestions();
   }, []);
 
   const submitSearch = (
@@ -184,9 +199,12 @@ export default function PeoplePage() {
                       {person.location && (
                         <p className="mt-1 flex items-center gap-1 text-sm text-muted-foreground">
                           <MapPin className="h-3.5 w-3.5" />
-                          <span className="truncate">
-                            {person.location}
-                          </span>
+                          <span className="truncate">{person.location}</span>
+                        </p>
+                      )}
+                      {person.reason && (
+                        <p className="mt-1 truncate text-xs font-semibold text-red-600">
+                          {person.reason}
                         </p>
                       )}
                     </div>
