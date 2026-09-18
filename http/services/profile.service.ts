@@ -14,6 +14,7 @@ export interface PublicProfileUser {
 
 export interface PublicProfile {
   user: PublicProfileUser;
+  posts: any[];
   rooms: any[];
   jobs: any[];
 }
