@@ -112,6 +112,21 @@ export default function ProfilePage() {
   const [showProfileViewers, setShowProfileViewers] =
     useState(false);
 
+  useEffect(() => {
+    if (!showProfileViewers) return;
+
+    const previousOverflow = document.body.style.overflow;
+    const previousOverscroll = document.body.style.overscrollBehavior;
+
+    document.body.style.overflow = "hidden";
+    document.body.style.overscrollBehavior = "none";
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.body.style.overscrollBehavior = previousOverscroll;
+    };
+  }, [showProfileViewers]);
+
   const [changingRoomStatusId, setChangingRoomStatusId] =
     useState<string | null>(null);
 
@@ -1510,11 +1525,11 @@ export default function ProfilePage() {
       />
       {showProfileViewers && (
         <div
-          className="fixed inset-0 z-[120] flex items-end justify-center bg-black/35 p-3 backdrop-blur-[2px] sm:items-center"
+          className="fixed inset-0 z-[200] flex items-end justify-center overflow-hidden bg-black/35 p-0 backdrop-blur-[2px] sm:items-center sm:p-3"
           onClick={() => setShowProfileViewers(false)}
         >
           <div
-            className="max-h-[78dvh] w-full max-w-md overflow-hidden rounded-[28px] bg-background shadow-2xl"
+            className="flex max-h-[calc(100dvh-1rem)] w-full max-w-md flex-col overflow-hidden rounded-t-[28px] bg-background shadow-2xl sm:max-h-[78dvh] sm:rounded-[28px]"
             onClick={(event) => event.stopPropagation()}
           >
             <div className="flex items-center justify-between border-b border-border px-5 py-4">
@@ -1534,7 +1549,7 @@ export default function ProfilePage() {
               </button>
             </div>
 
-            <div className="max-h-[62dvh] overflow-y-auto p-2">
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-2 pb-[calc(1rem+env(safe-area-inset-bottom))]">
               {profileViews.viewers.length === 0 ? (
                 <div className="px-5 py-12 text-center text-sm text-muted-foreground">
                   अहिलेसम्म logged-in user बाट profile view आएको छैन।
