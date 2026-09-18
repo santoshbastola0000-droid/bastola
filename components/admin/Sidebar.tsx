@@ -33,7 +33,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useUserStore } from "@/stores/user-store";
 import { useLogout } from "@/hooks/useLogout";
 import { LogoutConfirmDialog } from "@/components/LogoutConfirmDialog";
@@ -102,6 +102,14 @@ export function AdminSidebar({
     await logout();
     router.push("/auth/login");
   };
+
+  const backendUrl = String(process.env.NEXT_PUBLIC_BACKEND_URL || "https://api.roomkhoj.com").replace(/\/$/, "");
+  const rawProfilePhoto = String(user?.profilePhotoUrl || "").trim();
+  const profilePhoto = !rawProfilePhoto
+    ? ""
+    : /^https?:\/\//i.test(rawProfilePhoto)
+      ? rawProfilePhoto
+      : `${backendUrl}${rawProfilePhoto.startsWith("/") ? rawProfilePhoto : `/${rawProfilePhoto}`}`;
 
   const getInitials = () => {
     if (user?.name) {
