@@ -88,7 +88,7 @@ function Avatar({
         loading="lazy"
         decoding="async"
         onError={() => setFailed(true)}
-        className={`${dimensions} shrink-0 rounded-full border border-slate-200 bg-slate-100 object-cover shadow-sm`}
+        className={`${dimensions} shrink-0 rounded-full border border-slate-200 bg-slate-100 object-contain shadow-sm`}
       />
     );
   }
