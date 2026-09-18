@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -22,6 +22,8 @@ import {
 import { NavBar } from "@/components/common/navbar";
 import Footer from "@/components/common/footer";
 import { candidateProfileService } from "@/http/services/candidate-profile.service";
+import { socialService } from "@/http/services/social.service";
+import { useUserStore } from "@/stores/user-store";
 import { candidateCategories } from "@/components/jobs/candidates/candidate-config";
 
 export default function CandidatesPage() {
@@ -31,6 +33,7 @@ export default function CandidatesPage() {
   const [openingCvId, setOpeningCvId] = useState<string | null>(null);
   const [revealingContactId, setRevealingContactId] = useState<string | null>(null);
   const [revealedContacts, setRevealedContacts] = useState<Record<string, string>>({});
+  const user = useUserStore((state) => state.user);
 
   const { data: candidates = [], isLoading, error } = useQuery({
     queryKey: ["public-candidates", category, location, search],
@@ -46,6 +49,25 @@ export default function CandidatesPage() {
     if (isLoading) return "Searching candidates...";
     return `${candidates.length} candidate${candidates.length === 1 ? "" : "s"} found`;
   }, [candidates.length, isLoading]);
+
+  useEffect(() => {
+    if (!user) return;
+    const query = search.trim() || category.trim() || location.trim();
+    if (query.length < 2) return;
+    const timer = window.setTimeout(() => {
+      void socialService.trackSearch({
+        query,
+        context: "CANDIDATE",
+        filters: {
+          category: category || null,
+          location: location || null,
+          jobTitle: search || null,
+        },
+        resultCount: candidates.length,
+      }).catch(() => undefined);
+    }, 650);
+    return () => window.clearTimeout(timer);
+  }, [candidates.length, category, location, search, user]);
 
   const openCv = async (candidateId: string) => {
     if (openingCvId) return;
