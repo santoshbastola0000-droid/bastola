@@ -32,6 +32,8 @@ const backendUrl = String(
   process.env.NEXT_PUBLIC_BACKEND_URL || "https://api.roomkhoj.com",
 ).replace(/\/$/, "");
 
+const MAX_REEL_UPLOAD_BYTES = 80 * 1024 * 1024;
+
 function media(value?: string | null) {
   const raw = String(value || "").trim();
   if (!raw) return "";
@@ -393,10 +395,25 @@ export default function ReelsPage() {
       if (fileInputRef.current) fileInputRef.current.value = "";
       setRefreshKey((value) => value + 1);
     } catch (error: any) {
-      setUploadError(
-        error?.response?.data?.message ||
-          "Reel upload failed. Please try again.",
-      );
+      const status = Number(error?.response?.status || 0);
+      const rawMessage = error?.response?.data?.message;
+      const message = Array.isArray(rawMessage)
+        ? rawMessage.join(", ")
+        : String(rawMessage || "").trim();
+
+      if (status === 413) {
+        setUploadError("Video धेरै ठूलो छ। 80 MB भन्दा सानो reel upload गर्नुहोस्।");
+      } else if (status === 401) {
+        setUploadError("Session expire भएको छ। फेरि login गरेर upload गर्नुहोस्।");
+      } else if (message) {
+        setUploadError(message);
+      } else if (!error?.response) {
+        setUploadError(
+          "Upload server सम्म पुग्न सकेन। Internet check गरेर फेरि try गर्नुहोस्।",
+        );
+      } else {
+        setUploadError("Reel upload failed. Please try again.");
+      }
     } finally {
       setUploading(false);
     }
@@ -452,6 +469,14 @@ export default function ReelsPage() {
             onChange={(event) => {
               const file = event.target.files?.[0] || null;
               setUploadError("");
+
+              if (file && file.size > MAX_REEL_UPLOAD_BYTES) {
+                setUploadFile(null);
+                setUploadError("Reel 80 MB भन्दा सानो हुनुपर्छ।");
+                event.target.value = "";
+                return;
+              }
+
               setUploadFile(file);
             }}
           />
