@@ -2487,7 +2487,7 @@ const user = useUserStore(
                 </div>
               )}
 
-              <div ref={messagesScrollerRef} className="min-h-0 flex-1 touch-pan-y overscroll-contain space-y-2 overflow-y-auto bg-[#efe9df] bg-[radial-gradient(circle_at_18%_22%,rgba(255,255,255,0.55)_0_1px,transparent_1px),radial-gradient(circle_at_82%_65%,rgba(0,0,0,0.045)_0_1px,transparent_1px)] bg-[length:26px_26px,34px_34px] px-2.5 py-3 pb-28 dark:bg-[#0b141a] sm:px-5 md:px-[6%] md:py-5">
+              <div ref={messagesScrollerRef} className="min-h-0 flex-1 touch-pan-y overscroll-contain space-y-2 overflow-y-auto bg-[#efe9df] bg-[radial-gradient(circle_at_18%_22%,rgba(255,255,255,0.55)_0_1px,transparent_1px),radial-gradient(circle_at_82%_65%,rgba(0,0,0,0.045)_0_1px,transparent_1px)] bg-[length:26px_26px,34px_34px] px-2.5 py-3 pb-4 dark:bg-[#0b141a] sm:px-5 md:px-[6%] md:py-5 md:pb-6">
                 {messagesLoading ? (
                   <div className="flex justify-center p-10">
                     <Loader2 className="h-6 w-6 animate-spin text-primary" />
@@ -2730,6 +2730,7 @@ const user = useUserStore(
                         }
                       }}
                       placeholder="Type a message"
+                      enterKeyHint="send"
                       rows={1}
                       className="max-h-32 min-h-7 flex-1 resize-none bg-transparent py-2 text-sm outline-none placeholder:text-muted-foreground"
                     />
@@ -2740,6 +2741,11 @@ const user = useUserStore(
                     type="button"
                     size="icon"
                     className="h-11 w-11 rounded-full"
+                    onPointerDown={(event) => {
+                      if (draft.trim()) {
+                        event.preventDefault();
+                      }
+                    }}
                     onClick={() => draft.trim() ? void sendMessage() : toast.info("Voice message feature छिट्टै आउँदैछ.")}
                     disabled={sending}
                     aria-label={draft.trim() ? "Send message" : "Voice message"}
