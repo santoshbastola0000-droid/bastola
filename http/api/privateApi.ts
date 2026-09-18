@@ -320,6 +320,18 @@ privateApi.interceptors.response.use(
     }
 
     const isUnauthorized = error.response?.status === 401;
+    const responseData = error.response?.data as any;
+    const banned =
+      responseData?.code === "ACCOUNT_BANNED" ||
+      responseData?.message?.code === "ACCOUNT_BANNED" ||
+      String(responseData?.message || "").toLowerCase().includes("account has been banned");
+
+    if (isUnauthorized && banned && typeof window !== "undefined") {
+      if (window.location.pathname !== "/account-banned") {
+        window.location.assign("/account-banned");
+      }
+      return Promise.reject(error);
+    }
 
     if (
       !isUnauthorized ||
