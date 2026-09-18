@@ -1994,7 +1994,7 @@ const user = useUserStore(
                   type="button"
                   onClick={() =>
                     router.push(
-                      "/notifications?view=followers",
+                      "/user/dashboard/people",
                     )
                   }
                   className="flex w-full items-center gap-3 rounded-2xl px-1 py-2.5 text-left transition hover:bg-muted"
@@ -2006,7 +2006,7 @@ const user = useUserStore(
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <p className="font-bold text-foreground">
-                        New followers
+                        New friends
                       </p>
                       {unreadFollowers > 0 && (
                         <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold text-primary-foreground">
@@ -2018,7 +2018,7 @@ const user = useUserStore(
                     <p className="truncate text-sm text-muted-foreground">
                       {latestFollowerNotification?.body ||
                         latestFollowerNotification?.title ||
-                        "New follower updates will appear here."}
+                        "New friend requests and new friends will appear here."}
                     </p>
                   </div>
                 </button>
