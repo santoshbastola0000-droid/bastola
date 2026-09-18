@@ -1,6 +1,6 @@
 "use client";
 
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { UserDetail, UserRole } from "@/types/user.types";
 
 interface UserAvatarProps {
@@ -9,6 +9,13 @@ interface UserAvatarProps {
 }
 
 export function UserAvatar({ user, className = "" }: UserAvatarProps) {
+  const backendUrl = String(process.env.NEXT_PUBLIC_BACKEND_URL || "https://api.roomkhoj.com").replace(/\/$/, "");
+  const rawPhoto = String(user.profilePhotoUrl || "").trim();
+  const photoUrl = !rawPhoto
+    ? ""
+    : /^https?:\/\//i.test(rawPhoto)
+      ? rawPhoto
+      : `${backendUrl}${rawPhoto.startsWith("/") ? rawPhoto : `/${rawPhoto}`}`;
   const getInitials = () => {
     if (user.name) {
       return user.name
@@ -34,6 +41,7 @@ export function UserAvatar({ user, className = "" }: UserAvatarProps) {
 
   return (
     <Avatar className={`${className} ${getRoleColor()}`}>
+      {photoUrl ? <AvatarImage src={photoUrl} alt={user.name || "Profile"} className="object-cover" /> : null}
       <AvatarFallback>{getInitials()}</AvatarFallback>
     </Avatar>
   );
