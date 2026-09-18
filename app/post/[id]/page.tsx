@@ -59,9 +59,17 @@ export default function SocialPostPage() {
           <Link href="/feed" className="rounded-full p-2 hover:bg-slate-100" aria-label="Back to feed">
             <ArrowLeft className="h-5 w-5" />
           </Link>
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-200 font-bold text-slate-600">
-            {post.author?.name?.slice(0, 1).toUpperCase() || "R"}
-          </div>
+          {media(post.author?.profilePhotoUrl) ? (
+            <img
+              src={media(post.author?.profilePhotoUrl)}
+              alt={post.author?.name || "Profile"}
+              className="h-10 w-10 shrink-0 rounded-full border border-slate-200 bg-slate-100 object-cover"
+            />
+          ) : (
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-200 font-bold text-slate-600">
+              {post.author?.name?.slice(0, 1).toUpperCase() || "R"}
+            </div>
+          )}
           <div>
             <div className="text-[15px] font-semibold leading-tight">{post.author?.name || "RoomKhoj User"}</div>
             <div className="mt-0.5 text-[12px] font-medium text-slate-500">{new Date(post.createdAt).toLocaleString()}</div>
