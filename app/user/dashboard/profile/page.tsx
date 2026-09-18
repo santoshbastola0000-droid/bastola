@@ -62,7 +62,8 @@ type ActivityTab =
   | "jobs"
   | "friends"
   | "shares"
-  | "about";
+  | "about"
+  | "monetize";
 
 const PROFILE_IMAGE_MAX_BYTES = 20 * 1024 * 1024;
 const COVER_IMAGE_MAX_BYTES = 30 * 1024 * 1024;
@@ -1031,6 +1032,7 @@ export default function ProfilePage() {
                 ["friends", "Friends"],
                 ["shares", "Activity"],
                 ["about", "About"],
+                ["monetize", "Monetize"],
               ].map(([value, label]) => (
                 <button
                   key={value}
@@ -1048,7 +1050,6 @@ export default function ProfilePage() {
           </div>
         </div>
       </section>
-
       <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
         <div className="space-y-4">
           <Card className="rounded-2xl border-0 shadow-sm">
@@ -1176,7 +1177,8 @@ export default function ProfilePage() {
         </Card>
       </section>
 
-      <Card className="overflow-hidden rounded-3xl border border-amber-200 bg-gradient-to-br from-amber-50 via-white to-yellow-50 shadow-sm">
+      {tab === "monetize" && (
+        <Card className="overflow-hidden rounded-3xl border border-amber-200 bg-gradient-to-br from-amber-50 via-white to-yellow-50 shadow-sm">
         <CardContent className="p-5 sm:p-6">
           <div className="mb-5">
             <div className="flex items-center gap-2"><Crown className="h-5 w-5 text-amber-700" /><span className="text-xs font-black uppercase tracking-[0.18em] text-amber-700">Earn with RoomKhoj</span></div>
@@ -1388,14 +1390,71 @@ export default function ProfilePage() {
             </div>
           )}
         </CardContent>
-      </Card>
+        </Card>
+      )}
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_380px]">
         <section className="space-y-5">
           <Card className="rounded-3xl border-0 shadow-sm"><CardContent className="p-5"><h2 className="mb-4 text-lg font-bold">About</h2><div className="space-y-4 text-sm"><div className="flex items-center gap-3"><Mail className="h-4 w-4 text-muted-foreground" /><div><p className="text-xs text-muted-foreground">Email</p><p className="font-medium">{(user as any)?.email || "Not available"}</p></div></div><Separator /><div className="flex items-center gap-3"><Phone className="h-4 w-4 text-muted-foreground" /><div><p className="text-xs text-muted-foreground">Phone</p><p className="font-medium">{(user as any)?.phone || (user as any)?.phoneNumber || "Not available"}</p></div></div>{profile.user.location && <><Separator /><div className="flex items-center gap-3"><MapPin className="h-4 w-4 text-muted-foreground" /><div><p className="text-xs text-muted-foreground">Location</p><p className="font-medium">{profile.user.location}</p></div></div></>}</div></CardContent></Card>
           <Card className="overflow-hidden rounded-3xl border-0 shadow-sm">
-            <div className="flex overflow-x-auto border-b px-2">{[["rooms","Rooms"],["jobs","Jobs"],["friends","Friends"],["shares","Interested Vacancies"],["about","About"]].map(([value,label]) => <button key={value} type="button" onClick={() => setTab(value as ActivityTab)} className={`relative min-w-fit px-5 py-4 text-sm font-semibold ${tab===value?"text-primary":"text-muted-foreground"}`}>{label}{tab===value && <span className="absolute inset-x-3 bottom-0 h-0.5 rounded-full bg-primary" />}</button>)}</div>
-            <CardContent className="p-5"><p className="text-sm text-muted-foreground">Profile activity is available in this section.</p></CardContent>
+            <div className="flex overflow-x-auto border-b px-2">{[["rooms","Rooms"],["jobs","Jobs"],["friends","Friends"],["shares","Activity"],["about","About"],["monetize","Monetize"]].map(([value,label]) => <button key={value} type="button" onClick={() => setTab(value as ActivityTab)} className={`relative min-w-fit px-5 py-4 text-sm font-semibold ${tab===value?"text-primary":"text-muted-foreground"}`}>{label}{tab===value && <span className="absolute inset-x-3 bottom-0 h-0.5 rounded-full bg-primary" />}</button>)}</div>
+            <CardContent className="p-5">
+              {tab === "shares" ? (
+                <div>
+                  <div className="mb-4 flex items-center justify-between gap-3">
+                    <div>
+                      <h3 className="text-lg font-black">Profile views</h3>
+                      <p className="text-sm text-muted-foreground">
+                        {profileViews.totalViews} views · {profileViews.uniqueViewers} people
+                      </p>
+                    </div>
+                    <Eye className="h-5 w-5 text-primary" />
+                  </div>
+                  {profileViews.viewers.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      अहिलेसम्म logged-in user बाट profile view आएको छैन।
+                    </p>
+                  ) : (
+                    <div className="space-y-2">
+                      {profileViews.viewers.slice(0, 12).map((viewer) => {
+                        const viewerPhoto = profileMediaUrl(viewer.profilePhotoUrl);
+                        return (
+                          <button
+                            key={viewer.id}
+                            type="button"
+                            onClick={() => router.push(`/profile/${viewer.id}`)}
+                            className="flex w-full items-center gap-3 rounded-2xl p-2 text-left transition hover:bg-muted"
+                          >
+                            <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted">
+                              {viewerPhoto ? (
+                                <img src={viewerPhoto} alt="" className="h-full w-full object-cover" />
+                              ) : (
+                                <UserRound className="h-5 w-5 text-muted-foreground" />
+                              )}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-sm font-black">{viewer.name}</p>
+                              <p className="text-xs text-muted-foreground">
+                                Viewed {profileViewAgo(viewer.lastViewedAt)}
+                                {Number(viewer.viewCount || 0) > 1 ? ` · ${viewer.viewCount} times` : ""}
+                              </p>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              ) : tab === "monetize" ? (
+                <p className="text-sm text-muted-foreground">
+                  Monetization details are shown above only while this tab is selected.
+                </p>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Profile activity is available in this section.
+                </p>
+              )}
+            </CardContent>
           </Card>
         </section>
         <aside className="space-y-5">
