@@ -26,6 +26,18 @@ export type FriendStatus =
   | "REQUEST_RECEIVED"
   | "FRIENDS";
 
+export type ProfileViewSummary = {
+  totalViews: number;
+  uniqueViewers: number;
+  viewers: Array<{
+    id: string;
+    name: string;
+    profilePhotoUrl?: string | null;
+    viewCount: number;
+    lastViewedAt: string;
+  }>;
+};
+
 export const profileService = {
   getProfile: async (
     userId: string,
@@ -128,6 +140,31 @@ export const profileService = {
   ) => {
     const res = await privateApi.get(
       `/friend/list/${userId}`,
+    );
+
+    return res.data;
+  },
+
+  recordProfileView: async (
+    userId: string,
+  ) => {
+    const res = await privateApi.post(
+      `/user/profile/${userId}/view`,
+    );
+
+    return res.data as {
+      recorded: boolean;
+    };
+  },
+
+  getMyProfileViews: async (
+    limit = 50,
+  ): Promise<ProfileViewSummary> => {
+    const res = await privateApi.get(
+      "/user/me/profile-views",
+      {
+        params: { limit },
+      },
     );
 
     return res.data;
