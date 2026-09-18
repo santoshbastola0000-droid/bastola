@@ -1,5 +1,16 @@
 import { privateApi } from "@/http/api/privateApi";
 
+const DIRECT_UPLOAD_BASE_URL = String(
+  process.env.NEXT_PUBLIC_BACKEND_URL || "https://api.roomkhoj.com",
+).replace(/\/$/, "");
+
+const directMultipartConfig = {
+  baseURL: DIRECT_UPLOAD_BASE_URL,
+  // Uploads can take a while on mobile data. Axios defaults to no timeout,
+  // keep that behavior explicit for larger social videos.
+  timeout: 0,
+};
+
 export type SocialUser = {
   id: string;
   name: string;
@@ -269,7 +280,7 @@ export const socialService = {
   async uploadProfilePhoto(file: File) {
     const form = new FormData();
     form.append("media", file);
-    const response = await privateApi.post("/social/profile-photo", form);
+    const response = await privateApi.post("/social/profile-photo", form, directMultipartConfig);
     return response.data as { profilePhotoUrl: string; createdAt: string };
   },
 
@@ -298,7 +309,7 @@ export const socialService = {
       form.append("mentionUserIds", JSON.stringify(input.mentionUserIds));
     }
     input.files.forEach((file) => form.append("media", file));
-    const response = await privateApi.post("/social/posts", form);
+    const response = await privateApi.post("/social/posts", form, directMultipartConfig);
     return response.data;
   },
 
@@ -428,7 +439,7 @@ export const socialService = {
         input.musicAutoSelected ? "true" : "false",
       );
     }
-    const response = await privateApi.post("/social/stories", form);
+    const response = await privateApi.post("/social/stories", form, directMultipartConfig);
     return response.data as SocialStory;
   },
 
