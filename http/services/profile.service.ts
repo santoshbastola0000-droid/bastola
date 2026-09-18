@@ -101,6 +101,29 @@ export const profileService = {
     return res.data;
   },
 
+  getProfileUiSettings: async (): Promise<{
+    verifiedBadgeEnabled: boolean;
+    updatedAt?: string | null;
+  }> => {
+    const res = await privateApi.get(
+      "/user/profile-ui-settings",
+    );
+    return res.data;
+  },
+
+  updateProfileUiSettings: async (
+    verifiedBadgeEnabled: boolean,
+  ): Promise<{
+    verifiedBadgeEnabled: boolean;
+    updatedAt?: string | null;
+  }> => {
+    const res = await privateApi.patch(
+      "/user/admin/profile-ui-settings",
+      { verifiedBadgeEnabled },
+    );
+    return res.data;
+  },
+
   getFriendStatus: async (
     userId: string,
   ): Promise<{
