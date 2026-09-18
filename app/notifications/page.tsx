@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Bell, Check, UserPlus } from "lucide-react";
+import { toast } from "sonner";
+import { privateApi } from "@/http/api/privateApi";
 import { notificationService, UserNotification } from "@/http/services/notification.service";
 import { socialService } from "@/http/services/social.service";
 
@@ -47,6 +49,29 @@ export default function NotificationsPage() {
       );
     }
     const url = String(item.actionUrl || "/feed");
+
+    // Social notifications can outlive the post/comment that created them.
+    // Check the target before navigating so stale notifications explain what happened.
+    const postId = String(item.data?.postId || "");
+    const commentId = String(item.data?.commentId || "");
+    if (postId && (item.type.includes("POST") || item.type.includes("LIKE") || item.type.includes("COMMENT"))) {
+      try {
+        await privateApi.get(`/social/posts/${postId}`);
+        if (commentId && item.type.includes("COMMENT")) {
+          const response = await privateApi.get(`/social/posts/${postId}/comments`);
+          const comments = Array.isArray(response.data) ? response.data : response.data?.items || [];
+          const exists = comments.some((comment: any) => String(comment.id) === commentId);
+          if (!exists) {
+            toast.info("यो comment user ले delete गरिसकेको छ।");
+            return;
+          }
+        }
+      } catch {
+        toast.info("यो post user ले delete गरिसकेको छ।");
+        return;
+      }
+    }
+
     if (url.startsWith("/")) router.push(url);
   };
 
