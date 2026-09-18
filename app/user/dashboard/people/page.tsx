@@ -38,6 +38,7 @@ export default function PeoplePage() {
   const router = useRouter();
   const [people, setPeople] =
     useState<Person[]>([]);
+  const [requests, setRequests] = useState<Person[]>([]);
   const [search, setSearch] =
     useState("");
   const [loading, setLoading] =
@@ -88,10 +89,18 @@ export default function PeoplePage() {
     const loadSuggestions = async () => {
       try {
         setLoading(true);
-        const response = await privateApi.get("/friend/suggestions");
-        const rows = Array.isArray(response.data) ? response.data : [];
+        const [suggestionResponse, requestResponse] = await Promise.all([
+          privateApi.get("/friend/suggestions"),
+          privateApi.get("/friend/requests"),
+        ]);
+        const rows = Array.isArray(suggestionResponse.data) ? suggestionResponse.data : [];
+        const incoming = Array.isArray(requestResponse.data) ? requestResponse.data : [];
         setPeople(rows);
-        setFriendStatus(Object.fromEntries(rows.map((person: Person) => [person.id, "NONE"])));
+        setRequests(incoming);
+        setFriendStatus({
+          ...Object.fromEntries(rows.map((person: Person) => [person.id, "NONE"])),
+          ...Object.fromEntries(incoming.map((person: Person) => [person.id, "REQUEST_RECEIVED"])),
+        });
       } catch {
         await loadPeople();
       } finally {
@@ -142,6 +151,50 @@ export default function PeoplePage() {
           </Button>
         </form>
       </div>
+
+      {!loading && requests.length > 0 && (
+        <section className="mt-5 rounded-3xl border border-red-100 bg-white p-5 shadow-sm">
+          <h2 className="text-lg font-bold">Friend Requests</h2>
+          <p className="mt-1 text-sm text-muted-foreground">तपाईंलाई आएको friend request यहाँबाट Accept वा Decline गर्नुहोस्।</p>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            {requests.map((person) => (
+              <div key={person.id} className="flex items-center gap-3 rounded-2xl border p-3">
+                <div className="h-12 w-12 overflow-hidden rounded-full bg-muted">
+                  {person.profilePhotoUrl ? <img src={profileMediaUrl(person.profilePhotoUrl) || ""} alt={person.name} className="h-full w-full object-cover" /> : <UserRound className="m-3 h-6 w-6 text-muted-foreground" />}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <button className="truncate font-bold hover:underline" onClick={() => router.push(`/profile/${person.id}`)}>{person.name}</button>
+                  {person.location && <p className="truncate text-xs text-muted-foreground">{person.location}</p>}
+                  <div className="mt-2 flex gap-2">
+                    <Button size="sm" className="bg-red-600 hover:bg-red-700" disabled={friendBusy === person.id} onClick={async () => {
+                      setFriendBusy(person.id);
+                      try {
+                        await privateApi.post(`/friend/accept/${person.id}`);
+                        setRequests((current) => current.filter((row) => row.id !== person.id));
+                        toast.success("Friend request accept भयो।");
+                      } catch (error: any) {
+                        toast.error(error?.response?.data?.message || "Request accept गर्न सकिएन।");
+                      } finally { setFriendBusy(null); }
+                    }}>Accept</Button>
+                    <Button size="sm" variant="outline" disabled={friendBusy === person.id} onClick={async () => {
+                      setFriendBusy(person.id);
+                      try {
+                        await privateApi.delete(`/friend/${person.id}`);
+                        setRequests((current) => current.filter((row) => row.id !== person.id));
+                        toast.success("Friend request decline भयो।");
+                      } catch (error: any) {
+                        toast.error(error?.response?.data?.message || "Request decline गर्न सकिएन।");
+                      } finally { setFriendBusy(null); }
+                    }}>Decline</Button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {!loading && people.length > 0 && <h2 className="mt-6 text-lg font-bold">People You May Know</h2>}
 
       {loading ? (
         <div className="flex justify-center py-16">
