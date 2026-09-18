@@ -733,86 +733,369 @@ export default function ProfilePage() {
     : "";
 
   return (
-    <main className="mx-auto max-w-7xl space-y-5 pb-24">
+    <main className="mx-auto min-h-screen max-w-6xl space-y-5 bg-muted/30 pb-24 sm:px-4">
       <div className="lg:hidden">
         <PushNotificationSetup />
       </div>
 
-      <Card className="overflow-hidden rounded-3xl border-0 shadow-sm">
-        <div className="relative h-44 bg-gradient-to-br from-red-500 via-rose-500 to-pink-600 sm:h-64">
-          {coverPhoto && !coverPhotoFailed && (
+      <section className="overflow-hidden bg-background shadow-sm sm:rounded-b-[28px]">
+        <div className="relative h-56 bg-gradient-to-br from-primary/90 via-primary to-primary/75 sm:h-80">
+          {coverPhoto && !coverPhotoFailed ? (
             <img
               src={coverPhoto}
               alt="Profile cover"
               onError={() => setCoverPhotoFailed(true)}
               className="h-full w-full object-cover"
             />
+          ) : (
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.25),transparent_42%)]" />
           )}
-          <input ref={coverInputRef} type="file" accept="image/*,.heic,.heif" className="hidden" onChange={uploadCoverPhoto} />
-          <Button type="button" size="sm" variant="secondary" className="absolute bottom-3 right-3 gap-2 rounded-full shadow" disabled={uploadingCover} onClick={() => coverInputRef.current?.click()}>
-            {uploadingCover ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
-            Change Cover
-          </Button>
+
+          <input
+            ref={coverInputRef}
+            type="file"
+            accept="image/*,.heic,.heif"
+            className="hidden"
+            onChange={uploadCoverPhoto}
+          />
+
+          <button
+            type="button"
+            disabled={uploadingCover}
+            onClick={() => coverInputRef.current?.click()}
+            className="absolute bottom-4 right-4 flex h-11 w-11 items-center justify-center rounded-full bg-background/95 text-foreground shadow-lg backdrop-blur"
+            aria-label="Change cover photo"
+          >
+            {uploadingCover ? (
+              <Loader2 className="h-5 w-5 animate-spin" />
+            ) : (
+              <Camera className="h-5 w-5" />
+            )}
+          </button>
         </div>
 
-        <CardContent className="px-5 pb-6 sm:px-8">
-          <div className="-mt-12 flex flex-col gap-4 sm:-mt-16 sm:flex-row sm:items-end sm:justify-between">
-            <div className="flex items-end gap-4">
-              <div className="relative">
-                <div className="h-28 w-28 overflow-hidden rounded-full border-4 border-background bg-gradient-to-br from-red-500 to-rose-600 shadow-xl sm:h-36 sm:w-36">
-                  {profilePhoto && !profilePhotoFailed ? (
-                    <img
-                      src={profilePhoto}
-                      alt={`${profile.user.name} profile photo`}
-                      onError={() => setProfilePhotoFailed(true)}
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center text-3xl font-bold text-white">{initials}</div>
-                  )}
-                </div>
-                {profile.user.isVerified && <div className="absolute bottom-1 right-1 flex h-7 w-7 items-center justify-center rounded-full border-2 border-background bg-blue-500"><BadgeCheck className="h-4 w-4 text-white" /></div>}
-                <input ref={profileInputRef} type="file" accept="image/*,.heic,.heif" className="hidden" onChange={uploadProfilePhoto} />
-                <button type="button" disabled={uploadingProfile} onClick={() => profileInputRef.current?.click()} className="absolute bottom-1 left-1 flex h-9 w-9 items-center justify-center rounded-full border-2 border-background bg-background shadow">
-                  {uploadingProfile ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
-                </button>
-              </div>
-              <div className="mb-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <h1 className="truncate text-2xl font-bold sm:text-3xl">{profile.user.name}</h1>
-                  {monetization?.isMonetized && <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-1 text-[11px] font-bold text-amber-800"><Crown className="h-3 w-3" /> Monetized</span>}
-                </div>
-                <p className="text-sm text-muted-foreground">{friends.length} {friends.length === 1 ? "friend" : "friends"} · {profile.rooms.length} rooms · {profile.jobs.length} jobs</p>
-                {!profile.user.isVerified && (
-                  <div className="mt-2 inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-bold text-amber-700">
-                    Unverified
+        <div className="relative px-4 pb-4 sm:px-8">
+          <div className="-mt-20 flex flex-col items-center text-center sm:-mt-24">
+            <div className="relative">
+              <div className="h-40 w-40 overflow-hidden rounded-full border-[5px] border-background bg-primary shadow-xl sm:h-48 sm:w-48">
+                {profilePhoto && !profilePhotoFailed ? (
+                  <img
+                    src={profilePhoto}
+                    alt={`${profile.user.name} profile photo`}
+                    onError={() => setProfilePhotoFailed(true)}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center text-4xl font-black text-primary-foreground">
+                    {initials}
                   </div>
                 )}
               </div>
+
+              <input
+                ref={profileInputRef}
+                type="file"
+                accept="image/*,.heic,.heif"
+                className="hidden"
+                onChange={uploadProfilePhoto}
+              />
+
+              <button
+                type="button"
+                disabled={uploadingProfile}
+                onClick={() => profileInputRef.current?.click()}
+                className="absolute bottom-2 right-2 flex h-11 w-11 items-center justify-center rounded-full border-[3px] border-background bg-muted text-foreground shadow-md"
+                aria-label="Change profile photo"
+              >
+                {uploadingProfile ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  <Camera className="h-5 w-5" />
+                )}
+              </button>
             </div>
-            <div className="flex gap-2 sm:pb-1">
-              {isEditing ? (
-                <>
-                  <Button variant="outline" className="gap-2 rounded-full" onClick={handleCancel}><X className="h-4 w-4" />Cancel</Button>
-                  <Button className="gap-2 rounded-full" onClick={handleSave} disabled={isSaving}>{isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}Save</Button>
-                </>
-              ) : (
-                <Button variant="outline" className="gap-2 rounded-full" onClick={handleEdit}><Edit3 className="h-4 w-4" />Edit Profile</Button>
+
+            <div className="mt-3 flex max-w-full items-center justify-center gap-2">
+              <h1 className="truncate text-[30px] font-black tracking-tight sm:text-4xl">
+                {profile.user.name}
+              </h1>
+              {profile.user.isVerified && (
+                <BadgeCheck className="h-6 w-6 shrink-0 text-primary" />
               )}
             </div>
+
+            <p className="mt-1 text-sm font-bold text-muted-foreground sm:text-base">
+              {friends.length} {friends.length === 1 ? "friend" : "friends"}
+              <span className="mx-1.5">•</span>
+              {profile.rooms.length} rooms
+              <span className="mx-1.5">•</span>
+              {profile.jobs.length} jobs
+            </p>
+
+            {profile.user.bio && (
+              <p className="mt-4 max-w-2xl whitespace-pre-wrap text-[15px] font-medium leading-6 text-foreground">
+                {profile.user.bio}
+              </p>
+            )}
+
+            <div className="mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-sm font-semibold text-muted-foreground">
+              {profile.user.location && (
+                <span className="inline-flex items-center gap-1.5">
+                  <MapPin className="h-4 w-4 text-primary" />
+                  {profile.user.location}
+                </span>
+              )}
+              {profile.user.website && (
+                <a
+                  href={websiteHref}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1.5 text-primary hover:underline"
+                >
+                  <Globe2 className="h-4 w-4" />
+                  {profile.user.website}
+                </a>
+              )}
+              {monetization?.isMonetized && (
+                <span className="inline-flex items-center gap-1.5">
+                  <Crown className="h-4 w-4 text-primary" />
+                  Monetized
+                </span>
+              )}
+            </div>
+
+            {!profile.user.isVerified && (
+              <div className="mt-3 rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-xs font-bold text-primary">
+                Unverified
+              </div>
+            )}
+
+            <div className="mt-5 grid w-full max-w-2xl grid-cols-[1fr_1fr_auto] gap-2">
+              <Button
+                type="button"
+                className="h-11 rounded-xl bg-primary font-bold text-primary-foreground hover:bg-primary/90"
+                onClick={() => router.push("/feed")}
+              >
+                <Share2 className="mr-2 h-4 w-4" />
+                Create
+              </Button>
+
+              <Button
+                type="button"
+                variant="secondary"
+                className="h-11 rounded-xl font-bold"
+                onClick={() => router.push("/user/dashboard")}
+              >
+                <Home className="mr-2 h-4 w-4" />
+                Dashboard
+              </Button>
+
+              <Button
+                type="button"
+                variant="secondary"
+                size="icon"
+                className="h-11 w-11 rounded-xl"
+                onClick={handleEdit}
+                aria-label="Edit profile"
+              >
+                <Edit3 className="h-5 w-5" />
+              </Button>
+            </div>
+
+            {isEditing && (
+              <div className="mt-4 w-full max-w-2xl rounded-2xl border border-border bg-muted/30 p-4 text-left">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <Input
+                    value={form.name}
+                    onChange={(e) => setForm((current) => ({ ...current, name: e.target.value }))}
+                    placeholder="Name"
+                  />
+                  <Input
+                    value={form.location}
+                    onChange={(e) => setForm((current) => ({ ...current, location: e.target.value }))}
+                    placeholder="Location"
+                  />
+                  <Input
+                    value={form.website}
+                    onChange={(e) => setForm((current) => ({ ...current, website: e.target.value }))}
+                    placeholder="Website"
+                  />
+                  <Input
+                    value={form.bio}
+                    onChange={(e) => setForm((current) => ({ ...current, bio: e.target.value }))}
+                    placeholder="Bio"
+                  />
+                </div>
+                <div className="mt-3 flex justify-end gap-2">
+                  <Button variant="outline" onClick={handleCancel} className="rounded-xl">
+                    <X className="mr-2 h-4 w-4" />
+                    Cancel
+                  </Button>
+                  <Button onClick={handleSave} disabled={isSaving} className="rounded-xl">
+                    {isSaving ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Save className="mr-2 h-4 w-4" />
+                    )}
+                    Save
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
 
-          {!isEditing && (
-            <div className="mt-5">
-              {profile.user.bio && <p className="max-w-2xl whitespace-pre-wrap text-sm sm:text-base">{profile.user.bio}</p>}
-              <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted-foreground">
-                {profile.user.location && <span className="flex items-center gap-1.5"><MapPin className="h-4 w-4" />{profile.user.location}</span>}
-                {profile.user.website && <a href={websiteHref} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 font-medium text-primary hover:underline"><Globe2 className="h-4 w-4" />{profile.user.website}</a>}
-              </div>
+          <div className="mt-5 border-t border-border">
+            <div className="flex overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {[
+                ["rooms", "All"],
+                ["jobs", "Jobs"],
+                ["friends", "Friends"],
+                ["shares", "Activity"],
+                ["about", "About"],
+              ].map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setTab(value as ActivityTab)}
+                  className={`relative min-w-fit px-5 py-4 text-sm font-black transition sm:px-7 ${tab === value ? "text-primary" : "text-foreground"}`}
+                >
+                  {label}
+                  {tab === value && (
+                    <span className="absolute inset-x-3 bottom-0 h-[3px] rounded-full bg-primary" />
+                  )}
+                </button>
+              ))}
             </div>
-          )}
-        </CardContent>
-      </Card>
+          </div>
+        </div>
+      </section>
+
+      <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
+        <div className="space-y-4">
+          <Card className="rounded-2xl border-0 shadow-sm">
+            <CardContent className="p-4 sm:p-5">
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="text-xl font-black">Personal details</h2>
+                <button
+                  type="button"
+                  onClick={handleEdit}
+                  className="flex h-9 w-9 items-center justify-center rounded-full text-primary hover:bg-primary/10"
+                  aria-label="Edit personal details"
+                >
+                  <Edit3 className="h-5 w-5" />
+                </button>
+              </div>
+
+              <div className="space-y-4 text-[15px]">
+                {profile.user.location && (
+                  <div className="flex items-center gap-3">
+                    <MapPin className="h-6 w-6 shrink-0" />
+                    <span className="font-semibold">{profile.user.location}</span>
+                  </div>
+                )}
+                <div className="flex items-center gap-3">
+                  <Home className="h-6 w-6 shrink-0" />
+                  <span className="font-semibold">{profile.rooms.length} room listings</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <BriefcaseBusiness className="h-6 w-6 shrink-0" />
+                  <span className="font-semibold">{profile.jobs.length} job posts</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="rounded-2xl border-0 shadow-sm">
+            <CardContent className="p-4 sm:p-5">
+              <div className="mb-3 flex items-center justify-between">
+                <h2 className="text-xl font-black">All posts</h2>
+                <button
+                  type="button"
+                  onClick={() => router.push("/feed")}
+                  className="text-sm font-bold text-primary"
+                >
+                  View feed
+                </button>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => router.push("/feed")}
+                className="flex w-full items-center gap-3 rounded-2xl border border-border bg-background p-3 text-left transition hover:bg-muted"
+              >
+                <div className="h-11 w-11 shrink-0 overflow-hidden rounded-full bg-primary">
+                  {profilePhoto && !profilePhotoFailed ? (
+                    <img src={profilePhoto} alt="" className="h-full w-full object-cover" />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center text-sm font-black text-primary-foreground">
+                      {initials}
+                    </div>
+                  )}
+                </div>
+                <span className="flex-1 text-[15px] font-semibold text-muted-foreground">
+                  What's on your mind?
+                </span>
+                <Camera className="h-5 w-5 text-primary" />
+              </button>
+
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <Button variant="secondary" className="rounded-xl font-bold" onClick={() => router.push("/feed")}>
+                  <Camera className="mr-2 h-4 w-4" />
+                  Photo
+                </Button>
+                <Button variant="secondary" className="rounded-xl font-bold" onClick={() => router.push("/feed")}>
+                  <Share2 className="mr-2 h-4 w-4" />
+                  Post
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <Card className="h-fit rounded-2xl border-0 shadow-sm">
+          <CardContent className="p-4 sm:p-5">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-xl font-black">Friends</h2>
+              <button
+                type="button"
+                onClick={() => setTab("friends")}
+                className="text-sm font-bold text-primary"
+              >
+                See all
+              </button>
+            </div>
+
+            {friends.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No friends yet.</p>
+            ) : (
+              <div className="grid grid-cols-4 gap-3 lg:grid-cols-3">
+                {friends.slice(0, 6).map((friend: any) => {
+                  const photo = profileMediaUrl(friend.profilePhotoUrl);
+                  return (
+                    <button
+                      key={friend.id}
+                      type="button"
+                      onClick={() => router.push(`/profile/${friend.id}`)}
+                      className="min-w-0 text-left"
+                    >
+                      <div className="aspect-square overflow-hidden rounded-full bg-muted">
+                        {photo ? (
+                          <img src={photo} alt="" className="h-full w-full object-cover" />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center">
+                            <Users className="h-6 w-6 text-muted-foreground" />
+                          </div>
+                        )}
+                      </div>
+                      <p className="mt-1 truncate text-center text-xs font-bold">{friend.name}</p>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </section>
 
       <Card className="overflow-hidden rounded-3xl border border-amber-200 bg-gradient-to-br from-amber-50 via-white to-yellow-50 shadow-sm">
         <CardContent className="p-5 sm:p-6">
