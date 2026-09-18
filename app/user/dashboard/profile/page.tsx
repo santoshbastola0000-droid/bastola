@@ -97,6 +97,11 @@ export default function ProfilePage() {
   const [friends, setFriends] =
     useState<any[]>([]);
 
+  const [
+    verifiedBadgeEnabled,
+    setVerifiedBadgeEnabled,
+  ] = useState(false);
+
   const [profileViews, setProfileViews] =
     useState<ProfileViewSummary>({
       totalViews: 0,
@@ -482,7 +487,15 @@ export default function ProfilePage() {
       if (!userId) throw new Error("User ID unavailable");
       if (!currentUserId) setCurrentUserId(userId);
 
-      const data = await profileService.getProfile(userId);
+      const [data, uiSettings] = await Promise.all([
+        profileService.getProfile(userId),
+        profileService
+          .getProfileUiSettings()
+          .catch(() => ({ verifiedBadgeEnabled: false })),
+      ]);
+      setVerifiedBadgeEnabled(
+        Boolean(uiSettings?.verifiedBadgeEnabled),
+      );
       setProfile(data);
       setForm({
         name: data.user.name || "",
@@ -899,7 +912,7 @@ export default function ProfilePage() {
               <h1 className="truncate text-[30px] font-black tracking-tight sm:text-4xl">
                 {profile.user.name}
               </h1>
-              {profile.user.isVerified && (
+              {verifiedBadgeEnabled && profile.user.isVerified && (
                 <BadgeCheck className="h-6 w-6 shrink-0 text-primary" />
               )}
             </div>
@@ -944,7 +957,7 @@ export default function ProfilePage() {
               )}
             </div>
 
-            {!profile.user.isVerified && (
+            {verifiedBadgeEnabled && !profile.user.isVerified && (
               <div className="mt-3 rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-xs font-bold text-primary">
                 Unverified
               </div>
