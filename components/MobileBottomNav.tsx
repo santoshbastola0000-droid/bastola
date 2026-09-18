@@ -107,8 +107,18 @@ export function MobileBottomNav() {
         <div className="pointer-events-auto mx-auto flex h-[66px] max-w-[430px] items-center gap-1 rounded-[28px] border border-white/15 bg-slate-950/88 p-1.5 shadow-[0_12px_35px_rgba(0,0,0,0.32)] backdrop-blur-xl">
           <Link
             href={feedHref}
+            onClick={(event) => {
+              if (!isFeed) return;
+
+              event.preventDefault();
+              window.scrollTo({ top: 0, behavior: "smooth" });
+
+              window.setTimeout(() => {
+                window.location.reload();
+              }, 120);
+            }}
             className={itemClass(isFeed)}
-            aria-label="Feed"
+            aria-label={isFeed ? "Refresh feed" : "Feed"}
           >
             <Home className="h-6 w-6" strokeWidth={isFeed ? 2.6 : 2.1} />
             <span>Feed</span>
