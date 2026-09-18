@@ -37,6 +37,11 @@ import {
 import { profileMediaUrl } from "@/lib/profile-media";
 import { messageService } from "@/http/services/message.service";
 import { useUserStore } from "@/stores/user-store";
+import {
+  socialService,
+  type SocialPost,
+} from "@/http/services/social.service";
+import { ProfileSocialPostCard } from "@/components/social/ProfileSocialPostCard";
 
 type Tab =
   | "posts"
@@ -73,6 +78,14 @@ export default function PublicProfilePage() {
   const [friends, setFriends] =
     useState<any[]>([]);
 
+  const [socialPosts, setSocialPosts] =
+    useState<SocialPost[]>([]);
+
+  const [
+    verifiedBadgeEnabled,
+    setVerifiedBadgeEnabled,
+  ] = useState(false);
+
   const [tab, setTab] =
     useState<Tab>("posts");
 
@@ -105,6 +118,50 @@ export default function PublicProfilePage() {
           .getProfile(userId);
 
       setProfile(data);
+
+      const fallbackPosts = (Array.isArray(data.posts) ? data.posts : []).map(
+        (post: any) =>
+          ({
+            ...post,
+            mediaUrls: Array.isArray(post.mediaUrls) ? post.mediaUrls : [],
+            mediaTypes: Array.isArray(post.mediaTypes) ? post.mediaTypes : [],
+            author: {
+              id: data.user.id,
+              name: data.user.name,
+              profilePhotoUrl: data.user.profilePhotoUrl || null,
+              isVerified: data.user.isVerified,
+            },
+            likeCount: Number(post.likeCount || 0),
+            commentCount: Number(post.commentCount || 0),
+            shareCount: Number(post.shareCount || 0),
+            likedByMe: Boolean(post.likedByMe),
+          }) as SocialPost,
+      );
+      setSocialPosts(fallbackPosts);
+
+      const [uiSettingsResult, socialPostsResult] =
+        await Promise.allSettled([
+          profileService.getProfileUiSettings(),
+          currentUser?.id
+            ? socialService.userPosts(userId, 100)
+            : Promise.resolve(fallbackPosts),
+        ]);
+
+      if (uiSettingsResult.status === "fulfilled") {
+        setVerifiedBadgeEnabled(
+          Boolean(uiSettingsResult.value.verifiedBadgeEnabled),
+        );
+      } else {
+        setVerifiedBadgeEnabled(false);
+      }
+
+      if (socialPostsResult.status === "fulfilled") {
+        setSocialPosts(
+          Array.isArray(socialPostsResult.value)
+            ? socialPostsResult.value
+            : fallbackPosts,
+        );
+      }
 
       if (
         currentUser?.id &&
@@ -406,7 +463,7 @@ export default function PublicProfilePage() {
                 <h1 className="truncate text-[30px] font-black tracking-tight sm:text-4xl">
                   {profile.user.name}
                 </h1>
-                {profile.user.isVerified && (
+                {verifiedBadgeEnabled && profile.user.isVerified && (
                   <BadgeCheck className="h-6 w-6 shrink-0 text-primary" />
                 )}
               </div>
@@ -624,121 +681,23 @@ export default function PublicProfilePage() {
           <section className="space-y-4">
             {tab === "posts" && (
               <div className="space-y-4">
-                {profile.posts.length === 0 ? (
+                {socialPosts.length === 0 ? (
                   <div className="rounded-2xl bg-background p-8 text-center shadow-sm">
                     <p className="font-bold">No posts yet</p>
                     <p className="mt-1 text-sm text-muted-foreground">
-                      यो user ले अहिलेसम्म public post राखेको छैन।
+                      यो user ले अहिलेसम्म देखाउन मिल्ने post राखेको छैन।
                     </p>
                   </div>
                 ) : (
-                  profile.posts.map((post: any) => {
-                    const mediaUrls = Array.isArray(post.mediaUrls)
-                      ? post.mediaUrls
-                      : [];
-                    const mediaTypes = Array.isArray(post.mediaTypes)
-                      ? post.mediaTypes
-                      : [];
-
-                    return (
-                      <article
-                        key={post.id}
-                        className="overflow-hidden rounded-2xl bg-background shadow-sm"
-                      >
-                        <button
-                          type="button"
-                          onClick={() =>
-                            router.push(
-                              `/post/${post.id}`,
-                            )
-                          }
-                          className="block w-full text-left"
-                        >
-                          <div className="flex items-center gap-3 px-4 pt-4">
-                            <div className="h-11 w-11 shrink-0 overflow-hidden rounded-full bg-primary">
-                              {profilePhoto ? (
-                                <img
-                                  src={profilePhoto}
-                                  alt=""
-                                  className="h-full w-full object-cover"
-                                />
-                              ) : (
-                                <div className="flex h-full w-full items-center justify-center text-sm font-black text-primary-foreground">
-                                  {initials}
-                                </div>
-                              )}
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <p className="truncate text-sm font-black">
-                                {profile.user.name}
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                {post.createdAt
-                                  ? new Date(post.createdAt).toLocaleString()
-                                  : "Public post"}
-                              </p>
-                            </div>
-                          </div>
-
-                          {post.content && (
-                            <p className="whitespace-pre-wrap px-4 py-3 text-[15px] leading-6">
-                              {post.content}
-                            </p>
-                          )}
-
-                          {mediaUrls.length > 0 && (
-                            <div
-                              className={
-                                mediaUrls.length > 1
-                                  ? "grid grid-cols-2 gap-0.5 bg-black"
-                                  : "bg-black"
-                              }
-                            >
-                              {mediaUrls
-                                .slice(0, 4)
-                                .map(
-                                  (
-                                    url: string,
-                                    index: number,
-                                  ) => {
-                                    const src =
-                                      profileMediaUrl(url) || "";
-                                    const isVideo =
-                                      String(
-                                        mediaTypes[index] || "",
-                                      ).toUpperCase() ===
-                                      "VIDEO";
-
-                                    return isVideo ? (
-                                      <video
-                                        key={`${url}-${index}`}
-                                        src={src}
-                                        muted
-                                        playsInline
-                                        preload="metadata"
-                                        className="max-h-[560px] w-full object-contain"
-                                      />
-                                    ) : (
-                                      <img
-                                        key={`${url}-${index}`}
-                                        src={src}
-                                        alt="Post"
-                                        loading="lazy"
-                                        className="max-h-[560px] w-full object-contain"
-                                      />
-                                    );
-                                  },
-                                )}
-                            </div>
-                          )}
-
-                          <div className="border-t px-4 py-3 text-sm font-bold text-primary">
-                            View post
-                          </div>
-                        </button>
-                      </article>
-                    );
-                  })
+                  socialPosts.map((post) => (
+                    <ProfileSocialPostCard
+                      key={post.id}
+                      post={post}
+                      currentUserId={String(currentUser?.id || "")}
+                      currentUserPhotoUrl={currentUser?.profilePhotoUrl || null}
+                      onChanged={load}
+                    />
+                  ))
                 )}
               </div>
             )}
