@@ -91,8 +91,7 @@ const SocialCallbackPage = () => {
 
         const savedRedirect = safeSavedRedirect();
         const redirect =
-          user.role === "User" &&
-          (!user.accountPurpose || String(user.phoneNumber || "").startsWith("SOCIAL_"))
+          user.role === "User" && !user.accountPurpose
             ? "/auth/complete-profile"
             : savedRedirect ||
               (user.role === "Admin"
