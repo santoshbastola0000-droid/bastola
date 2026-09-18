@@ -257,170 +257,138 @@ export default function PublicProfilePage() {
   return (
     <main className="min-h-screen bg-muted/30 pb-24">
       <div className="mx-auto max-w-5xl">
-        <section className="overflow-hidden bg-background shadow-sm md:rounded-b-3xl">
-          <div className="relative h-48 bg-gradient-to-br from-red-500 via-rose-500 to-pink-600 sm:h-72">
-            {coverPhoto && (
+        <section className="overflow-hidden bg-background shadow-sm sm:rounded-b-[28px]">
+          <div className="relative h-56 bg-gradient-to-br from-primary/90 via-primary to-primary/75 sm:h-80">
+            {coverPhoto ? (
               <img
                 src={coverPhoto}
                 alt="Cover"
                 className="h-full w-full object-cover"
               />
+            ) : (
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.25),transparent_42%)]" />
             )}
           </div>
 
-          <div className="px-4 pb-4 sm:px-8">
-            <div className="-mt-14 flex flex-col gap-4 sm:-mt-16 sm:flex-row sm:items-end sm:justify-between">
-              <div className="flex items-end gap-4">
-                <div className="relative h-28 w-28 shrink-0 overflow-hidden rounded-full border-4 border-background bg-gradient-to-br from-red-500 to-rose-600 shadow-lg sm:h-36 sm:w-36">
-                  {profilePhoto ? (
-                    <img
-                      src={profilePhoto}
-                      alt=""
-                      className="h-full w-full object-cover"
-                      onError={(e) => {
-                        e.currentTarget.style.display = "none";
-                      }}
-                    />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center text-3xl font-bold text-white">
-                      {initials}
-                    </div>
-                  )}
-                </div>
-
-                <div className="mb-1 min-w-0">
-                  <div className="flex items-center gap-1.5">
-                    <h1 className="truncate text-2xl font-bold sm:text-3xl">
-                      {
-                        profile.user
-                          .name
-                      }
-                    </h1>
-
-                    {profile.user
-                      .isVerified && (
-                      <BadgeCheck className="h-5 w-5 shrink-0 text-blue-500" />
-                    )}
+          <div className="relative px-4 pb-4 sm:px-8">
+            <div className="-mt-20 flex flex-col items-center text-center sm:-mt-24">
+              <div className="h-40 w-40 shrink-0 overflow-hidden rounded-full border-[5px] border-background bg-primary shadow-xl sm:h-48 sm:w-48">
+                {profilePhoto ? (
+                  <img
+                    src={profilePhoto}
+                    alt=""
+                    className="h-full w-full object-cover"
+                    onError={(e) => {
+                      e.currentTarget.style.display = "none";
+                    }}
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center text-4xl font-black text-primary-foreground">
+                    {initials}
                   </div>
-
-                  <p className="text-sm font-medium text-muted-foreground">
-                    {friends.length}{" "}
-                    {friends.length === 1
-                      ? "friend"
-                      : "friends"}
-                  </p>
-                </div>
+                )}
               </div>
 
-              {friendStatus !==
-                "SELF" && (
-                <div className="flex gap-2 sm:pb-1">
+              <div className="mt-3 flex max-w-full items-center justify-center gap-2">
+                <h1 className="truncate text-[30px] font-black tracking-tight sm:text-4xl">
+                  {profile.user.name}
+                </h1>
+                {profile.user.isVerified && (
+                  <BadgeCheck className="h-6 w-6 shrink-0 text-primary" />
+                )}
+              </div>
+
+              <p className="mt-1 text-sm font-bold text-muted-foreground sm:text-base">
+                {friends.length} {friends.length === 1 ? "friend" : "friends"}
+                <span className="mx-1.5">•</span>
+                {profile.rooms.length} rooms
+                <span className="mx-1.5">•</span>
+                {profile.jobs.length} jobs
+              </p>
+
+              {profile.user.bio && (
+                <p className="mt-4 max-w-2xl whitespace-pre-wrap text-[15px] font-medium leading-6">
+                  {profile.user.bio}
+                </p>
+              )}
+
+              <div className="mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-sm font-semibold text-muted-foreground">
+                {profile.user.location && (
+                  <span className="inline-flex items-center gap-1.5">
+                    <MapPin className="h-4 w-4 text-primary" />
+                    {profile.user.location}
+                  </span>
+                )}
+
+                {profile.user.website && (
+                  <a
+                    href={profile.user.website}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1.5 text-primary hover:underline"
+                  >
+                    <Globe2 className="h-4 w-4" />
+                    Website
+                  </a>
+                )}
+              </div>
+
+              {friendStatus !== "SELF" && (
+                <div className="mt-5 grid w-full max-w-xl grid-cols-2 gap-2">
                   <Button
-                    onClick={
-                      handleFriend
-                    }
+                    onClick={handleFriend}
                     disabled={
                       friendLoading ||
-                      friendStatus ===
-                        "REQUEST_SENT" ||
-                      friendStatus ===
-                        "FRIENDS"
+                      friendStatus === "REQUEST_SENT" ||
+                      friendStatus === "FRIENDS"
                     }
-                    className="flex-1 gap-2 sm:flex-none"
+                    className="h-11 rounded-xl bg-primary font-bold text-primary-foreground hover:bg-primary/90"
                   >
-                    {friendStatus ===
-                    "FRIENDS" ? (
-                      <Check className="h-4 w-4" />
-                    ) : friendStatus ===
-                      "REQUEST_SENT" ? (
-                      <Clock3 className="h-4 w-4" />
+                    {friendStatus === "FRIENDS" ? (
+                      <Check className="mr-2 h-4 w-4" />
+                    ) : friendStatus === "REQUEST_SENT" ? (
+                      <Clock3 className="mr-2 h-4 w-4" />
                     ) : (
-                      <UserPlus className="h-4 w-4" />
+                      <UserPlus className="mr-2 h-4 w-4" />
                     )}
-
                     {friendLabel}
                   </Button>
 
                   <Button
                     variant="secondary"
-                    className="flex-1 gap-2 sm:flex-none"
+                    className="h-11 rounded-xl font-bold"
                     onClick={handleMessage}
                     disabled={messageLoading}
                   >
-                    <MessageCircle className="h-4 w-4" />
-                    {messageLoading
-                      ? "Opening..."
-                      : "Message"}
-                  </Button>               </div>
+                    <MessageCircle className="mr-2 h-4 w-4" />
+                    {messageLoading ? "Opening..." : "Message"}
+                  </Button>
+                </div>
               )}
             </div>
 
-            {profile.user.bio && (
-              <p className="mt-4 max-w-2xl whitespace-pre-wrap text-sm sm:text-base">
-                {profile.user.bio}
-              </p>
-            )}
-
-            <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted-foreground">
-              {profile.user.location && (
-                <span className="flex items-center gap-1.5">
-                  <MapPin className="h-4 w-4" />
-                  {
-                    profile.user
-                      .location
-                  }
-                </span>
-              )}
-
-              {profile.user.website && (
-                <a
-                  href={
-                    profile.user
-                      .website
-                  }
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex items-center gap-1.5 font-medium text-primary hover:underline"
-                >
-                  <Globe2 className="h-4 w-4" />
-                  Website
-                </a>
-              )}
-            </div>
-          </div>
-
-          <div className="border-t px-2 sm:px-6">
-            <div className="flex overflow-x-auto">
-              {[
-                ["posts", "Posts"],
-                ["rooms", "Rooms"],
-                ["jobs", "Jobs"],
-                ["friends", "Friends"],
-                ["about", "About"],
-              ].map(
-                ([value, label]) => (
+            <div className="mt-5 border-t border-border">
+              <div className="flex overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                {[
+                  ["posts", "All"],
+                  ["rooms", "Rooms"],
+                  ["jobs", "Jobs"],
+                  ["friends", "Friends"],
+                  ["about", "About"],
+                ].map(([value, label]) => (
                   <button
                     key={value}
                     type="button"
-                    onClick={() =>
-                      setTab(
-                        value as Tab,
-                      )
-                    }
-                    className={`relative min-w-fit px-5 py-4 text-sm font-semibold ${
-                      tab === value
-                        ? "text-primary"
-                        : "text-muted-foreground"
-                    }`}
+                    onClick={() => setTab(value as Tab)}
+                    className={`relative min-w-fit px-5 py-4 text-sm font-black transition sm:px-7 ${tab === value ? "text-primary" : "text-foreground"}`}
                   >
                     {label}
-
                     {tab === value && (
-                      <span className="absolute inset-x-2 bottom-0 h-0.5 rounded-full bg-primary" />
+                      <span className="absolute inset-x-3 bottom-0 h-[3px] rounded-full bg-primary" />
                     )}
                   </button>
-                ),
-              )}
+                ))}
+              </div>
             </div>
           </div>
         </section>
