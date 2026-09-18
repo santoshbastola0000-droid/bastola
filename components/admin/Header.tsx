@@ -19,7 +19,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useUserStore } from "@/stores/user-store";
 import { useLogout } from "@/hooks/useLogout";
 import { LogoutConfirmDialog } from "@/components/LogoutConfirmDialog";
@@ -53,6 +53,14 @@ export function AdminHeader({ isSidebarCollapsed = false }: AdminHeaderProps) {
       .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
       .join(" ");
   };
+
+  const backendUrl = String(process.env.NEXT_PUBLIC_BACKEND_URL || "https://api.roomkhoj.com").replace(/\/$/, "");
+  const rawProfilePhoto = String(user?.profilePhotoUrl || "").trim();
+  const profilePhoto = !rawProfilePhoto
+    ? ""
+    : /^https?:\/\//i.test(rawProfilePhoto)
+      ? rawProfilePhoto
+      : `${backendUrl}${rawProfilePhoto.startsWith("/") ? rawProfilePhoto : `/${rawProfilePhoto}`}`;
 
   const getInitials = () => {
     if (user?.name) {
@@ -151,6 +159,7 @@ export function AdminHeader({ isSidebarCollapsed = false }: AdminHeaderProps) {
                   aria-label="Open user menu"
                 >
                   <Avatar className="h-7 w-7 md:h-8 md:w-8">
+                    {profilePhoto ? <AvatarImage src={profilePhoto} alt={user?.name || "Admin"} className="object-cover" /> : null}
                     <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
                       {getInitials()}
                     </AvatarFallback>
