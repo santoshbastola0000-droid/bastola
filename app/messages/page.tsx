@@ -2669,9 +2669,15 @@ const user = useUserStore(
                   </div>
                 </div>
               )}
-              <div className="border-t border-black/5 bg-[#f7f7f7]/95 px-2 py-1.5 pb-[calc(0.4rem+env(safe-area-inset-bottom))] backdrop-blur dark:border-white/10 dark:bg-[#202c33]/95 md:px-4 md:py-2">
-                <div className="flex items-end gap-2">
-                  <div className="relative">
+              <div
+                className="w-full max-w-full overflow-visible border-t border-black/5 bg-[#f7f7f7]/95 py-1.5 pb-[calc(0.4rem+env(safe-area-inset-bottom))] backdrop-blur dark:border-white/10 dark:bg-[#202c33]/95 md:px-4 md:py-2"
+                style={{
+                  paddingLeft: "max(0.5rem, env(safe-area-inset-left))",
+                  paddingRight: "max(0.5rem, env(safe-area-inset-right))",
+                }}
+              >
+                <div className="grid w-full max-w-full grid-cols-[40px_minmax(0,1fr)_40px] items-end gap-1.5 sm:gap-2">
+                  <div className="relative h-10 w-10 shrink-0">
                     <button
                       type="button"
                       onClick={() => setShowPlusMenu((open) => !open)}
@@ -2714,7 +2720,7 @@ const user = useUserStore(
                     onChange={handleMediaSelect}
                   />
 
-                  <div className="flex min-h-10 min-w-0 flex-1 items-center rounded-[20px] border border-black/5 bg-white px-2.5 shadow-sm dark:border-white/10 dark:bg-[#2a3942]">
+                  <div className="flex min-h-10 min-w-0 w-full items-center overflow-hidden rounded-[20px] border border-black/5 bg-white px-2.5 shadow-sm dark:border-white/10 dark:bg-[#2a3942]">
                     <textarea
                       data-message-composer="true"
                       value={draft}
@@ -2747,13 +2753,13 @@ const user = useUserStore(
                       rows={1}
                       className="max-h-24 min-h-6 min-w-0 flex-1 resize-none bg-transparent py-1.5 text-[14px] leading-5 outline-none placeholder:text-muted-foreground"
                     />
-                    <Smile className="h-5 w-5 text-muted-foreground" />
+                    <Smile className="h-4.5 w-4.5 shrink-0 text-muted-foreground" />
                   </div>
 
                   <Button
                     type="button"
                     size="icon"
-                    className="h-10 w-10 shrink-0 rounded-full disabled:opacity-45"
+                    className="relative z-10 h-10 w-10 min-w-10 max-w-10 shrink-0 rounded-full bg-primary p-0 text-primary-foreground shadow-sm disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100"
                     onPointerDown={(event) => {
                       event.preventDefault();
                     }}
