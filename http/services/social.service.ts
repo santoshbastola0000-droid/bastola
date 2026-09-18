@@ -201,6 +201,14 @@ export type SearchSuggestion = {
 };
 
 export const socialService = {
+  async userPosts(userId: string, limit = 50): Promise<SocialPost[]> {
+    const response = await privateApi.get(
+      `/social/users/${userId}/posts`,
+      { params: { limit } },
+    );
+    return Array.isArray(response.data) ? response.data : [];
+  },
+
   async trackSearch(input: {
     query: string;
     context?: "GLOBAL" | "ROOM" | "JOB" | "PEOPLE" | "MESSAGE" | "CANDIDATE";
