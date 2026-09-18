@@ -521,14 +521,123 @@ export default function PublicProfilePage() {
 
           <section className="space-y-4">
             {tab === "posts" && (
-              <div className="rounded-2xl bg-background p-6 text-center shadow-sm">
-                <p className="font-semibold">
-                  Posts
-                </p>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Normal social posts
-                  अर्को चरणमा जोड्दैछौँ।
-                </p>
+              <div className="space-y-4">
+                {profile.posts.length === 0 ? (
+                  <div className="rounded-2xl bg-background p-8 text-center shadow-sm">
+                    <p className="font-bold">No posts yet</p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      यो user ले अहिलेसम्म public post राखेको छैन।
+                    </p>
+                  </div>
+                ) : (
+                  profile.posts.map((post: any) => {
+                    const mediaUrls = Array.isArray(post.mediaUrls)
+                      ? post.mediaUrls
+                      : [];
+                    const mediaTypes = Array.isArray(post.mediaTypes)
+                      ? post.mediaTypes
+                      : [];
+
+                    return (
+                      <article
+                        key={post.id}
+                        className="overflow-hidden rounded-2xl bg-background shadow-sm"
+                      >
+                        <button
+                          type="button"
+                          onClick={() =>
+                            router.push(
+                              `/post/${post.id}`,
+                            )
+                          }
+                          className="block w-full text-left"
+                        >
+                          <div className="flex items-center gap-3 px-4 pt-4">
+                            <div className="h-11 w-11 shrink-0 overflow-hidden rounded-full bg-primary">
+                              {profilePhoto ? (
+                                <img
+                                  src={profilePhoto}
+                                  alt=""
+                                  className="h-full w-full object-cover"
+                                />
+                              ) : (
+                                <div className="flex h-full w-full items-center justify-center text-sm font-black text-primary-foreground">
+                                  {initials}
+                                </div>
+                              )}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-sm font-black">
+                                {profile.user.name}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {post.createdAt
+                                  ? new Date(post.createdAt).toLocaleString()
+                                  : "Public post"}
+                              </p>
+                            </div>
+                          </div>
+
+                          {post.content && (
+                            <p className="whitespace-pre-wrap px-4 py-3 text-[15px] leading-6">
+                              {post.content}
+                            </p>
+                          )}
+
+                          {mediaUrls.length > 0 && (
+                            <div
+                              className={
+                                mediaUrls.length > 1
+                                  ? "grid grid-cols-2 gap-0.5 bg-black"
+                                  : "bg-black"
+                              }
+                            >
+                              {mediaUrls
+                                .slice(0, 4)
+                                .map(
+                                  (
+                                    url: string,
+                                    index: number,
+                                  ) => {
+                                    const src =
+                                      profileMediaUrl(url) || "";
+                                    const isVideo =
+                                      String(
+                                        mediaTypes[index] || "",
+                                      ).toUpperCase() ===
+                                      "VIDEO";
+
+                                    return isVideo ? (
+                                      <video
+                                        key={`${url}-${index}`}
+                                        src={src}
+                                        muted
+                                        playsInline
+                                        preload="metadata"
+                                        className="max-h-[560px] w-full object-contain"
+                                      />
+                                    ) : (
+                                      <img
+                                        key={`${url}-${index}`}
+                                        src={src}
+                                        alt="Post"
+                                        loading="lazy"
+                                        className="max-h-[560px] w-full object-contain"
+                                      />
+                                    );
+                                  },
+                                )}
+                            </div>
+                          )}
+
+                          <div className="border-t px-4 py-3 text-sm font-bold text-primary">
+                            View post
+                          </div>
+                        </button>
+                      </article>
+                    );
+                  })
+                )}
               </div>
             )}
 
