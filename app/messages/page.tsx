@@ -1876,7 +1876,7 @@ const user = useUserStore(
   return (
     <>
     <main
-      className={`${isDarkMode ? "dark" : ""} mx-auto h-[calc(100dvh-68px)] max-w-7xl overflow-hidden bg-background text-foreground md:h-screen md:max-w-none md:p-0`}
+      className={`${isDarkMode ? "dark" : ""} mx-auto h-[calc(100dvh-68px)] w-full max-w-7xl overflow-hidden bg-background text-foreground md:h-screen md:max-w-none md:p-0`}
       style={
         mobileChatViewport
           ? {
@@ -1893,21 +1893,21 @@ const user = useUserStore(
           : undefined
       }
     >
-      <div className="grid h-full min-h-0 overflow-hidden border border-border bg-background shadow-none md:grid-cols-[390px_1fr] md:border-0 md:bg-card">
+      <div className="grid h-full min-h-0 w-full max-w-full overflow-hidden border border-border bg-background shadow-none md:grid-cols-[390px_1fr] md:border-0 md:bg-card">
         <aside
-          className={`h-full min-h-0 overflow-y-auto overscroll-contain touch-pan-y border-r border-border bg-card ${
+          className={`h-full min-h-0 w-full min-w-0 max-w-full overflow-x-hidden overflow-y-auto overscroll-contain touch-pan-y border-r border-border bg-card ${
             selected
               ? "hidden md:block"
               : "block"
           }`}
         >
-          <div className="sticky top-0 z-20 border-b border-border bg-card px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))] md:bg-muted md:px-4 md:py-3">
+          <div className="sticky top-0 z-20 min-w-0 max-w-full overflow-hidden border-b border-border bg-card px-3 pb-2.5 pt-[calc(0.65rem+env(safe-area-inset-top))] md:bg-muted md:px-4 md:py-3">
             <div className="flex items-center justify-between">
               <div>
                 <p className="hidden text-[11px] font-bold uppercase tracking-[0.18em] text-primary md:block">
                   RoomKhoj
                 </p>
-                <h1 className="text-[28px] font-black tracking-tight text-foreground md:text-2xl">
+                <h1 className="text-[24px] font-black tracking-tight text-foreground md:text-2xl">
                   Chats
                 </h1>
               </div>
@@ -1939,7 +1939,7 @@ const user = useUserStore(
                   }
                 }}
                 placeholder="Search or start new chat"
-                className="h-11 rounded-[14px] border-0 bg-muted pl-11 pr-4 text-sm text-foreground shadow-none placeholder:text-muted-foreground focus-visible:ring-0"
+                className="h-10 rounded-[14px] border-0 bg-muted pl-10 pr-3 text-[13px] text-foreground shadow-none placeholder:text-muted-foreground focus-visible:ring-0"
               />
             </div>
 
@@ -1985,13 +1985,13 @@ const user = useUserStore(
             <>
               {visibleInboxFriends.length > 0 && (
                 <div className="border-b border-border bg-card px-4 py-3">
-                  <div className="mb-2 flex items-center justify-between">
-                    <p className="text-sm font-bold text-foreground">
+                  <div className="mb-2 flex min-w-0 items-center justify-between gap-3">
+                    <p className="min-w-0 truncate text-[13px] font-bold text-foreground">
                       {onlineFriends.length > 0
                         ? "Online friends"
                         : "Recently active friends"}
                     </p>
-                    <span className="text-[11px] font-medium text-muted-foreground">
+                    <span className="shrink-0 whitespace-nowrap text-[10px] font-medium text-muted-foreground">
                       {onlineFriends.length > 0
                         ? `${onlineFriends.length} online`
                         : "Last online"}
@@ -2080,7 +2080,7 @@ const user = useUserStore(
                       "/user/dashboard/people",
                     )
                   }
-                  className="flex w-full items-center gap-3 rounded-2xl px-1 py-2.5 text-left transition hover:bg-muted"
+                  className="flex w-full min-w-0 max-w-full items-center gap-3 overflow-hidden rounded-2xl px-1 py-2.5 text-left transition hover:bg-muted"
                 >
                   <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm">
                     <UsersRound className="h-6 w-6" />
@@ -2113,7 +2113,7 @@ const user = useUserStore(
                       "/notifications?view=activity",
                     )
                   }
-                  className="flex w-full items-center gap-3 rounded-2xl px-1 py-2.5 text-left transition hover:bg-muted"
+                  className="flex w-full min-w-0 max-w-full items-center gap-3 overflow-hidden rounded-2xl px-1 py-2.5 text-left transition hover:bg-muted"
                 >
                   <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-pink-500 text-white shadow-sm">
                     <Heart className="h-6 w-6 fill-current" />
@@ -2173,7 +2173,7 @@ const user = useUserStore(
                           conversation,
                         )
                       }
-                      className="flex w-full gap-3 px-4 py-3.5 text-left transition hover:bg-muted"
+                      className="flex w-full min-w-0 max-w-full gap-3 overflow-hidden px-3 py-3 text-left transition hover:bg-muted"
                     >
                       <div className="relative shrink-0">
                         <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted font-semibold text-foreground">
@@ -2388,7 +2388,7 @@ const user = useUserStore(
             </div>
           ) : (
             <>
-              <header className="flex min-h-[70px] items-center gap-2 border-b border-border bg-card px-2.5 pb-2 pt-[calc(0.5rem+env(safe-area-inset-top))] text-foreground shadow-none md:min-h-0 md:bg-muted md:px-4 md:py-3">
+              <header className="flex min-h-[60px] items-center gap-2 border-b border-border bg-card px-2 pb-1.5 pt-[calc(0.35rem+env(safe-area-inset-top))] text-foreground shadow-none md:min-h-0 md:bg-muted md:px-4 md:py-2">
                 <button
                   type="button"
                   className="flex h-10 items-center gap-0.5 rounded-full px-1 text-foreground md:hidden"
@@ -2409,7 +2409,7 @@ const user = useUserStore(
                   className="relative shrink-0"
                   aria-label="Open profile"
                 >
-                  <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#6a7175] font-bold text-white">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#6a7175] text-sm font-bold text-white">
                     {otherUserId
                       .slice(0, 2)
                       .toUpperCase()}
@@ -2423,7 +2423,7 @@ const user = useUserStore(
                 </button>
 
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-[17px] font-bold text-foreground">
+                  <p className="truncate text-[15px] font-bold text-foreground">
                     {selected.otherUser?.name || "RoomKhoj user"}
                   </p>
 
@@ -2432,8 +2432,8 @@ const user = useUserStore(
                   </p>
                 </div>
                 <div className="ml-auto flex items-center gap-0.5 rounded-full border border-border bg-muted/80 p-1 shadow-sm">
-                  <Button type="button" size="icon" variant="ghost" className="h-9 w-9 rounded-full text-foreground hover:bg-primary/10 hover:text-primary" onClick={() => startCall("video")} aria-label="Video call"><Video className="h-5 w-5" /></Button>
-                  <Button type="button" size="icon" variant="ghost" className="h-9 w-9 rounded-full text-foreground hover:bg-primary/10 hover:text-primary" onClick={() => startCall("audio")} aria-label="Voice call"><Phone className="h-5 w-5" /></Button>
+                  <Button type="button" size="icon" variant="ghost" className="h-8 w-8 rounded-full text-foreground hover:bg-primary/10 hover:text-primary" onClick={() => startCall("video")} aria-label="Video call"><Video className="h-5 w-5" /></Button>
+                  <Button type="button" size="icon" variant="ghost" className="h-8 w-8 rounded-full text-foreground hover:bg-primary/10 hover:text-primary" onClick={() => startCall("audio")} aria-label="Voice call"><Phone className="h-5 w-5" /></Button>
                 </div>
               </header>
               <audio ref={remoteAudioRef} autoPlay playsInline />
@@ -2522,7 +2522,7 @@ const user = useUserStore(
                             onPointerUp={clearDeleteHoldTimer}
                             onPointerLeave={clearDeleteHoldTimer}
                             onPointerCancel={clearDeleteHoldTimer}
-                            className={`max-w-[84%] rounded-2xl px-3 py-2 text-sm shadow-sm ${
+                            className={`max-w-[80%] rounded-2xl px-2.5 py-1.5 text-[13px] leading-[18px] shadow-sm ${
                               mine
                                 ? "rounded-br-md border border-primary/15 bg-primary/15 text-foreground"
                                 : "rounded-bl-md border border-black/5 bg-white text-slate-900 dark:border-white/10 dark:bg-[#202c33] dark:text-white"
@@ -2612,7 +2612,7 @@ const user = useUserStore(
                               const reactionCounts = Object.values(message.reactions).reduce<Record<string, number>>((acc, emoji) => { acc[emoji] = (acc[emoji] || 0) + 1; return acc; }, {});
                               return <div className="mt-1 flex flex-wrap gap-1">{Object.entries(reactionCounts).map(([emoji, count]) => <span key={emoji} className="rounded-full bg-white/80 px-2 py-0.5 text-xs shadow-sm dark:bg-[#111b21]">{emoji}{count > 1 ? ` ${count}` : ""}</span>)}</div>;
                             })()}
-                            <div className="mt-1 flex items-center justify-end gap-1 text-[10px] opacity-70">
+                            <div className="mt-0.5 flex items-center justify-end gap-1 text-[9px] opacity-70">
                               {(message as any).editedAt && <span className="mr-1 italic">Edited</span>}
                               <span>{new Date(message.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
                               {mine && (
@@ -2669,16 +2669,16 @@ const user = useUserStore(
                   </div>
                 </div>
               )}
-              <div className="border-t border-black/5 bg-[#f7f7f7]/95 px-2.5 py-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] backdrop-blur dark:border-white/10 dark:bg-[#202c33]/95 md:px-4 md:py-3">
+              <div className="border-t border-black/5 bg-[#f7f7f7]/95 px-2 py-1.5 pb-[calc(0.4rem+env(safe-area-inset-bottom))] backdrop-blur dark:border-white/10 dark:bg-[#202c33]/95 md:px-4 md:py-2">
                 <div className="flex items-end gap-2">
                   <div className="relative">
                     <button
                       type="button"
                       onClick={() => setShowPlusMenu((open) => !open)}
-                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-primary transition hover:bg-primary/10"
+                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-primary transition hover:bg-primary/10"
                       aria-label="Message actions"
                     >
-                      <Plus className="h-6 w-6" />
+                      <Plus className="h-5 w-5" />
                     </button>
                     {showPlusMenu && (
                       <>
@@ -2714,7 +2714,7 @@ const user = useUserStore(
                     onChange={handleMediaSelect}
                   />
 
-                  <div className="flex min-h-11 flex-1 items-center rounded-[24px] border border-black/5 bg-white px-3 shadow-sm dark:border-white/10 dark:bg-[#2a3942]">
+                  <div className="flex min-h-10 min-w-0 flex-1 items-center rounded-[20px] border border-black/5 bg-white px-2.5 shadow-sm dark:border-white/10 dark:bg-[#2a3942]">
                     <textarea
                       data-message-composer="true"
                       value={draft}
@@ -2745,7 +2745,7 @@ const user = useUserStore(
                       placeholder="Type a message"
                       enterKeyHint="send"
                       rows={1}
-                      className="max-h-32 min-h-7 flex-1 resize-none bg-transparent py-2 text-sm outline-none placeholder:text-muted-foreground"
+                      className="max-h-24 min-h-6 min-w-0 flex-1 resize-none bg-transparent py-1.5 text-[14px] leading-5 outline-none placeholder:text-muted-foreground"
                     />
                     <Smile className="h-5 w-5 text-muted-foreground" />
                   </div>
@@ -2753,17 +2753,21 @@ const user = useUserStore(
                   <Button
                     type="button"
                     size="icon"
-                    className="h-11 w-11 rounded-full"
+                    className="h-10 w-10 shrink-0 rounded-full disabled:opacity-45"
                     onPointerDown={(event) => {
-                      if (draft.trim()) {
-                        event.preventDefault();
-                      }
+                      event.preventDefault();
                     }}
-                    onClick={() => draft.trim() ? void sendMessage() : toast.info("Voice message feature छिट्टै आउँदैछ.")}
-                    disabled={sending}
-                    aria-label={draft.trim() ? "Send message" : "Voice message"}
+                    onClick={() => {
+                      if (draft.trim()) void sendMessage();
+                    }}
+                    disabled={sending || !draft.trim()}
+                    aria-label="Send message"
                   >
-                    {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : draft.trim() ? <Send className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
+                    {sending ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Send className="h-4 w-4" />
+                    )}
                   </Button>
                 </div>
               </div>
