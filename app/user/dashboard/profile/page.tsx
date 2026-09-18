@@ -14,6 +14,7 @@ import {
   CircleDollarSign,
   Crown,
   Edit3,
+  Eye,
   Globe2,
   Home,
   Loader2,
@@ -49,6 +50,7 @@ import { unlockService } from "@/http/services/unlock.service";
 import { TopUpRequestDialog } from "@/components/wallet/TopUpRequestDialog";
 import {
   profileService,
+  type ProfileViewSummary,
   type PublicProfile,
 } from "@/http/services/profile.service";
 import { profileMediaUrl } from "@/lib/profile-media";
@@ -93,6 +95,16 @@ export default function ProfilePage() {
 
   const [friends, setFriends] =
     useState<any[]>([]);
+
+  const [profileViews, setProfileViews] =
+    useState<ProfileViewSummary>({
+      totalViews: 0,
+      uniqueViewers: 0,
+      viewers: [],
+    });
+
+  const [showProfileViewers, setShowProfileViewers] =
+    useState(false);
 
   const [changingRoomStatusId, setChangingRoomStatusId] =
     useState<string | null>(null);
@@ -445,6 +457,23 @@ export default function ProfilePage() {
     }
   };
 
+  const loadProfileViews = async () => {
+    try {
+      const data = await profileService.getMyProfileViews(50);
+      setProfileViews({
+        totalViews: Number(data?.totalViews || 0),
+        uniqueViewers: Number(data?.uniqueViewers || 0),
+        viewers: Array.isArray(data?.viewers) ? data.viewers : [],
+      });
+    } catch {
+      setProfileViews({
+        totalViews: 0,
+        uniqueViewers: 0,
+        viewers: [],
+      });
+    }
+  };
+
   const loadProfile = async () => {
     try {
       setProfileLoading(true);
@@ -501,6 +530,7 @@ export default function ProfilePage() {
 
   useEffect(() => {
     loadProfile();
+    loadProfileViews();
     loadAiProfile();
     loadMonetization();
     loadMonetizationKyc();
@@ -732,6 +762,19 @@ export default function ProfilePage() {
       : `https://${profile.user.website}`
     : "";
 
+  const profileViewAgo = (value?: string | null) => {
+    if (!value) return "";
+    const time = new Date(value).getTime();
+    if (!Number.isFinite(time)) return "";
+    const minutes = Math.max(0, Math.floor((Date.now() - time) / 60000));
+    if (minutes < 1) return "now";
+    if (minutes < 60) return `${minutes}m`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h`;
+    const days = Math.floor(hours / 24);
+    return days < 7 ? `${days}d` : new Date(value).toLocaleDateString();
+  };
+
   return (
     <main className="mx-auto min-h-screen max-w-6xl space-y-5 bg-muted/30 pb-24 sm:px-4">
       <div className="lg:hidden">
@@ -775,6 +818,40 @@ export default function ProfilePage() {
         </div>
 
         <div className="relative px-4 pb-4 sm:px-8">
+          <button
+            type="button"
+            onClick={() => setShowProfileViewers(true)}
+            className="absolute right-3 top-3 z-20 flex max-w-[64vw] items-center gap-2 rounded-full border border-border bg-background/95 px-3 py-2 text-left shadow-sm backdrop-blur transition hover:bg-muted sm:right-6 sm:top-5"
+            aria-label="Open profile viewers"
+          >
+            <Eye className="h-4 w-4 shrink-0 text-primary" />
+            <span className="whitespace-nowrap text-sm font-black">
+              {profileViews.totalViews} profile views
+            </span>
+            {profileViews.viewers.length > 0 && (
+              <span className="ml-1 flex -space-x-2">
+                {profileViews.viewers.slice(0, 3).map((viewer) => {
+                  const viewerPhoto = profileMediaUrl(viewer.profilePhotoUrl);
+                  return viewerPhoto ? (
+                    <img
+                      key={viewer.id}
+                      src={viewerPhoto}
+                      alt=""
+                      className="h-7 w-7 rounded-full border-2 border-background object-cover"
+                    />
+                  ) : (
+                    <span
+                      key={viewer.id}
+                      className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-background bg-muted text-[9px] font-black"
+                    >
+                      {viewer.name.slice(0, 1).toUpperCase()}
+                    </span>
+                  );
+                })}
+              </span>
+            )}
+          </button>
+
           <div className="-mt-20 flex flex-col items-center text-center sm:-mt-24">
             <div className="relative">
               <div className="h-40 w-40 overflow-hidden rounded-full border-[5px] border-background bg-primary shadow-xl sm:h-48 sm:w-48">
@@ -1357,6 +1434,79 @@ export default function ProfilePage() {
           setShowMonetizationConfirm(true);
         }}
       />
+      {showProfileViewers && (
+        <div
+          className="fixed inset-0 z-[120] flex items-end justify-center bg-black/35 p-3 backdrop-blur-[2px] sm:items-center"
+          onClick={() => setShowProfileViewers(false)}
+        >
+          <div
+            className="max-h-[78dvh] w-full max-w-md overflow-hidden rounded-[28px] bg-background shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-border px-5 py-4">
+              <div>
+                <h2 className="text-xl font-black">Profile views</h2>
+                <p className="text-xs text-muted-foreground">
+                  {profileViews.totalViews} views · {profileViews.uniqueViewers} people
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowProfileViewers(false)}
+                className="flex h-9 w-9 items-center justify-center rounded-full bg-muted"
+                aria-label="Close profile viewers"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="max-h-[62dvh] overflow-y-auto p-2">
+              {profileViews.viewers.length === 0 ? (
+                <div className="px-5 py-12 text-center text-sm text-muted-foreground">
+                  अहिलेसम्म logged-in user बाट profile view आएको छैन।
+                </div>
+              ) : (
+                profileViews.viewers.map((viewer) => {
+                  const viewerPhoto = profileMediaUrl(viewer.profilePhotoUrl);
+                  return (
+                    <button
+                      key={viewer.id}
+                      type="button"
+                      onClick={() => {
+                        setShowProfileViewers(false);
+                        router.push(`/profile/${viewer.id}`);
+                      }}
+                      className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left transition hover:bg-muted"
+                    >
+                      <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted">
+                        {viewerPhoto ? (
+                          <img
+                            src={viewerPhoto}
+                            alt=""
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <UserRound className="h-6 w-6 text-muted-foreground" />
+                        )}
+                      </div>
+
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-black">{viewer.name}</p>
+                        <p className="mt-0.5 text-xs text-muted-foreground">
+                          Viewed {profileViewAgo(viewer.lastViewedAt)}
+                          {Number(viewer.viewCount || 0) > 1
+                            ? ` · ${viewer.viewCount} times`
+                            : ""}
+                        </p>
+                      </div>
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
