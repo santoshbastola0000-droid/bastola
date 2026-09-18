@@ -127,10 +127,22 @@ export default function CompleteProfilePage() {
       router.replace("/feed");
       router.refresh();
     } catch (submitError: any) {
-      setError(
+      const message = String(
         submitError?.response?.data?.message ||
           "Profile could not be completed. Please try again.",
       );
+      const lowered = message.toLowerCase();
+
+      if (
+        lowered.includes("disabled by admin") ||
+        lowered.includes("account has been banned") ||
+        submitError?.response?.data?.code === "ACCOUNT_BANNED"
+      ) {
+        router.replace("/account-banned");
+        return;
+      }
+
+      setError(message);
     } finally {
       setSaving(null);
     }
@@ -207,15 +219,43 @@ export default function CompleteProfilePage() {
 
         {!existingPhone && selectedPurpose && (
           <div className="mt-6 border-t border-slate-200 pt-5">
+            <div className="rounded-2xl bg-slate-50 p-4">
+              <p className="text-sm font-bold text-slate-900">
+                Phone number is optional
+              </p>
+              <p className="mt-1 text-xs leading-5 text-slate-500">
+                Phone नदिई पनि अहिले नै RoomKhoj चलाउन सक्नुहुन्छ।
+              </p>
+
+              <button
+                type="button"
+                onClick={() =>
+                  void finish(selectedPurpose, {
+                    phone: "",
+                    savePhone: false,
+                  })
+                }
+                disabled={saving !== null}
+                className="mt-3 w-full rounded-xl bg-red-600 px-4 py-3.5 text-base font-black text-white shadow-sm hover:bg-red-700 disabled:opacity-60"
+              >
+                {saving === "continue"
+                  ? "Continuing..."
+                  : "Continue without phone"}
+              </button>
+            </div>
+
+            <div className="my-4 flex items-center gap-3">
+              <span className="h-px flex-1 bg-slate-200" />
+              <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                or add phone
+              </span>
+              <span className="h-px flex-1 bg-slate-200" />
+            </div>
+
             <label className="text-sm font-bold text-slate-900">
               Phone number{" "}
               <span className="font-medium text-slate-400">(optional)</span>
             </label>
-
-            <p className="mt-1 text-xs leading-5 text-slate-500">
-              You can add a phone number now or skip it. Phone OTP verification
-              is not required to continue.
-            </p>
 
             <input
               type="tel"
@@ -231,28 +271,15 @@ export default function CompleteProfilePage() {
             <button
               type="button"
               onClick={() => void continueWithOptionalPhone()}
-              disabled={saving !== null}
-              className="mt-4 w-full rounded-xl bg-red-600 px-4 py-3 font-bold text-white hover:bg-red-700 disabled:opacity-60"
+              disabled={saving !== null || !normalizePhone(phoneNumber)}
+              className="mt-3 w-full rounded-xl border border-red-200 bg-white px-4 py-3 font-bold text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"
             >
-              {saving === "continue" ? "Continuing..." : "Continue"}
-            </button>
-
-            <button
-              type="button"
-              onClick={() =>
-                void finish(selectedPurpose, {
-                  phone: "",
-                  savePhone: false,
-                })
-              }
-              disabled={saving !== null}
-              className="mt-2 w-full rounded-xl px-4 py-2 text-sm font-semibold text-slate-500 hover:bg-slate-50 disabled:opacity-60"
-            >
-              Skip phone for now
+              Save phone & continue
             </button>
 
             <p className="mt-3 text-xs leading-5 text-slate-500">
-              You can add or verify your phone later from your profile.
+              OTP verification is not required here. You can add or verify your
+              phone later from your profile.
             </p>
           </div>
         )}
