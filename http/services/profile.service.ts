@@ -93,6 +93,14 @@ export const profileService = {
     return res.data;
   },
 
+  deleteProfilePhoto: async () => {
+    const res = await privateApi.delete(
+      "/user/profile/photo",
+    );
+
+    return res.data;
+  },
+
   getFriendStatus: async (
     userId: string,
   ): Promise<{
