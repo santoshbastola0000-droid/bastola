@@ -12,6 +12,8 @@ import {
   MapPin,
   Search,
   UserRound,
+  UserPlus,
+  Check,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -38,6 +40,8 @@ export default function PeoplePage() {
     useState("");
   const [loading, setLoading] =
     useState(true);
+  const [friendStatus, setFriendStatus] = useState<Record<string, string>>({});
+  const [friendBusy, setFriendBusy] = useState<string | null>(null);
 
   const loadPeople = async (
     term = "",
@@ -55,11 +59,19 @@ export default function PeoplePage() {
           },
         );
 
-      setPeople(
-        Array.isArray(response.data)
-          ? response.data
-          : [],
+      const rows = Array.isArray(response.data) ? response.data : [];
+      setPeople(rows);
+      const statuses = await Promise.all(
+        rows.map(async (person: Person) => {
+          try {
+            const status = await privateApi.get(`/friend/status/${person.id}`);
+            return [person.id, String(status.data?.status || "NONE")] as const;
+          } catch {
+            return [person.id, "NONE"] as const;
+          }
+        }),
       );
+      setFriendStatus(Object.fromEntries(statuses));
     } catch (error: any) {
       toast.error(
         error?.response?.data?.message ||
@@ -86,10 +98,10 @@ export default function PeoplePage() {
       <div className="rounded-3xl border bg-background p-5 shadow-sm sm:p-7">
         <div>
           <h1 className="text-2xl font-bold sm:text-3xl">
-            Find People
+            Friends
           </h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            नाम वा location बाट RoomKhoj users खोज्नुहोस्।
+            RoomKhoj मा साथी खोज्नुहोस्, friend request पठाउनुहोस् र आफ्नो network बनाउनुहोस्।
           </p>
         </div>
 
@@ -187,18 +199,49 @@ export default function PeoplePage() {
                   )}
                 </button>
 
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="mt-5 w-full rounded-xl"
-                  onClick={() =>
-                    router.push(
-                      `/profile/${person.id}`,
-                    )
-                  }
-                >
-                  View Profile
-                </Button>
+                <div className="mt-5 grid grid-cols-2 gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="rounded-xl"
+                    onClick={() => router.push(`/profile/${person.id}`)}
+                  >
+                    View Profile
+                  </Button>
+                  <Button
+                    type="button"
+                    disabled={friendBusy === person.id || ["FRIENDS", "REQUEST_SENT"].includes(friendStatus[person.id])}
+                    className="gap-2 rounded-xl bg-red-600 text-white hover:bg-red-700"
+                    onClick={async () => {
+                      setFriendBusy(person.id);
+                      try {
+                        const response = await privateApi.post(`/friend/request/${person.id}`);
+                        const status = String(response.data?.status || "REQUEST_SENT");
+                        setFriendStatus((current) => ({ ...current, [person.id]: status }));
+                        toast.success(status === "FRIENDS" ? "अब तपाईंहरू friends हुनुहुन्छ।" : "Friend request पठाइयो।");
+                      } catch (error: any) {
+                        toast.error(error?.response?.data?.message || "Friend request पठाउन सकिएन।");
+                      } finally {
+                        setFriendBusy(null);
+                      }
+                    }}
+                  >
+                    {friendBusy === person.id ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : friendStatus[person.id] === "FRIENDS" ? (
+                      <Check className="h-4 w-4" />
+                    ) : (
+                      <UserPlus className="h-4 w-4" />
+                    )}
+                    {friendStatus[person.id] === "FRIENDS"
+                      ? "Friends"
+                      : friendStatus[person.id] === "REQUEST_SENT"
+                        ? "Requested"
+                        : friendStatus[person.id] === "REQUEST_RECEIVED"
+                          ? "Accept"
+                          : "Add Friend"}
+                  </Button>
+                </div>
               </article>
             );
           })}
