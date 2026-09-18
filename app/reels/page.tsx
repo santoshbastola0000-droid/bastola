@@ -386,7 +386,11 @@ export default function ReelsPage() {
         visibility: uploadVisibility,
         files: [uploadFile],
       });
-      closeUpload();
+      setUploadFile(null);
+      setUploadCaption("");
+      setUploadVisibility("PUBLIC");
+      setUploadError("");
+      if (fileInputRef.current) fileInputRef.current.value = "";
       setRefreshKey((value) => value + 1);
     } catch (error: any) {
       setUploadError(
