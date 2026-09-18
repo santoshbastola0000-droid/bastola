@@ -1,331 +1,713 @@
 "use client";
 
 import {
-  FormEvent,
   useEffect,
+  useMemo,
   useState,
 } from "react";
 import { useRouter } from "next/navigation";
 import {
-  BadgeCheck,
+  ArrowLeft,
+  Info,
   Loader2,
-  MapPin,
-  Search,
+  MoreHorizontal,
   UserRound,
-  UserPlus,
-  Check,
 } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { privateApi } from "@/http/api/privateApi";
-import { socialService } from "@/http/services/social.service";
+import { messageService } from "@/http/services/message.service";
+import { profileService } from "@/http/services/profile.service";
+import {
+  socialService,
+  type SocialUser,
+} from "@/http/services/social.service";
 import { profileMediaUrl } from "@/lib/profile-media";
+import { useUserStore } from "@/stores/user-store";
 
-type Person = {
-  id: string;
-  name: string;
-  bio?: string | null;
-  location?: string | null;
-  isVerified?: boolean;
-  isPremium?: boolean;
-  profilePhotoUrl?: string | null;
-  mutualFriends?: number;
-  reason?: string;
+type IncomingFriend = SocialUser & {
+  requestedAt?: string;
 };
+
+type ExistingFriend = SocialUser & {
+  friendsSince?: string;
+};
+
+function timeAgo(value?: string | null) {
+  if (!value) return "";
+  const timestamp = new Date(value).getTime();
+  if (!Number.isFinite(timestamp)) return "";
+
+  const minutes = Math.max(
+    0,
+    Math.floor((Date.now() - timestamp) / 60000),
+  );
+
+  if (minutes < 1) return "now";
+  if (minutes < 60) return `${minutes}m`;
+
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h`;
+
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d`;
+
+  return new Date(value).toLocaleDateString();
+}
+
+function Avatar({
+  person,
+  size = "md",
+}: {
+  person: SocialUser;
+  size?: "md" | "lg";
+}) {
+  const photo = profileMediaUrl(
+    person.profilePhotoUrl,
+  );
+
+  const dimensions =
+    size === "lg"
+      ? "h-[62px] w-[62px]"
+      : "h-14 w-14";
+
+  return (
+    <div
+      className={`${dimensions} flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted`}
+    >
+      {photo ? (
+        <img
+          src={photo}
+          alt={person.name}
+          className="h-full w-full object-cover"
+        />
+      ) : (
+        <UserRound className="h-7 w-7 text-muted-foreground" />
+      )}
+    </div>
+  );
+}
 
 export default function PeoplePage() {
   const router = useRouter();
-  const [people, setPeople] =
-    useState<Person[]>([]);
-  const [requests, setRequests] = useState<Person[]>([]);
-  const [search, setSearch] =
-    useState("");
+  const user = useUserStore(
+    (state) => state.user,
+  );
+
+  const [requests, setRequests] =
+    useState<IncomingFriend[]>([]);
+  const [friends, setFriends] =
+    useState<ExistingFriend[]>([]);
+  const [suggestions, setSuggestions] =
+    useState<SocialUser[]>([]);
+  const [hiddenSuggestionIds, setHiddenSuggestionIds] =
+    useState<Set<string>>(() => new Set());
+  const [expanded, setExpanded] =
+    useState(false);
   const [loading, setLoading] =
     useState(true);
-  const [friendStatus, setFriendStatus] = useState<Record<string, string>>({});
-  const [friendBusy, setFriendBusy] = useState<string | null>(null);
+  const [busyId, setBusyId] =
+    useState<string | null>(null);
 
-  const loadPeople = async (
-    term = "",
-  ) => {
-    try {
+  useEffect(() => {
+    if (!user?.id) return;
+
+    let cancelled = false;
+
+    const load = async () => {
       setLoading(true);
 
-      const response =
-        await privateApi.get(
-          "/user/people",
-          {
-            params: term.trim()
-              ? { search: term.trim() }
-              : {},
-          },
-        );
+      const [
+        requestResult,
+        friendResult,
+        suggestionResult,
+      ] = await Promise.allSettled([
+        socialService.friendRequests(),
+        profileService.getFriends(
+          String(user.id),
+        ),
+        socialService.friendSuggestions(),
+      ]);
 
-      const rows = Array.isArray(response.data) ? response.data : [];
-      setPeople(rows);
-      const statuses = await Promise.all(
-        rows.map(async (person: Person) => {
-          try {
-            const status = await privateApi.get(`/friend/status/${person.id}`);
-            return [person.id, String(status.data?.status || "NONE")] as const;
-          } catch {
-            return [person.id, "NONE"] as const;
-          }
-        }),
+      if (cancelled) return;
+
+      if (
+        requestResult.status ===
+        "fulfilled"
+      ) {
+        setRequests(
+          Array.isArray(
+            requestResult.value,
+          )
+            ? requestResult.value
+            : [],
+        );
+      }
+
+      if (
+        friendResult.status ===
+        "fulfilled"
+      ) {
+        setFriends(
+          Array.isArray(friendResult.value)
+            ? friendResult.value
+            : [],
+        );
+      }
+
+      if (
+        suggestionResult.status ===
+        "fulfilled"
+      ) {
+        setSuggestions(
+          Array.isArray(
+            suggestionResult.value,
+          )
+            ? suggestionResult.value
+            : [],
+        );
+      }
+
+      setLoading(false);
+    };
+
+    void load();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id]);
+
+  const newFriendRows = useMemo(() => {
+    const seen = new Set<string>();
+    const rows: Array<
+      | {
+          kind: "REQUEST";
+          person: IncomingFriend;
+        }
+      | {
+          kind: "FRIEND";
+          person: ExistingFriend;
+        }
+    > = [];
+
+    for (const person of requests) {
+      if (seen.has(person.id)) continue;
+      seen.add(person.id);
+      rows.push({
+        kind: "REQUEST",
+        person,
+      });
+    }
+
+    for (const person of friends) {
+      if (seen.has(person.id)) continue;
+      seen.add(person.id);
+      rows.push({
+        kind: "FRIEND",
+        person,
+      });
+    }
+
+    return rows;
+  }, [friends, requests]);
+
+  const visibleNewFriends = expanded
+    ? newFriendRows
+    : newFriendRows.slice(0, 3);
+
+  const visibleSuggestions =
+    suggestions.filter(
+      (person) =>
+        !hiddenSuggestionIds.has(
+          person.id,
+        ),
+    );
+
+  const acceptRequest = async (
+    person: IncomingFriend,
+  ) => {
+    try {
+      setBusyId(person.id);
+      await socialService.acceptFriendRequest(
+        person.id,
       );
-      setFriendStatus(Object.fromEntries(statuses));
+
+      setRequests((current) =>
+        current.filter(
+          (item) =>
+            item.id !== person.id,
+        ),
+      );
+      setFriends((current) => [
+        person,
+        ...current.filter(
+          (item) =>
+            item.id !== person.id,
+        ),
+      ]);
+      setSuggestions((current) =>
+        current.filter(
+          (item) =>
+            item.id !== person.id,
+        ),
+      );
+
+      toast.success(
+        "अब तपाईंहरू friends हुनुहुन्छ।",
+      );
     } catch (error: any) {
       toast.error(
         error?.response?.data?.message ||
-          "People load गर्न सकिएन।",
+          "Friend request accept गर्न सकिएन।",
       );
     } finally {
-      setLoading(false);
+      setBusyId(null);
     }
   };
 
-  useEffect(() => {
-    const loadSuggestions = async () => {
-      try {
-        setLoading(true);
-        const [suggestionResponse, requestResponse] = await Promise.all([
-          privateApi.get("/friend/suggestions"),
-          privateApi.get("/friend/requests"),
-        ]);
-        const rows = Array.isArray(suggestionResponse.data) ? suggestionResponse.data : [];
-        const incoming = Array.isArray(requestResponse.data) ? requestResponse.data : [];
-        setPeople(rows);
-        setRequests(incoming);
-        setFriendStatus({
-          ...Object.fromEntries(rows.map((person: Person) => [person.id, "NONE"])),
-          ...Object.fromEntries(incoming.map((person: Person) => [person.id, "REQUEST_RECEIVED"])),
-        });
-      } catch {
-        await loadPeople();
-      } finally {
-        setLoading(false);
-      }
-    };
-    void loadSuggestions();
-  }, []);
-
-  const submitSearch = (
-    event: FormEvent,
+  const messageFriend = async (
+    person: SocialUser,
   ) => {
-    event.preventDefault();
-    const query = search.trim();
-    if (query.length >= 2) {
-      void socialService.trackSearch({
-        query,
-        context: "PEOPLE",
-      }).catch(() => undefined);
+    try {
+      setBusyId(person.id);
+      const conversation =
+        await messageService.startByUser(
+          person.id,
+        );
+
+      const conversationId =
+        conversation?.id ||
+        conversation?.conversationId;
+
+      router.push(
+        conversationId
+          ? `/messages?conversation=${conversationId}`
+          : "/messages",
+      );
+    } catch (error: any) {
+      toast.error(
+        error?.response?.data?.message ||
+          "Message खोल्न सकिएन।",
+      );
+    } finally {
+      setBusyId(null);
     }
-    loadPeople(search);
+  };
+
+  const addFriend = async (
+    person: SocialUser,
+  ) => {
+    try {
+      setBusyId(person.id);
+      const response =
+        await socialService.sendFriendRequest(
+          person.id,
+        );
+
+      if (
+        String(
+          response?.status || "",
+        ) === "FRIENDS"
+      ) {
+        setFriends((current) => [
+          person,
+          ...current.filter(
+            (item) =>
+              item.id !== person.id,
+          ),
+        ]);
+        toast.success(
+          "अब तपाईंहरू friends हुनुहुन्छ।",
+        );
+      } else {
+        toast.success(
+          "Friend request पठाइयो।",
+        );
+      }
+
+      setHiddenSuggestionIds(
+        (current) =>
+          new Set([
+            ...current,
+            person.id,
+          ]),
+      );
+    } catch (error: any) {
+      toast.error(
+        error?.response?.data?.message ||
+          "Friend request पठाउन सकिएन।",
+      );
+    } finally {
+      setBusyId(null);
+    }
   };
 
   return (
-    <main className="mx-auto w-full max-w-5xl p-4 pb-24 sm:p-6">
-      <div className="rounded-3xl border bg-background p-5 shadow-sm sm:p-7">
-        <div>
-          <h1 className="text-2xl font-bold sm:text-3xl">
-            Friends
-          </h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            RoomKhoj मा साथी खोज्नुहोस्, friend request पठाउनुहोस् र आफ्नो network बनाउनुहोस्।
-          </p>
-        </div>
-
-        <form
-          onSubmit={submitSearch}
-          className="mt-6 flex gap-2"
-        >
-          <Input
-            value={search}
-            onChange={(event) =>
-              setSearch(event.target.value)
-            }
-            placeholder="Search name or location..."
-            className="h-12 rounded-xl"
-          />
-          <Button
-            type="submit"
-            className="h-12 gap-2 rounded-xl px-5"
-            disabled={loading}
+    <main className="min-h-screen bg-white pb-24 text-foreground">
+      <header className="sticky top-0 z-30 border-b border-border/50 bg-white/95 backdrop-blur">
+        <div className="mx-auto flex h-16 max-w-[760px] items-center px-4">
+          <button
+            type="button"
+            onClick={() => router.back()}
+            aria-label="Back"
+            className="flex h-10 w-10 items-center justify-center rounded-full transition hover:bg-muted"
           >
-            <Search className="h-4 w-4" />
-            Search
-          </Button>
-        </form>
-      </div>
+            <ArrowLeft className="h-6 w-6" />
+          </button>
 
-      {!loading && requests.length > 0 && (
-        <section className="mt-5 rounded-3xl border border-red-100 bg-white p-5 shadow-sm">
-          <h2 className="text-lg font-bold">Friend Requests</h2>
-          <p className="mt-1 text-sm text-muted-foreground">तपाईंलाई आएको friend request यहाँबाट Accept वा Decline गर्नुहोस्।</p>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            {requests.map((person) => (
-              <div key={person.id} className="flex items-center gap-3 rounded-2xl border p-3">
-                <div className="h-12 w-12 overflow-hidden rounded-full bg-muted">
-                  {person.profilePhotoUrl ? <img src={profileMediaUrl(person.profilePhotoUrl) || ""} alt={person.name} className="h-full w-full object-cover" /> : <UserRound className="m-3 h-6 w-6 text-muted-foreground" />}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <button className="truncate font-bold hover:underline" onClick={() => router.push(`/profile/${person.id}`)}>{person.name}</button>
-                  {person.location && <p className="truncate text-xs text-muted-foreground">{person.location}</p>}
-                  <div className="mt-2 flex gap-2">
-                    <Button size="sm" className="bg-red-600 hover:bg-red-700" disabled={friendBusy === person.id} onClick={async () => {
-                      setFriendBusy(person.id);
-                      try {
-                        await privateApi.post(`/friend/accept/${person.id}`);
-                        setRequests((current) => current.filter((row) => row.id !== person.id));
-                        toast.success("Friend request accept भयो।");
-                      } catch (error: any) {
-                        toast.error(error?.response?.data?.message || "Request accept गर्न सकिएन।");
-                      } finally { setFriendBusy(null); }
-                    }}>Accept</Button>
-                    <Button size="sm" variant="outline" disabled={friendBusy === person.id} onClick={async () => {
-                      setFriendBusy(person.id);
-                      try {
-                        await privateApi.delete(`/friend/${person.id}`);
-                        setRequests((current) => current.filter((row) => row.id !== person.id));
-                        toast.success("Friend request decline भयो।");
-                      } catch (error: any) {
-                        toast.error(error?.response?.data?.message || "Request decline गर्न सकिएन।");
-                      } finally { setFriendBusy(null); }
-                    }}>Decline</Button>
-                  </div>
-                </div>
-              </div>
-            ))}
+          <h1 className="pointer-events-none absolute left-1/2 -translate-x-1/2 text-xl font-black tracking-tight">
+            New friends
+          </h1>
+        </div>
+      </header>
+
+      <div className="mx-auto max-w-[760px] px-4">
+        {loading ? (
+          <div className="flex min-h-[55vh] items-center justify-center">
+            <Loader2 className="h-7 w-7 animate-spin text-primary" />
           </div>
-        </section>
-      )}
+        ) : (
+          <>
+            {visibleNewFriends.length >
+              0 && (
+              <section className="pt-4">
+                <div className="space-y-2">
+                  {visibleNewFriends.map(
+                    (row) => {
+                      const {
+                        person,
+                        kind,
+                      } = row;
+                      const when =
+                        kind ===
+                        "REQUEST"
+                          ? timeAgo(
+                              person.requestedAt,
+                            )
+                          : timeAgo(
+                              person.friendsSince,
+                            );
 
-      {!loading && people.length > 0 && <h2 className="mt-6 text-lg font-bold">People You May Know</h2>}
+                      return (
+                        <div
+                          key={`${kind}-${person.id}`}
+                          className="flex items-center gap-3 py-2"
+                        >
+                          <button
+                            type="button"
+                            onClick={() =>
+                              router.push(
+                                `/profile/${person.id}`,
+                              )
+                            }
+                            className="shrink-0"
+                            aria-label={`Open ${person.name} profile`}
+                          >
+                            <Avatar
+                              person={
+                                person
+                              }
+                              size="lg"
+                            />
+                          </button>
 
-      {loading ? (
-        <div className="flex justify-center py-16">
-          <Loader2 className="h-7 w-7 animate-spin text-muted-foreground" />
-        </div>
-      ) : people.length === 0 ? (
-        <div className="mt-5 rounded-3xl border bg-background p-12 text-center text-muted-foreground">
-          कुनै user भेटिएन।
-        </div>
-      ) : (
-        <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {people.map((person) => {
-            const photo =
-              profileMediaUrl(
-                person.profilePhotoUrl,
-              );
+                          <button
+                            type="button"
+                            onClick={() =>
+                              router.push(
+                                `/profile/${person.id}`,
+                              )
+                            }
+                            className="min-w-0 flex-1 text-left"
+                          >
+                            <p className="truncate text-[16px] font-black">
+                              {
+                                person.name
+                              }
+                            </p>
+                            <p className="mt-0.5 text-[15px] font-semibold leading-5 text-foreground">
+                              {kind ===
+                              "REQUEST"
+                                ? "sent you a friend request."
+                                : "is now your friend."}
+                              {when && (
+                                <span className="ml-1 font-medium text-muted-foreground">
+                                  {
+                                    when
+                                  }
+                                </span>
+                              )}
+                            </p>
+                          </button>
 
-            return (
-              <article
-                key={person.id}
-                className="overflow-hidden rounded-3xl border bg-background p-5 shadow-sm"
-              >
-                <button
-                  type="button"
-                  onClick={() =>
-                    router.push(
-                      `/profile/${person.id}`,
-                    )
-                  }
-                  className="block w-full text-left"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted">
-                      {photo ? (
-                        <img
-                          src={photo}
-                          alt={person.name}
-                          className="h-full w-full object-cover"
-                        />
-                      ) : (
-                        <UserRound className="h-7 w-7 text-muted-foreground" />
-                      )}
-                    </div>
-
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-1.5">
-                        <h2 className="truncate font-bold">
-                          {person.name}
-                        </h2>
-                        {person.isVerified && (
-                          <BadgeCheck className="h-4 w-4 shrink-0 text-blue-500" />
-                        )}
-                      </div>
-
-                      {person.location && (
-                        <p className="mt-1 flex items-center gap-1 text-sm text-muted-foreground">
-                          <MapPin className="h-3.5 w-3.5" />
-                          <span className="truncate">{person.location}</span>
-                        </p>
-                      )}
-                      {person.reason && (
-                        <p className="mt-1 truncate text-xs font-semibold text-red-600">
-                          {person.reason}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-
-                  {person.bio && (
-                    <p className="mt-4 line-clamp-2 text-sm text-muted-foreground">
-                      {person.bio}
-                    </p>
+                          {kind ===
+                          "REQUEST" ? (
+                            <Button
+                              type="button"
+                              disabled={
+                                busyId ===
+                                person.id
+                              }
+                              onClick={() =>
+                                void acceptRequest(
+                                  person,
+                                )
+                              }
+                              className="h-11 shrink-0 rounded-full bg-primary px-5 font-bold text-primary-foreground hover:bg-primary/90"
+                            >
+                              {busyId ===
+                              person.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                "Accept"
+                              )}
+                            </Button>
+                          ) : (
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              disabled={
+                                busyId ===
+                                person.id
+                              }
+                              onClick={() =>
+                                void messageFriend(
+                                  person,
+                                )
+                              }
+                              className="h-11 shrink-0 rounded-full px-5 font-bold"
+                            >
+                              {busyId ===
+                              person.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                "Message"
+                              )}
+                            </Button>
+                          )}
+                        </div>
+                      );
+                    },
                   )}
-                </button>
-
-                <div className="mt-5 grid grid-cols-2 gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="rounded-xl"
-                    onClick={() => router.push(`/profile/${person.id}`)}
-                  >
-                    View Profile
-                  </Button>
-                  <Button
-                    type="button"
-                    disabled={friendBusy === person.id || ["FRIENDS", "REQUEST_SENT"].includes(friendStatus[person.id])}
-                    className="gap-2 rounded-xl bg-red-600 text-white hover:bg-red-700"
-                    onClick={async () => {
-                      setFriendBusy(person.id);
-                      try {
-                        const response = await privateApi.post(`/friend/request/${person.id}`);
-                        const status = String(response.data?.status || "REQUEST_SENT");
-                        setFriendStatus((current) => ({ ...current, [person.id]: status }));
-                        toast.success(status === "FRIENDS" ? "अब तपाईंहरू friends हुनुहुन्छ।" : "Friend request पठाइयो।");
-                      } catch (error: any) {
-                        toast.error(error?.response?.data?.message || "Friend request पठाउन सकिएन।");
-                      } finally {
-                        setFriendBusy(null);
-                      }
-                    }}
-                  >
-                    {friendBusy === person.id ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : friendStatus[person.id] === "FRIENDS" ? (
-                      <Check className="h-4 w-4" />
-                    ) : (
-                      <UserPlus className="h-4 w-4" />
-                    )}
-                    {friendStatus[person.id] === "FRIENDS"
-                      ? "Friends"
-                      : friendStatus[person.id] === "REQUEST_SENT"
-                        ? "Requested"
-                        : friendStatus[person.id] === "REQUEST_RECEIVED"
-                          ? "Accept"
-                          : "Add Friend"}
-                  </Button>
                 </div>
-              </article>
-            );
-          })}
-        </div>
-      )}
+
+                {newFriendRows.length >
+                  3 && (
+                  <div className="flex justify-center py-3">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setExpanded(
+                          (current) =>
+                            !current,
+                        )
+                      }
+                      className="text-[15px] font-bold text-muted-foreground"
+                    >
+                      {expanded
+                        ? "View less"
+                        : "View more"}
+                    </button>
+                  </div>
+                )}
+              </section>
+            )}
+
+            <section
+              className={
+                visibleNewFriends.length >
+                0
+                  ? "border-t border-border/60 pt-5"
+                  : "pt-5"
+              }
+            >
+              <div className="mb-4 flex items-center gap-1.5">
+                <h2 className="text-[20px] font-black tracking-tight">
+                  Suggested accounts
+                </h2>
+                <Info className="h-4 w-4 text-muted-foreground" />
+              </div>
+
+              {visibleSuggestions.length ===
+              0 ? (
+                <div className="rounded-3xl bg-muted/40 px-5 py-10 text-center text-sm text-muted-foreground">
+                  अहिले नयाँ friend
+                  suggestion छैन।
+                </div>
+              ) : (
+                <div className="space-y-7">
+                  {visibleSuggestions.map(
+                    (person) => {
+                      const previews = (
+                        person.previewMediaUrls ||
+                        []
+                      )
+                        .map(
+                          (url) =>
+                            profileMediaUrl(
+                              url,
+                            ),
+                        )
+                        .filter(
+                          (
+                            url,
+                          ): url is string =>
+                            Boolean(url),
+                        )
+                        .slice(0, 4);
+
+                      return (
+                        <article
+                          key={
+                            person.id
+                          }
+                          className="overflow-hidden border-b border-border/60 pb-6"
+                        >
+                          <div className="flex items-center gap-3">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                router.push(
+                                  `/profile/${person.id}`,
+                                )
+                              }
+                              className="shrink-0"
+                              aria-label={`Open ${person.name} profile`}
+                            >
+                              <Avatar
+                                person={
+                                  person
+                                }
+                              />
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() =>
+                                router.push(
+                                  `/profile/${person.id}`,
+                                )
+                              }
+                              className="min-w-0 flex-1 text-left"
+                            >
+                              <p className="truncate text-[16px] font-black">
+                                {
+                                  person.name
+                                }
+                              </p>
+                              <p className="mt-0.5 truncate text-[14px] font-semibold text-muted-foreground">
+                                {person.reason ||
+                                  person.location ||
+                                  "People you may know"}
+                              </p>
+                            </button>
+
+                            <button
+                              type="button"
+                              aria-label="More options"
+                              onClick={() =>
+                                toast.info(
+                                  "Suggestion options",
+                                )
+                              }
+                              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted"
+                            >
+                              <MoreHorizontal className="h-5 w-5" />
+                            </button>
+                          </div>
+
+                          {previews.length >
+                            0 && (
+                            <div
+                              className={`mt-3 grid overflow-hidden rounded-2xl bg-muted ${previews.length === 1 ? "grid-cols-1" : previews.length === 2 ? "grid-cols-2" : "grid-cols-4"}`}
+                            >
+                              {previews.map(
+                                (
+                                  preview,
+                                  index,
+                                ) => (
+                                  <button
+                                    key={`${person.id}-preview-${index}`}
+                                    type="button"
+                                    onClick={() =>
+                                      router.push(
+                                        `/profile/${person.id}`,
+                                      )
+                                    }
+                                    className="relative aspect-square overflow-hidden border-r border-white/70 last:border-r-0"
+                                  >
+                                    <img
+                                      src={
+                                        preview
+                                      }
+                                      alt=""
+                                      loading="lazy"
+                                      className="h-full w-full object-cover"
+                                    />
+                                    {index <
+                                      2 && (
+                                      <span className="absolute bottom-2 left-2 rounded-md bg-black/55 px-2 py-0.5 text-[11px] font-black text-white">
+                                        New
+                                      </span>
+                                    )}
+                                  </button>
+                                ),
+                              )}
+                            </div>
+                          )}
+
+                          <div className="mt-3 grid grid-cols-2 gap-3">
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              className="h-12 rounded-full text-[16px] font-black"
+                              onClick={() =>
+                                setHiddenSuggestionIds(
+                                  (
+                                    current,
+                                  ) =>
+                                    new Set([
+                                      ...current,
+                                      person.id,
+                                    ]),
+                                )
+                              }
+                            >
+                              Remove
+                            </Button>
+
+                            <Button
+                              type="button"
+                              disabled={
+                                busyId ===
+                                person.id
+                              }
+                              className="h-12 rounded-full bg-primary text-[16px] font-black text-primary-foreground hover:bg-primary/90"
+                              onClick={() =>
+                                void addFriend(
+                                  person,
+                                )
+                              }
+                            >
+                              {busyId ===
+                              person.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                "Add friend"
+                              )}
+                            </Button>
+                          </div>
+                        </article>
+                      );
+                    },
+                  )}
+                </div>
+              )}
+            </section>
+          </>
+        )}
+      </div>
     </main>
   );
 }
