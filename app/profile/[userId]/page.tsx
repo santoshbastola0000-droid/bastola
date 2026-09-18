@@ -382,10 +382,12 @@ export default function PublicProfilePage() {
   }
 
   const profilePhoto =
-    profileMediaUrl(
-      profile.user
-        .profilePhotoUrl,
-    );
+    profile.user.isBanned
+      ? null
+      : profileMediaUrl(
+          profile.user
+            .profilePhotoUrl,
+        );
 
   const coverPhoto =
     profileMediaUrl(
@@ -425,7 +427,7 @@ export default function PublicProfilePage() {
               <button
                 type="button"
                 onClick={() => setPhotoViewerOpen(true)}
-                className="relative h-40 w-40 shrink-0 overflow-hidden rounded-full border-[5px] border-background bg-primary shadow-xl transition active:scale-[0.98] sm:h-48 sm:w-48"
+                className={`relative h-40 w-40 shrink-0 overflow-hidden rounded-full border-[5px] border-background shadow-xl transition active:scale-[0.98] sm:h-48 sm:w-48 ${profile.user.isBanned ? "bg-white" : "bg-primary"}`}
                 aria-label="Open profile photo"
               >
                 {profilePhoto ? (
@@ -437,6 +439,8 @@ export default function PublicProfilePage() {
                       e.currentTarget.style.display = "none";
                     }}
                   />
+                ) : profile.user.isBanned ? (
+                  <div className="h-full w-full bg-white" />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center text-4xl font-black text-primary-foreground">
                     {initials}
