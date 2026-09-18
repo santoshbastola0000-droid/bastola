@@ -30,6 +30,7 @@ import {
 } from "@/http/services/profile.service";
 import { profileMediaUrl } from "@/lib/profile-media";
 import { messageService } from "@/http/services/message.service";
+import { useUserStore } from "@/stores/user-store";
 
 type Tab =
   | "posts"
@@ -44,6 +45,7 @@ export default function PublicProfilePage() {
   }>();
 
   const router = useRouter();
+  const currentUser = useUserStore((state) => state.user);
 
   const userId =
     String(params.userId);
@@ -87,9 +89,14 @@ export default function PublicProfilePage() {
 
       setProfile(data);
 
-      void profileService
-        .recordProfileView(userId)
-        .catch(() => undefined);
+      if (
+        currentUser?.id &&
+        String(currentUser.id) !== userId
+      ) {
+        void profileService
+          .recordProfileView(userId)
+          .catch(() => undefined);
+      }
 
       try {
         const status =
@@ -125,7 +132,7 @@ export default function PublicProfilePage() {
 
   useEffect(() => {
     load();
-  }, [userId]);
+  }, [userId, currentUser?.id]);
 
   const handleFriend = async () => {
     try {
