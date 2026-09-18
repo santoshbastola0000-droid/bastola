@@ -426,6 +426,7 @@ export function SocialFeedScreen() {
               key={`post-${post.id}`}
               post={post}
               currentUserId={user.id}
+              currentUserPhotoUrl={myPhoto}
               commentsOpen={Boolean(openComments[post.id])}
               onToggleComments={() =>
                 setOpenComments((current) => ({ ...current, [post.id]: !current[post.id] }))
@@ -661,6 +662,7 @@ function Composer({
 function PostCard({
   post,
   currentUserId,
+  currentUserPhotoUrl,
   commentsOpen,
   onToggleComments,
   onShare,
@@ -668,6 +670,7 @@ function PostCard({
 }: {
   post: SocialPost;
   currentUserId: string;
+  currentUserPhotoUrl?: string | null;
   commentsOpen: boolean;
   onToggleComments: () => void;
   onShare: () => void | Promise<void>;
@@ -750,7 +753,13 @@ function PostCard({
         onShare={onShare}
       />
 
-      {commentsOpen && <CommentThread postId={post.id} currentUserId={currentUserId} />}
+      {commentsOpen && (
+        <CommentThread
+          postId={post.id}
+          currentUserId={currentUserId}
+          currentUserPhotoUrl={currentUserPhotoUrl}
+        />
+      )}
     </article>
   );
 }
