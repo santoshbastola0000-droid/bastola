@@ -14,6 +14,7 @@ export type SocialUser = {
   contentScore?: number;
   priorityTier?: number;
   reason?: string;
+  previewMediaUrls?: string[];
 };
 
 export type SocialReactionType =
