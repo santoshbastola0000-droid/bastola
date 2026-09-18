@@ -1,33 +1,24 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { UserPlus } from "lucide-react";
-import { toast } from "sonner";
+import { BadgeCheck, HousePlus, Users } from "lucide-react";
+import { useRouter } from "next/navigation";
 
-import { profileService } from "@/http/services/profile.service";
-import { SocialUser, socialService } from "@/http/services/social.service";
+import {
+  type SocialUser,
+  socialService,
+} from "@/http/services/social.service";
 
 const backendUrl = String(
   process.env.NEXT_PUBLIC_BACKEND_URL || "https://api.roomkhoj.com",
 ).replace(/\/$/, "");
 
-type MentionFriend = Pick<SocialUser, "id" | "name" | "profilePhotoUrl">;
-
-const friendCache = new Map<string, Promise<MentionFriend[]>>();
-
-function loadFriends(userId: string) {
-  const key = String(userId || "").trim();
-  if (!friendCache.has(key)) {
-    friendCache.set(
-      key,
-      profileService
-        .getFriends(key)
-        .then((rows) => (Array.isArray(rows) ? rows : []))
-        .catch(() => []),
-    );
-  }
-  return friendCache.get(key)!;
-}
+type MentionOption = Pick<
+  SocialUser,
+  "id" | "name" | "profilePhotoUrl" | "isVerified"
+> & {
+  mentionType: "FRIEND" | "OFFICIAL";
+};
 
 function media(value?: string | null) {
   const raw = String(value || "").trim();
@@ -42,8 +33,10 @@ function media(value?: string | null) {
 function activeMention(value: string) {
   const match = value.match(/(?:^|\s)@([^@\n]{0,80})$/);
   if (!match) return null;
+
   const start = value.lastIndexOf("@");
   if (start < 0) return null;
+
   return {
     start,
     query: String(match[1] || "").trim(),
@@ -67,22 +60,44 @@ export function MentionInput({
   maxLength?: number;
   className?: string;
 }) {
-  const [friends, setFriends] = useState<MentionFriend[]>([]);
-  const [selected, setSelected] = useState<MentionFriend[]>([]);
-  const [nonFriends, setNonFriends] = useState<MentionFriend[]>([]);
-  const [requested, setRequested] = useState<Set<string>>(new Set());
+  const router = useRouter();
+  const [options, setOptions] = useState<MentionOption[]>([]);
+  const [selected, setSelected] = useState<MentionOption[]>([]);
+  const [loading, setLoading] = useState(false);
 
   const mention = useMemo(() => activeMention(value), [value]);
 
   useEffect(() => {
+    if (!mention) {
+      setOptions([]);
+      setLoading(false);
+      return;
+    }
+
     let active = true;
-    void loadFriends(userId).then((rows) => {
-      if (active) setFriends(rows);
-    });
+    const timer = window.setTimeout(async () => {
+      try {
+        setLoading(true);
+        const rows = await socialService.mentionOptions(mention.query);
+        if (!active) return;
+
+        setOptions(
+          (Array.isArray(rows) ? rows : [])
+            .filter((row) => String(row.id) !== String(userId))
+            .slice(0, 10),
+        );
+      } catch {
+        if (active) setOptions([]);
+      } finally {
+        if (active) setLoading(false);
+      }
+    }, 120);
+
     return () => {
       active = false;
+      window.clearTimeout(timer);
     };
-  }, [userId]);
+  }, [mention?.query, userId]);
 
   useEffect(() => {
     if (value) return;
@@ -90,92 +105,44 @@ export function MentionInput({
     onMentionIdsChange([]);
   }, [value, onMentionIdsChange]);
 
-  const friendMatches = useMemo(() => {
-    if (!mention) return [];
-    const q = mention.query.toLowerCase();
-    return friends
-      .filter((friend) => !q || friend.name.toLowerCase().includes(q))
-      .slice(0, 6);
-  }, [friends, mention]);
-
-  useEffect(() => {
-    if (!mention || mention.query.length < 2 || friendMatches.length > 0) {
-      setNonFriends([]);
-      return;
-    }
-
-    let active = true;
-    const timer = window.setTimeout(() => {
-      void socialService
-        .search(mention.query, 6)
-        .then((result) => {
-          if (!active) return;
-          const friendIds = new Set(friends.map((friend) => String(friend.id)));
-          setNonFriends(
-            (result.users || [])
-              .filter(
-                (person) =>
-                  String(person.id) !== String(userId) &&
-                  !friendIds.has(String(person.id)),
-              )
-              .slice(0, 3),
-          );
-        })
-        .catch(() => {
-          if (active) setNonFriends([]);
-        });
-    }, 250);
-
-    return () => {
-      active = false;
-      window.clearTimeout(timer);
-    };
-  }, [friendMatches.length, friends, mention, userId]);
-
-  const emitSelected = (rows: MentionFriend[]) => {
+  const emitSelected = (rows: MentionOption[]) => {
     setSelected(rows);
-    onMentionIdsChange(Array.from(new Set(rows.map((row) => String(row.id)))));
+    onMentionIdsChange(
+      Array.from(new Set(rows.map((row) => String(row.id)))),
+    );
   };
 
   const handleChange = (nextValue: string) => {
-    const stillPresent = selected.filter((friend) =>
-      nextValue.includes(`@${friend.name}`),
+    const stillPresent = selected.filter((person) =>
+      nextValue.includes(`@${person.name}`),
     );
-    if (stillPresent.length !== selected.length) emitSelected(stillPresent);
+
+    if (stillPresent.length !== selected.length) {
+      emitSelected(stillPresent);
+    }
+
     onChange(nextValue);
   };
 
-  const chooseFriend = (friend: MentionFriend) => {
+  const chooseMention = (person: MentionOption) => {
     const current = activeMention(value);
     if (!current) return;
 
     const before = value.slice(0, current.start);
-    const next = `${before}@${friend.name} `;
+    const next = `${before}@${person.name} `;
     onChange(next);
 
     const nextSelected = selected.some(
-      (item) => String(item.id) === String(friend.id),
+      (item) => String(item.id) === String(person.id),
     )
       ? selected
-      : [...selected, friend].slice(0, 10);
+      : [...selected, person].slice(0, 10);
+
     emitSelected(nextSelected);
-    setNonFriends([]);
+    setOptions([]);
   };
 
-  const sendRequest = async (person: MentionFriend) => {
-    if (requested.has(String(person.id))) return;
-    try {
-      await socialService.sendFriendRequest(String(person.id));
-      setRequested((current) => new Set(current).add(String(person.id)));
-      toast.success("Friend request sent. Mention will be available after acceptance.");
-    } catch (error: any) {
-      toast.error(error?.response?.data?.message || "Friend request failed");
-    }
-  };
-
-  const showMenu = Boolean(
-    mention && (friendMatches.length > 0 || nonFriends.length > 0),
-  );
+  const showMenu = Boolean(mention);
 
   return (
     <div className="relative min-w-0 flex-1">
@@ -190,54 +157,45 @@ export function MentionInput({
 
       {showMenu && (
         <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-[90] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
-          {friendMatches.length > 0 && (
-            <>
-              <div className="px-3 pb-1 pt-2 text-[11px] font-bold uppercase tracking-wide text-slate-400">
-                Friends you can mention
+          <div className="flex items-center justify-between border-b border-slate-100 px-3 py-2">
+            <div>
+              <div className="text-[11px] font-black uppercase tracking-wide text-slate-400">
+                Mention
               </div>
-              {friendMatches.map((friend) => {
-                const photo = media(friend.profilePhotoUrl);
+              <div className="text-[11px] text-slate-500">
+                Friends र official RoomKhoj मात्र
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => router.push("/user/dashboard/rooms/create")}
+              className="flex items-center gap-1 rounded-full bg-red-50 px-2.5 py-1.5 text-[11px] font-bold text-red-600 hover:bg-red-100"
+            >
+              <HousePlus className="h-3.5 w-3.5" />
+              Add room
+            </button>
+          </div>
+
+          {loading ? (
+            <div className="px-3 py-4 text-center text-xs text-slate-500">
+              Searching mentions...
+            </div>
+          ) : options.length > 0 ? (
+            <div className="max-h-72 overflow-y-auto">
+              {options.map((person) => {
+                const photo = media(person.profilePhotoUrl);
+                const official = person.mentionType === "OFFICIAL";
+
                 return (
                   <button
-                    key={friend.id}
+                    key={person.id}
                     type="button"
                     onMouseDown={(event) => event.preventDefault()}
-                    onClick={() => chooseFriend(friend)}
-                    className="flex w-full items-center gap-3 px-3 py-2 text-left hover:bg-slate-50"
+                    onClick={() => chooseMention(person)}
+                    className="flex w-full items-center gap-3 px-3 py-2.5 text-left hover:bg-slate-50"
                   >
-                    {photo ? (
-                      <img
-                        src={photo}
-                        alt={friend.name}
-                        className="h-9 w-9 rounded-full bg-slate-100 object-cover"
-                      />
-                    ) : (
-                      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-200 text-sm font-bold text-slate-600">
-                        {friend.name.slice(0, 1).toUpperCase()}
-                      </div>
-                    )}
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate text-[14px] font-semibold text-slate-950">
-                        {friend.name}
-                      </div>
-                      <div className="text-[11px] text-slate-500">Friend · can mention</div>
-                    </div>
-                  </button>
-                );
-              })}
-            </>
-          )}
-
-          {friendMatches.length === 0 && nonFriends.length > 0 && (
-            <>
-              <div className="px-3 pb-1 pt-2 text-[11px] font-bold uppercase tracking-wide text-slate-400">
-                Not friends yet
-              </div>
-              {nonFriends.map((person) => {
-                const photo = media(person.profilePhotoUrl);
-                const sent = requested.has(String(person.id));
-                return (
-                  <div key={person.id} className="flex items-center gap-3 px-3 py-2">
                     {photo ? (
                       <img
                         src={photo}
@@ -245,35 +203,52 @@ export function MentionInput({
                         className="h-9 w-9 rounded-full bg-slate-100 object-cover"
                       />
                     ) : (
-                      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-200 text-sm font-bold text-slate-600">
-                        {person.name.slice(0, 1).toUpperCase()}
+                      <div
+                        className={`flex h-9 w-9 items-center justify-center rounded-full text-sm font-black ${
+                          official
+                            ? "bg-red-600 text-white"
+                            : "bg-slate-200 text-slate-600"
+                        }`}
+                      >
+                        {official
+                          ? "RK"
+                          : person.name.slice(0, 1).toUpperCase()}
                       </div>
                     )}
+
                     <div className="min-w-0 flex-1">
-                      <div className="truncate text-[14px] font-semibold text-slate-950">
-                        {person.name}
+                      <div className="flex min-w-0 items-center gap-1.5">
+                        <span className="truncate text-[14px] font-semibold text-slate-950">
+                          {person.name}
+                        </span>
+                        {official && (
+                          <BadgeCheck className="h-4 w-4 shrink-0 text-red-600" />
+                        )}
                       </div>
-                      <div className="text-[11px] text-slate-500">
-                        Add as friend before mentioning
+                      <div className="mt-0.5 flex items-center gap-1 text-[11px] text-slate-500">
+                        {official ? (
+                          "Official RoomKhoj · can mention"
+                        ) : (
+                          <>
+                            <Users className="h-3 w-3" />
+                            Friend · can mention
+                          </>
+                        )}
                       </div>
                     </div>
-                    <button
-                      type="button"
-                      disabled={sent}
-                      onMouseDown={(event) => event.preventDefault()}
-                      onClick={() => void sendRequest(person)}
-                      className="flex shrink-0 items-center gap-1 rounded-full bg-red-600 px-3 py-1.5 text-[11px] font-bold text-white disabled:bg-slate-300"
-                    >
-                      <UserPlus className="h-3.5 w-3.5" />
-                      {sent ? "Sent" : "Add Friend"}
-                    </button>
-                  </div>
+                  </button>
                 );
               })}
-              <div className="border-t border-slate-100 px-3 py-2 text-[11px] leading-4 text-slate-500">
-                Mentioning unlocks after the friend request is accepted.
-              </div>
-            </>
+            </div>
+          ) : (
+            <div className="px-4 py-5 text-center">
+              <p className="text-sm font-semibold text-slate-700">
+                Mention गर्न मिल्ने user भेटिएन।
+              </p>
+              <p className="mt-1 text-[11px] leading-4 text-slate-500">
+                अरू user लाई mention गर्न पहिले friend हुनुपर्छ। Official RoomKhoj लाई सधैं mention गर्न मिल्छ।
+              </p>
+            </div>
           )}
         </div>
       )}
