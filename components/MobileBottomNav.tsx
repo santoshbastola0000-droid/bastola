@@ -17,6 +17,7 @@ export function MobileBottomNav() {
   const pathname = usePathname();
   const user = useUserStore((state) => state.user);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [messageComposerFocused, setMessageComposerFocused] = useState(false);
 
   useEffect(() => {
     const loadUnread = async () => {
@@ -48,6 +49,51 @@ export function MobileBottomNav() {
   const isJobs = pathname.startsWith("/jobs");
   const isMessages = pathname.startsWith("/messages");
   const isProfile = pathname.startsWith("/user/dashboard/profile");
+
+  useEffect(() => {
+    if (!isMessages) {
+      setMessageComposerFocused(false);
+      return;
+    }
+
+    let blurTimer: number | null = null;
+
+    const syncComposerFocus = () => {
+      const active = document.activeElement;
+      setMessageComposerFocused(
+        active instanceof HTMLElement &&
+          active.dataset.messageComposer === "true",
+      );
+    };
+
+    const handleFocusIn = () => {
+      if (blurTimer !== null) {
+        window.clearTimeout(blurTimer);
+        blurTimer = null;
+      }
+      syncComposerFocus();
+    };
+
+    const handleFocusOut = () => {
+      blurTimer = window.setTimeout(syncComposerFocus, 30);
+    };
+
+    document.addEventListener("focusin", handleFocusIn);
+    document.addEventListener("focusout", handleFocusOut);
+    syncComposerFocus();
+
+    return () => {
+      document.removeEventListener("focusin", handleFocusIn);
+      document.removeEventListener("focusout", handleFocusOut);
+      if (blurTimer !== null) {
+        window.clearTimeout(blurTimer);
+      }
+    };
+  }, [isMessages]);
+
+  if (isMessages && messageComposerFocused) {
+    return null;
+  }
 
   return (
     <nav className="md:hidden fixed bottom-0 left-0 right-0 z-[99999] border-t border-gray-200 bg-white pb-[env(safe-area-inset-bottom)]">
