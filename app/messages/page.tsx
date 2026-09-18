@@ -1527,11 +1527,23 @@ const user = useUserStore(
 
 
   const appendPaymentMessage = (message: ChatMessage) => {
-    setMessages((prev) =>
-      prev.some((item) => item.id === message.id)
-        ? prev
-        : [...prev, message],
-    );
+    const nextPayment = parseEscrowCard(message);
+
+    setMessages((prev) => {
+      if (prev.some((item) => item.id === message.id)) {
+        return prev;
+      }
+
+      const withoutOlderPaymentState = nextPayment
+        ? prev.filter((item) => {
+            const existingPayment = parseEscrowCard(item);
+            return existingPayment?.id !== nextPayment.id;
+          })
+        : prev;
+
+      return [...withoutOlderPaymentState, message];
+    });
+
     void loadConversations();
   };
 
@@ -2570,7 +2582,7 @@ const user = useUserStore(
                                     </span>
                                   </div>
                                   <div className="mt-2 text-xs text-muted-foreground">
-                                    10% RoomKhoj fee: Rs. {payment.platformFee.toLocaleString()} · Agent gets Rs. {payment.agentAmount.toLocaleString()}
+                                    RoomKhoj fee: Rs. {payment.platformFee.toLocaleString()} · Receiver gets Rs. {payment.agentAmount.toLocaleString()}
                                   </div>
                                   <div className="mt-3 flex flex-wrap gap-2">
                                     {payment.status === "PAYMENT_REQUESTED" && !mine && (
