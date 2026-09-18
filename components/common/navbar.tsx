@@ -153,6 +153,13 @@ export function NavBar() {
     event?.preventDefault();
     const query = searchQuery.trim();
     if (query.length < 2) return;
+    if (isAuthenticated) {
+      void socialService.trackSearch({
+        query,
+        context: "GLOBAL",
+        resultCount: suggestionItems.length,
+      }).catch(() => undefined);
+    }
     setSearchOpen(false);
     router.push(`/search?q=${encodeURIComponent(query)}`);
   };
@@ -236,7 +243,16 @@ export function NavBar() {
                     </div>
                   )}
                   {!searchLoading && suggestionItems.map((item) => (
-                    <Link key={item.href + item.label} href={item.href} onClick={() => setSearchOpen(false)} className="block border-b border-slate-100 px-4 py-3 hover:bg-slate-50">
+                    <Link key={item.href + item.label} href={item.href} onClick={() => {
+                      if (isAuthenticated && searchQuery.trim().length >= 2) {
+                        void socialService.trackSearch({
+                          query: searchQuery.trim(),
+                          context: "GLOBAL",
+                          resultCount: suggestionItems.length,
+                        }).catch(() => undefined);
+                      }
+                      setSearchOpen(false);
+                    }} className="block border-b border-slate-100 px-4 py-3 hover:bg-slate-50">
                       <div className="truncate text-sm font-semibold text-slate-950">{item.label}</div>
                       <div className="mt-0.5 text-xs text-slate-500">{item.sub}</div>
                     </Link>
