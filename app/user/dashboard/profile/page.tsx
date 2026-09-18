@@ -783,6 +783,11 @@ export default function ProfilePage() {
                   {monetization?.isMonetized && <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-1 text-[11px] font-bold text-amber-800"><Crown className="h-3 w-3" /> Monetized</span>}
                 </div>
                 <p className="text-sm text-muted-foreground">{friends.length} {friends.length === 1 ? "friend" : "friends"} · {profile.rooms.length} rooms · {profile.jobs.length} jobs</p>
+                {!profile.user.isVerified && (
+                  <div className="mt-2 inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-bold text-amber-700">
+                    Unverified
+                  </div>
+                )}
               </div>
             </div>
             <div className="flex gap-2 sm:pb-1">
