@@ -40,6 +40,7 @@ import {
 import { PostReactions } from "@/components/social/PostReactions";
 import { CommentThread } from "@/components/social/CommentThread";
 import { MobileMenuDrawer } from "@/components/social/MobileMenuDrawer";
+import { MentionInput } from "@/components/social/MentionInput";
 
 const backendUrl = String(
   process.env.NEXT_PUBLIC_BACKEND_URL || "https://api.roomkhoj.com",
@@ -162,6 +163,7 @@ export function SocialFeedScreen() {
   const [nextCursor, setNextCursor] = useState<string | null>(null);
 
   const [text, setText] = useState("");
+  const [mentionUserIds, setMentionUserIds] = useState<string[]>([]);
   const [files, setFiles] = useState<File[]>([]);
   const [visibility, setVisibility] = useState<"PUBLIC" | "FRIENDS" | "GROUP">("PUBLIC");
   const [groupId, setGroupId] = useState("");
@@ -312,8 +314,10 @@ export function SocialFeedScreen() {
         visibility,
         groupId: visibility === "GROUP" ? groupId : undefined,
         files,
+        mentionUserIds,
       });
       setText("");
+      setMentionUserIds([]);
       setFiles([]);
       toast.success("Post published");
       await load();
@@ -426,10 +430,12 @@ export function SocialFeedScreen() {
         />
 
         <Composer
+          userId={String(user.id)}
           userName={user.name}
           myPhoto={myPhoto}
           text={text}
           setText={setText}
+          setMentionUserIds={setMentionUserIds}
           files={files}
           setFiles={setFiles}
           previews={previews}
@@ -717,10 +723,12 @@ function StoryCarousel({
 }
 
 function Composer({
+  userId,
   userName,
   myPhoto,
   text,
   setText,
+  setMentionUserIds,
   files,
   setFiles,
   previews,
@@ -735,10 +743,12 @@ function Composer({
   profileInput,
   onProfilePhoto,
 }: {
+  userId: string;
   userName: string;
   myPhoto: string | null;
   text: string;
   setText: (value: string) => void;
+  setMentionUserIds: (ids: string[]) => void;
   files: File[];
   setFiles: (files: File[]) => void;
   previews: string[];
@@ -771,11 +781,13 @@ function Composer({
             event.target.value = "";
           }}
         />
-        <input
+        <MentionInput
+          userId={userId}
           value={text}
-          onChange={(event) => setText(event.target.value)}
-          placeholder="What's on your mind?"
-          className="min-w-0 flex-1 rounded-full bg-slate-100 px-4 py-2.5 text-[16px] outline-none placeholder:text-slate-500"
+          onChange={setText}
+          onMentionIdsChange={setMentionUserIds}
+          placeholder="What's on your mind?  @ mention"
+          className="min-w-0 w-full rounded-full bg-slate-100 px-4 py-2.5 text-[16px] outline-none placeholder:text-slate-500"
           maxLength={3000}
         />
       </div>
