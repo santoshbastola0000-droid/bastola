@@ -88,7 +88,7 @@ function Avatar({
         loading="lazy"
         decoding="async"
         onError={() => setFailed(true)}
-        className={`${dimensions} shrink-0 rounded-full border border-slate-200 bg-slate-100 object-contain shadow-sm`}
+        className={`${dimensions} shrink-0 rounded-full border border-slate-200 bg-slate-100 object-cover shadow-sm`}
       />
     );
   }
@@ -333,7 +333,7 @@ export function SocialFeedScreen() {
         userName={user.name}
       />
 
-      <main className="mx-auto max-w-[720px] space-y-2 pb-24 sm:px-3">
+      <main className="mx-auto max-w-[760px] space-y-[6px] pb-24 sm:px-3">
         <StoryCarousel
           stories={stories}
           userName={user.name}
@@ -483,16 +483,16 @@ function StoryCarousel({
   onCreated: (file: File) => void | Promise<void>;
 }) {
   return (
-    <section className="border-y bg-white px-2 py-3 shadow-sm sm:rounded-xl sm:border">
+    <section className="border-y bg-white px-2 py-2.5 shadow-sm sm:rounded-xl sm:border">
       <div className="flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         <button
           onClick={() => storyInput.current?.click()}
-          className="relative h-[176px] w-[108px] shrink-0 overflow-hidden rounded-xl border bg-white"
+          className="relative h-[164px] w-[104px] shrink-0 overflow-hidden rounded-xl border bg-white shadow-sm"
         >
-          <div className="flex h-[120px] items-center justify-center bg-slate-100">
+          <div className="flex h-[110px] items-center justify-center bg-slate-100">
             <Avatar user={{ id: "me", name: userName }} src={myPhoto} size="lg" />
           </div>
-          <span className="absolute left-1/2 top-[108px] flex h-10 w-10 -translate-x-1/2 items-center justify-center rounded-full border-4 border-white bg-blue-600 text-white">
+          <span className="absolute left-1/2 top-[98px] flex h-10 w-10 -translate-x-1/2 items-center justify-center rounded-full border-4 border-white bg-blue-600 text-white">
             <Plus className="h-6 w-6" />
           </span>
           <span className="absolute bottom-3 left-1 right-1 text-[13px] font-bold">Create story</span>
@@ -512,7 +512,7 @@ function StoryCarousel({
           <button
             key={story.id}
             onClick={() => void onOpen(story)}
-            className="relative h-[176px] w-[108px] shrink-0 overflow-hidden rounded-xl bg-slate-900"
+            className="relative h-[164px] w-[104px] shrink-0 overflow-hidden rounded-xl bg-slate-900 shadow-sm"
           >
             {story.mediaType === "VIDEO" ? (
               <video src={media(story.mediaUrl)} muted preload="none" className="h-full w-full object-cover opacity-85" />
@@ -570,7 +570,7 @@ function Composer({
   onProfilePhoto: (file: File) => void | Promise<void>;
 }) {
   return (
-    <section className="border-y bg-white p-3 shadow-sm sm:rounded-xl sm:border">
+    <section id="feed-composer" className="scroll-mt-20 border-y bg-white p-3 shadow-sm sm:rounded-xl sm:border">
       <div className="flex items-center gap-2.5">
         <button className="relative" onClick={() => profileInput.current?.click()}>
           <Avatar user={{ id: "me", name: userName }} src={myPhoto} />
@@ -680,7 +680,7 @@ function PostCard({
   const own = post.author.id === currentUserId;
 
   return (
-    <article className="border-y bg-white font-sans text-slate-950 shadow-sm sm:rounded-xl sm:border">
+    <article className="overflow-hidden border-y bg-white font-sans text-slate-950 shadow-sm sm:rounded-xl sm:border">
       <header className="relative flex items-center gap-2.5 px-3 pb-2 pt-3">
         <Avatar user={post.author} />
         <div className="min-w-0 flex-1">
@@ -778,7 +778,7 @@ function PostMedia({ post }: { post: SocialPost }) {
           post.mediaTypes[index] === "VIDEO" ? (
             <video key={url} src={media(url)} controls preload="metadata" className="max-h-[640px] w-full bg-black object-contain" />
           ) : (
-            <img key={url} src={media(url)} alt="Post" loading="lazy" decoding="async" className="max-h-[640px] w-full object-cover" />
+            <img key={url} src={media(url)} alt="Post" loading="lazy" decoding="async" className="max-h-[760px] w-full bg-black object-contain" />
           ),
         )}
       </div>
@@ -798,7 +798,7 @@ function PostMedia({ post }: { post: SocialPost }) {
       >
         {post.mediaUrls.map((url, index) => (
           <div key={`${url}-${index}`} className="w-full shrink-0 snap-center">
-            <img src={media(url)} alt={`Post photo ${index + 1}`} loading="lazy" decoding="async" className="max-h-[680px] w-full object-contain" />
+            <img src={media(url)} alt={`Post photo ${index + 1}`} loading="lazy" decoding="async" className="max-h-[760px] w-full object-contain" />
           </div>
         ))}
       </div>
