@@ -33,6 +33,8 @@ import {
   BarChart3,
   CalendarDays,
   WalletCards,
+  UsersRound,
+  Heart,
 } from "lucide-react";
 import { toast } from "sonner";
 import { io, Socket } from "socket.io-client";
@@ -48,6 +50,12 @@ import {
 import { useUserStore } from "@/stores/user-store";
 import useTokenStore from "@/store";
 import { resolveImageUrl } from "@/lib/utils";
+import { profileService } from "@/http/services/profile.service";
+import {
+  notificationService,
+  type UserNotification,
+} from "@/http/services/notification.service";
+import { profileMediaUrl } from "@/lib/profile-media";
 
 type EscrowCard = {
   id: string;
@@ -56,6 +64,87 @@ type EscrowCard = {
   platformFee: number;
   agentAmount: number;
 };
+
+type InboxFriend = {
+  id: string;
+  name: string;
+  profilePhotoUrl?: string | null;
+  isOnline?: boolean;
+  lastActiveAt?: string | null;
+};
+
+function normalizeInboxFriend(value: any): InboxFriend | null {
+  const source =
+    value?.friend ||
+    value?.user ||
+    value?.otherUser ||
+    value;
+
+  const id = String(
+    source?.id ||
+      value?.friendId ||
+      value?.userId ||
+      "",
+  );
+
+  if (!id) return null;
+
+  return {
+    id,
+    name: String(
+      source?.name ||
+        value?.name ||
+        "RoomKhoj user",
+    ),
+    profilePhotoUrl:
+      source?.profilePhotoUrl ??
+      value?.profilePhotoUrl ??
+      null,
+    isOnline: Boolean(
+      source?.isOnline ??
+        value?.isOnline ??
+        false,
+    ),
+    lastActiveAt:
+      source?.lastActiveAt ??
+      value?.lastActiveAt ??
+      null,
+  };
+}
+
+function inboxTimeAgo(value?: string | null) {
+  if (!value) return "";
+
+  const time = new Date(value).getTime();
+  if (!Number.isFinite(time)) return "";
+
+  const diff = Math.max(0, Date.now() - time);
+  const minutes = Math.floor(diff / 60000);
+
+  if (minutes < 1) return "now";
+  if (minutes < 60) return `${minutes}m`;
+
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h`;
+
+  const days = Math.floor(hours / 24);
+  return days < 7
+    ? `${days}d`
+    : new Date(value).toLocaleDateString();
+}
+
+function isFollowerInboxNotification(
+  item: UserNotification,
+) {
+  const type = String(
+    item?.type || "",
+  ).toUpperCase();
+
+  return (
+    type.includes("FOLLOW") ||
+    type === "FRIEND_REQUEST"
+  );
+}
 
 function parseEscrowCard(message: ChatMessage): EscrowCard | null {
   if (message.type !== "PAYMENT") return null;
@@ -109,6 +198,14 @@ const user = useUserStore(
     useState<Set<string>>(
       () => new Set(),
     );
+
+  const [inboxFriends, setInboxFriends] =
+    useState<InboxFriend[]>([]);
+
+  const [
+    inboxNotifications,
+    setInboxNotifications,
+  ] = useState<UserNotification[]>([]);
 
   const [conversations, setConversations] =
     useState<MessageConversation[]>([]);
@@ -299,6 +396,65 @@ const user = useUserStore(
   useEffect(() => {
     loadConversations();
   }, [requestedConversationId]);
+
+  useEffect(() => {
+    if (!currentUserId) {
+      setInboxFriends([]);
+      setInboxNotifications([]);
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadInboxSocial = async () => {
+      const [friendsResult, notificationsResult] =
+        await Promise.allSettled([
+          profileService.getFriends(currentUserId),
+          notificationService.list(),
+        ]);
+
+      if (cancelled) return;
+
+      if (friendsResult.status === "fulfilled") {
+        const normalized = (
+          Array.isArray(friendsResult.value)
+            ? friendsResult.value
+            : []
+        )
+          .map(normalizeInboxFriend)
+          .filter(
+            (friend): friend is InboxFriend =>
+              Boolean(friend) &&
+              friend.id !== currentUserId,
+          );
+
+        setInboxFriends(normalized);
+      }
+
+      if (
+        notificationsResult.status ===
+        "fulfilled"
+      ) {
+        setInboxNotifications(
+          Array.isArray(notificationsResult.value)
+            ? notificationsResult.value
+            : [],
+        );
+      }
+    };
+
+    void loadInboxSocial();
+
+    const intervalId = window.setInterval(
+      loadInboxSocial,
+      60_000,
+    );
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+    };
+  }, [currentUserId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -672,6 +828,39 @@ const user = useUserStore(
   ]);
 
   useEffect(() => {
+    if (
+      !socket ||
+      !currentUserId ||
+      inboxFriends.length === 0
+    ) {
+      return;
+    }
+
+    const userIds = Array.from(
+      new Set(
+        inboxFriends
+          .map((friend) => friend.id)
+          .filter(
+            (id) =>
+              Boolean(id) &&
+              id !== currentUserId,
+          ),
+      ),
+    );
+
+    if (userIds.length) {
+      socket.emit(
+        "presence:subscribe",
+        { userIds },
+      );
+    }
+  }, [
+    socket,
+    currentUserId,
+    inboxFriends,
+  ]);
+
+  useEffect(() => {
     if (call?.mode !== "video") return;
 
     if (localVideoRef.current && localStreamRef.current) {
@@ -781,6 +970,74 @@ const user = useUserStore(
       }
     };
 
+  const openFriendConversation =
+    async (friend: InboxFriend) => {
+      const existing =
+        conversations.find(
+          (conversation) => {
+            const id =
+              conversation.otherUser?.id ||
+              conversation.otherUserId ||
+              (conversation.userOneId ===
+              currentUserId
+                ? conversation.userTwoId
+                : conversation.userOneId);
+
+            return id === friend.id;
+          },
+        );
+
+      if (existing) {
+        await openConversation(existing);
+        return;
+      }
+
+      try {
+        const result =
+          await messageService.startByUser(
+            friend.id,
+          );
+
+        const conversationId =
+          result?.conversation?.id ||
+          result?.id;
+
+        if (!conversationId) {
+          throw new Error(
+            "Conversation could not be created",
+          );
+        }
+
+        const fresh =
+          await messageService.getConversations();
+
+        setConversations(fresh);
+
+        const created = fresh.find(
+          (conversation) =>
+            conversation.id ===
+            conversationId,
+        );
+
+        if (created) {
+          await openConversation(created);
+          return;
+        }
+
+        router.replace(
+          `/messages?conversation=${encodeURIComponent(
+            conversationId,
+          )}`,
+        );
+      } catch (error: any) {
+        toast.error(
+          error?.response?.data?.message ||
+            error?.message ||
+            "Chat open गर्न सकिएन.",
+        );
+      }
+    };
+
   const handleMediaSelect = (
     e: React.ChangeEvent<HTMLInputElement>,
   ) => {
@@ -797,7 +1054,6 @@ const user = useUserStore(
       /\.(jpg|jpeg|png|webp|gif|heic|heif)$/i.test(
         fileName,
       );
-
     const isVideo =
       file.type.startsWith("video/") ||
       /\.(mp4|mov|m4v|webm|mkv|avi)$/i.test(
@@ -1444,6 +1700,63 @@ const user = useUserStore(
       ? pendingContextPost
       : null);
 
+  const onlineFriends =
+    inboxFriends
+      .filter((friend) =>
+        onlineUserIds.has(friend.id),
+      )
+      .slice(0, 12);
+
+  const recentlyActiveFriends =
+    [...inboxFriends]
+      .filter(
+        (friend) =>
+          !onlineUserIds.has(friend.id),
+      )
+      .sort((a, b) => {
+        const aTime = a.lastActiveAt
+          ? new Date(a.lastActiveAt).getTime()
+          : 0;
+        const bTime = b.lastActiveAt
+          ? new Date(b.lastActiveAt).getTime()
+          : 0;
+
+        return bTime - aTime;
+      })
+      .slice(0, 12);
+
+  const visibleInboxFriends =
+    onlineFriends.length > 0
+      ? onlineFriends
+      : recentlyActiveFriends;
+
+  const followerNotifications =
+    inboxNotifications.filter(
+      isFollowerInboxNotification,
+    );
+
+  const latestFollowerNotification =
+    followerNotifications[0];
+
+  const activityNotifications =
+    inboxNotifications.filter(
+      (item) =>
+        !isFollowerInboxNotification(item),
+    );
+
+  const latestActivityNotification =
+    activityNotifications[0];
+
+  const unreadFollowers =
+    followerNotifications.filter(
+      (item) => !item.readAt,
+    ).length;
+
+  const unreadActivity =
+    activityNotifications.filter(
+      (item) => !item.readAt,
+    ).length;
+
   return (
     <>
     <main className={`${isDarkMode ? "dark" : ""} mx-auto h-[calc(100dvh-68px)] max-w-7xl overflow-hidden bg-background text-foreground md:h-screen md:max-w-none md:p-0`}>
@@ -1534,6 +1847,167 @@ const user = useUserStore(
                 ))}
               </div>
             )}          </div>
+
+          {!search.trim() && (
+            <>
+              {visibleInboxFriends.length > 0 && (
+                <div className="border-b border-border bg-card px-4 py-3">
+                  <div className="mb-2 flex items-center justify-between">
+                    <p className="text-sm font-bold text-foreground">
+                      {onlineFriends.length > 0
+                        ? "Online friends"
+                        : "Recently active friends"}
+                    </p>
+                    <span className="text-[11px] font-medium text-muted-foreground">
+                      {onlineFriends.length > 0
+                        ? `${onlineFriends.length} online`
+                        : "Last online"}
+                    </span>
+                  </div>
+
+                  <div className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                    {visibleInboxFriends.map(
+                      (friend) => {
+                        const photo =
+                          profileMediaUrl(
+                            friend.profilePhotoUrl,
+                          );
+
+                        const online =
+                          onlineUserIds.has(
+                            friend.id,
+                          );
+
+                        return (
+                          <button
+                            key={friend.id}
+                            type="button"
+                            onClick={() =>
+                              void openFriendConversation(
+                                friend,
+                              )
+                            }
+                            className="w-[68px] shrink-0 text-center"
+                            title={
+                              online
+                                ? `${friend.name} is online`
+                                : friend.lastActiveAt
+                                  ? `${friend.name} · last active ${inboxTimeAgo(friend.lastActiveAt)} ago`
+                                  : friend.name
+                            }
+                          >
+                            <div className="relative mx-auto h-14 w-14">
+                              {photo ? (
+                                <img
+                                  src={photo}
+                                  alt=""
+                                  className="h-14 w-14 rounded-full border border-border object-cover"
+                                />
+                              ) : (
+                                <div className="flex h-14 w-14 items-center justify-center rounded-full border border-border bg-muted text-sm font-black text-primary">
+                                  {friend.name
+                                    .slice(0, 2)
+                                    .toUpperCase()}
+                                </div>
+                              )}
+
+                              {online && (
+                                <span
+                                  className="absolute bottom-0 right-0 h-4 w-4 rounded-full border-[3px] border-card bg-emerald-500"
+                                  aria-label="Online"
+                                />
+                              )}
+                            </div>
+
+                            <p className="mt-1 truncate text-xs font-semibold text-foreground">
+                              {friend.name}
+                            </p>
+
+                            {!online &&
+                              friend.lastActiveAt && (
+                                <p className="truncate text-[10px] text-muted-foreground">
+                                  {inboxTimeAgo(
+                                    friend.lastActiveAt,
+                                  )}
+                                </p>
+                              )}
+                          </button>
+                        );
+                      },
+                    )}
+                  </div>
+                </div>
+              )}
+
+              <div className="border-b border-border bg-card px-4 py-2">
+                <button
+                  type="button"
+                  onClick={() =>
+                    router.push(
+                      "/notifications",
+                    )
+                  }
+                  className="flex w-full items-center gap-3 rounded-2xl px-1 py-2.5 text-left transition hover:bg-muted"
+                >
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-sky-500 text-white shadow-sm">
+                    <UsersRound className="h-6 w-6" />
+                  </div>
+
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <p className="font-bold text-foreground">
+                        New followers
+                      </p>
+                      {unreadFollowers > 0 && (
+                        <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold text-primary-foreground">
+                          {unreadFollowers}
+                        </span>
+                      )}
+                    </div>
+
+                    <p className="truncate text-sm text-muted-foreground">
+                      {latestFollowerNotification?.body ||
+                        latestFollowerNotification?.title ||
+                        "New follower updates will appear here."}
+                    </p>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    router.push(
+                      "/notifications",
+                    )
+                  }
+                  className="flex w-full items-center gap-3 rounded-2xl px-1 py-2.5 text-left transition hover:bg-muted"
+                >
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-pink-500 text-white shadow-sm">
+                    <Heart className="h-6 w-6 fill-current" />
+                  </div>
+
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <p className="font-bold text-foreground">
+                        Activity
+                      </p>
+                      {unreadActivity > 0 && (
+                        <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold text-primary-foreground">
+                          {unreadActivity}
+                        </span>
+                      )}
+                    </div>
+
+                    <p className="truncate text-sm text-muted-foreground">
+                      {latestActivityNotification?.body ||
+                        latestActivityNotification?.title ||
+                        "Likes, comments and other activity will appear here."}
+                    </p>
+                  </div>
+                </button>
+              </div>
+            </>
+          )}
 
           {loading ? (
             <div className="flex justify-center p-10">
