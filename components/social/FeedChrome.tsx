@@ -220,7 +220,7 @@ export function FeedChrome() {
           <Link
             href="/feed"
             aria-label="RoomKhoj Home"
-            className="min-w-0 flex-1 truncate text-[30px] font-black leading-none tracking-[-0.055em] text-[#1877f2]"
+            className="min-w-0 flex-1 truncate text-[30px] font-black leading-none tracking-[-0.055em] text-red-600"
           >
             roomkhoj
           </Link>
