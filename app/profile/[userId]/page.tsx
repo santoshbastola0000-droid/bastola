@@ -87,6 +87,10 @@ export default function PublicProfilePage() {
 
       setProfile(data);
 
+      void profileService
+        .recordProfileView(userId)
+        .catch(() => undefined);
+
       try {
         const status =
           await profileService
