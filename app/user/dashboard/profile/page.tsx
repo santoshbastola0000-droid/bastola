@@ -781,6 +781,42 @@ export default function ProfilePage() {
         <PushNotificationSetup />
       </div>
 
+      <div className="flex justify-end px-4 sm:px-0">
+        <button
+          type="button"
+          onClick={() => setShowProfileViewers(true)}
+          className="flex max-w-[76vw] items-center gap-2 rounded-full border border-border bg-background px-3 py-2 text-left shadow-sm transition hover:bg-muted"
+          aria-label="Open profile viewers"
+        >
+          <Eye className="h-4 w-4 shrink-0 text-primary" />
+          <span className="whitespace-nowrap text-sm font-black">
+            {profileViews.totalViews} profile views
+          </span>
+          {profileViews.viewers.length > 0 && (
+            <span className="ml-1 flex -space-x-2">
+              {profileViews.viewers.slice(0, 3).map((viewer) => {
+                const viewerPhoto = profileMediaUrl(viewer.profilePhotoUrl);
+                return viewerPhoto ? (
+                  <img
+                    key={viewer.id}
+                    src={viewerPhoto}
+                    alt=""
+                    className="h-7 w-7 rounded-full border-2 border-background object-cover"
+                  />
+                ) : (
+                  <span
+                    key={viewer.id}
+                    className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-background bg-muted text-[9px] font-black"
+                  >
+                    {viewer.name.slice(0, 1).toUpperCase()}
+                  </span>
+                );
+              })}
+            </span>
+          )}
+        </button>
+      </div>
+
       <section className="overflow-hidden bg-background shadow-sm sm:rounded-b-[28px]">
         <div className="relative h-56 bg-gradient-to-br from-primary/90 via-primary to-primary/75 sm:h-80">
           {coverPhoto && !coverPhotoFailed ? (
@@ -818,40 +854,6 @@ export default function ProfilePage() {
         </div>
 
         <div className="relative px-4 pb-4 sm:px-8">
-          <button
-            type="button"
-            onClick={() => setShowProfileViewers(true)}
-            className="absolute right-3 top-3 z-20 flex max-w-[64vw] items-center gap-2 rounded-full border border-border bg-background/95 px-3 py-2 text-left shadow-sm backdrop-blur transition hover:bg-muted sm:right-6 sm:top-5"
-            aria-label="Open profile viewers"
-          >
-            <Eye className="h-4 w-4 shrink-0 text-primary" />
-            <span className="whitespace-nowrap text-sm font-black">
-              {profileViews.totalViews} profile views
-            </span>
-            {profileViews.viewers.length > 0 && (
-              <span className="ml-1 flex -space-x-2">
-                {profileViews.viewers.slice(0, 3).map((viewer) => {
-                  const viewerPhoto = profileMediaUrl(viewer.profilePhotoUrl);
-                  return viewerPhoto ? (
-                    <img
-                      key={viewer.id}
-                      src={viewerPhoto}
-                      alt=""
-                      className="h-7 w-7 rounded-full border-2 border-background object-cover"
-                    />
-                  ) : (
-                    <span
-                      key={viewer.id}
-                      className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-background bg-muted text-[9px] font-black"
-                    >
-                      {viewer.name.slice(0, 1).toUpperCase()}
-                    </span>
-                  );
-                })}
-              </span>
-            )}
-          </button>
-
           <div className="-mt-20 flex flex-col items-center text-center sm:-mt-24">
             <div className="relative">
               <div className="h-40 w-40 overflow-hidden rounded-full border-[5px] border-background bg-primary shadow-xl sm:h-48 sm:w-48">
