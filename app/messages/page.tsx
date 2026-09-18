@@ -387,7 +387,6 @@ const user = useUserStore(
   const [composerFocused, setComposerFocused] = useState(false);
   const [mobileChatViewport, setMobileChatViewport] = useState<{
     height: number;
-    offsetTop: number;
   } | null>(null);
 
   useEffect(() => {
@@ -408,14 +407,14 @@ const user = useUserStore(
         240,
         Math.round(viewport?.height ?? window.innerHeight),
       );
-      const offsetTop = Math.max(
-        0,
-        Math.round(viewport?.offsetTop ?? 0),
-      );
+      setMobileChatViewport({ height });
 
-      setMobileChatViewport({ height, offsetTop });
+      // iOS Safari often scrolls the whole document to the focused textarea.
+      // Keep the chat shell pinned to the visible viewport instead.
+      window.scrollTo(0, 0);
 
       window.requestAnimationFrame(() => {
+        window.scrollTo(0, 0);
         const scroller = messagesScrollerRef.current;
         if (scroller) {
           scroller.scrollTop = scroller.scrollHeight;
@@ -1881,8 +1880,15 @@ const user = useUserStore(
       style={
         mobileChatViewport
           ? {
+              position: "fixed",
+              top: 0,
+              left: 0,
+              right: 0,
+              width: "100%",
               height: `${mobileChatViewport.height}px`,
-              transform: `translateY(${mobileChatViewport.offsetTop}px)`,
+              maxWidth: "none",
+              zIndex: 60,
+              overscrollBehavior: "none",
             }
           : undefined
       }
@@ -2714,12 +2720,19 @@ const user = useUserStore(
                       value={draft}
                       onFocus={() => {
                         setComposerFocused(true);
+                        window.scrollTo(0, 0);
+
                         window.setTimeout(() => {
+                          window.scrollTo(0, 0);
                           const scroller = messagesScrollerRef.current;
                           if (scroller) {
                             scroller.scrollTop = scroller.scrollHeight;
                           }
-                        }, 120);
+                        }, 80);
+
+                        window.setTimeout(() => {
+                          window.scrollTo(0, 0);
+                        }, 250);
                       }}
                       onBlur={() => setComposerFocused(false)}
                       onChange={(e) => setDraft(e.target.value)}
