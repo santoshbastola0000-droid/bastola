@@ -30,7 +30,7 @@ function profilePhoto(value?: string | null) {
 }
 
 function reactionButtonColor(reaction: SocialReactionType | null) {
-  if (reaction === "LIKE") return "text-blue-600";
+  if (reaction === "LIKE") return "text-red-600";
   if (reaction === "LOVE") return "text-red-500";
   if (reaction === "HAHA" || reaction === "WOW" || reaction === "SAD") return "text-amber-600";
   if (reaction === "ANGRY") return "text-orange-600";
@@ -375,7 +375,7 @@ export function PostReactions({
             </div>
 
             <div className="flex items-center gap-6 border-b px-5 pb-3 text-[15px] font-bold text-slate-950">
-              <button type="button" onClick={() => setFilter("ALL")} className={`flex items-center gap-2 rounded-full px-3 py-2 ${filter === "ALL" ? "bg-blue-50 text-blue-600" : ""}`}>
+              <button type="button" onClick={() => setFilter("ALL")} className={`flex items-center gap-2 rounded-full px-3 py-2 ${filter === "ALL" ? "bg-red-50 text-red-600" : ""}`}>
                 <span>{likeCount}</span>
                 <span className="flex items-center -space-x-1">{REACTIONS.filter((item) => reactionCounts.get(item.type)).slice(0, 3).map((item) => <span key={item.type}>{item.emoji}</span>)}</span>
               </button>
@@ -404,7 +404,7 @@ export function PostReactions({
                       <span className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full border-2 border-white bg-white text-sm shadow-sm">{emoji}</span>
                     </div>
                     <div className="min-w-0 flex-1 truncate text-[15px] font-semibold">{entry.user.name}</div>
-                    {String(entry.user.id) !== String(currentUserId) && <button type="button" onClick={() => { window.location.href = `/messages?userId=${encodeURIComponent(entry.user.id)}`; }} className="shrink-0 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white">Message</button>}
+                    {String(entry.user.id) !== String(currentUserId) && <button type="button" onClick={() => { window.location.href = `/messages?userId=${encodeURIComponent(entry.user.id)}`; }} className="shrink-0 rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white">Message</button>}
                   </div>
                 );
               })}
