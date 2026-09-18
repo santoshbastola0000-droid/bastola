@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { messageService } from "@/http/services/message.service";
 import { useUserStore } from "@/stores/user-store";
 import {
@@ -18,6 +18,8 @@ export function MobileBottomNav() {
   const user = useUserStore((state) => state.user);
   const [unreadCount, setUnreadCount] = useState(0);
   const [messageComposerFocused, setMessageComposerFocused] = useState(false);
+  const [compactOnScroll, setCompactOnScroll] = useState(false);
+  const lastWindowScrollY = useRef(0);
 
   useEffect(() => {
     const loadUnread = async () => {
@@ -50,6 +52,29 @@ export function MobileBottomNav() {
   const isReels = pathname.startsWith("/reels");
   const isMessages = pathname.startsWith("/messages");
   const isProfile = pathname.startsWith("/user/dashboard/profile");
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const current = Math.max(0, window.scrollY);
+      const delta = current - lastWindowScrollY.current;
+
+      if (current < 24) {
+        setCompactOnScroll(false);
+      } else if (delta > 7) {
+        // Finger swipes up / page moves down: keep nav visible but smaller.
+        setCompactOnScroll(true);
+      } else if (delta < -7) {
+        // Finger swipes down / page moves up: restore the full nav.
+        setCompactOnScroll(false);
+      }
+
+      lastWindowScrollY.current = current;
+    };
+
+    lastWindowScrollY.current = window.scrollY;
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   useEffect(() => {
     if (!isMessages) {
@@ -97,7 +122,9 @@ export function MobileBottomNav() {
   }
 
   const itemClass = (active: boolean) =>
-    `relative flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-[22px] py-2 text-[9px] font-semibold transition-all duration-200 ${
+    `relative flex min-w-0 flex-1 flex-col items-center justify-center rounded-[20px] font-semibold transition-all duration-200 ${
+      compactOnScroll ? "gap-0 py-1 text-[8px]" : "gap-0.5 py-2 text-[9px]"
+    } ${
       active
         ? "bg-white/16 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18)]"
         : "text-white/75 active:bg-white/10"
@@ -106,7 +133,13 @@ export function MobileBottomNav() {
   return (
     <nav className="pointer-events-none fixed bottom-0 left-0 right-0 z-40 md:hidden">
       <div className="px-3 pb-[calc(0.55rem+env(safe-area-inset-bottom))]">
-        <div className="pointer-events-auto mx-auto flex h-[66px] max-w-[430px] items-center gap-1 rounded-[28px] border border-white/15 bg-slate-950/88 p-1.5 shadow-[0_12px_35px_rgba(0,0,0,0.32)] backdrop-blur-xl">
+        <div
+          className={`pointer-events-auto mx-auto flex max-w-[430px] items-center gap-1 border border-white/15 bg-slate-950/88 shadow-[0_12px_35px_rgba(0,0,0,0.32)] backdrop-blur-xl transition-all duration-200 ${
+            compactOnScroll
+              ? "h-[54px] rounded-[24px] p-1"
+              : "h-[66px] rounded-[28px] p-1.5"
+          }`}
+        >
           <Link
             href={feedHref}
             onClick={(event) => {
@@ -122,7 +155,7 @@ export function MobileBottomNav() {
             className={itemClass(isFeed)}
             aria-label={isFeed ? "Refresh feed" : "Feed"}
           >
-            <Home className="h-6 w-6" strokeWidth={isFeed ? 2.6 : 2.1} />
+            <Home className={compactOnScroll ? "h-5 w-5" : "h-6 w-6"} strokeWidth={isFeed ? 2.6 : 2.1} />
             <span>Feed</span>
           </Link>
 
@@ -131,7 +164,7 @@ export function MobileBottomNav() {
             className={itemClass(isJobs)}
             aria-label="Jobs"
           >
-            <BriefcaseBusiness className="h-6 w-6" strokeWidth={isJobs ? 2.6 : 2.1} />
+            <BriefcaseBusiness className={compactOnScroll ? "h-5 w-5" : "h-6 w-6"} strokeWidth={isJobs ? 2.6 : 2.1} />
             <span>Jobs</span>
           </Link>
 
@@ -140,7 +173,7 @@ export function MobileBottomNav() {
             className={itemClass(isReels)}
             aria-label="Reels"
           >
-            <Clapperboard className="h-6 w-6" strokeWidth={isReels ? 2.6 : 2.1} />
+            <Clapperboard className={compactOnScroll ? "h-5 w-5" : "h-6 w-6"} strokeWidth={isReels ? 2.6 : 2.1} />
             <span>Reels</span>
           </Link>
 
@@ -150,7 +183,7 @@ export function MobileBottomNav() {
             aria-label="Messages"
           >
             <div className="relative">
-              <MessageCircle className="h-6 w-6" strokeWidth={isMessages ? 2.6 : 2.1} />
+              <MessageCircle className={compactOnScroll ? "h-5 w-5" : "h-6 w-6"} strokeWidth={isMessages ? 2.6 : 2.1} />
               {unreadCount > 0 && (
                 <span className="absolute -right-3 -top-2 flex h-[18px] min-w-[18px] items-center justify-center rounded-full border-2 border-slate-950 bg-red-500 px-1 text-[9px] font-black text-white">
                   {unreadCount > 99 ? "99+" : unreadCount}
@@ -165,7 +198,7 @@ export function MobileBottomNav() {
             className={itemClass(isProfile)}
             aria-label="Profile"
           >
-            <UserRound className="h-6 w-6" strokeWidth={isProfile ? 2.6 : 2.1} />
+            <UserRound className={compactOnScroll ? "h-5 w-5" : "h-6 w-6"} strokeWidth={isProfile ? 2.6 : 2.1} />
             <span>Profile</span>
           </Link>
         </div>
