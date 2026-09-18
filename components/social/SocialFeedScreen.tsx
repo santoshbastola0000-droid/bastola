@@ -41,6 +41,7 @@ import { PostReactions } from "@/components/social/PostReactions";
 import { CommentThread } from "@/components/social/CommentThread";
 import { MobileMenuDrawer } from "@/components/social/MobileMenuDrawer";
 import { MentionInput } from "@/components/social/MentionInput";
+import { StoryCreator } from "@/components/social/StoryCreator";
 
 const backendUrl = String(
   process.env.NEXT_PUBLIC_BACKEND_URL || "https://api.roomkhoj.com",
@@ -176,7 +177,6 @@ export function SocialFeedScreen() {
 
   const lastScrollY = useRef(0);
   const postInput = useRef<HTMLInputElement>(null);
-  const storyInput = useRef<HTMLInputElement>(null);
   const profileInput = useRef<HTMLInputElement>(null);
   const sentinel = useRef<HTMLDivElement>(null);
 
@@ -423,15 +423,37 @@ export function SocialFeedScreen() {
           stories={stories}
           userName={user.name}
           myPhoto={myPhoto}
-          storyInput={storyInput}
           onOpen={async (story) => {
             setActiveStory(story);
             await socialService.viewStory(story.id).catch(() => undefined);
           }}
-          onCreated={async (file) => {
-            await socialService.createStory({ file, visibility: "PUBLIC" });
+          onCreated={async ({
+            file,
+            caption,
+            musicTrackId,
+            musicAutoSelected,
+          }) => {
+            const created = await socialService.createStory({
+              file,
+              caption,
+              visibility: "PUBLIC",
+              musicTrackId,
+              musicAutoSelected,
+            });
+
             setStories(await socialService.stories());
-            toast.success("Story added for 24 hours");
+
+            if (musicTrackId && !created?.music) {
+              toast.info(
+                "Story post भयो, तर music provider उपलब्ध नभएकाले music जोडिएन।",
+              );
+            } else {
+              toast.success(
+                created?.music
+                  ? "Story added with music for 24 hours"
+                  : "Story added for 24 hours",
+              );
+            }
           }}
         />
 
@@ -671,42 +693,27 @@ function StoryCarousel({
   stories,
   userName,
   myPhoto,
-  storyInput,
   onOpen,
   onCreated,
 }: {
   stories: SocialStory[];
   userName: string;
   myPhoto: string | null;
-  storyInput: React.RefObject<HTMLInputElement | null>;
   onOpen: (story: SocialStory) => void | Promise<void>;
-  onCreated: (file: File) => void | Promise<void>;
+  onCreated: (payload: {
+    file: File;
+    caption?: string;
+    musicTrackId?: string;
+    musicAutoSelected?: boolean;
+  }) => void | Promise<void>;
 }) {
   return (
     <section className="border-y bg-white px-2 py-2.5 shadow-sm sm:rounded-xl sm:border">
       <div className="flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        <button
-          onClick={() => storyInput.current?.click()}
-          className="relative h-[164px] w-[104px] shrink-0 overflow-hidden rounded-xl border bg-white shadow-sm"
-        >
-          <div className="flex h-[110px] items-center justify-center bg-slate-100">
-            <Avatar user={{ id: "me", name: userName }} src={myPhoto} size="lg" />
-          </div>
-          <span className="absolute left-1/2 top-[98px] flex h-10 w-10 -translate-x-1/2 items-center justify-center rounded-full border-4 border-white bg-red-600 text-white">
-            <Plus className="h-6 w-6" />
-          </span>
-          <span className="absolute bottom-3 left-1 right-1 text-[13px] font-bold">Create story</span>
-        </button>
-        <input
-          ref={storyInput}
-          type="file"
-          accept="image/*,video/*"
-          className="hidden"
-          onChange={async (event) => {
-            const file = event.target.files?.[0];
-            if (file) await onCreated(file);
-            event.target.value = "";
-          }}
+        <StoryCreator
+          userName={userName}
+          myPhoto={myPhoto}
+          onCreated={onCreated}
         />
         {stories.map((story) => (
           <button
@@ -1225,17 +1232,95 @@ function StoryViewer({
   onClose: () => void;
   onDelete: () => void | Promise<void>;
 }) {
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    const audio = audioRef.current;
+
+    if (video) {
+      video.currentTime = 0;
+      void video.play().catch(() => undefined);
+    }
+
+    if (audio) {
+      audio.currentTime = 0;
+      void audio.play().catch(() => undefined);
+    }
+
+    return () => {
+      video?.pause();
+      audio?.pause();
+    };
+  }, [story.id]);
+
   return (
-    <div className="fixed inset-0 z-[240] flex items-center justify-center bg-black/95 p-3">
-      <button onClick={onClose} className="absolute right-4 top-4 rounded-full bg-white/20 p-2 text-white"><X className="h-6 w-6" /></button>
+    <div className="fixed inset-0 z-[240] flex items-center justify-center bg-black/95 p-0 sm:p-3">
+      <button
+        type="button"
+        onClick={onClose}
+        className="absolute right-4 top-[calc(1rem+env(safe-area-inset-top))] z-20 rounded-full bg-black/45 p-2 text-white backdrop-blur"
+        aria-label="Close story"
+      >
+        <X className="h-6 w-6" />
+      </button>
+
       {own && (
-        <button onClick={() => void onDelete()} className="absolute left-4 top-4 rounded-full bg-red-600 px-4 py-2 text-[13px] font-bold text-white">Delete</button>
+        <button
+          type="button"
+          onClick={() => void onDelete()}
+          className="absolute left-4 top-[calc(1rem+env(safe-area-inset-top))] z-20 rounded-full bg-red-600 px-4 py-2 text-[13px] font-bold text-white"
+        >
+          Delete
+        </button>
       )}
-      {story.mediaType === "VIDEO" ? (
-        <video src={media(story.mediaUrl)} autoPlay controls className="max-h-[90vh] max-w-full" />
-      ) : (
-        <img src={media(story.mediaUrl)} alt="Story" className="max-h-[90vh] max-w-full" />
-      )}
+
+      <div className="relative flex h-full w-full items-center justify-center overflow-hidden bg-black sm:h-auto sm:max-h-[94vh] sm:max-w-[560px]">
+        {story.mediaType === "VIDEO" ? (
+          <video
+            ref={videoRef}
+            src={media(story.mediaUrl)}
+            autoPlay
+            playsInline
+            controls={false}
+            disablePictureInPicture
+            muted={Boolean(story.music)}
+            preload="auto"
+            onContextMenu={(event) => event.preventDefault()}
+            className="h-full max-h-[100dvh] w-full object-contain sm:max-h-[94vh]"
+          />
+        ) : (
+          <img
+            src={media(story.mediaUrl)}
+            alt="Story"
+            className="h-full max-h-[100dvh] w-full object-contain sm:max-h-[94vh]"
+          />
+        )}
+
+        {story.music?.audioUrl && (
+          <>
+            <audio
+              ref={audioRef}
+              src={story.music.audioUrl}
+              autoPlay
+              loop
+              preload="auto"
+            />
+            <div className="absolute bottom-[calc(1.25rem+env(safe-area-inset-bottom))] left-4 right-4 flex items-center gap-2 rounded-xl bg-black/60 px-3 py-2 text-white backdrop-blur">
+              <span className="text-base">♪</span>
+              <div className="min-w-0">
+                <div className="truncate text-xs font-bold">
+                  {story.music.title}
+                </div>
+                <div className="truncate text-[10px] text-white/65">
+                  {story.music.artist}
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 }
