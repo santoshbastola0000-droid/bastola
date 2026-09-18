@@ -154,7 +154,48 @@ export type SocialReport = {
   createdAt: string;
 };
 
+export type GlobalSearchResult = {
+  query: string;
+  users: Array<{
+    id: string;
+    name: string;
+    profilePhotoUrl?: string | null;
+    href: string;
+  }>;
+  posts: Array<SocialPost & { href: string }>;
+  rooms: Array<{
+    id: string;
+    title: string;
+    description?: string | null;
+    address?: string | null;
+    price: number;
+    images?: string[];
+    href: string;
+  }>;
+  jobs: Array<{
+    id: string;
+    title: string;
+    companyName?: string | null;
+    location: string;
+    salary?: number | null;
+    href: string;
+  }>;
+  services: Array<{
+    key: string;
+    title: string;
+    body: string;
+    href: string;
+  }>;
+};
+
 export const socialService = {
+  async search(query: string, limit = 8) {
+    const response = await privateApi.get("/social/search", {
+      params: { q: query, limit },
+    });
+    return response.data as GlobalSearchResult;
+  },
+
   async feed(before?: string) {
     const response = await privateApi.get("/social/feed", {
       params: { limit: 20, before },
