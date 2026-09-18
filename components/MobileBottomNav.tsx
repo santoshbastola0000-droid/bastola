@@ -8,7 +8,6 @@ import { useUserStore } from "@/stores/user-store";
 import {
   Home,
   BriefcaseBusiness,
-  Plus,
   MessageCircle,
   UserRound,
 } from "lucide-react";
@@ -116,14 +115,6 @@ export function MobileBottomNav() {
         >
           <BriefcaseBusiness className="h-6 w-6" strokeWidth={isJobs ? 2.5 : 2} />
           <span>Jobs</span>
-        </Link>
-
-        <Link
-          href="/user/dashboard/rooms/create"
-          aria-label="List room"
-          className="relative -mt-5 flex h-[44px] w-[62px] items-center justify-center rounded-xl bg-black text-white shadow-lg transition-transform active:scale-95"
-        >
-          <Plus className="h-7 w-7" strokeWidth={2.7} />
         </Link>
 
         <Link
