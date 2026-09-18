@@ -59,6 +59,7 @@ const navItems: NavItem[] = [
   { title: "Pending Approvals", href: "/admin/dashboard/rooms/pending", icon: Building2 },
   { title: "Approved Rooms", href: "/admin/dashboard/rooms/approved", icon: Building2 },
   { title: "Users", href: "/admin/dashboard/users", icon: Users },
+  { title: "Profile UI", href: "/admin/dashboard/profile-ui", icon: ShieldCheck },
   { title: "User Band", href: "/admin/dashboard/user-band", icon: ShieldCheck },
   { title: "Messages", href: "/admin/dashboard/messages", icon: MessageSquare },
   { title: "Notifications", href: "/admin/dashboard/notifications", icon: Bell },
