@@ -650,7 +650,7 @@ function Composer({
         <button
           onClick={() => void onPublish()}
           disabled={posting || (!text.trim() && !files.length)}
-          className="ml-auto rounded-lg bg-blue-600 px-4 py-2 text-[14px] font-bold text-white disabled:opacity-40"
+          className="ml-auto rounded-lg bg-red-600 px-4 py-2 text-[14px] font-bold text-white disabled:opacity-40"
         >
           {posting ? "Posting…" : "Post"}
         </button>
