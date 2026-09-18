@@ -144,6 +144,15 @@ export function SocialFeedScreen() {
   const [groups, setGroups] = useState<SocialGroup[]>([]);
   const [requests, setRequests] = useState<Array<SocialUser & { requestedAt: string }>>([]);
   const [suggestions, setSuggestions] = useState<SocialUser[]>([]);
+  const [friendOnboarding, setFriendOnboarding] = useState<{
+    isNewUser: boolean;
+    required: number;
+    sent: number;
+    remaining: number;
+    complete: boolean;
+    suggestions: SocialUser[];
+  } | null>(null);
+  const [onboardingBusyId, setOnboardingBusyId] = useState<string | null>(null);
   const [myPhoto, setMyPhoto] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -205,34 +214,37 @@ export function SocialFeedScreen() {
   const loadSecondary = useCallback(async () => {
     if (!user) return;
 
-    const [storyRows, friendRows, groupRows, socialPhoto, profile, prefs] =
-      await Promise.all([
-        socialService.stories().catch(() => []),
-        socialService.friendRequests().catch(() => []),
-        socialService.groups().catch(() => []),
-        socialService
-          .myProfilePhoto()
-          .catch(() => ({ profilePhotoUrl: null, createdAt: null })),
-        profileService.getProfile(String(user.id)).catch(() => null),
-        socialService.preferences().catch(() => null),
-      ]);
+    const [
+      storyRows,
+      friendRows,
+      groupRows,
+      socialPhoto,
+      profile,
+      rankedSuggestions,
+      onboarding,
+    ] = await Promise.all([
+      socialService.stories().catch(() => []),
+      socialService.friendRequests().catch(() => []),
+      socialService.groups().catch(() => []),
+      socialService
+        .myProfilePhoto()
+        .catch(() => ({ profilePhotoUrl: null, createdAt: null })),
+      profileService.getProfile(String(user.id)).catch(() => null),
+      socialService.friendSuggestions().catch(() => []),
+      socialService.friendOnboarding().catch(() => null),
+    ]);
 
     setStories(storyRows || []);
     setRequests(friendRows || []);
     setGroups(groupRows || []);
+    setSuggestions(rankedSuggestions || []);
+    setFriendOnboarding(onboarding);
     setMyPhoto(
       socialPhoto.profilePhotoUrl ||
         profile?.user?.profilePhotoUrl ||
         (user as any)?.profilePhotoUrl ||
         null,
     );
-
-    if (prefs?.allowNearbySuggestions) {
-      const nearby = await socialService
-        .nearbySuggestions()
-        .catch(() => ({ enabled: false, suggestions: [] }));
-      setSuggestions(nearby.suggestions || []);
-    }
   }, [user]);
 
   useEffect(() => {
@@ -334,6 +346,66 @@ export function SocialFeedScreen() {
       />
 
       <main className="mx-auto max-w-[760px] space-y-[6px] pb-24 sm:px-3">
+        {friendOnboarding?.isNewUser &&
+          !friendOnboarding.complete &&
+          friendOnboarding.remaining > 0 && (
+            <NewUserFriendOnboarding
+              data={friendOnboarding}
+              busyId={onboardingBusyId}
+              onAdd={async (person) => {
+                try {
+                  setOnboardingBusyId(person.id);
+                  await socialService.sendFriendRequest(person.id);
+
+                  setFriendOnboarding((current) => {
+                    if (!current) return current;
+                    const sent = Math.min(
+                      current.required,
+                      current.sent + 1,
+                    );
+                    const remaining = Math.max(
+                      0,
+                      current.required - sent,
+                    );
+                    return {
+                      ...current,
+                      sent,
+                      remaining,
+                      complete: remaining === 0,
+                      suggestions:
+                        current.suggestions.filter(
+                          (item) =>
+                            item.id !== person.id,
+                        ),
+                    };
+                  });
+
+                  setSuggestions((current) =>
+                    current.filter(
+                      (item) =>
+                        item.id !== person.id,
+                    ),
+                  );
+
+                  if (
+                    friendOnboarding.remaining <= 1
+                  ) {
+                    toast.success(
+                      "5 friend requests पूरा भयो। अब feed खुल्यो।",
+                    );
+                  }
+                } catch (error: any) {
+                  toast.error(
+                    error?.response?.data?.message ||
+                      "Friend request पठाउन सकिएन।",
+                  );
+                } finally {
+                  setOnboardingBusyId(null);
+                }
+              }}
+            />
+          )}
+
         <StoryCarousel
           stories={stories}
           userName={user.name}
@@ -404,7 +476,7 @@ export function SocialFeedScreen() {
           const post = item.post;
           return (
             <PostCard
-              key={`post-${post.id}`}
+              key={`post-${item.id}`}
               post={post}
               currentUserId={user.id}
               currentUserPhotoUrl={myPhoto}
@@ -445,6 +517,94 @@ export function SocialFeedScreen() {
         />
       )}
     </div>
+  );
+}
+
+function NewUserFriendOnboarding({
+  data,
+  busyId,
+  onAdd,
+}: {
+  data: {
+    required: number;
+    sent: number;
+    remaining: number;
+    suggestions: SocialUser[];
+  };
+  busyId: string | null;
+  onAdd: (person: SocialUser) => void | Promise<void>;
+}) {
+  return (
+    <section className="border-y border-primary/20 bg-white p-4 shadow-sm sm:rounded-xl sm:border">
+      <div className="rounded-2xl bg-primary/5 p-4">
+        <div className="flex items-start gap-3">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
+            <UserPlus className="h-5 w-5" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <h2 className="text-lg font-black text-slate-950">
+              Start by connecting with 5 people
+            </h2>
+            <p className="mt-1 text-sm leading-5 text-slate-600">
+              नयाँ account को feed personalize गर्न 5 जना suggested users लाई friend request पठाउनुहोस्।
+              Mutual friends पहिले, त्यसपछि location र similar interests का आधारमा suggestions छन्।
+            </p>
+            <div className="mt-3 h-2 overflow-hidden rounded-full bg-white">
+              <div
+                className="h-full rounded-full bg-primary transition-all"
+                style={{
+                  width: `${Math.min(
+                    100,
+                    (data.sent / Math.max(1, data.required)) *
+                      100,
+                  )}%`,
+                }}
+              />
+            </div>
+            <p className="mt-1 text-xs font-bold text-primary">
+              {data.sent}/{data.required} requests sent · {data.remaining} remaining
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-3 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {data.suggestions.map((person) => (
+          <div
+            key={person.id}
+            className="w-[158px] shrink-0 rounded-2xl border border-slate-200 p-3 text-center"
+          >
+            <div className="mx-auto w-fit">
+              <Avatar user={person} size="lg" />
+            </div>
+            <Link
+              href={`/profile/${person.id}`}
+              className="mt-2 block truncate text-sm font-bold"
+            >
+              {person.name}
+            </Link>
+            <p className="mt-0.5 truncate text-[11px] text-slate-500">
+              {person.reason ||
+                person.location ||
+                "Suggested for you"}
+            </p>
+            <button
+              type="button"
+              disabled={busyId === person.id}
+              onClick={() => void onAdd(person)}
+              className="mt-2 flex w-full items-center justify-center gap-1 rounded-lg bg-primary py-2 text-xs font-bold text-primary-foreground disabled:opacity-50"
+            >
+              {busyId === person.id ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <UserPlus className="h-4 w-4" />
+              )}
+              Add friend
+            </button>
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -814,7 +974,11 @@ function PeopleStrip({
           <div key={person.id} className="w-[155px] shrink-0 rounded-xl border p-3 text-center">
             <div className="mx-auto w-fit"><Avatar user={person} size="lg" /></div>
             <Link href={`/profile/${person.id}`} className="mt-2 block truncate text-[14px] font-semibold">{person.name}</Link>
-            {person.nearbyLabel && <div className="truncate text-[11px] text-slate-500">{person.nearbyLabel}</div>}
+            {(person.reason || person.nearbyLabel) && (
+              <div className="truncate text-[11px] text-slate-500">
+                {person.reason || person.nearbyLabel}
+              </div>
+            )}
             <button
               onClick={() => void (requestIds.has(person.id) ? onConfirm(person.id) : onAdd(person.id))}
               className="mt-2 flex w-full items-center justify-center gap-1 rounded-lg bg-red-600 py-1.5 text-[12px] font-bold text-white"
