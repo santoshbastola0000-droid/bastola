@@ -343,6 +343,12 @@ export function SocialFeedScreen() {
     (person, index, list) => list.findIndex((candidate) => candidate.id === person.id) === index,
   );
 
+  const roomItems = items.filter(
+    (item): item is Extract<SocialFeedItem, { type: "ROOM" }> =>
+      item.type === "ROOM",
+  );
+  const firstRoomItemId = roomItems[0]?.id || null;
+
   return (
     <div className="min-h-screen bg-red-50/30 font-sans text-slate-950 antialiased">
       <SocialHeader visible={headerVisible} onMenu={() => setMenuOpen(true)} />
@@ -519,7 +525,15 @@ export function SocialFeedScreen() {
         )}
 
         {items.map((item) => {
-          if (item.type === "ROOM") return <RoomCard key={`room-${item.id}`} item={item} />;
+          if (item.type === "ROOM") {
+            if (item.id !== firstRoomItemId) return null;
+            return (
+              <RoomCarousel
+                key="room-carousel"
+                items={roomItems.slice(0, 12)}
+              />
+            );
+          }
           if (item.type === "JOB") return <JobCard key={`job-${item.id}`} item={item} />;
           if (item.type === "SERVICE") return <ServiceCard key={`service-${item.id}`} item={item} />;
           const post = item.post;
@@ -1085,19 +1099,78 @@ function PeopleStrip({
   );
 }
 
-function RoomCard({ item }: { item: Extract<SocialFeedItem, { type: "ROOM" }> }) {
+function RoomCarousel({
+  items,
+}: {
+  items: Array<Extract<SocialFeedItem, { type: "ROOM" }>>;
+}) {
+  if (!items.length) return null;
+
   return (
-    <Link href={`/property/${item.room.id}`} className="block overflow-hidden border-y bg-white shadow-sm sm:rounded-xl sm:border">
-      {item.room.image && <img src={media(item.room.image)} alt={item.room.title} loading="lazy" decoding="async" className="max-h-[420px] w-full object-cover" />}
-      <div className="p-3">
-        <div className="text-[11px] font-bold uppercase tracking-wide text-red-600">Room near you</div>
-        <div className="mt-0.5 text-[16px] font-semibold leading-tight">{item.room.title}</div>
-        <div className="mt-1 text-[15px] font-bold text-red-600">Rs. {Number(item.room.price).toLocaleString("en-IN")}/mo</div>
-        <div className="mt-1 flex items-center gap-1 text-[12px] text-slate-500">
-          <MapPin className="h-3.5 w-3.5" /> {item.room.area || item.room.city || "Nepal"}
+    <section className="overflow-hidden border-y bg-white py-2 shadow-sm sm:rounded-xl sm:border">
+      <div className="flex items-center justify-between px-3 pb-2">
+        <div>
+          <div className="text-[11px] font-bold uppercase tracking-wide text-red-600">
+            Rooms near you
+          </div>
+          <p className="mt-0.5 text-[11px] text-slate-500">
+            Side swipe गरेर अरू room हेर्नुहोस्
+          </p>
         </div>
+
+        {items.length > 1 && (
+          <div className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-500">
+            {items.length} rooms
+          </div>
+        )}
       </div>
-    </Link>
+
+      <div className="flex snap-x snap-mandatory gap-2 overflow-x-auto overscroll-x-contain px-2 pb-1 touch-pan-x [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {items.map((item) => (
+          <Link
+            key={item.id}
+            href={`/property/${item.room.id}`}
+            className={`block shrink-0 snap-center overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm ${
+              items.length > 1
+                ? "w-[92%] sm:w-[72%]"
+                : "w-full"
+            }`}
+          >
+            {item.room.image ? (
+              <img
+                src={media(item.room.image)}
+                alt={item.room.title}
+                loading="lazy"
+                decoding="async"
+                className="h-[300px] w-full object-cover sm:h-[360px]"
+              />
+            ) : (
+              <div className="flex h-[220px] w-full items-center justify-center bg-slate-100 text-sm font-semibold text-slate-400 sm:h-[280px]">
+                Room photo
+              </div>
+            )}
+
+            <div className="p-3">
+              <div className="text-[11px] font-bold uppercase tracking-wide text-red-600">
+                Room near you
+              </div>
+              <div className="mt-0.5 line-clamp-2 text-[16px] font-semibold leading-tight">
+                {item.room.title}
+              </div>
+              <div className="mt-1 text-[15px] font-bold text-red-600">
+                Rs. {Number(item.room.price).toLocaleString("en-IN")}/mo
+              </div>
+              <div className="mt-1 flex items-center gap-1 text-[12px] text-slate-500">
+                <MapPin className="h-3.5 w-3.5 shrink-0" />
+                <span className="truncate">
+                  {item.room.area || item.room.city || "Nepal"}
+                </span>
+              </div>
+            </div>
+          </Link>
+        ))}
+      </div>
+    </section>
   );
 }
 
