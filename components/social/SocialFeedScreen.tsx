@@ -6,6 +6,7 @@ import {
   Bell,
   BriefcaseBusiness,
   Camera,
+  Check,
   Image as ImageIcon,
   Loader2,
   MapPin,
@@ -153,6 +154,8 @@ export function SocialFeedScreen() {
     suggestions: SocialUser[];
   } | null>(null);
   const [onboardingBusyId, setOnboardingBusyId] = useState<string | null>(null);
+  const [peopleBusyId, setPeopleBusyId] = useState<string | null>(null);
+  const [sentRequestIds, setSentRequestIds] = useState<Set<string>>(() => new Set());
   const [myPhoto, setMyPhoto] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -458,13 +461,53 @@ export function SocialFeedScreen() {
           <PeopleStrip
             people={people.slice(0, 10)}
             requestIds={new Set(requests.map((item) => item.id))}
+            sentRequestIds={sentRequestIds}
+            busyId={peopleBusyId}
             onConfirm={async (id) => {
-              await socialService.acceptFriendRequest(id);
-              setRequests((current) => current.filter((item) => item.id !== id));
+              if (peopleBusyId) return;
+              try {
+                setPeopleBusyId(id);
+                await socialService.acceptFriendRequest(id);
+                setRequests((current) => current.filter((item) => item.id !== id));
+                setSuggestions((current) => current.filter((item) => item.id !== id));
+                toast.success("Friend request accepted");
+              } catch (error: any) {
+                toast.error(
+                  error?.response?.data?.message ||
+                    "Friend request accept गर्न सकिएन।",
+                );
+              } finally {
+                setPeopleBusyId(null);
+              }
             }}
             onAdd={async (id) => {
-              await socialService.sendFriendRequest(id);
-              setSuggestions((current) => current.filter((item) => item.id !== id));
+              if (peopleBusyId || sentRequestIds.has(id)) return;
+              try {
+                setPeopleBusyId(id);
+                const result = await socialService.sendFriendRequest(id);
+
+                if (String(result?.status || "") === "FRIENDS") {
+                  setSuggestions((current) =>
+                    current.filter((item) => item.id !== id),
+                  );
+                  toast.success("अब तपाईंहरू friends हुनुहुन्छ।");
+                  return;
+                }
+
+                setSentRequestIds((current) => {
+                  const next = new Set(current);
+                  next.add(id);
+                  return next;
+                });
+                toast.success("Friend request पठाइयो।");
+              } catch (error: any) {
+                toast.error(
+                  error?.response?.data?.message ||
+                    "Friend request पठाउन सकिएन।",
+                );
+              } finally {
+                setPeopleBusyId(null);
+              }
             }}
           />
         )}
@@ -958,11 +1001,15 @@ function PostMedia({ post }: { post: SocialPost }) {
 function PeopleStrip({
   people,
   requestIds,
+  sentRequestIds,
+  busyId,
   onConfirm,
   onAdd,
 }: {
   people: SocialUser[];
   requestIds: Set<string>;
+  sentRequestIds: Set<string>;
+  busyId: string | null;
   onConfirm: (id: string) => void | Promise<void>;
   onAdd: (id: string) => void | Promise<void>;
 }) {
@@ -970,23 +1017,42 @@ function PeopleStrip({
     <section className="border-y bg-white py-3 shadow-sm sm:rounded-xl sm:border">
       <div className="px-3 pb-2 text-[15px] font-semibold">People you may know</div>
       <div className="flex gap-2 overflow-x-auto px-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {people.map((person) => (
-          <div key={person.id} className="w-[155px] shrink-0 rounded-xl border p-3 text-center">
-            <div className="mx-auto w-fit"><Avatar user={person} size="lg" /></div>
-            <Link href={`/profile/${person.id}`} className="mt-2 block truncate text-[14px] font-semibold">{person.name}</Link>
-            {(person.reason || person.nearbyLabel) && (
-              <div className="truncate text-[11px] text-slate-500">
-                {person.reason || person.nearbyLabel}
-              </div>
-            )}
-            <button
-              onClick={() => void (requestIds.has(person.id) ? onConfirm(person.id) : onAdd(person.id))}
-              className="mt-2 flex w-full items-center justify-center gap-1 rounded-lg bg-red-600 py-1.5 text-[12px] font-bold text-white"
-            >
-              <UserPlus className="h-3.5 w-3.5" /> {requestIds.has(person.id) ? "Confirm" : "Add"}
-            </button>
-          </div>
-        ))}
+        {people.map((person) => {
+          const incoming = requestIds.has(person.id);
+          const requested = sentRequestIds.has(person.id);
+          const busy = busyId === person.id;
+
+          return (
+            <div key={person.id} className="w-[155px] shrink-0 rounded-xl border p-3 text-center">
+              <div className="mx-auto w-fit"><Avatar user={person} size="lg" /></div>
+              <Link href={`/profile/${person.id}`} className="mt-2 block truncate text-[14px] font-semibold">{person.name}</Link>
+              {(person.reason || person.nearbyLabel) && (
+                <div className="truncate text-[11px] text-slate-500">
+                  {person.reason || person.nearbyLabel}
+                </div>
+              )}
+              <button
+                type="button"
+                disabled={busy || requested}
+                onClick={() => void (incoming ? onConfirm(person.id) : onAdd(person.id))}
+                className={`mt-2 flex w-full items-center justify-center gap-1 rounded-lg py-1.5 text-[12px] font-bold transition disabled:cursor-default ${
+                  requested
+                    ? "bg-slate-200 text-slate-600"
+                    : "bg-red-600 text-white active:scale-[0.98] disabled:opacity-70"
+                }`}
+              >
+                {busy ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : requested ? (
+                  <Check className="h-3.5 w-3.5" />
+                ) : (
+                  <UserPlus className="h-3.5 w-3.5" />
+                )}
+                {busy ? "Sending..." : requested ? "Requested" : incoming ? "Confirm" : "Add"}
+              </button>
+            </div>
+          );
+        })}
       </div>
     </section>
   );
