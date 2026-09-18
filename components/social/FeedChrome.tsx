@@ -3,10 +3,10 @@
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { Menu, MessageCircle, Plus, Search } from "lucide-react";
+import { Bell, Menu, Plus, Search } from "lucide-react";
 import { FeedNetworkOptimizer } from "@/components/social/FeedNetworkOptimizer";
 import { SocialFeedScreen } from "@/components/social/SocialFeedScreen";
-import { messageService } from "@/http/services/message.service";
+import { notificationService } from "@/http/services/notification.service";
 import { socialService } from "@/http/services/social.service";
 import { useUserStore } from "@/stores/user-store";
 import {
@@ -60,9 +60,11 @@ function feedSignature(items: any[]) {
 export function FeedChrome() {
   const user = useUserStore((state) => state.user);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [messageUnreadCount, setMessageUnreadCount] = useState(0);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [headerVisible, setHeaderVisible] = useState(true);
   const [feedVersion, setFeedVersion] = useState(0);
   const [networkProfile, setNetworkProfile] = useState(() => getNetworkProfile());
+  const lastScrollY = useRef(0);
   const feedSnapshotRef = useRef<string | null>(null);
   const feedPollBusyRef = useRef(false);
   const restoreScrollRef = useRef<number | null>(null);
@@ -74,23 +76,30 @@ export function FeedChrome() {
 
   useEffect(() => {
     let active = true;
+    let interval: number | undefined;
 
     const refresh = async () => {
-      const data = await messageService.getUnreadCount().catch(() => ({ count: 0 }));
-      if (active) setMessageUnreadCount(Number(data?.count || 0));
+      const count = await notificationService.unreadCount().catch(() => 0);
+      if (active) setUnreadCount(count);
     };
 
-    void refresh();
-    const timer = window.setInterval(
-      refresh,
-      networkProfile.liteMode ? 45_000 : 20_000,
-    );
+    // Keep notification loading secondary to the feed, exactly as before.
+    const initialDelay = window.setTimeout(() => {
+      if (!active) return;
+      void refresh();
+      interval = window.setInterval(
+        refresh,
+        networkProfile.liteMode ? 45_000 : 20_000,
+      );
+    }, networkProfile.liteMode ? 2_000 : 1_000);
+
     const onFocus = () => void refresh();
     window.addEventListener("focus", onFocus);
 
     return () => {
       active = false;
-      window.clearInterval(timer);
+      window.clearTimeout(initialDelay);
+      if (interval !== undefined) window.clearInterval(interval);
       window.removeEventListener("focus", onFocus);
     };
   }, [networkProfile.liteMode]);
@@ -167,6 +176,27 @@ export function FeedChrome() {
 
 
 
+  useEffect(() => {
+    const onScroll = () => {
+      const current = Math.max(0, window.scrollY);
+      const delta = current - lastScrollY.current;
+
+      if (current < 20) {
+        setHeaderVisible(true);
+      } else if (delta > 0) {
+        setHeaderVisible(true);
+      } else if (delta < -6) {
+        setHeaderVisible(false);
+      }
+
+      lastScrollY.current = current;
+    };
+
+    lastScrollY.current = window.scrollY;
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
   return (
     <div
       data-roomkhoj-feed-root="true"
@@ -175,7 +205,7 @@ export function FeedChrome() {
     >
       <FeedNetworkOptimizer />
 
-      <header className="sticky top-0 z-[120] border-b border-slate-200 bg-white shadow-[0_1px_0_rgba(15,23,42,0.05)]">
+      <header className={`sticky top-0 z-[120] border-b border-slate-200 bg-white shadow-[0_1px_0_rgba(15,23,42,0.05)] transition-transform duration-200 ${headerVisible ? "translate-y-0" : "-translate-y-full"}`}>
         <div className="mx-auto flex h-[64px] max-w-[760px] items-center gap-2 px-3">
           <button
             type="button"
@@ -217,14 +247,14 @@ export function FeedChrome() {
           </Link>
 
           <Link
-            href="/messages"
-            aria-label={`Messages${messageUnreadCount ? `, ${messageUnreadCount} unread` : ""}`}
+            href="/notifications"
+            aria-label={`Notifications${unreadCount ? `, ${unreadCount} unread` : ""}`}
             className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-950 transition active:scale-95"
           >
-            <MessageCircle className="h-6 w-6" fill="currentColor" strokeWidth={1.7} />
-            {messageUnreadCount > 0 && (
+            <Bell className="h-6 w-6" strokeWidth={2.1} />
+            {unreadCount > 0 && (
               <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-extrabold leading-none text-white ring-2 ring-white">
-                {messageUnreadCount > 99 ? "99+" : messageUnreadCount}
+                {unreadCount > 99 ? "99+" : unreadCount}
               </span>
             )}
           </Link>
