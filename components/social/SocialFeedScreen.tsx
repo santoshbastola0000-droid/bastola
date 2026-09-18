@@ -492,7 +492,7 @@ function StoryCarousel({
           <div className="flex h-[110px] items-center justify-center bg-slate-100">
             <Avatar user={{ id: "me", name: userName }} src={myPhoto} size="lg" />
           </div>
-          <span className="absolute left-1/2 top-[98px] flex h-10 w-10 -translate-x-1/2 items-center justify-center rounded-full border-4 border-white bg-blue-600 text-white">
+          <span className="absolute left-1/2 top-[98px] flex h-10 w-10 -translate-x-1/2 items-center justify-center rounded-full border-4 border-white bg-red-600 text-white">
             <Plus className="h-6 w-6" />
           </span>
           <span className="absolute bottom-3 left-1 right-1 text-[13px] font-bold">Create story</span>
@@ -519,7 +519,7 @@ function StoryCarousel({
             ) : (
               <img src={media(story.mediaUrl)} alt="Story" loading="lazy" decoding="async" className="h-full w-full object-cover" />
             )}
-            <div className="absolute left-2 top-2 rounded-full border-[3px] border-blue-600 bg-white p-[1px]">
+            <div className="absolute left-2 top-2 rounded-full border-[3px] border-red-600 bg-white p-[1px]">
               <Avatar user={story.author} size="sm" />
             </div>
             <span className="absolute bottom-2 left-2 right-2 line-clamp-2 text-left text-[12px] font-bold text-white drop-shadow">
@@ -836,7 +836,7 @@ function PeopleStrip({
             {person.nearbyLabel && <div className="truncate text-[11px] text-slate-500">{person.nearbyLabel}</div>}
             <button
               onClick={() => void (requestIds.has(person.id) ? onConfirm(person.id) : onAdd(person.id))}
-              className="mt-2 flex w-full items-center justify-center gap-1 rounded-lg bg-blue-600 py-1.5 text-[12px] font-bold text-white"
+              className="mt-2 flex w-full items-center justify-center gap-1 rounded-lg bg-red-600 py-1.5 text-[12px] font-bold text-white"
             >
               <UserPlus className="h-3.5 w-3.5" /> {requestIds.has(person.id) ? "Confirm" : "Add"}
             </button>
@@ -867,9 +867,9 @@ function JobCard({ item }: { item: Extract<SocialFeedItem, { type: "JOB" }> }) {
   return (
     <Link href={`/job/${item.job.id}`} className="block border-y bg-white p-4 shadow-sm sm:rounded-xl sm:border">
       <div className="flex gap-3">
-        <div className="rounded-xl bg-blue-50 p-3 text-blue-600"><BriefcaseBusiness className="h-6 w-6" /></div>
+        <div className="rounded-xl bg-red-50 p-3 text-red-600"><BriefcaseBusiness className="h-6 w-6" /></div>
         <div className="min-w-0">
-          <div className="text-[11px] font-bold uppercase tracking-wide text-blue-600">Job opportunity</div>
+          <div className="text-[11px] font-bold uppercase tracking-wide text-red-600">Job opportunity</div>
           <div className="truncate text-[16px] font-semibold">{item.job.jobTitle}</div>
           <div className="text-[13px] text-slate-600">{item.job.companyName || "RoomKhoj employer"}</div>
           <div className="mt-1 text-[13px] font-semibold">
