@@ -1813,13 +1813,13 @@ const user = useUserStore(
     <main className={`${isDarkMode ? "dark" : ""} mx-auto h-[calc(100dvh-68px)] max-w-7xl overflow-hidden bg-background text-foreground md:h-screen md:max-w-none md:p-0`}>
       <div className="grid h-full min-h-0 overflow-hidden border border-border bg-background shadow-none md:grid-cols-[390px_1fr] md:border-0 md:bg-card">
         <aside
-          className={`border-r border-border bg-card ${
+          className={`h-full min-h-0 overflow-y-auto overscroll-contain touch-pan-y border-r border-border bg-card ${
             selected
               ? "hidden md:block"
               : "block"
           }`}
         >
-          <div className="border-b border-border bg-card px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))] md:bg-muted md:px-4 md:py-3">
+          <div className="sticky top-0 z-20 border-b border-border bg-card px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))] md:bg-muted md:px-4 md:py-3">
             <div className="flex items-center justify-between">
               <div>
                 <p className="hidden text-[11px] font-bold uppercase tracking-[0.18em] text-primary md:block">
@@ -2071,7 +2071,7 @@ const user = useUserStore(
               </p>
             </div>
           ) : (
-            <div className="divide-y divide-border overflow-y-auto">
+            <div className="divide-y divide-border">
               {filtered.map(
                 (conversation: any) => {
                   const otherId =
@@ -2411,7 +2411,7 @@ const user = useUserStore(
                 </div>
               )}
 
-              <div className="min-h-0 flex-1 space-y-2 overflow-y-auto bg-[#efe9df] bg-[radial-gradient(circle_at_18%_22%,rgba(255,255,255,0.55)_0_1px,transparent_1px),radial-gradient(circle_at_82%_65%,rgba(0,0,0,0.045)_0_1px,transparent_1px)] bg-[length:26px_26px,34px_34px] px-2.5 py-3 pb-28 dark:bg-[#0b141a] sm:px-5 md:px-[6%] md:py-5">
+              <div className="min-h-0 flex-1 touch-pan-y overscroll-contain space-y-2 overflow-y-auto bg-[#efe9df] bg-[radial-gradient(circle_at_18%_22%,rgba(255,255,255,0.55)_0_1px,transparent_1px),radial-gradient(circle_at_82%_65%,rgba(0,0,0,0.045)_0_1px,transparent_1px)] bg-[length:26px_26px,34px_34px] px-2.5 py-3 pb-28 dark:bg-[#0b141a] sm:px-5 md:px-[6%] md:py-5">
                 {messagesLoading ? (
                   <div className="flex justify-center p-10">
                     <Loader2 className="h-6 w-6 animate-spin text-primary" />
