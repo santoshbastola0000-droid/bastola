@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { FormEvent, useState, useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Menu,
   X,
@@ -12,7 +12,7 @@ import {
   Home, PlusCircle, BriefcaseBusiness, MessageCircle, Truck,
   LayoutDashboard, Building2, Gift, ClipboardList, Settings,
   CircleHelp, ChevronDown, ChevronRight, LogOut, Wrench,
-  Droplets, Sparkles, Wifi, PhoneCall, UsersRound, Keyboard, type LucideIcon,
+  Droplets, Sparkles, Wifi, PhoneCall, UsersRound, Keyboard, Search, type LucideIcon,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 
@@ -41,6 +41,7 @@ import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { UserAvatar } from "@/components/UserAvatar";
 import { UserRole } from "@/types/user.types";
 import { useLanguage } from "@/components/providers/LanguageProvider";
+import { socialService, type GlobalSearchResult } from "@/http/services/social.service";
 
 export function NavBar() {
   const [scrolled, setScrolled] = useState(false);
@@ -48,6 +49,10 @@ export function NavBar() {
   const [showAllServices, setShowAllServices] = useState(false);
   const [knownAccounts, setKnownAccounts] = useState<Array<{ id: string; name: string; email: string }>>([]);
   const [switchingAccountId, setSwitchingAccountId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchSuggestions, setSearchSuggestions] = useState<GlobalSearchResult | null>(null);
   const { language } = useLanguage();
   const label = (english: string, nepali: string) => language === "ne" ? nepali : english;
 
@@ -55,6 +60,7 @@ export function NavBar() {
   const { setToken, clearToken } = useTokenStore();
   const { logout } = useLogout();
   const pathname = usePathname();
+  const router = useRouter();
 
   const isAuthenticated = !!user;
   const isHomePage = pathname === "/";
@@ -117,6 +123,42 @@ export function NavBar() {
   }, [user?.email]);
 
   const otherAccounts = knownAccounts.filter((account) => account.email.toLowerCase() !== String(user?.email || "").toLowerCase());
+  useEffect(() => {
+    const query = searchQuery.trim();
+    if (query.length < 2) {
+      setSearchSuggestions(null);
+      setSearchLoading(false);
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      setSearchLoading(true);
+      socialService.search(query, 5)
+        .then(setSearchSuggestions)
+        .catch(() => setSearchSuggestions(null))
+        .finally(() => setSearchLoading(false));
+    }, 250);
+    return () => window.clearTimeout(timer);
+  }, [searchQuery]);
+
+  const submitGlobalSearch = (event?: FormEvent) => {
+    event?.preventDefault();
+    const query = searchQuery.trim();
+    if (query.length < 2) return;
+    setSearchOpen(false);
+    router.push(`/search?q=${encodeURIComponent(query)}`);
+  };
+
+  const suggestionItems = searchSuggestions
+    ? [
+        ...searchSuggestions.users.slice(0, 2).map((item) => ({ label: item.name, sub: "User", href: item.href })),
+        ...searchSuggestions.posts.slice(0, 2).map((item) => ({ label: item.content || "Post", sub: item.author?.name || "Post", href: item.href })),
+        ...searchSuggestions.rooms.slice(0, 2).map((item) => ({ label: item.title, sub: item.address || "Room", href: item.href })),
+        ...searchSuggestions.jobs.slice(0, 2).map((item) => ({ label: item.title, sub: item.location || "Job", href: item.href })),
+        ...searchSuggestions.services.slice(0, 2).map((item) => ({ label: item.title, sub: "Service", href: item.href })),
+      ].slice(0, 6)
+    : [];
+
+
 
   const handleSwitchAccount = async (account: { id: string; name: string; email: string }) => {
     setSwitchingAccountId(account.id);
@@ -149,6 +191,33 @@ export function NavBar() {
         <div className="flex h-16 items-center justify-between">
           <Logo variant={isHomePage ? "light" : "dark"} scrolled={scrolled} />
           <div className="hidden md:flex md:items-center md:gap-5">
+            <div className="relative">
+              <form onSubmit={submitGlobalSearch} className={`flex h-10 w-[240px] items-center rounded-full border px-3 transition-all ${scrolled || !isHomePage ? "border-slate-200 bg-white" : "border-white/20 bg-white/10 backdrop-blur-md"}`}>
+                <Search className={`h-4 w-4 shrink-0 ${scrolled || !isHomePage ? "text-slate-400" : "text-white/70"}`} />
+                <input
+                  value={searchQuery}
+                  onFocus={() => setSearchOpen(true)}
+                  onChange={(event) => { setSearchQuery(event.target.value); setSearchOpen(true); }}
+                  placeholder={label("Search RoomKhoj", "RoomKhoj मा खोज्नुहोस्")}
+                  className={`min-w-0 flex-1 bg-transparent px-2 text-sm outline-none placeholder:opacity-70 ${scrolled || !isHomePage ? "text-slate-900 placeholder:text-slate-400" : "text-white placeholder:text-white/70"}`}
+                />
+              </form>
+              {searchOpen && searchQuery.trim().length >= 2 && (
+                <div className="absolute left-0 top-12 z-[200] w-[360px] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
+                  {searchLoading && <div className="flex items-center gap-2 px-4 py-4 text-sm text-slate-500"><Loader2 className="h-4 w-4 animate-spin" />Searching…</div>}
+                  {!searchLoading && suggestionItems.map((item) => (
+                    <Link key={item.href + item.label} href={item.href} onClick={() => setSearchOpen(false)} className="block border-b border-slate-100 px-4 py-3 hover:bg-slate-50">
+                      <div className="truncate text-sm font-semibold text-slate-950">{item.label}</div>
+                      <div className="mt-0.5 text-xs text-slate-500">{item.sub}</div>
+                    </Link>
+                  ))}
+                  {!searchLoading && suggestionItems.length === 0 && <div className="px-4 py-4 text-sm text-slate-500">No suggestion found</div>}
+                  <button type="button" onClick={() => submitGlobalSearch()} className="w-full bg-slate-50 px-4 py-3 text-left text-sm font-bold text-red-600 hover:bg-red-50">
+                    Search all results for “{searchQuery.trim()}”
+                  </button>
+                </div>
+              )}
+            </div>
             <NavLinks scrolled={scrolled} isAuthenticated={isAuthenticated} userRole={user?.role} />
             <Link href="/typing" className={`relative rounded-full px-3 py-2 text-sm font-semibold transition-all duration-200 ${pathname === "/typing" ? "text-[var(--primary)]" : scrolled || !isHomePage ? "text-slate-600 hover:text-slate-900" : "text-white/80 hover:text-white"}`}>{label("Typing", "टाइपिङ")}</Link>
             <LanguageSwitcher />
@@ -158,6 +227,14 @@ export function NavBar() {
           </div>
 
           <div className="flex items-center gap-2 md:hidden">
+            <button
+              type="button"
+              aria-label="Search"
+              onClick={() => router.push("/search")}
+              className={`flex h-9 w-9 items-center justify-center rounded-full transition-all ${scrolled || !isHomePage ? "border border-slate-200 bg-white text-slate-700" : "border border-white/20 bg-black/20 text-white"}`}
+            >
+              <Search className="h-4.5 w-4.5" />
+            </button>
             {isAuthenticated && <Link href="/user/dashboard/wallet" aria-label="Wallet" className={`flex h-9 items-center gap-1.5 rounded-full px-2.5 text-xs font-bold shadow-sm backdrop-blur-md transition-all ${scrolled || !isHomePage ? "border border-slate-200 bg-white text-slate-800" : "border border-white/20 bg-black/20 text-white"}`}><Wallet className="h-4 w-4 text-red-500" />{walletLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <span>रू {Number(walletBalance?.balance ?? 0).toLocaleString("en-NP")}</span>}</Link>}
             <Link href="/user/dashboard" aria-label="Notifications" className={`relative flex h-9 w-9 items-center justify-center rounded-full transition-all ${scrolled || !isHomePage ? "border border-slate-200 bg-white text-slate-700" : "border border-white/20 bg-black/20 text-white"}`}><Bell className="h-4.5 w-4.5" /><span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-red-500 ring-2 ring-white" /></Link>
 
