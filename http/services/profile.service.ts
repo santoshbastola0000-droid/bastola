@@ -8,6 +8,7 @@ export interface PublicProfileUser {
   website?: string | null;
   isVerified?: boolean;
   isPremium?: boolean;
+  isBanned?: boolean;
   profilePhotoUrl?: string | null;
   coverPhotoUrl?: string | null;
 }
