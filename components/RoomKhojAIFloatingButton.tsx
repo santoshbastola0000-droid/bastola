@@ -6,7 +6,7 @@ import {
   useState,
   type PointerEvent as ReactPointerEvent,
 } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Mic, Sparkles } from "lucide-react";
 
 const BUTTON_SIZE = 62;
@@ -30,6 +30,7 @@ type DragState = {
 
 export function RoomKhojAIFloatingButton() {
   const router = useRouter();
+  const pathname = usePathname();
   const [position, setPosition] = useState<Position | null>(null);
   const dragRef = useRef<DragState | null>(null);
 
@@ -175,6 +176,10 @@ export function RoomKhojAIFloatingButton() {
         right: "16px",
         bottom: "120px",
       };
+
+  if (pathname?.startsWith("/messages")) {
+    return null;
+  }
 
   const voiceStyle = position
     ? {
