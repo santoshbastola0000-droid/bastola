@@ -34,6 +34,7 @@ import {
   CalendarDays,
   WalletCards,
   UsersRound,
+  UserPlus,
   Heart,
 } from "lucide-react";
 import { toast } from "sonner";
