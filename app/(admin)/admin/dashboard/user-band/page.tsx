@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { userService } from "@/http/services/user.service";
+import { privateApi } from "@/http/api/privateApi";
 import { UserRole } from "@/types/user.types";
 
 export default function UserBandPage() {
@@ -57,6 +58,38 @@ export default function UserBandPage() {
   });
 
   const users = data?.data || [];
+
+  const { data: appealRows = [], refetch: refetchAppeals } = useQuery({
+    queryKey: ["admin-user-ban-appeals"],
+    queryFn: async () => {
+      const response = await privateApi.get("/user/ban-appeals");
+      return response.data?.data ?? response.data ?? [];
+    },
+  });
+
+  const openAppealDocument = async (userId: string) => {
+    try {
+      const response = await privateApi.get(`/user/${userId}/ban-appeal/document`, {
+        responseType: "blob",
+      });
+      const url = URL.createObjectURL(response.data);
+      window.open(url, "_blank", "noopener,noreferrer");
+      window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } catch {
+      toast.error("Appeal document खोल्न सकिएन");
+    }
+  };
+
+  const reopenFromAppeal = async (user: any) => {
+    if (!window.confirm(`${user.name || user.email} को account reopen गर्ने हो?`)) return;
+    try {
+      await userService.setUserBanned(user.id, false);
+      toast.success("Account reopen भयो। User लाई email पठाइन्छ।");
+      await Promise.all([refetch(), refetchAppeals()]);
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || "Account reopen गर्न सकिएन");
+    }
+  };
 
   const changeBandStatus = (user: any) => {
     if (user.role === UserRole.ADMIN) return;
@@ -112,6 +145,36 @@ export default function UserBandPage() {
               {isFetching ? "Refreshing..." : "Refresh"}
             </Button>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>User Appeals</CardTitle>
+          <CardDescription>Banned users ले पठाएको identity document manually review गरेर account reopen गर्न सकिन्छ।</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {appealRows.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Pending/submitted appeal छैन।</p>
+          ) : appealRows.map((appeal: any) => (
+            <div key={appeal.id} className="rounded-2xl border p-4">
+              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <p className="font-bold">{appeal.name}</p>
+                    <Badge variant={appeal.banAppealStatus === "PENDING" ? "secondary" : "outline"}>{appeal.banAppealStatus}</Badge>
+                  </div>
+                  <p className="text-sm text-muted-foreground">{appeal.email}</p>
+                  <p className="mt-1 text-xs">Document: {appeal.banAppealDocumentType || "—"}</p>
+                  {appeal.banAppealMessage && <p className="mt-2 text-sm">{appeal.banAppealMessage}</p>}
+                </div>
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={() => openAppealDocument(appeal.id)}>View Document</Button>
+                  <Button onClick={() => reopenFromAppeal(appeal)}>Open Account</Button>
+                </div>
+              </div>
+            </div>
+          ))}
         </CardContent>
       </Card>
 
