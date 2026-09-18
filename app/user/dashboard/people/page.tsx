@@ -531,9 +531,20 @@ export default function PeoplePage() {
 
               {visibleSuggestions.length ===
               0 ? (
-                <div className="rounded-3xl bg-muted/40 px-5 py-10 text-center text-sm text-muted-foreground">
-                  अहिले नयाँ friend
-                  suggestion छैन।
+                <div className="rounded-3xl border border-border/70 bg-muted/25 px-5 py-7 text-center">
+                  <h3 className="text-base font-black text-foreground">
+                    Find more friends
+                  </h3>
+                  <p className="mx-auto mt-1 max-w-sm text-sm leading-5 text-muted-foreground">
+                    Mutual, location, similar interests, recent activity र public posts बाट नयाँ suggestions आउँछन्।
+                  </p>
+                  <Button
+                    type="button"
+                    className="mt-4 rounded-full px-6 font-bold"
+                    onClick={() => router.push("/search")}
+                  >
+                    Search people
+                  </Button>
                 </div>
               ) : (
                 <div className="space-y-7">
