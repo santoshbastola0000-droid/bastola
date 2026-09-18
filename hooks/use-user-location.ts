@@ -93,20 +93,10 @@ export function useUserLocation() {
     );
   }, [sendLocation]);
 
-  useEffect(() => {
-    if (!user) return;
-
-    const stored = readStoredLocation();
-    const isStale =
-      !stored || Date.now() - stored.updatedAt > LOCATION_UPDATE_INTERVAL_MS;
-
-    if (isStale) {
-      requestAndStoreLocation();
-    }
-
-    const id = setInterval(requestAndStoreLocation, LOCATION_UPDATE_INTERVAL_MS);
-    return () => clearInterval(id);
-  }, [user, requestAndStoreLocation]);
+  // Do not request browser location automatically here. AutoLocationUpdate owns the
+  // consent flow so users see RoomKhoj's explanation first and the browser prompt
+  // only after they explicitly choose Enable location. This hook only exposes a
+  // manual requestPermission action for features that need it.
 
   return { requestPermission: requestAndStoreLocation };
 }
