@@ -311,7 +311,7 @@ export function SocialFeedScreen() {
 
   if (!isLoaded || !user || loading) {
     return (
-      <div className="min-h-screen bg-[#f0f2f5]">
+      <div className="min-h-screen bg-red-50/30">
         <SocialHeader visible={headerVisible} onMenu={() => setMenuOpen(true)} />
         <div className="flex min-h-[70vh] items-center justify-center">
           <Loader2 className="h-7 w-7 animate-spin" />
@@ -325,7 +325,7 @@ export function SocialFeedScreen() {
   );
 
   return (
-    <div className="min-h-screen bg-[#f0f2f5] font-sans text-slate-950 antialiased">
+    <div className="min-h-screen bg-red-50/30 font-sans text-slate-950 antialiased">
       <SocialHeader visible={headerVisible} onMenu={() => setMenuOpen(true)} />
       <MobileMenuDrawer
         open={menuOpen}
