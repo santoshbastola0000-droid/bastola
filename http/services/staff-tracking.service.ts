@@ -24,6 +24,12 @@ export interface StaffProfile {
 
 export const staffTrackingService = {
   getMe: async () => (await privateApi.get("/staff-tracking/me")).data,
+  getAccess: async () =>
+    (await privateApi.get("/staff-tracking/access")).data as {
+      allowed: boolean;
+      staffType?: StaffType | null;
+      staffProfileId?: string | null;
+    },
   start: async (payload: any) =>
     (await privateApi.post("/staff-tracking/start", payload)).data,
   pingLocation: async (payload: any) =>
@@ -43,6 +49,13 @@ export const staffTrackingService = {
     ).data,
   saveProfile: async (payload: any) =>
     (await privateApi.post("/staff-tracking/admin/profiles", payload)).data,
+  setAccess: async (userId: string, active: boolean) =>
+    (
+      await privateApi.patch(
+        `/staff-tracking/admin/profiles/${userId}/access`,
+        { active },
+      )
+    ).data,
   dashboard: async (type?: StaffType | "", date?: string) =>
     (
       await privateApi.get("/staff-tracking/admin/dashboard", {
