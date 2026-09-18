@@ -424,7 +424,7 @@ const user = useUserStore(
           .map(normalizeInboxFriend)
           .filter(
             (friend): friend is InboxFriend =>
-              Boolean(friend) &&
+              friend !== null &&
               friend.id !== currentUserId,
           );
 
@@ -798,7 +798,6 @@ const user = useUserStore(
     if (!socket || !currentUserId) {
       return;
     }
-
     const userIds = Array.from(
       new Set(
         conversations
@@ -1198,7 +1197,6 @@ const user = useUserStore(
     let iceServers: RTCIceServer[] = [
       { urls: ["stun:stun.l.google.com:19302"] },
     ];
-
     try {
       const credentials = await messageService.getCallCredentials();
       if (Array.isArray(credentials?.iceServers) && credentials.iceServers.length) {
@@ -1598,7 +1596,6 @@ const user = useUserStore(
       toast.error(error?.response?.data?.message || "Reaction update गर्न सकिएन.");
     }
   };
-
   useEffect(() => {
     if (!selected?.id) return;
 
@@ -1997,7 +1994,6 @@ const user = useUserStore(
                         </span>
                       )}
                     </div>
-
                     <p className="truncate text-sm text-muted-foreground">
                       {latestActivityNotification?.body ||
                         latestActivityNotification?.title ||
@@ -2397,7 +2393,6 @@ const user = useUserStore(
                   </div>
                 </div>
               )}
-
               <div className="border-t border-black/5 bg-[#f7f7f7]/95 px-2.5 py-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] backdrop-blur dark:border-white/10 dark:bg-[#202c33]/95 md:px-4 md:py-3">
                 <div className="flex items-end gap-2">
                   <div className="relative">
