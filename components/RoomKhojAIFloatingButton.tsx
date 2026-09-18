@@ -214,7 +214,7 @@ export function RoomKhojAIFloatingButton() {
           }
         }}
         style={buttonStyle}
-        className="group fixed z-[9998] flex h-[62px] w-[62px] touch-none select-none cursor-grab items-center justify-center rounded-full transition-transform active:cursor-grabbing active:scale-95"
+        className="group fixed z-40 flex h-[62px] w-[62px] touch-none select-none cursor-grab items-center justify-center rounded-full transition-transform active:cursor-grabbing active:scale-95"
       >
         <span className="absolute inset-[-6px] rounded-full bg-gradient-to-r from-cyan-400 via-violet-500 to-fuchsia-500 opacity-60 blur-xl animate-pulse" />
         <span className="absolute inset-0 rounded-full bg-[conic-gradient(from_0deg,#22d3ee,#8b5cf6,#ec4899,#3b82f6,#22d3ee)] animate-[spin_4s_linear_infinite]" />
