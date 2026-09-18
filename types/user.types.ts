@@ -33,6 +33,8 @@ export interface UserDetail {
   banReason?: string | null;
   role: UserRole;
   phone: string;
+  profilePhotoUrl?: string | null;
+  profilePhotoUpdatedAt?: string | null;
   accountPurpose?: "FIND_ROOM" | "POST_ROOM" | "FIND_JOB" | "POST_JOB" | null;
   balance?: number;
   pendingBalance?: number;
