@@ -9,6 +9,11 @@ export type SocialUser = {
   isVerified?: boolean;
   isMonetized?: boolean;
   nearbyLabel?: string;
+  mutualFriends?: number;
+  sameArea?: boolean;
+  contentScore?: number;
+  priorityTier?: number;
+  reason?: string;
 };
 
 export type SocialReactionType =
@@ -377,6 +382,23 @@ export const socialService = {
   async friendRequests() {
     const response = await privateApi.get("/social/friend-requests");
     return response.data as Array<SocialUser & { requestedAt: string }>;
+  },
+
+  async friendSuggestions() {
+    const response = await privateApi.get("/friend/suggestions");
+    return response.data as SocialUser[];
+  },
+
+  async friendOnboarding() {
+    const response = await privateApi.get("/friend/onboarding");
+    return response.data as {
+      isNewUser: boolean;
+      required: number;
+      sent: number;
+      remaining: number;
+      complete: boolean;
+      suggestions: SocialUser[];
+    };
   },
 
   async nearbySuggestions() {
