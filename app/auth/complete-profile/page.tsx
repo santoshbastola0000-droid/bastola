@@ -20,8 +20,10 @@ export default function CompleteProfilePage() {
   const [error, setError] = useState("");
   const [selectedPurpose, setSelectedPurpose] = useState<string>(String(user?.accountPurpose || ""));
   const [phoneNumber, setPhoneNumber] = useState(String((user as any)?.phoneNumber || "").startsWith("SOCIAL_") ? "" : String((user as any)?.phoneNumber || ""));
+  const [otp, setOtp] = useState("");
+  const [otpSent, setOtpSent] = useState(false);
 
-  const completeProfile = async () => {
+  const sendOtp = async () => {
     if (!selectedPurpose) {
       setError("Please choose what you want to use RoomKhoj for.");
       return;
@@ -30,21 +32,37 @@ export default function CompleteProfilePage() {
       setError("Please enter a valid phone number.");
       return;
     }
-
-    setSaving("profile");
+    setSaving("send-otp");
     setError("");
     try {
       await privateApi.patch("/user/account-purpose", { accountPurpose: selectedPurpose });
-      const phoneResponse = await privateApi.patch("/user/social-phone", { phoneNumber });
+      await privateApi.post("/user/social-phone/send-otp", { phoneNumber });
+      setOtpSent(true);
+    } catch (error: any) {
+      setError(error?.response?.data?.message || "OTP could not be sent. Please try again.");
+    } finally {
+      setSaving(null);
+    }
+  };
+
+  const completeProfile = async () => {
+    if (!otpSent || !/^\d{4,8}$/.test(otp.trim())) {
+      setError("Please enter the OTP sent to your phone.");
+      return;
+    }
+    setSaving("verify-otp");
+    setError("");
+    try {
+      const response = await privateApi.post("/user/social-phone/verify-otp", { otp });
       updateUser({
         accountPurpose: selectedPurpose as any,
-        phoneNumber: phoneResponse.data?.phoneNumber || phoneNumber,
-        isVerified: false,
+        phoneNumber: response.data?.phoneNumber || phoneNumber,
+        isVerified: true,
       } as any);
       router.replace("/user/dashboard/profile");
       router.refresh();
     } catch (error: any) {
-      setError(error?.response?.data?.message || "Profile could not be completed. Please try again.");
+      setError(error?.response?.data?.message || "OTP verification failed.");
     } finally {
       setSaving(null);
     }
@@ -98,16 +116,45 @@ export default function CompleteProfilePage() {
             placeholder="98XXXXXXXX or +97798XXXXXXXX"
             className="mt-3 w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-red-500 focus:ring-2 focus:ring-red-100"
           />
-          <button
-            type="button"
-            onClick={completeProfile}
-            disabled={saving !== null}
-            className="mt-4 w-full rounded-xl bg-red-600 px-4 py-3 font-bold text-white hover:bg-red-700 disabled:opacity-60"
-          >
-            {saving ? "Saving..." : "Continue to RoomKhoj"}
-          </button>
+          {!otpSent ? (
+            <button
+              type="button"
+              onClick={sendOtp}
+              disabled={saving !== null}
+              className="mt-4 w-full rounded-xl bg-red-600 px-4 py-3 font-bold text-white hover:bg-red-700 disabled:opacity-60"
+            >
+              {saving === "send-otp" ? "Sending OTP..." : "Send verification OTP"}
+            </button>
+          ) : (
+            <>
+              <label className="mt-5 block text-sm font-bold text-slate-900">Verification OTP</label>
+              <input
+                inputMode="numeric"
+                value={otp}
+                onChange={(event) => setOtp(event.target.value.replace(/\D/g, "").slice(0, 8))}
+                placeholder="Enter OTP"
+                className="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 text-center text-xl font-bold tracking-[0.35em] outline-none focus:border-red-500 focus:ring-2 focus:ring-red-100"
+              />
+              <button
+                type="button"
+                onClick={completeProfile}
+                disabled={saving !== null}
+                className="mt-4 w-full rounded-xl bg-red-600 px-4 py-3 font-bold text-white hover:bg-red-700 disabled:opacity-60"
+              >
+                {saving === "verify-otp" ? "Verifying..." : "Verify & Continue"}
+              </button>
+              <button
+                type="button"
+                onClick={sendOtp}
+                disabled={saving !== null}
+                className="mt-2 w-full px-4 py-2 text-sm font-semibold text-red-600 disabled:opacity-60"
+              >
+                Resend OTP
+              </button>
+            </>
+          )}
           <p className="mt-3 text-xs leading-5 text-amber-700">
-            Your account will stay Unverified until RoomKhoj verification is completed.
+            Your profile remains Unverified until the phone OTP is verified.
           </p>
         </div>
 
