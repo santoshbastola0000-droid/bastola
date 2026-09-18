@@ -188,7 +188,34 @@ export type GlobalSearchResult = {
   }>;
 };
 
+export type SearchSuggestion = {
+  query: string;
+  source: "PERSONAL" | "POPULAR";
+  searchCount: number;
+};
+
 export const socialService = {
+  async trackSearch(input: {
+    query: string;
+    context?: "GLOBAL" | "ROOM" | "JOB" | "PEOPLE" | "MESSAGE" | "CANDIDATE";
+    filters?: Record<string, unknown>;
+    resultCount?: number | null;
+  }) {
+    const response = await privateApi.post("/social/search-events", input);
+    return response.data;
+  },
+
+  async searchSuggestions(
+    query = "",
+    context: "GLOBAL" | "ROOM" | "JOB" | "PEOPLE" | "MESSAGE" | "CANDIDATE" = "GLOBAL",
+    limit = 8,
+  ) {
+    const response = await privateApi.get("/social/search-suggestions", {
+      params: { q: query, context, limit },
+    });
+    return response.data as SearchSuggestion[];
+  },
+
   async search(query: string, limit = 8) {
     const response = await privateApi.get("/social/search", {
       params: { q: query, limit },
