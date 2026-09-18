@@ -1013,6 +1013,8 @@ function PeopleStrip({
   onConfirm: (id: string) => void | Promise<void>;
   onAdd: (id: string) => void | Promise<void>;
 }) {
+  const router = useRouter();
+
   return (
     <section className="border-y bg-white py-3 shadow-sm sm:rounded-xl sm:border">
       <div className="px-3 pb-2 text-[15px] font-semibold">People you may know</div>
@@ -1023,9 +1025,22 @@ function PeopleStrip({
           const busy = busyId === person.id;
 
           return (
-            <div key={person.id} className="w-[155px] shrink-0 rounded-xl border p-3 text-center">
+            <div
+              key={person.id}
+              role="link"
+              tabIndex={0}
+              onClick={() => router.push(`/profile/${person.id}`)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  router.push(`/profile/${person.id}`);
+                }
+              }}
+              className="w-[155px] shrink-0 cursor-pointer rounded-xl border p-3 text-center transition hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2"
+              aria-label={`Open ${person.name}'s profile`}
+            >
               <div className="mx-auto w-fit"><Avatar user={person} size="lg" /></div>
-              <Link href={`/profile/${person.id}`} className="mt-2 block truncate text-[14px] font-semibold">{person.name}</Link>
+              <div className="mt-2 truncate text-[14px] font-semibold">{person.name}</div>
               {(person.reason || person.nearbyLabel) && (
                 <div className="truncate text-[11px] text-slate-500">
                   {person.reason || person.nearbyLabel}
@@ -1034,7 +1049,11 @@ function PeopleStrip({
               <button
                 type="button"
                 disabled={busy || requested}
-                onClick={() => void (incoming ? onConfirm(person.id) : onAdd(person.id))}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  void (incoming ? onConfirm(person.id) : onAdd(person.id));
+                }}
+                onKeyDown={(event) => event.stopPropagation()}
                 className={`mt-2 flex w-full items-center justify-center gap-1 rounded-lg py-1.5 text-[12px] font-bold transition disabled:cursor-default ${
                   requested
                     ? "bg-slate-200 text-slate-600"
