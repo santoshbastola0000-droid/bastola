@@ -94,55 +94,60 @@ export function MobileBottomNav() {
     return null;
   }
 
+  const itemClass = (active: boolean) =>
+    `relative flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-[22px] py-2 text-[9px] font-semibold transition-all duration-200 ${
+      active
+        ? "bg-white/16 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18)]"
+        : "text-white/75 active:bg-white/10"
+    }`;
+
   return (
-    <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 border-t border-gray-200 bg-white pb-[env(safe-area-inset-bottom)]">
-      <div className="relative flex h-[68px] items-center justify-around px-1">
-        <Link
-          href={feedHref}
-          className={`flex min-w-[58px] flex-col items-center justify-center gap-1 text-[11px] ${
-            isFeed ? "font-semibold text-black" : "text-gray-500"
-          }`}
-        >
-          <Home className="h-6 w-6" strokeWidth={isFeed ? 2.5 : 2} />
-          <span>Feed</span>
-        </Link>
+    <nav className="pointer-events-none fixed bottom-0 left-0 right-0 z-40 md:hidden">
+      <div className="px-3 pb-[calc(0.55rem+env(safe-area-inset-bottom))]">
+        <div className="pointer-events-auto mx-auto flex h-[66px] max-w-[430px] items-center gap-1 rounded-[28px] border border-white/15 bg-slate-950/88 p-1.5 shadow-[0_12px_35px_rgba(0,0,0,0.32)] backdrop-blur-xl">
+          <Link
+            href={feedHref}
+            className={itemClass(isFeed)}
+            aria-label="Feed"
+          >
+            <Home className="h-6 w-6" strokeWidth={isFeed ? 2.6 : 2.1} />
+            <span>Feed</span>
+          </Link>
 
-        <Link
-          href="/jobs"
-          className={`flex min-w-[58px] flex-col items-center justify-center gap-1 text-[11px] ${
-            isJobs ? "font-semibold text-black" : "text-gray-500"
-          }`}
-        >
-          <BriefcaseBusiness className="h-6 w-6" strokeWidth={isJobs ? 2.5 : 2} />
-          <span>Jobs</span>
-        </Link>
+          <Link
+            href="/jobs"
+            className={itemClass(isJobs)}
+            aria-label="Jobs"
+          >
+            <BriefcaseBusiness className="h-6 w-6" strokeWidth={isJobs ? 2.6 : 2.1} />
+            <span>Jobs</span>
+          </Link>
 
-        <Link
-          href="/messages"
-          className={`flex min-w-[58px] flex-col items-center justify-center gap-1 text-[11px] ${
-            isMessages ? "font-semibold text-black" : "text-gray-500"
-          }`}
-        >
-          <div className="relative">
-            <MessageCircle className="h-6 w-6" strokeWidth={isMessages ? 2.5 : 2} />
-            {unreadCount > 0 && (
-              <span className="absolute -right-3 -top-2 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
-                {unreadCount > 99 ? "99+" : unreadCount}
-              </span>
-            )}
-          </div>
-          <span>Messages</span>
-        </Link>
+          <Link
+            href="/messages"
+            className={itemClass(isMessages)}
+            aria-label="Messages"
+          >
+            <div className="relative">
+              <MessageCircle className="h-6 w-6" strokeWidth={isMessages ? 2.6 : 2.1} />
+              {unreadCount > 0 && (
+                <span className="absolute -right-3 -top-2 flex h-[18px] min-w-[18px] items-center justify-center rounded-full border-2 border-slate-950 bg-red-500 px-1 text-[9px] font-black text-white">
+                  {unreadCount > 99 ? "99+" : unreadCount}
+                </span>
+              )}
+            </div>
+            <span>Messages</span>
+          </Link>
 
-        <Link
-          href="/user/dashboard/profile"
-          className={`flex min-w-[58px] flex-col items-center justify-center gap-1 text-[11px] ${
-            isProfile ? "font-semibold text-black" : "text-gray-500"
-          }`}
-        >
-          <UserRound className="h-6 w-6" strokeWidth={isProfile ? 2.5 : 2} />
-          <span>Profile</span>
-        </Link>
+          <Link
+            href="/user/dashboard/profile"
+            className={itemClass(isProfile)}
+            aria-label="Profile"
+          >
+            <UserRound className="h-6 w-6" strokeWidth={isProfile ? 2.6 : 2.1} />
+            <span>Profile</span>
+          </Link>
+        </div>
       </div>
     </nav>
   );
