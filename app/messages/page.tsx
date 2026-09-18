@@ -364,6 +364,9 @@ const user = useUserStore(
   const messagesEndRef =
     useRef<HTMLDivElement | null>(null);
 
+  const messagesScrollerRef =
+    useRef<HTMLDivElement | null>(null);
+
   const deleteHoldTimerRef =
     useRef<number | null>(null);
 
@@ -381,6 +384,69 @@ const user = useUserStore(
   const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
   const [hasOlderMessages, setHasOlderMessages] = useState(false);
   const [loadingOlder, setLoadingOlder] = useState(false);
+  const [composerFocused, setComposerFocused] = useState(false);
+  const [mobileChatViewport, setMobileChatViewport] = useState<{
+    height: number;
+    offsetTop: number;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!composerFocused || typeof window === "undefined") {
+      setMobileChatViewport(null);
+      return;
+    }
+
+    const viewport = window.visualViewport;
+
+    const syncViewport = () => {
+      if (window.innerWidth >= 768) {
+        setMobileChatViewport(null);
+        return;
+      }
+
+      const height = Math.max(
+        240,
+        Math.round(viewport?.height ?? window.innerHeight),
+      );
+      const offsetTop = Math.max(
+        0,
+        Math.round(viewport?.offsetTop ?? 0),
+      );
+
+      setMobileChatViewport({ height, offsetTop });
+
+      window.requestAnimationFrame(() => {
+        const scroller = messagesScrollerRef.current;
+        if (scroller) {
+          scroller.scrollTop = scroller.scrollHeight;
+        }
+      });
+    };
+
+    syncViewport();
+    viewport?.addEventListener("resize", syncViewport);
+    viewport?.addEventListener("scroll", syncViewport);
+    window.addEventListener("orientationchange", syncViewport);
+
+    return () => {
+      viewport?.removeEventListener("resize", syncViewport);
+      viewport?.removeEventListener("scroll", syncViewport);
+      window.removeEventListener("orientationchange", syncViewport);
+    };
+  }, [composerFocused]);
+
+  useEffect(() => {
+    if (loadingOlder) return;
+
+    const frame = window.requestAnimationFrame(() => {
+      const scroller = messagesScrollerRef.current;
+      if (scroller) {
+        scroller.scrollTop = scroller.scrollHeight;
+      }
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [messages.length, selected?.id]);
 
 
   const [loading, setLoading] =
@@ -1810,7 +1876,17 @@ const user = useUserStore(
 
   return (
     <>
-    <main className={`${isDarkMode ? "dark" : ""} mx-auto h-[calc(100dvh-68px)] max-w-7xl overflow-hidden bg-background text-foreground md:h-screen md:max-w-none md:p-0`}>
+    <main
+      className={`${isDarkMode ? "dark" : ""} mx-auto h-[calc(100dvh-68px)] max-w-7xl overflow-hidden bg-background text-foreground md:h-screen md:max-w-none md:p-0`}
+      style={
+        mobileChatViewport
+          ? {
+              height: `${mobileChatViewport.height}px`,
+              transform: `translateY(${mobileChatViewport.offsetTop}px)`,
+            }
+          : undefined
+      }
+    >
       <div className="grid h-full min-h-0 overflow-hidden border border-border bg-background shadow-none md:grid-cols-[390px_1fr] md:border-0 md:bg-card">
         <aside
           className={`h-full min-h-0 overflow-y-auto overscroll-contain touch-pan-y border-r border-border bg-card ${
@@ -2284,7 +2360,7 @@ const user = useUserStore(
         </aside>
 
         <section
-          className={`flex min-h-0 flex-col bg-background ${
+          className={`flex h-full min-h-0 flex-col bg-background ${
             !selected
               ? "hidden md:flex"
               : "flex"
@@ -2411,7 +2487,7 @@ const user = useUserStore(
                 </div>
               )}
 
-              <div className="min-h-0 flex-1 touch-pan-y overscroll-contain space-y-2 overflow-y-auto bg-[#efe9df] bg-[radial-gradient(circle_at_18%_22%,rgba(255,255,255,0.55)_0_1px,transparent_1px),radial-gradient(circle_at_82%_65%,rgba(0,0,0,0.045)_0_1px,transparent_1px)] bg-[length:26px_26px,34px_34px] px-2.5 py-3 pb-28 dark:bg-[#0b141a] sm:px-5 md:px-[6%] md:py-5">
+              <div ref={messagesScrollerRef} className="min-h-0 flex-1 touch-pan-y overscroll-contain space-y-2 overflow-y-auto bg-[#efe9df] bg-[radial-gradient(circle_at_18%_22%,rgba(255,255,255,0.55)_0_1px,transparent_1px),radial-gradient(circle_at_82%_65%,rgba(0,0,0,0.045)_0_1px,transparent_1px)] bg-[length:26px_26px,34px_34px] px-2.5 py-3 pb-28 dark:bg-[#0b141a] sm:px-5 md:px-[6%] md:py-5">
                 {messagesLoading ? (
                   <div className="flex justify-center p-10">
                     <Loader2 className="h-6 w-6 animate-spin text-primary" />
@@ -2634,7 +2710,18 @@ const user = useUserStore(
 
                   <div className="flex min-h-11 flex-1 items-center rounded-[24px] border border-black/5 bg-white px-3 shadow-sm dark:border-white/10 dark:bg-[#2a3942]">
                     <textarea
+                      data-message-composer="true"
                       value={draft}
+                      onFocus={() => {
+                        setComposerFocused(true);
+                        window.setTimeout(() => {
+                          const scroller = messagesScrollerRef.current;
+                          if (scroller) {
+                            scroller.scrollTop = scroller.scrollHeight;
+                          }
+                        }, 120);
+                      }}
+                      onBlur={() => setComposerFocused(false)}
                       onChange={(e) => setDraft(e.target.value)}
                       onKeyDown={(e) => {
                         if (e.key === "Enter" && !e.shiftKey) {
