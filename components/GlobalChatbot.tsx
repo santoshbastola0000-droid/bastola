@@ -17,10 +17,11 @@ export function GlobalChatbot() {
 
   if (!pathname) return null;
 
-  // Hide on admin and auth pages
+  // Hide where the floating assistant can cover primary controls.
   if (
     pathname.startsWith(ADMIN_PATH_PREFIX) ||
-    pathname.startsWith(AUTH_PATH_PREFIX)
+    pathname.startsWith(AUTH_PATH_PREFIX) ||
+    pathname.startsWith("/messages")
   ) {
     return null;
   }
