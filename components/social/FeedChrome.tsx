@@ -201,7 +201,7 @@ export function FeedChrome() {
     <div
       data-roomkhoj-feed-root="true"
       data-lite-mode={networkProfile.liteMode ? "true" : "false"}
-      className={`${styles.primaryTheme} min-h-screen bg-[#f0f2f5]`}
+      className={`${styles.primaryTheme} min-h-screen bg-red-50/30`}
     >
       <FeedNetworkOptimizer />
 
