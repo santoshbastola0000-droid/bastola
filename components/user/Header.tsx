@@ -22,7 +22,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { useUserStore } from "@/stores/user-store";
 import { useLogout } from "@/hooks/useLogout";
@@ -122,6 +122,14 @@ export function UserHeader({ onMenuClick }: UserHeaderProps) {
         .join(" ")
     );
   })();
+
+  const backendUrl = String(process.env.NEXT_PUBLIC_BACKEND_URL || "https://api.roomkhoj.com").replace(/\/$/, "");
+  const rawProfilePhoto = String(user?.profilePhotoUrl || "").trim();
+  const profilePhoto = !rawProfilePhoto
+    ? ""
+    : /^https?:\/\//i.test(rawProfilePhoto)
+      ? rawProfilePhoto
+      : `${backendUrl}${rawProfilePhoto.startsWith("/") ? rawProfilePhoto : `/${rawProfilePhoto}`}`;
 
   const initials = user?.name
     ? user.name
@@ -247,6 +255,7 @@ export function UserHeader({ onMenuClick }: UserHeaderProps) {
                   className="flex items-center gap-2 px-2 py-1.5 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors cursor-pointer"
                 >
                   <Avatar className="h-8 w-8 ring-2 ring-red-200 dark:ring-red-900">
+                    {profilePhoto ? <AvatarImage src={profilePhoto} alt={user?.name || "Profile"} className="object-cover" /> : null}
                     <AvatarFallback className="bg-gradient-to-br from-red-500 to-rose-600 text-white text-xs font-bold">
                       {initials}
                     </AvatarFallback>
@@ -270,6 +279,7 @@ export function UserHeader({ onMenuClick }: UserHeaderProps) {
                 <DropdownMenuLabel className="pb-2">
                   <div className="flex items-center gap-3">
                     <Avatar className="h-10 w-10 ring-2 ring-red-200">
+                      {profilePhoto ? <AvatarImage src={profilePhoto} alt={user?.name || "Profile"} className="object-cover" /> : null}
                       <AvatarFallback className="bg-gradient-to-br from-red-500 to-rose-600 text-white font-bold">
                         {initials}
                       </AvatarFallback>
