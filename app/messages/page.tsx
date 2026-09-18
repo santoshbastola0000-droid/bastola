@@ -2753,7 +2753,7 @@ const user = useUserStore(
                       rows={1}
                       className="max-h-24 min-h-6 min-w-0 flex-1 resize-none bg-transparent py-1.5 text-[14px] leading-5 outline-none placeholder:text-muted-foreground"
                     />
-                    <Smile className="h-4.5 w-4.5 shrink-0 text-muted-foreground" />
+                    <Smile className="h-4 w-4 shrink-0 text-muted-foreground" />
                   </div>
 
                   <Button
