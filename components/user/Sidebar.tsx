@@ -34,6 +34,7 @@ import {
 import { useUserStore } from "@/stores/user-store";
 import { useLogout } from "@/hooks/useLogout";
 import { LogoutConfirmDialog } from "@/components/LogoutConfirmDialog";
+import { staffTrackingService } from "@/http/services/staff-tracking.service";
 
 const navItems = [
   { title: "Dashboard", href: "/user/dashboard", icon: Home },
@@ -131,11 +132,13 @@ function SidebarBody({
   onNavClick,
   onCollapse,
   showCollapseBtn,
+  staffTrackingAllowed,
 }: {
   collapsed: boolean;
   onNavClick?: () => void;
   onCollapse?: () => void;
   showCollapseBtn?: boolean;
+  staffTrackingAllowed: boolean;
 }) {
   const router = useRouter();
   const { user } = useUserStore();
@@ -211,8 +214,12 @@ function SidebarBody({
       {/* ── Nav items ── */}
       <nav className="flex-1 overflow-y-auto p-3 space-y-0.5 mt-2">
         <TooltipProvider delayDuration={0}>
-          {navItems.map((item) =>
-            collapsed && mounted ? (
+          {navItems.map((item) => {
+            if (item.href === "/staff/tracking" && !staffTrackingAllowed) {
+              return null;
+            }
+
+            return collapsed && mounted ? (
               <Tooltip key={item.href}>
                 <TooltipTrigger asChild>
                   <div>
@@ -234,8 +241,8 @@ function SidebarBody({
                 collapsed={collapsed}
                 onClick={onNavClick}
               />
-            ),
-          )}
+            );
+          })}
         </TooltipProvider>
       </nav>
 
@@ -316,6 +323,33 @@ export function UserSidebar({
   isMobile = false,
   onClose,
 }: UserSidebarProps) {
+  const user = useUserStore((state) => state.user);
+  const [staffTrackingAllowed, setStaffTrackingAllowed] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!user?.id) {
+      setStaffTrackingAllowed(false);
+      return;
+    }
+
+    void staffTrackingService
+      .getAccess()
+      .then((result) => {
+        if (!cancelled) {
+          setStaffTrackingAllowed(Boolean(result?.allowed));
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setStaffTrackingAllowed(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id]);
+
   // Mobile mode: the drawer open/close is controlled by the parent (UserLayout)
   // via onClose callback. The hamburger button is rendered inside UserHeader.
   if (isMobile) {
@@ -331,7 +365,11 @@ export function UserSidebar({
           >
             <X className="w-4 h-4" />
           </button>
-          <SidebarBody collapsed={false} onNavClick={onClose} />
+          <SidebarBody
+            collapsed={false}
+            onNavClick={onClose}
+            staffTrackingAllowed={staffTrackingAllowed}
+          />
         </div>
       </div>
     );
@@ -344,6 +382,7 @@ export function UserSidebar({
         collapsed={isCollapsed}
         onCollapse={() => setIsCollapsed(!isCollapsed)}
         showCollapseBtn
+        staffTrackingAllowed={staffTrackingAllowed}
       />
     </div>
   );
