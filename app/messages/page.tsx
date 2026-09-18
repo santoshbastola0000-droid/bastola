@@ -56,6 +56,7 @@ import {
   type UserNotification,
 } from "@/http/services/notification.service";
 import { profileMediaUrl } from "@/lib/profile-media";
+import { socialService } from "@/http/services/social.service";
 
 type EscrowCard = {
   id: string;
@@ -910,6 +911,19 @@ const user = useUserStore(
         setPhoneSearching(false);
       }
     };
+
+  useEffect(() => {
+    const query = search.trim();
+    if (!currentUserId || query.length < 2) return;
+    const timer = window.setTimeout(() => {
+      void socialService.trackSearch({
+        query,
+        context: "MESSAGE",
+        resultCount: phoneResults.length,
+      }).catch(() => undefined);
+    }, 650);
+    return () => window.clearTimeout(timer);
+  }, [currentUserId, phoneResults.length, search]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
