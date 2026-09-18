@@ -1999,7 +1999,7 @@ const user = useUserStore(
                   }
                   className="flex w-full items-center gap-3 rounded-2xl px-1 py-2.5 text-left transition hover:bg-muted"
                 >
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-sky-500 text-white shadow-sm">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm">
                     <UsersRound className="h-6 w-6" />
                   </div>
 
