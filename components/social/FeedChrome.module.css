@@ -1,93 +1,101 @@
+/* Feed-only theme: keep RoomKhoj branding while matching the familiar
+   clean blue social-feed hierarchy shown in the reference UI. */
+.primaryTheme {
+  --feed-primary: #1877f2;
+  --feed-primary-dark: #166fe5;
+  --feed-primary-soft: #e7f3ff;
+}
+
 .primaryTheme :global(.bg-blue-50) {
-  background-color: #fef2f2 !important;
+  background-color: #eff6ff !important;
 }
 
 .primaryTheme :global(.bg-blue-100) {
-  background-color: #fee2e2 !important;
+  background-color: #dbeafe !important;
 }
 
 .primaryTheme :global(.bg-blue-200) {
-  background-color: #fecaca !important;
+  background-color: #bfdbfe !important;
 }
 
 .primaryTheme :global(.bg-blue-500) {
-  background-color: #ef4444 !important;
+  background-color: #3b82f6 !important;
 }
 
 .primaryTheme :global(.bg-blue-600) {
-  background-color: #dc2626 !important;
+  background-color: var(--feed-primary) !important;
 }
 
 .primaryTheme :global(.bg-blue-700) {
-  background-color: #b91c1c !important;
+  background-color: var(--feed-primary-dark) !important;
 }
 
 .primaryTheme :global(.text-blue-500) {
-  color: #ef4444 !important;
+  color: #3b82f6 !important;
 }
 
-.primaryTheme :global(.text-blue-600) {
-  color: #dc2626 !important;
-}
-
-.primaryTheme :global(.text-blue-700) {
-  color: #b91c1c !important;
-}
-
+.primaryTheme :global(.text-blue-600),
+.primaryTheme :global(.text-blue-700),
 .primaryTheme :global(.text-blue-800) {
-  color: #991b1b !important;
+  color: var(--feed-primary) !important;
 }
 
 .primaryTheme :global(.border-blue-100) {
-  border-color: #fee2e2 !important;
+  border-color: #dbeafe !important;
 }
 
 .primaryTheme :global(.border-blue-200) {
-  border-color: #fecaca !important;
+  border-color: #bfdbfe !important;
 }
 
-.primaryTheme :global(.border-blue-500) {
-  border-color: #ef4444 !important;
-}
-
+.primaryTheme :global(.border-blue-500),
 .primaryTheme :global(.border-blue-600) {
-  border-color: #dc2626 !important;
+  border-color: var(--feed-primary) !important;
 }
 
-.primaryTheme :global(.ring-blue-500) {
-  --tw-ring-color: #ef4444 !important;
-}
-
+.primaryTheme :global(.ring-blue-500),
 .primaryTheme :global(.ring-blue-600) {
-  --tw-ring-color: #dc2626 !important;
+  --tw-ring-color: var(--feed-primary) !important;
 }
 
-.primaryTheme :global(.hover\:bg-blue-50:hover) {
-  background-color: #fef2f2 !important;
+/* Existing feed cards used red as the old primary accent. Re-skin those
+   accents to the new feed blue without changing destructive/error states globally. */
+.primaryTheme :global(.bg-red-50) {
+  background-color: #eff6ff !important;
 }
 
-.primaryTheme :global(.hover\:bg-blue-100:hover) {
-  background-color: #fee2e2 !important;
+.primaryTheme :global(.bg-red-600) {
+  background-color: var(--feed-primary) !important;
 }
 
-.primaryTheme :global(.hover\:bg-blue-700:hover) {
-  background-color: #b91c1c !important;
+.primaryTheme :global(.text-red-600),
+.primaryTheme :global(.text-red-700) {
+  color: var(--feed-primary) !important;
 }
 
-.primaryTheme :global(.focus\:border-blue-500:focus) {
-  border-color: #ef4444 !important;
+.primaryTheme :global(.border-red-100),
+.primaryTheme :global(.border-red-200) {
+  border-color: #dbeafe !important;
 }
 
-.primaryTheme :global(.focus\:ring-blue-500:focus) {
-  --tw-ring-color: #ef4444 !important;
+.primaryTheme :global(.hover\:bg-red-50\/60:hover),
+.primaryTheme :global(.hover\:bg-red-50:hover) {
+  background-color: #eff6ff !important;
 }
 
-/* Like is a semantic reaction color; keep it blue while the rest of Feed uses the RoomKhoj primary palette. */
+/* Like is a semantic social reaction and stays blue. */
 .primaryTheme :global(button.select-none.text-blue-600) {
   color: #2563eb !important;
 }
 
-/* Save CPU/GPU work on 2G/3G/Save-Data devices. */
+/* Crisp media rendering and stable card geometry. */
+.primaryTheme :global(article img),
+.primaryTheme :global(article video) {
+  image-rendering: auto;
+  backface-visibility: hidden;
+}
+
+/* Save CPU/GPU work on 2G/3G/Save-Data devices without lowering source quality. */
 .primaryTheme[data-lite-mode="true"] :global(.animate-pulse),
 .primaryTheme[data-lite-mode="true"] :global(.animate-spin) {
   animation-duration: 2.2s !important;
