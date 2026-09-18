@@ -20,6 +20,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { privateApi } from "@/http/api/privateApi";
+import { socialService } from "@/http/services/social.service";
 import { profileMediaUrl } from "@/lib/profile-media";
 
 type Person = {
@@ -114,6 +115,13 @@ export default function PeoplePage() {
     event: FormEvent,
   ) => {
     event.preventDefault();
+    const query = search.trim();
+    if (query.length >= 2) {
+      void socialService.trackSearch({
+        query,
+        context: "PEOPLE",
+      }).catch(() => undefined);
+    }
     loadPeople(search);
   };
 
