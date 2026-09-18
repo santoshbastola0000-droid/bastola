@@ -194,7 +194,7 @@ export function RoomKhojAIFloatingButton() {
         title="Live Voice Assistant"
         onClick={openVoice}
         style={voiceStyle}
-        className="fixed z-[9999] flex h-9 w-9 items-center justify-center rounded-full border-2 border-white bg-slate-950 text-white shadow-xl transition hover:scale-105 active:scale-95 dark:border-slate-900"
+        className="fixed z-[41] flex h-9 w-9 items-center justify-center rounded-full border-2 border-white bg-slate-950 text-white shadow-xl transition hover:scale-105 active:scale-95 dark:border-slate-900"
       >
         <Mic className="h-4 w-4" />
       </button>
