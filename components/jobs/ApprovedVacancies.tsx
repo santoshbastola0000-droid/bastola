@@ -19,6 +19,8 @@ import {
   jobPostingService,
   type JobPosting,
 } from "@/http/services/job-posting.service";
+import { socialService } from "@/http/services/social.service";
+import { useUserStore } from "@/stores/user-store";
 
 function formatSalary(job: JobPosting) {
   if (job.salaryNegotiable) return "Negotiable";
@@ -46,6 +48,7 @@ export default function ApprovedVacancies({
 }) {
   const [search, setSearch] = useState(defaultSearch);
   const [location, setLocation] = useState(defaultLocation);
+  const user = useUserStore((state) => state.user);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -92,6 +95,24 @@ export default function ApprovedVacancies({
       return matchesSearch && matchesLocation;
     });
   }, [jobs, search, location]);
+
+  useEffect(() => {
+    if (!user) return;
+    const query = search.trim() || location.trim();
+    if (query.length < 2) return;
+    const timer = window.setTimeout(() => {
+      void socialService.trackSearch({
+        query,
+        context: "JOB",
+        filters: {
+          location: location.trim() || null,
+          jobTitle: search.trim() || null,
+        },
+        resultCount: filtered.length,
+      }).catch(() => undefined);
+    }, 650);
+    return () => window.clearTimeout(timer);
+  }, [filtered.length, location, search, user]);
 
   return (
     <section id="latest-vacancies" className="mx-auto max-w-6xl px-4 py-12 sm:py-16">
