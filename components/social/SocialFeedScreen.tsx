@@ -594,10 +594,6 @@ function NewUserFriendOnboarding({
             <h2 className="text-lg font-black text-slate-950">
               Start by connecting with 5 people
             </h2>
-            <p className="mt-1 text-sm leading-5 text-slate-600">
-              नयाँ account को feed personalize गर्न 5 जना suggested users लाई friend request पठाउनुहोस्।
-              Mutual friends पहिले, त्यसपछि location र similar interests का आधारमा suggestions छन्।
-            </p>
             <div className="mt-3 h-2 overflow-hidden rounded-full bg-white">
               <div
                 className="h-full rounded-full bg-primary transition-all"
