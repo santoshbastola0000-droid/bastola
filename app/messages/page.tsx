@@ -56,7 +56,10 @@ import {
   type UserNotification,
 } from "@/http/services/notification.service";
 import { profileMediaUrl } from "@/lib/profile-media";
-import { socialService } from "@/http/services/social.service";
+import {
+  socialService,
+  type SocialUser,
+} from "@/http/services/social.service";
 
 type EscrowCard = {
   id: string;
@@ -207,6 +210,16 @@ const user = useUserStore(
     inboxNotifications,
     setInboxNotifications,
   ] = useState<UserNotification[]>([]);
+
+  const [
+    messageFriendSuggestions,
+    setMessageFriendSuggestions,
+  ] = useState<SocialUser[]>([]);
+
+  const [
+    suggestionBusyId,
+    setSuggestionBusyId,
+  ] = useState<string | null>(null);
 
   const [conversations, setConversations] =
     useState<MessageConversation[]>([]);
@@ -397,7 +410,6 @@ const user = useUserStore(
   useEffect(() => {
     loadConversations();
   }, [requestedConversationId]);
-
   useEffect(() => {
     if (!currentUserId) {
       setInboxFriends([]);
@@ -408,11 +420,15 @@ const user = useUserStore(
     let cancelled = false;
 
     const loadInboxSocial = async () => {
-      const [friendsResult, notificationsResult] =
-        await Promise.allSettled([
-          profileService.getFriends(currentUserId),
-          notificationService.list(),
-        ]);
+      const [
+        friendsResult,
+        notificationsResult,
+        suggestionsResult,
+      ] = await Promise.allSettled([
+        profileService.getFriends(currentUserId),
+        notificationService.list(),
+        socialService.friendSuggestions(),
+      ]);
 
       if (cancelled) return;
 
@@ -439,6 +455,17 @@ const user = useUserStore(
         setInboxNotifications(
           Array.isArray(notificationsResult.value)
             ? notificationsResult.value
+            : [],
+        );
+      }
+
+      if (
+        suggestionsResult.status ===
+        "fulfilled"
+      ) {
+        setMessageFriendSuggestions(
+          Array.isArray(suggestionsResult.value)
+            ? suggestionsResult.value
             : [],
         );
       }
@@ -2101,6 +2128,146 @@ const user = useUserStore(
               )}
             </div>
           )}
+
+          {!search.trim() &&
+            messageFriendSuggestions.length > 0 && (
+              <section className="border-t border-border bg-card px-4 py-4">
+                <div className="mb-3 flex items-center justify-between">
+                  <div>
+                    <h2 className="text-sm font-black text-foreground">
+                      Friend suggestions
+                    </h2>
+                    <p className="mt-0.5 text-[11px] text-muted-foreground">
+                      Mutual friends first, then location and similar interests.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      router.push(
+                        "/user/dashboard/people",
+                      )
+                    }
+                    className="text-xs font-bold text-primary"
+                  >
+                    See all
+                  </button>
+                </div>
+
+                <div className="space-y-2">
+                  {messageFriendSuggestions
+                    .slice(0, 6)
+                    .map((person) => {
+                      const photo =
+                        profileMediaUrl(
+                          person.profilePhotoUrl,
+                        );
+
+                      return (
+                        <div
+                          key={person.id}
+                          className="flex items-center gap-3 rounded-2xl border border-border bg-background p-3"
+                        >
+                          <button
+                            type="button"
+                            onClick={() =>
+                              router.push(
+                                `/profile/${person.id}`,
+                              )
+                            }
+                            className="h-11 w-11 shrink-0 overflow-hidden rounded-full bg-muted"
+                            aria-label={`Open ${person.name} profile`}
+                          >
+                            {photo ? (
+                              <img
+                                src={photo}
+                                alt=""
+                                className="h-full w-full object-cover"
+                              />
+                            ) : (
+                              <div className="flex h-full w-full items-center justify-center text-sm font-black text-primary">
+                                {person.name
+                                  .slice(0, 2)
+                                  .toUpperCase()}
+                              </div>
+                            )}
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() =>
+                              router.push(
+                                `/profile/${person.id}`,
+                              )
+                            }
+                            className="min-w-0 flex-1 text-left"
+                          >
+                            <p className="truncate text-sm font-bold text-foreground">
+                              {person.name}
+                            </p>
+                            <p className="truncate text-xs text-muted-foreground">
+                              {person.reason ||
+                                person.location ||
+                                "People you may know"}
+                            </p>
+                          </button>
+
+                          <Button
+                            type="button"
+                            size="sm"
+                            disabled={
+                              suggestionBusyId ===
+                              person.id
+                            }
+                            className="shrink-0 rounded-full px-3"
+                            onClick={async () => {
+                              try {
+                                setSuggestionBusyId(
+                                  person.id,
+                                );
+                                await socialService.sendFriendRequest(
+                                  person.id,
+                                );
+                                setMessageFriendSuggestions(
+                                  (current) =>
+                                    current.filter(
+                                      (item) =>
+                                        item.id !==
+                                        person.id,
+                                    ),
+                                );
+                                toast.success(
+                                  "Friend request पठाइयो।",
+                                );
+                              } catch (
+                                error: any
+                              ) {
+                                toast.error(
+                                  error?.response?.data
+                                    ?.message ||
+                                    "Friend request पठाउन सकिएन।",
+                                );
+                              } finally {
+                                setSuggestionBusyId(
+                                  null,
+                                );
+                              }
+                            }}
+                          >
+                            {suggestionBusyId ===
+                            person.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <UserPlus className="mr-1 h-4 w-4" />
+                            )}
+                            Add
+                          </Button>
+                        </div>
+                      );
+                    })}
+                </div>
+              </section>
+            )}
         </aside>
 
         <section
