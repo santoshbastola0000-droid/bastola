@@ -18,6 +18,20 @@ import {
   type StoryMusicTrack,
 } from "@/http/services/social.service";
 
+const backendUrl = String(
+  process.env.NEXT_PUBLIC_BACKEND_URL || "https://api.roomkhoj.com",
+).replace(/\/$/, "");
+
+function media(value?: string | null) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  if (/^(https?:)?\/\//i.test(raw)) {
+    return raw.startsWith("//") ? `https:${raw}` : raw;
+  }
+  if (/^(data:|blob:)/i.test(raw)) return raw;
+  return `${backendUrl}${raw.startsWith("/") ? raw : `/${raw}`}`;
+}
+
 type CreateStoryPayload = {
   file: File;
   caption?: string;
@@ -161,7 +175,7 @@ export function StoryCreator({
         <div className="flex h-[110px] items-center justify-center bg-slate-100">
           {myPhoto ? (
             <img
-              src={myPhoto}
+              src={media(myPhoto)}
               alt={userName}
               className="h-14 w-14 rounded-full border border-slate-200 object-cover"
             />
