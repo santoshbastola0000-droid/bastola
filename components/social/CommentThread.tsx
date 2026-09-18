@@ -38,9 +38,11 @@ function ago(value: string) {
 export function CommentThread({
   postId,
   currentUserId,
+  currentUserPhotoUrl,
 }: {
   postId: string;
   currentUserId: string;
+  currentUserPhotoUrl?: string | null;
 }) {
   const [comments, setComments] = useState<SocialComment[]>([]);
   const [draft, setDraft] = useState("");
@@ -197,9 +199,17 @@ export function CommentThread({
       )}
 
       <form onSubmit={submit} className="mt-2 flex items-center gap-2">
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-200 text-[12px] font-bold text-slate-600">
-          R
-        </div>
+        {profilePhoto(currentUserPhotoUrl) ? (
+          <img
+            src={profilePhoto(currentUserPhotoUrl)}
+            alt="Your profile"
+            className="h-8 w-8 shrink-0 rounded-full border border-slate-200 bg-slate-100 object-cover"
+          />
+        ) : (
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-200 text-[12px] font-bold text-slate-600">
+            R
+          </div>
+        )}
         <div className="flex min-w-0 flex-1 items-center rounded-full bg-slate-100 px-3">
           <input
             value={draft}
