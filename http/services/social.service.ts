@@ -102,6 +102,18 @@ export type SocialFeedItem =
       };
     };
 
+export type StoryMusicTrack = {
+  provider: "JAMENDO" | string;
+  trackId: string;
+  title: string;
+  artist: string;
+  audioUrl: string;
+  imageUrl?: string | null;
+  licenseUrl?: string | null;
+  duration?: number | null;
+  selectedAutomatically?: boolean;
+};
+
 export type SocialStory = {
   id: string;
   mediaUrl: string;
@@ -112,6 +124,7 @@ export type SocialStory = {
   createdAt: string;
   viewedByMe: boolean;
   viewCount?: number;
+  music?: StoryMusicTrack | null;
   author: SocialUser;
 };
 
@@ -378,15 +391,43 @@ export const socialService = {
     return response.data as SocialStory[];
   },
 
+  async searchStoryMusic(
+    query = "",
+    options?: { automatic?: boolean; limit?: number },
+  ) {
+    const response = await privateApi.get("/social/story-music", {
+      params: {
+        q: query,
+        auto: options?.automatic ? "true" : "false",
+        limit: options?.limit || 12,
+      },
+    });
+
+    return response.data as {
+      configured: boolean;
+      provider: "JAMENDO" | string;
+      tracks: StoryMusicTrack[];
+    };
+  },
+
   async createStory(input: {
     file: File;
     caption?: string;
     visibility?: "PUBLIC" | "FRIENDS";
+    musicTrackId?: string;
+    musicAutoSelected?: boolean;
   }) {
     const form = new FormData();
     form.append("media", input.file);
     form.append("caption", input.caption || "");
     form.append("visibility", input.visibility || "PUBLIC");
+    if (input.musicTrackId) {
+      form.append("musicTrackId", input.musicTrackId);
+      form.append(
+        "musicAutoSelected",
+        input.musicAutoSelected ? "true" : "false",
+      );
+    }
     const response = await privateApi.post("/social/stories", form);
     return response.data as SocialStory;
   },
