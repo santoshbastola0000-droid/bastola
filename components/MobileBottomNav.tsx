@@ -13,6 +13,26 @@ import {
   UserRound,
 } from "lucide-react";
 
+function ReelsIcon({ className = "" }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <rect x="3" y="4.5" width="18" height="15.5" rx="4" />
+      <path d="M3.7 8.5h16.6" />
+      <path d="m6.2 4.8 3 3.5M11.2 4.8l3 3.5M16.2 4.8l3 3.5" />
+      <path d="m10 11.3 5 3.1-5 3.1z" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
 export function MobileBottomNav() {
   const pathname = usePathname();
   const user = useUserStore((state) => state.user);
@@ -173,7 +193,7 @@ export function MobileBottomNav() {
             className={itemClass(isReels)}
             aria-label="Reels"
           >
-            <Clapperboard className={compactOnScroll ? "h-5 w-5" : "h-6 w-6"} strokeWidth={isReels ? 2.6 : 2.1} />
+            <ReelsIcon className={compactOnScroll ? "h-5 w-5" : "h-6 w-6"} />
             <span>Reels</span>
           </Link>
 
