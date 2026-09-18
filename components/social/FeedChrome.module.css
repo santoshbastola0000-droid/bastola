@@ -1,11 +1,86 @@
-/* Feed-only theme: keep RoomKhoj branding while matching the familiar
-   clean blue social-feed hierarchy shown in the reference UI. */
+/* Feed-only RoomKhoj brand theme.
+   Layout/behavior stays unchanged; only feed accents follow the site primary color. */
 .primaryTheme {
-  --feed-primary: #1877f2;
-  --feed-primary-dark: #166fe5;
-  --feed-primary-soft: #e7f3ff;
+  --feed-primary: #dc2626;
+  --feed-primary-dark: #b91c1c;
+  --feed-primary-soft: #fef2f2;
 }
 
+/* Components that still use Tailwind blue utility names inside the social feed
+   are visually mapped to the RoomKhoj primary red only within this feed root. */
+.primaryTheme :global(.bg-blue-50) {
+  background-color: #fef2f2 !important;
+}
+
+.primaryTheme :global(.bg-blue-100) {
+  background-color: #fee2e2 !important;
+}
+
+.primaryTheme :global(.bg-blue-200) {
+  background-color: #fecaca !important;
+}
+
+.primaryTheme :global(.bg-blue-500) {
+  background-color: #ef4444 !important;
+}
+
+.primaryTheme :global(.bg-blue-600) {
+  background-color: var(--feed-primary) !important;
+}
+
+.primaryTheme :global(.bg-blue-700) {
+  background-color: var(--feed-primary-dark) !important;
+}
+
+.primaryTheme :global(.text-blue-500) {
+  color: #ef4444 !important;
+}
+
+.primaryTheme :global(.text-blue-600),
+.primaryTheme :global(.text-blue-700),
+.primaryTheme :global(.text-blue-800) {
+  color: var(--feed-primary) !important;
+}
+
+.primaryTheme :global(.border-blue-100) {
+  border-color: #fee2e2 !important;
+}
+
+.primaryTheme :global(.border-blue-200) {
+  border-color: #fecaca !important;
+}
+
+.primaryTheme :global(.border-blue-500),
+.primaryTheme :global(.border-blue-600) {
+  border-color: var(--feed-primary) !important;
+}
+
+.primaryTheme :global(.ring-blue-500),
+.primaryTheme :global(.ring-blue-600) {
+  --tw-ring-color: var(--feed-primary) !important;
+}
+
+.primaryTheme :global(.hover\:bg-blue-50:hover) {
+  background-color: #fef2f2 !important;
+}
+
+.primaryTheme :global(.hover\:bg-blue-100:hover) {
+  background-color: #fee2e2 !important;
+}
+
+.primaryTheme :global(.hover\:bg-blue-700:hover) {
+  background-color: var(--feed-primary-dark) !important;
+}
+
+.primaryTheme :global(.focus\:border-blue-500:focus) {
+  border-color: var(--feed-primary) !important;
+}
+
+.primaryTheme :global(.focus\:ring-blue-500:focus) {
+  --tw-ring-color: var(--feed-primary) !important;
+}
+
+/* Existing RoomKhoj red utilities remain consistent. */
 .primaryTheme :global(.bg-red-50) {
   background-color: #fef2f2 !important;
 }
@@ -15,11 +90,11 @@
 }
 
 .primaryTheme :global(.bg-red-200) {
-  background-color: #bfdbfe !important;
+  background-color: #fecaca !important;
 }
 
 .primaryTheme :global(.bg-red-500) {
-  background-color: #3b82f6 !important;
+  background-color: #ef4444 !important;
 }
 
 .primaryTheme :global(.bg-red-600) {
@@ -31,7 +106,7 @@
 }
 
 .primaryTheme :global(.text-red-500) {
-  color: #3b82f6 !important;
+  color: #ef4444 !important;
 }
 
 .primaryTheme :global(.text-red-600),
@@ -45,7 +120,7 @@
 }
 
 .primaryTheme :global(.border-red-200) {
-  border-color: #bfdbfe !important;
+  border-color: #fecaca !important;
 }
 
 .primaryTheme :global(.border-red-500),
@@ -58,34 +133,9 @@
   --tw-ring-color: var(--feed-primary) !important;
 }
 
-/* Existing feed cards used red as the old primary accent. Re-skin those
-   accents to the new feed blue without changing destructive/error states globally. */
-.primaryTheme :global(.bg-red-50) {
-  background-color: #fef2f2 !important;
-}
-
-.primaryTheme :global(.bg-red-600) {
-  background-color: var(--feed-primary) !important;
-}
-
-.primaryTheme :global(.text-red-600),
-.primaryTheme :global(.text-red-700) {
-  color: var(--feed-primary) !important;
-}
-
-.primaryTheme :global(.border-red-100),
-.primaryTheme :global(.border-red-200) {
-  border-color: #fee2e2 !important;
-}
-
 .primaryTheme :global(.hover\:bg-red-50\/60:hover),
 .primaryTheme :global(.hover\:bg-red-50:hover) {
   background-color: #fef2f2 !important;
-}
-
-/* Like is a semantic social reaction and stays blue. */
-.primaryTheme :global(button.select-none.text-red-600) {
-  color: #dc2626 !important;
 }
 
 /* Crisp media rendering and stable card geometry. */
