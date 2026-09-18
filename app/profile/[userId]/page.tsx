@@ -1,20 +1,26 @@
 "use client";
 
 import {
+  type ChangeEvent,
   useEffect,
+  useRef,
   useState,
 } from "react";
 import {
   BadgeCheck,
   BriefcaseBusiness,
+  Camera,
   Check,
   Clock3,
   Globe2,
   Home,
   MapPin,
+  Loader2,
   MessageCircle,
+  Trash2,
   UserPlus,
   Users,
+  X,
 } from "lucide-react";
 import {
   useParams,
@@ -78,6 +84,17 @@ export default function PublicProfilePage() {
 
   const [messageLoading, setMessageLoading] =
     useState(false);
+
+  const [photoViewerOpen, setPhotoViewerOpen] =
+    useState(false);
+  const [photoActionLoading, setPhotoActionLoading] =
+    useState(false);
+  const profilePhotoInputRef =
+    useRef<HTMLInputElement | null>(null);
+
+  const isOwnProfile =
+    Boolean(currentUser?.id) &&
+    String(currentUser?.id) === userId;
 
   const load = async () => {
     try {
@@ -187,6 +204,71 @@ export default function PublicProfilePage() {
     }
   };
 
+  const handleProfilePhotoChange = async (
+    event: ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const fileName = file.name.toLowerCase();
+    const isImage =
+      file.type.startsWith("image/") ||
+      /\.(jpg|jpeg|png|webp|gif|heic|heif)$/i.test(fileName);
+
+    if (!isImage) {
+      toast.error("Photo file मात्र select गर्नुहोस्.");
+      event.target.value = "";
+      return;
+    }
+
+    if (file.size > 20 * 1024 * 1024) {
+      toast.error("Profile photo 20 MB भन्दा सानो हुनुपर्छ.");
+      event.target.value = "";
+      return;
+    }
+
+    try {
+      setPhotoActionLoading(true);
+      await profileService.uploadProfilePhoto(file);
+      const refreshed = await profileService.getProfile(userId);
+      setProfile(refreshed);
+      toast.success("Profile photo changed");
+    } catch (error: any) {
+      toast.error(
+        error?.response?.data?.message ||
+          "Profile photo change गर्न सकिएन.",
+      );
+    } finally {
+      setPhotoActionLoading(false);
+      event.target.value = "";
+    }
+  };
+
+  const handleProfilePhotoDelete = async () => {
+    if (!profile?.user.profilePhotoUrl || photoActionLoading) return;
+
+    const confirmed = window.confirm(
+      "Profile photo delete गर्ने हो?",
+    );
+    if (!confirmed) return;
+
+    try {
+      setPhotoActionLoading(true);
+      await profileService.deleteProfilePhoto();
+      const refreshed = await profileService.getProfile(userId);
+      setProfile(refreshed);
+      setPhotoViewerOpen(false);
+      toast.success("Profile photo deleted");
+    } catch (error: any) {
+      toast.error(
+        error?.response?.data?.message ||
+          "Profile photo delete गर्न सकिएन.",
+      );
+    } finally {
+      setPhotoActionLoading(false);
+    }
+  };
+
   const handleMessage = async () => {
     if (messageLoading) return;
 
@@ -283,11 +365,16 @@ export default function PublicProfilePage() {
 
           <div className="relative px-4 pb-4 sm:px-8">
             <div className="-mt-20 flex flex-col items-center text-center sm:-mt-24">
-              <div className="h-40 w-40 shrink-0 overflow-hidden rounded-full border-[5px] border-background bg-primary shadow-xl sm:h-48 sm:w-48">
+              <button
+                type="button"
+                onClick={() => setPhotoViewerOpen(true)}
+                className="relative h-40 w-40 shrink-0 overflow-hidden rounded-full border-[5px] border-background bg-primary shadow-xl transition active:scale-[0.98] sm:h-48 sm:w-48"
+                aria-label="Open profile photo"
+              >
                 {profilePhoto ? (
                   <img
                     src={profilePhoto}
-                    alt=""
+                    alt={`${profile.user.name} profile photo`}
                     className="h-full w-full object-cover"
                     onError={(e) => {
                       e.currentTarget.style.display = "none";
@@ -298,7 +385,22 @@ export default function PublicProfilePage() {
                     {initials}
                   </div>
                 )}
-              </div>
+                {isOwnProfile && (
+                  <span className="absolute bottom-2 right-2 flex h-9 w-9 items-center justify-center rounded-full border-2 border-white bg-black/75 text-white shadow-lg">
+                    <Camera className="h-4 w-4" />
+                  </span>
+                )}
+              </button>
+
+              {isOwnProfile && (
+                <input
+                  ref={profilePhotoInputRef}
+                  type="file"
+                  accept="image/*,.heic,.heif"
+                  className="hidden"
+                  onChange={handleProfilePhotoChange}
+                />
+              )}
 
               <div className="mt-3 flex max-w-full items-center justify-center gap-2">
                 <h1 className="truncate text-[30px] font-black tracking-tight sm:text-4xl">
@@ -797,6 +899,97 @@ export default function PublicProfilePage() {
           </section>
         </div>
       </div>
+
+      {photoViewerOpen && (
+        <div
+          className="fixed inset-0 z-[200] flex flex-col bg-black/95"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Profile photo"
+          onClick={() => {
+            if (!photoActionLoading) setPhotoViewerOpen(false);
+          }}
+        >
+          <div className="flex items-center justify-between gap-3 px-3 py-3 text-white sm:px-5">
+            <div className="min-w-0">
+              <p className="truncate text-sm font-bold">
+                {profile.user.name}
+              </p>
+              <p className="text-xs text-white/65">
+                Profile photo
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                if (!photoActionLoading) setPhotoViewerOpen(false);
+              }}
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/10 text-white"
+              aria-label="Close profile photo"
+            >
+              <X className="h-6 w-6" />
+            </button>
+          </div>
+
+          <div
+            className="flex min-h-0 flex-1 items-center justify-center p-3 sm:p-6"
+            onClick={(event) => event.stopPropagation()}
+          >
+            {profilePhoto ? (
+              <img
+                src={profilePhoto}
+                alt={`${profile.user.name} profile photo`}
+                className="max-h-full max-w-full object-contain"
+              />
+            ) : (
+              <div className="flex h-56 w-56 items-center justify-center rounded-full bg-primary text-6xl font-black text-primary-foreground">
+                {initials}
+              </div>
+            )}
+          </div>
+
+          {isOwnProfile && (
+            <div
+              className="border-t border-white/10 bg-black/90 px-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3 sm:px-5"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className="mx-auto grid w-full max-w-md grid-cols-2 gap-2">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="h-11 rounded-xl font-bold"
+                  disabled={photoActionLoading}
+                  onClick={() => profilePhotoInputRef.current?.click()}
+                >
+                  {photoActionLoading ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Camera className="mr-2 h-4 w-4" />
+                  )}
+                  Change photo
+                </Button>
+
+                <Button
+                  type="button"
+                  variant="destructive"
+                  className="h-11 rounded-xl font-bold"
+                  disabled={photoActionLoading || !profilePhoto}
+                  onClick={() => void handleProfilePhotoDelete()}
+                >
+                  {photoActionLoading ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Trash2 className="mr-2 h-4 w-4" />
+                  )}
+                  Delete photo
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </main>
   );
 }
