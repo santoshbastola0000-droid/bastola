@@ -26,6 +26,8 @@ function SearchContent() {
   const [loading, setLoading] = useState(Boolean(initial.trim()));
   const [result, setResult] = useState<GlobalSearchResult | null>(null);
   const [smartSuggestions, setSmartSuggestions] = useState<SearchSuggestion[]>([]);
+  const [liveResult, setLiveResult] = useState<GlobalSearchResult | null>(null);
+  const [liveLoading, setLiveLoading] = useState(false);
 
   useEffect(() => {
     setQuery(initial);
@@ -75,6 +77,44 @@ function SearchContent() {
     };
   }, [initial]);
 
+  useEffect(() => {
+    const q = query.trim();
+
+    if (!q) {
+      setLiveResult(null);
+      setLiveLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    const timer = window.setTimeout(async () => {
+      setLiveLoading(true);
+      try {
+        const [suggestions, preview] = await Promise.all([
+          socialService.searchSuggestions(q, "GLOBAL", 8),
+          q.length >= 2
+            ? socialService.search(q, 5)
+            : Promise.resolve(null),
+        ]);
+
+        if (cancelled) return;
+        setSmartSuggestions(suggestions);
+        setLiveResult(preview);
+      } catch {
+        if (!cancelled) {
+          setLiveResult(null);
+        }
+      } finally {
+        if (!cancelled) setLiveLoading(false);
+      }
+    }, 180);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [query]);
+
   const total = useMemo(() => {
     if (!result) return 0;
     return (
@@ -115,6 +155,95 @@ function SearchContent() {
               </button>
             </div>
           </form>
+
+          {query.trim().length >= 2 && (liveLoading || liveResult) && (
+            <div className="mb-5 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+              <div className="border-b px-4 py-2 text-xs font-black uppercase tracking-wide text-slate-500">
+                Search suggestions
+              </div>
+
+              {liveLoading && !liveResult ? (
+                <div className="flex items-center justify-center py-5">
+                  <Loader2 className="h-5 w-5 animate-spin text-red-600" />
+                </div>
+              ) : (
+                <div className="divide-y divide-slate-100">
+                  {liveResult?.rooms.slice(0, 3).map((room) => (
+                    <Link
+                      key={`room-${room.id}`}
+                      href={room.href}
+                      className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50"
+                    >
+                      <Building2 className="h-5 w-5 shrink-0 text-red-600" />
+                      <div className="min-w-0">
+                        <div className="truncate text-sm font-semibold text-slate-950">
+                          {room.title}
+                        </div>
+                        <div className="truncate text-xs text-slate-500">
+                          Room · {room.address || "RoomKhoj"}
+                        </div>
+                      </div>
+                    </Link>
+                  ))}
+
+                  {liveResult?.jobs.slice(0, 3).map((job) => (
+                    <Link
+                      key={`job-${job.id}`}
+                      href={job.href}
+                      className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50"
+                    >
+                      <BriefcaseBusiness className="h-5 w-5 shrink-0 text-red-600" />
+                      <div className="min-w-0">
+                        <div className="truncate text-sm font-semibold text-slate-950">
+                          {job.title}
+                        </div>
+                        <div className="truncate text-xs text-slate-500">
+                          Job · {job.location}
+                        </div>
+                      </div>
+                    </Link>
+                  ))}
+
+                  {liveResult?.users.slice(0, 3).map((person) => (
+                    <Link
+                      key={`person-${person.id}`}
+                      href={person.href}
+                      className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50"
+                    >
+                      <UserRound className="h-5 w-5 shrink-0 text-red-600" />
+                      <div className="truncate text-sm font-semibold text-slate-950">
+                        {person.name}
+                      </div>
+                    </Link>
+                  ))}
+
+                  {liveResult?.posts.slice(0, 2).map((post) => (
+                    <Link
+                      key={`post-${post.id}`}
+                      href={post.href}
+                      className="block px-4 py-3 hover:bg-slate-50"
+                    >
+                      <div className="text-xs font-bold text-red-600">Post</div>
+                      <div className="mt-0.5 line-clamp-1 text-sm text-slate-700">
+                        {post.content || "Media post"}
+                      </div>
+                    </Link>
+                  ))}
+
+                  {liveResult &&
+                    liveResult.rooms.length === 0 &&
+                    liveResult.jobs.length === 0 &&
+                    liveResult.users.length === 0 &&
+                    liveResult.posts.length === 0 &&
+                    liveResult.services.length === 0 && (
+                      <div className="px-4 py-5 text-center text-sm text-slate-500">
+                        No matching suggestions.
+                      </div>
+                    )}
+                </div>
+              )}
+            </div>
+          )}
 
           {smartSuggestions.length > 0 && (
             <div className="mb-5 flex flex-wrap gap-2">
