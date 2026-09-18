@@ -237,6 +237,15 @@ export const socialService = {
     return response.data as GlobalSearchResult;
   },
 
+  async mentionOptions(query = "") {
+    const response = await privateApi.get("/social/mention-options", {
+      params: { q: query },
+    });
+    return response.data as Array<
+      SocialUser & { mentionType: "FRIEND" | "OFFICIAL" }
+    >;
+  },
+
   async feed(before?: string) {
     const response = await privateApi.get("/social/feed", {
       params: { limit: 20, before },
@@ -266,11 +275,15 @@ export const socialService = {
     visibility: "PUBLIC" | "FRIENDS" | "GROUP";
     groupId?: string;
     files: File[];
+    mentionUserIds?: string[];
   }) {
     const form = new FormData();
     form.append("content", input.content);
     form.append("visibility", input.visibility);
     if (input.groupId) form.append("groupId", input.groupId);
+    if (input.mentionUserIds?.length) {
+      form.append("mentionUserIds", JSON.stringify(input.mentionUserIds));
+    }
     input.files.forEach((file) => form.append("media", file));
     const response = await privateApi.post("/social/posts", form);
     return response.data;
