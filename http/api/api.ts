@@ -13,3 +13,19 @@ export const api = axios.create({
   },
   withCredentials: true,
 });
+
+
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const data = error?.response?.data;
+    if (
+      typeof window !== "undefined" &&
+      error?.response?.status === 403 &&
+      data?.code === "SECURITY_CHALLENGE_REQUIRED"
+    ) {
+      window.dispatchEvent(new CustomEvent("roomkhoj:security-challenge"));
+    }
+    return Promise.reject(error);
+  },
+);
