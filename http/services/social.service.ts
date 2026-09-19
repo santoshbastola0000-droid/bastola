@@ -282,6 +282,14 @@ export const socialService = {
     return response.data as { items: SocialFeedItem[]; nextCursor: string | null };
   },
 
+  async reels(before?: string, limit = 12) {
+    const response = await privateApi.get("/social/reels", {
+      params: { limit, before },
+    });
+    return response.data as { items: SocialFeedItem[]; nextCursor: string | null };
+  },
+
+
   async uploadProfilePhoto(file: File) {
     const form = new FormData();
     form.append("media", file);
