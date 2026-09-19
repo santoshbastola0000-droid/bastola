@@ -1,15 +1,37 @@
-"use client";
-
+import type { Metadata } from "next";
 import Link from "next/link";
-import { useParams } from "next/navigation";
-import { useEffect, useState } from "react";
-import { ArrowLeft, Heart, MessageCircle, Share2 } from "lucide-react";
-import { privateApi } from "@/http/api/privateApi";
-import type { SocialPost } from "@/http/services/social.service";
+import { notFound } from "next/navigation";
+import { ArrowLeft, Heart, MessageCircle } from "lucide-react";
 
+import { HashtagText } from "@/components/social/HashtagText";
+import { PostShareButton } from "@/components/social/PostShareButton";
+
+const baseUrl = "https://www.roomkhoj.com";
 const backendUrl = String(
   process.env.NEXT_PUBLIC_BACKEND_URL || "https://api.roomkhoj.com",
 ).replace(/\/$/, "");
+
+type PublicPost = {
+  id: string;
+  userId: string;
+  content?: string | null;
+  mediaUrls: string[];
+  mediaTypes: Array<"IMAGE" | "VIDEO">;
+  visibility: "PUBLIC";
+  createdAt: string;
+  updatedAt: string;
+  author: {
+    id: string;
+    name: string;
+    profilePhotoUrl?: string | null;
+    isVerified?: boolean;
+    isMonetized?: boolean;
+  };
+  likeCount: number;
+  commentCount: number;
+  shareCount: number;
+  hashtags?: string[];
+};
 
 function media(value?: string | null) {
   const raw = String(value || "");
@@ -17,6 +39,7 @@ function media(value?: string | null) {
   if (/^https?:\/\//i.test(raw)) return raw;
   return `${backendUrl}${raw.startsWith("/") ? raw : `/${raw}`}`;
 }
+
 function streamVideoPoster(value?: string | null) {
   const resolved = media(value);
   if (!/\.m3u8(?:$|\?)/i.test(resolved)) return "";
@@ -26,48 +49,127 @@ function streamVideoPoster(value?: string | null) {
   );
 }
 
+function plainText(value?: string | null) {
+  return String(value || "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
 
-export default function SocialPostPage() {
-  const params = useParams<{ id: string }>();
-  const [post, setPost] = useState<SocialPost | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let active = true;
-    const run = async () => {
-      try {
-        const response = await privateApi.get(`/social/posts/${params.id}`);
-        if (active) setPost(response.data as SocialPost);
-      } finally {
-        if (active) setLoading(false);
-      }
-    };
-    void run();
-    return () => {
-      active = false;
-    };
-  }, [params.id]);
-
-  if (loading) {
-    return <div className="min-h-screen bg-[#f0f2f5] p-8 text-center text-sm text-slate-500">Loading post...</div>;
-  }
-
-  if (!post) {
-    return (
-      <div className="min-h-screen bg-[#f0f2f5] p-8 text-center">
-        <p className="text-sm text-slate-600">Post unavailable.</p>
-        <Link href="/feed" className="mt-3 inline-block font-semibold text-blue-600">Back to feed</Link>
-      </div>
+async function getPost(id: string): Promise<PublicPost | null> {
+  try {
+    const response = await fetch(
+      `${backendUrl}/public/social/posts/${encodeURIComponent(id)}`,
+      { next: { revalidate: 300 } },
     );
+    if (!response.ok) return null;
+    return (await response.json()) as PublicPost;
+  } catch {
+    return null;
   }
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  const post = await getPost(id);
+  if (!post) {
+    return {
+      title: "Post not found | RoomKhoj",
+      robots: { index: false, follow: false },
+    };
+  }
+
+  const text = plainText(post.content);
+  const titleBase = text || `Post by ${post.author?.name || "RoomKhoj User"}`;
+  const title =
+    titleBase.length > 68 ? `${titleBase.slice(0, 65)}...` : titleBase;
+  const description = text
+    ? text.slice(0, 155)
+    : "View this public RoomKhoj post.";
+  const canonical = `${baseUrl}/post/${post.id}`;
+  const firstImageIndex = post.mediaTypes?.findIndex((type) => type === "IMAGE");
+  const firstImage =
+    firstImageIndex >= 0 ? media(post.mediaUrls?.[firstImageIndex]) : "";
+
+  return {
+    title: `${title} | RoomKhoj`,
+    description,
+    alternates: { canonical },
+    robots: {
+      index: text.length >= 20 || Boolean(firstImage),
+      follow: true,
+    },
+    openGraph: {
+      type: "article",
+      url: canonical,
+      siteName: "RoomKhoj",
+      title,
+      description,
+      ...(firstImage ? { images: [{ url: firstImage }] } : {}),
+    },
+    twitter: {
+      card: firstImage ? "summary_large_image" : "summary",
+      title,
+      description,
+      ...(firstImage ? { images: [firstImage] } : {}),
+    },
+  };
+}
+
+export default async function SocialPostPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  const post = await getPost(id);
+  if (!post) notFound();
+
+  const canonical = `${baseUrl}/post/${post.id}`;
+  const schema = {
+    "@context": "https://schema.org",
+    "@type": "SocialMediaPosting",
+    headline: plainText(post.content).slice(0, 110) || "RoomKhoj public post",
+    datePublished: post.createdAt,
+    dateModified: post.updatedAt,
+    url: canonical,
+    author: {
+      "@type": "Person",
+      name: post.author?.name || "RoomKhoj User",
+      ...(post.author?.id
+        ? { url: `${baseUrl}/profile/${post.author.id}` }
+        : {}),
+    },
+    ...(post.mediaUrls?.length
+      ? {
+          associatedMedia: post.mediaUrls.slice(0, 4).map((url, index) => ({
+            "@type": post.mediaTypes?.[index] === "VIDEO" ? "VideoObject" : "ImageObject",
+            contentUrl: media(url),
+          })),
+        }
+      : {}),
+  };
 
   return (
     <main className="min-h-screen bg-[#f0f2f5] px-0 py-3 sm:px-3">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+      />
+
       <article className="mx-auto max-w-[680px] overflow-hidden bg-white shadow-sm sm:rounded-2xl sm:border">
         <header className="flex items-center gap-3 border-b px-4 py-3">
-          <Link href="/feed" className="rounded-full p-2 hover:bg-slate-100" aria-label="Back to feed">
+          <Link
+            href="/feed"
+            className="rounded-full p-2 hover:bg-slate-100"
+            aria-label="Back to feed"
+          >
             <ArrowLeft className="h-5 w-5" />
           </Link>
+
           {media(post.author?.profilePhotoUrl) ? (
             <img
               src={media(post.author?.profilePhotoUrl)}
@@ -79,54 +181,64 @@ export default function SocialPostPage() {
               {post.author?.name?.slice(0, 1).toUpperCase() || "R"}
             </div>
           )}
+
           <div>
-            <div className="text-[15px] font-semibold leading-tight">{post.author?.name || "RoomKhoj User"}</div>
-            <div className="mt-0.5 text-[12px] font-medium text-slate-500">{new Date(post.createdAt).toLocaleString()}</div>
+            <div className="text-[15px] font-semibold leading-tight">
+              {post.author?.name || "RoomKhoj User"}
+            </div>
+            <time
+              dateTime={post.createdAt}
+              className="mt-0.5 block text-[12px] font-medium text-slate-500"
+            >
+              {new Date(post.createdAt).toLocaleString("en-NP")}
+            </time>
           </div>
         </header>
 
         {post.content && (
-          <p className="whitespace-pre-wrap px-4 py-3 text-[16px] leading-[1.35] text-slate-950">{post.content}</p>
+          <p className="whitespace-pre-wrap px-4 py-3 text-[16px] leading-[1.45] text-slate-950">
+            <HashtagText text={post.content} />
+          </p>
         )}
 
         {post.mediaUrls?.length > 0 && (
           <div className={post.mediaUrls.length > 1 ? "grid grid-cols-2 gap-0.5" : ""}>
             {post.mediaUrls.slice(0, 4).map((url, index) =>
               post.mediaTypes?.[index] === "VIDEO" ? (
-                <button
+                <Link
                   key={url}
-                  type="button"
-                  onClick={() =>
-                    window.location.assign(
-                      `/reels?post=${encodeURIComponent(post.id)}&media=${index}`,
-                    )
-                  }
+                  href={`/reels?post=${encodeURIComponent(post.id)}&media=${index}`}
                   className="group relative block w-full cursor-pointer bg-black"
                   aria-label="Open video in Reels"
                 >
                   {streamVideoPoster(url) ? (
-                <img
-                  src={streamVideoPoster(url)}
-                  alt="Video preview"
-                  loading="lazy"
-                  decoding="async"
-                  className="pointer-events-none max-h-[680px] w-full bg-black object-contain"
-                />
-              ) : (
-                <video
-                  src={media(url)}
-                  muted
-                  playsInline
-                  preload="metadata"
-                  className="pointer-events-none max-h-[680px] w-full bg-black object-contain"
-                />
-              )}
-                  <span className="pointer-events-none absolute left-1/2 top-1/2 flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-black/55 text-2xl text-white shadow-lg backdrop-blur-sm transition group-active:scale-95">
+                    <img
+                      src={streamVideoPoster(url)}
+                      alt="Video preview"
+                      loading="lazy"
+                      className="pointer-events-none max-h-[680px] w-full bg-black object-contain"
+                    />
+                  ) : (
+                    <video
+                      src={media(url)}
+                      muted
+                      playsInline
+                      preload="metadata"
+                      className="pointer-events-none max-h-[680px] w-full bg-black object-contain"
+                    />
+                  )}
+                  <span className="pointer-events-none absolute left-1/2 top-1/2 flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-black/55 text-2xl text-white shadow-lg">
                     ▶
                   </span>
-                </button>
+                </Link>
               ) : (
-                <img key={url} src={media(url)} alt="Post" className="max-h-[680px] w-full object-cover" />
+                <img
+                  key={url}
+                  src={media(url)}
+                  alt={plainText(post.content).slice(0, 80) || "RoomKhoj post"}
+                  loading="lazy"
+                  className="max-h-[680px] w-full object-cover"
+                />
               ),
             )}
           </div>
@@ -134,27 +246,25 @@ export default function SocialPostPage() {
 
         <div className="flex items-center justify-between px-4 py-2 text-xs text-slate-500">
           <span>{post.likeCount ? `${post.likeCount} reactions` : ""}</span>
-          <span>{post.commentCount || 0} comments · {post.shareCount || 0} shares</span>
+          <span>
+            {post.commentCount || 0} comments · {post.shareCount || 0} shares
+          </span>
         </div>
 
         <div className="grid grid-cols-3 border-t px-2 py-1 text-sm font-semibold text-slate-600">
-          <Link href={`/feed?post=${post.id}`} className="flex items-center justify-center gap-2 rounded py-2 hover:bg-slate-100">
-            <Heart className="h-5 w-5" /> Like
-          </Link>
-          <Link href={`/feed?post=${post.id}`} className="flex items-center justify-center gap-2 rounded py-2 hover:bg-slate-100">
-            <MessageCircle className="h-5 w-5" /> Comment
-          </Link>
-          <button
-            type="button"
-            onClick={async () => {
-              const url = window.location.href;
-              if (navigator.share) await navigator.share({ title: "RoomKhoj post", url });
-              else await navigator.clipboard.writeText(url);
-            }}
+          <Link
+            href={`/feed?post=${post.id}`}
             className="flex items-center justify-center gap-2 rounded py-2 hover:bg-slate-100"
           >
-            <Share2 className="h-5 w-5" /> Share
-          </button>
+            <Heart className="h-5 w-5" /> Like
+          </Link>
+          <Link
+            href={`/feed?post=${post.id}`}
+            className="flex items-center justify-center gap-2 rounded py-2 hover:bg-slate-100"
+          >
+            <MessageCircle className="h-5 w-5" /> Comment
+          </Link>
+          <PostShareButton title={plainText(post.content).slice(0, 80) || "RoomKhoj post"} />
         </div>
       </article>
     </main>
