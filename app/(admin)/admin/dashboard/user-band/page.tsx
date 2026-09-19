@@ -46,13 +46,13 @@ export default function UserBandPage() {
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ["admin-user-band-list"] });
       queryClient.invalidateQueries({ queryKey: ["users"] });
-      toast.success(result.isBanned ? "User band गरिएको छ" : "User unband गरिएको छ");
+      toast.success(result.isBanned ? "User ban गरिएको छ" : "User unban गरिएको छ");
     },
     onError: (error: any) => {
       toast.error(
         error?.response?.data?.message ||
           error?.message ||
-          "User band status update गर्न सकिएन",
+          "User ban status update गर्न सकिएन",
       );
     },
   });
@@ -118,7 +118,7 @@ export default function UserBandPage() {
       <div>
         <h1 className="flex items-center gap-2 text-2xl font-bold md:text-3xl">
           <ShieldCheck className="h-7 w-7 text-primary" />
-          User Band / Unband
+          User Ban / Unban
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
           User को data delete नगरी account बन्द गर्नुहोस्। Unband गर्दा पुरानै account र history फर्किन्छ।
@@ -201,7 +201,7 @@ export default function UserBandPage() {
                         <UserRound className="h-5 w-5 text-muted-foreground" />
                         <p className="font-semibold">{user.name}</p>
                         {isBanned ? (
-                          <Badge variant="destructive">Banded</Badge>
+                          <Badge variant="destructive">Banned</Badge>
                         ) : (
                           <Badge variant="outline" className="border-emerald-300 text-emerald-700">
                             Active
@@ -213,7 +213,7 @@ export default function UserBandPage() {
                       <p className="text-sm text-muted-foreground">{user.phone || "No phone"}</p>
                       {isBanned && user.bannedAt && (
                         <p className="mt-2 text-xs text-red-600">
-                          Banded at: {new Date(user.bannedAt).toLocaleString()}
+                          Banned at: {new Date(user.bannedAt).toLocaleString()}
                         </p>
                       )}
                       {isBanned && user.banReason && (
@@ -233,7 +233,7 @@ export default function UserBandPage() {
                               }))
                             }
                             maxLength={300}
-                            placeholder="Band reason (optional)"
+                            placeholder="Ban reason (optional)"
                           />
                         )}
                         <Button
@@ -244,11 +244,11 @@ export default function UserBandPage() {
                         >
                           {isBanned ? (
                             <>
-                              <CheckCircle2 className="mr-2 h-4 w-4" /> Unband User
+                              <CheckCircle2 className="mr-2 h-4 w-4" /> Unban User
                             </>
                           ) : (
                             <>
-                              <Ban className="mr-2 h-4 w-4" /> Band User
+                              <Ban className="mr-2 h-4 w-4" /> Ban User
                             </>
                           )}
                         </Button>
