@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowLeft, Loader2, Radio, RefreshCw, Volume2 } from "lucide-react";
+import { ArrowLeft, Loader2, Radio, RefreshCw, Volume2, VolumeX } from "lucide-react";
 
 import { socialService } from "@/http/services/social.service";
 import { useUserStore } from "@/stores/user-store";
@@ -25,11 +25,11 @@ export default function LiveViewerPage() {
   const sessionUrlRef = useRef("");
   const retryRef = useRef<number | null>(null);
 
-  const [info, setInfo] = useState<LiveInfo | null>(null);
   const [connecting, setConnecting] = useState(true);
   const [waiting, setWaiting] = useState(false);
   const [error, setError] = useState("");
   const [connected, setConnected] = useState(false);
+  const [muted, setMuted] = useState(true);
 
   const stopPlayback = useCallback(async () => {
     if (retryRef.current) {
@@ -62,7 +62,8 @@ export default function LiveViewerPage() {
     if (video.canPlayType("application/vnd.apple.mpegurl")) {
       video.srcObject = null;
       video.src = hlsUrl;
-      video.muted = false;
+      video.muted = true;
+      setMuted(true);
       await video.play().catch(() => undefined);
       setConnected(true);
       setWaiting(false);
@@ -82,7 +83,6 @@ export default function LiveViewerPage() {
 
       try {
         const live = await socialService.liveInput(uid);
-        setInfo(live);
 
         if (!live.playbackUrl) {
           if (await playHlsFallback(live.hlsUrl)) return;
@@ -104,7 +104,8 @@ export default function LiveViewerPage() {
         pc.ontrack = (event) => {
           stream.addTrack(event.track);
           if (video) {
-            video.muted = false;
+            video.muted = true;
+            setMuted(true);
             void video.play().catch(() => undefined);
           }
         };
@@ -217,6 +218,7 @@ export default function LiveViewerPage() {
         autoPlay
         playsInline
         controls={false}
+        muted={muted}
         className="h-full w-full bg-black object-contain"
       />
 
@@ -261,10 +263,27 @@ export default function LiveViewerPage() {
       )}
 
       {connected && (
-        <div className="absolute bottom-[calc(1rem+env(safe-area-inset-bottom))] left-1/2 flex -translate-x-1/2 items-center gap-2 rounded-full bg-black/55 px-4 py-2 text-xs font-bold backdrop-blur">
-          <Volume2 className="h-4 w-4" />
-          RoomKhoj Live
-        </div>
+        <button
+          type="button"
+          onClick={async () => {
+            const video = videoRef.current;
+            if (!video) return;
+            const nextMuted = !muted;
+            video.muted = nextMuted;
+            setMuted(nextMuted);
+            if (!nextMuted) {
+              await video.play().catch(() => undefined);
+            }
+          }}
+          className="absolute bottom-[calc(1rem+env(safe-area-inset-bottom))] left-1/2 flex -translate-x-1/2 items-center gap-2 rounded-full bg-black/55 px-4 py-2 text-xs font-bold backdrop-blur"
+        >
+          {muted ? (
+            <VolumeX className="h-4 w-4" />
+          ) : (
+            <Volume2 className="h-4 w-4" />
+          )}
+          {muted ? "Tap for sound" : "Sound on"}
+        </button>
       )}
     </main>
   );
