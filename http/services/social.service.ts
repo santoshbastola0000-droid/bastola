@@ -361,18 +361,30 @@ export const socialService = {
     return response.data as SocialComment[];
   },
 
-  async addComment(postId: string, content: string, parentCommentId?: string) {
+  async addComment(
+    postId: string,
+    content: string,
+    parentCommentId?: string,
+    mentionUserIds?: string[],
+  ) {
     const response = await privateApi.post(`/social/posts/${postId}/comments`, {
       content,
       parentCommentId,
+      mentionUserIds,
     });
     return response.data as SocialComment;
   },
 
-  async replyComment(commentId: string, postId: string, content: string) {
+  async replyComment(
+    commentId: string,
+    postId: string,
+    content: string,
+    mentionUserIds?: string[],
+  ) {
     const response = await privateApi.post(`/social/comments/${commentId}/reply`, {
       postId,
       content,
+      mentionUserIds,
     });
     return response.data as SocialComment;
   },
