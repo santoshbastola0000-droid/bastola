@@ -17,6 +17,7 @@ import {
   Plus,
   Send,
   Share2,
+  Trash2,
   Volume2,
   VolumeX,
   X,
@@ -520,6 +521,27 @@ export default function ReelsPage() {
     }
   };
 
+  const deleteReel = async (post: SocialPost) => {
+    if (String(post.author?.id || post.userId) !== String(user?.id || "")) return;
+    if (!window.confirm("Delete this reel?")) return;
+
+    try {
+      await socialService.deletePost(post.id);
+      setReels((current) =>
+        current.filter((item) => item.post.id !== post.id),
+      );
+      if (commentsPostId === post.id) {
+        setCommentsPostId(null);
+        setComments([]);
+      }
+    } catch (error: any) {
+      const message = error?.response?.data?.message;
+      window.alert(
+        String(message || "Reel delete गर्न सकिएन। फेरि try गर्नुहोस्।"),
+      );
+    }
+  };
+
   const shareReel = async (post: SocialPost) => {
     const url = `${window.location.origin}/reels?post=${post.id}`;
     const native = Boolean(navigator.share);
@@ -888,6 +910,24 @@ export default function ReelsPage() {
                         {Number(reel.post.shareCount || 0)}
                       </span>
                     </button>
+
+                    {String(reel.post.author?.id || reel.post.userId) ===
+                      String(user?.id || "") && (
+                      <button
+                        type="button"
+                        onClick={() => void deleteReel(reel.post)}
+                        className="text-center text-red-400"
+                        aria-label="Delete reel"
+                      >
+                        <Trash2
+                          className="mx-auto h-8 w-8 drop-shadow"
+                          strokeWidth={2.1}
+                        />
+                        <span className="mt-1 block min-w-8 text-[11px] font-bold drop-shadow">
+                          Delete
+                        </span>
+                      </button>
+                    )}
                   </div>
                 </section>
               );
