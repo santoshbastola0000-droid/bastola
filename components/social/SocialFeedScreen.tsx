@@ -808,6 +808,9 @@ function Composer({
           maxLength={3000}
         />
       </div>
+      <p className="mt-1.5 px-12 text-[11px] text-slate-400">
+        Public posts: Use relevant hashtags such as #PokharaRoom or #JobInPokhara. Avoid unrelated hashtag spam.
+      </p>
 
       {previews.length > 0 && (
         <div className="mt-3 grid grid-cols-2 gap-1 overflow-hidden rounded-xl">
