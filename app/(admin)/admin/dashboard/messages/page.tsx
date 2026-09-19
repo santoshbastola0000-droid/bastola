@@ -125,15 +125,27 @@ export default function AdminMessagesPage() {
     }
   };
 
+  const hideAdminAuditNotice = (message: any) => {
+    if (String(message?.type || "").toUpperCase() !== "SYSTEM") {
+      return true;
+    }
+
+    const content = String(message?.content || "").trim();
+
+    return !(
+      content.startsWith("RoomKhoj Admin accessed this conversation") ||
+      content.startsWith("RoomKhoj Admin sent a support reply using")
+    );
+  };
+
   const openConversation = async (conversation: MessageConversation) => {
     setSelectedConversation(conversation);
     setReplyText("");
     try {
       setLoadingMessages(true);
-      setMessages(
-        await messageService.adminGetConversationMessages(conversation.id),
-      );
-      toast.success("Users were notified that RoomKhoj Admin accessed this chat.");
+      const loadedMessages =
+        await messageService.adminGetConversationMessages(conversation.id);
+      setMessages(loadedMessages.filter(hideAdminAuditNotice));
     } catch (error: any) {
       toast.error(error?.response?.data?.message || "Messages load गर्न सकिएन.");
     } finally {
@@ -162,14 +174,12 @@ export default function AdminMessagesPage() {
         content,
       );
       setReplyText("");
-      setMessages(
+      const loadedMessages =
         await messageService.adminGetConversationMessages(
           selectedConversation.id,
-        ),
-      );
-      toast.success(
-        `${selectedUser.name} को account बाट support reply पठाइयो. Users लाई admin action notice देखिन्छ.`,
-      );
+        );
+      setMessages(loadedMessages.filter(hideAdminAuditNotice));
+      toast.success("Support reply पठाइयो.");
     } catch (error: any) {
       toast.error(
         error?.response?.data?.message || "Support reply पठाउन सकिएन.",
@@ -190,11 +200,6 @@ export default function AdminMessagesPage() {
     <div className="space-y-5">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Messages</h1>
-        <p className="mt-1 text-sm text-gray-500">
-          Admin review access. Opening a conversation creates a visible system
-          notice. Support replies sent as a user also create a visible admin
-          audit notice for both participants.
-        </p>
       </div>
 
       <div className="grid min-h-[70vh] overflow-hidden rounded-2xl border bg-white lg:grid-cols-[300px_320px_1fr]">
@@ -341,10 +346,6 @@ export default function AdminMessagesPage() {
 
           {selectedConversation && selectedUser && (
             <div className="border-t bg-white p-3">
-              <div className="mb-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                Reply will be sent as <strong>{selectedUser.name}</strong>.
-                RoomKhoj will insert a visible Admin support notice in this chat.
-              </div>
               <div className="flex items-end gap-2">
                 <textarea
                   value={replyText}
@@ -360,7 +361,7 @@ export default function AdminMessagesPage() {
                   disabled={!canReply || sendingReply}
                   placeholder={
                     canReply
-                      ? `Support reply as ${selectedUser.name}`
+                      ? `Reply as ${selectedUser.name}`
                       : "Selected user is not a participant in this chat"
                   }
                   maxLength={5000}
