@@ -1065,7 +1065,7 @@ export default function CreateRoomPage() {
                             />
                           </FormControl>
                           <FormDescription className="text-xs">
-                            At least 10 characters — कम्तीमा १० अक्षर
+                            At least 10 characters — कम्तीमा १० अक्षर. Relevant hashtags such as #PokharaRoom or #RoomForRent can help group public listings; avoid unrelated tags.
                           </FormDescription>
                           <FormMessage />
                         </FormItem>
