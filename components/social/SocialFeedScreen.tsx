@@ -55,6 +55,15 @@ function media(value?: string | null) {
   return `${backendUrl}${raw.startsWith("/") ? raw : `/${raw}`}`;
 }
 
+function streamVideoPoster(value?: string | null) {
+  const resolved = media(value);
+  if (!/\.m3u8(?:$|\?)/i.test(resolved)) return "";
+  return resolved.replace(
+    /\/manifest\/video\.m3u8(?:\?.*)?$/i,
+    "/thumbnails/thumbnail.jpg?time=1s&height=720",
+  );
+}
+
 function ago(value: string) {
   const minutes = Math.max(
     0,
@@ -981,13 +990,23 @@ function PostMedia({ post }: { post: SocialPost }) {
               className="group relative block w-full cursor-pointer bg-black"
               aria-label="Open video in Reels"
             >
-              <video
-                src={media(url)}
-                muted
-                playsInline
-                preload="metadata"
-                className="pointer-events-none max-h-[640px] w-full bg-black object-contain"
-              />
+              {streamVideoPoster(url) ? (
+                <img
+                  src={streamVideoPoster(url)}
+                  alt="Video preview"
+                  loading="lazy"
+                  decoding="async"
+                  className="pointer-events-none max-h-[640px] w-full bg-black object-contain"
+                />
+              ) : (
+                <video
+                  src={media(url)}
+                  muted
+                  playsInline
+                  preload="metadata"
+                  className="pointer-events-none max-h-[640px] w-full bg-black object-contain"
+                />
+              )}
               <span className="pointer-events-none absolute left-1/2 top-1/2 flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-black/55 text-2xl text-white shadow-lg backdrop-blur-sm transition group-active:scale-95">
                 ▶
               </span>
