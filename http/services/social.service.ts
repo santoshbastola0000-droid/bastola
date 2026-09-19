@@ -386,35 +386,43 @@ export const socialService = {
     uploadId: string,
     index: number,
     chunk: Blob,
-    originalName: string,
+    _originalName: string,
   ) {
-    const send = async () => {
-      const form = new FormData();
-      form.append("chunk", chunk, `${originalName}.part-${index}`);
+    const token = useTokenStore.getState().token;
 
-      const token = useTokenStore.getState().token;
-      const headers = new Headers();
+    const sendRaw = async (url: string, credentials: RequestCredentials) => {
+      const headers = new Headers({
+        "Content-Type": "application/octet-stream",
+      });
       if (token) headers.set("Authorization", `Bearer ${token}`);
 
-      const response = await fetch(
-        `/api/social/reels/fallback/${encodeURIComponent(uploadId)}/chunks/${index}`,
-        {
-          method: "POST",
-          headers,
-          body: form,
-          credentials: "include",
-          cache: "no-store",
-        },
-      );
+      const response = await fetch(url, {
+        method: "POST",
+        headers,
+        body: chunk,
+        credentials,
+        cache: "no-store",
+      });
 
       if (!response.ok) {
-        const payload = await response.json().catch(() => null);
+        const text = await response.text().catch(() => "");
+        let payload: any = null;
+        try {
+          payload = text ? JSON.parse(text) : null;
+        } catch {
+          payload = null;
+        }
+
         const error: any = new Error(
-          String(payload?.message || `Chunk upload failed (${response.status})`),
+          String(
+            payload?.message ||
+              text ||
+              `Chunk upload failed (${response.status})`,
+          ),
         );
         error.response = {
           status: response.status,
-          data: payload,
+          data: payload || text,
         };
         throw error;
       }
@@ -422,18 +430,23 @@ export const socialService = {
       return response.json();
     };
 
+    const relativeUrl =
+      `/api/social/reels/fallback/${encodeURIComponent(uploadId)}/raw/${index}`;
+
     try {
-      return (await send()) as {
+      return (await sendRaw(relativeUrl, "include")) as {
         ok: boolean;
         index: number;
         receivedBytes: number;
         totalChunks: number;
       };
     } catch (firstError: any) {
-      // Retry once on connection-level failures only. HTTP failures already
-      // reached the server and should be surfaced immediately.
       if (firstError?.response?.status) throw firstError;
-      return (await send()) as {
+
+      const directUrl =
+        `${DIRECT_UPLOAD_BASE_URL}/social/reels/fallback/${encodeURIComponent(uploadId)}/raw/${index}`;
+
+      return (await sendRaw(directUrl, "include")) as {
         ok: boolean;
         index: number;
         receivedBytes: number;
