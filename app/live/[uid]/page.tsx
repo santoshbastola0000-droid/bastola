@@ -212,6 +212,19 @@ export default function LiveViewerPage() {
         playsInline
         controls={false}
         muted={muted}
+        preload="auto"
+        onLoadedMetadata={() => {
+          const video = videoRef.current;
+          if (!video) return;
+          video.muted = true;
+          setMuted(true);
+          void video.play().catch(() => undefined);
+        }}
+        onCanPlay={() => {
+          const video = videoRef.current;
+          if (!video || !video.paused) return;
+          void video.play().catch(() => undefined);
+        }}
         className="h-full w-full bg-black object-contain"
       />
 
