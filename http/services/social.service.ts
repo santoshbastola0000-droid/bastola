@@ -270,6 +270,11 @@ export const socialService = {
     >;
   },
 
+  async post(postId: string) {
+    const response = await privateApi.get(`/social/posts/${postId}`);
+    return response.data as SocialPost;
+  },
+
   async feed(before?: string) {
     const response = await privateApi.get("/social/feed", {
       params: { limit: 20, before },
