@@ -72,7 +72,7 @@ export async function generateMetadata({
       `Apply for ${job.jobTitle} at ${job.companyName || "an employer"} in ${job.location}.`,
     alternates: {
       canonical:
-        `https://roomkhoj.com/job/${slug}`,
+        `https://www.roomkhoj.com/job/${slug}`,
     },
   };
 }
