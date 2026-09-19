@@ -20,6 +20,7 @@ import {
   type JobPosting,
 } from "@/http/services/job-posting.service";
 import { socialService } from "@/http/services/social.service";
+import { HashtagText } from "@/components/social/HashtagText";
 import { useUserStore } from "@/stores/user-store";
 
 function formatSalary(job: JobPosting) {
@@ -243,7 +244,7 @@ export default function ApprovedVacancies({
                 )}
 
                 {job.description && (
-                  <p className="mt-4 line-clamp-3 text-sm leading-6 text-slate-600">{job.description}</p>
+                  <p className="mt-4 line-clamp-3 text-sm leading-6 text-slate-600"><HashtagText text={job.description} /></p>
                 )}
 
                 <div className="mt-auto pt-5">
