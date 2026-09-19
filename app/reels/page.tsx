@@ -3,6 +3,7 @@
 import Link from "next/link";
 import {
   forwardRef,
+  type MouseEvent,
   useCallback,
   useEffect,
   useMemo,
@@ -141,7 +142,7 @@ const AdaptiveReelVideo = forwardRef<
     source: string;
     muted: boolean;
     preload: "auto" | "metadata" | "none";
-    onClick: (event: React.MouseEvent<HTMLVideoElement>) => void;
+    onClick: (event: MouseEvent<HTMLVideoElement>) => void;
   }
 >(function AdaptiveReelVideo(
   { source, muted, preload, onClick },
@@ -707,6 +708,13 @@ export default function ReelsPage() {
     <>
       <main className="fixed inset-0 z-30 bg-black text-white">
         <div className="pointer-events-none absolute inset-x-0 top-0 z-30 flex items-center justify-center bg-gradient-to-b from-black/60 to-transparent px-4 pb-10 pt-[calc(0.75rem+env(safe-area-inset-top))]">
+          <Link
+            href="/live"
+            className="pointer-events-auto absolute left-4 top-[calc(0.65rem+env(safe-area-inset-top))] rounded-full bg-red-600 px-3 py-2 text-[12px] font-black tracking-wide text-white shadow-lg"
+          >
+            LIVE
+          </Link>
+
           <div className="pointer-events-auto rounded-full bg-black/25 px-4 py-2 text-[15px] font-black tracking-tight backdrop-blur-sm">
             For You
           </div>
