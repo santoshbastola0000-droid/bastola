@@ -1,5 +1,6 @@
 "use client";
 
+import { HashtagText } from "@/components/social/HashtagText";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -948,7 +949,7 @@ function PostCard({
 
       {post.content && (
         <p className="whitespace-pre-wrap px-3 pb-3 text-[16px] font-normal leading-[1.35] text-slate-950">
-          {post.content}
+          <HashtagText text={post.content} />
         </p>
       )}
 
