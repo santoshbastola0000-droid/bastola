@@ -10,6 +10,7 @@ import {
 import { NavBar } from "@/components/common/navbar";
 import Footer from "@/components/common/footer";
 import JobContactUnlock from "@/components/jobs/JobContactUnlock";
+import { HashtagText } from "@/components/social/HashtagText";
 import type { JobPosting } from "@/http/services/job-posting.service";
 
 const API_URL =
@@ -133,7 +134,7 @@ export default async function JobDetailPage({
             </div>
 
             <h1 className="mt-5 text-3xl font-bold text-slate-900">
-              {job.jobTitle}
+              <HashtagText text={job.jobTitle} />
             </h1>
 
             <div className="mt-5 grid gap-3 text-slate-700 sm:grid-cols-2">
@@ -160,7 +161,7 @@ export default async function JobDetailPage({
                   Job description
                 </h2>
                 <p className="mt-3 whitespace-pre-wrap leading-7 text-slate-700">
-                  {job.description}
+                  <HashtagText text={job.description} />
                 </p>
               </div>
             )}
