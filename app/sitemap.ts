@@ -2,12 +2,22 @@ import type { MetadataRoute } from "next";
 
 import type { JobPosting } from "@/http/services/job-posting.service";
 
-const baseUrl =
-  "https://www.roomkhoj.com";
+const baseUrl = "https://www.roomkhoj.com";
 
 const API_URL =
   process.env.NEXT_PUBLIC_BACKEND_URL ||
   "https://api.roomkhoj.com";
+
+type SocialSeoIndex = {
+  posts: Array<{
+    id: string;
+    updatedAt: string;
+  }>;
+  hashtags: Array<{
+    tag: string;
+    count: number;
+  }>;
+};
 
 function jobSlug(job: JobPosting) {
   const title = job.jobTitle
@@ -20,23 +30,46 @@ function jobSlug(job: JobPosting) {
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   let jobs: JobPosting[] = [];
+  let socialSeo: SocialSeoIndex = { posts: [], hashtags: [] };
 
-  try {
-    const response = await fetch(
-      `${API_URL}/job-posting/approved`,
-      {
-        next: {
-          revalidate: 3600,
-        },
-      },
-    );
+  await Promise.all([
+    (async () => {
+      try {
+        const response = await fetch(
+          `${API_URL}/job-posting/approved`,
+          {
+            next: {
+              revalidate: 3600,
+            },
+          },
+        );
 
-    if (response.ok) {
-      jobs = await response.json();
-    }
-  } catch {
-    jobs = [];
-  }
+        if (response.ok) {
+          jobs = await response.json();
+        }
+      } catch {
+        jobs = [];
+      }
+    })(),
+    (async () => {
+      try {
+        const response = await fetch(
+          `${API_URL}/public/social/seo-index`,
+          {
+            next: {
+              revalidate: 1800,
+            },
+          },
+        );
+
+        if (response.ok) {
+          socialSeo = await response.json();
+        }
+      } catch {
+        socialSeo = { posts: [], hashtags: [] };
+      }
+    })(),
+  ]);
 
   const now = new Date();
 
@@ -84,13 +117,22 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.6,
     },
     ...jobs.map((job) => ({
-      url:
-        `${baseUrl}/job/${jobSlug(job)}`,
-      lastModified:
-        new Date(job.updatedAt || job.createdAt),
-      changeFrequency:
-        "daily" as const,
+      url: `${baseUrl}/job/${jobSlug(job)}`,
+      lastModified: new Date(job.updatedAt || job.createdAt),
+      changeFrequency: "daily" as const,
       priority: 0.9,
+    })),
+    ...socialSeo.posts.map((post) => ({
+      url: `${baseUrl}/post/${post.id}`,
+      lastModified: new Date(post.updatedAt),
+      changeFrequency: "weekly" as const,
+      priority: 0.7,
+    })),
+    ...socialSeo.hashtags.map(({ tag }) => ({
+      url: `${baseUrl}/hashtag/${encodeURIComponent(tag)}`,
+      lastModified: now,
+      changeFrequency: "daily" as const,
+      priority: 0.75,
     })),
   ];
 }
