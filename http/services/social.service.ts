@@ -125,6 +125,14 @@ export type StoryMusicTrack = {
   selectedAutomatically?: boolean;
 };
 
+export type StoryReactionType = "LOVE" | "HAHA" | "WOW" | "SAD" | "ANGRY";
+
+export type SocialStoryViewer = {
+  user: SocialUser;
+  viewedAt: string;
+  reaction?: StoryReactionType | null;
+};
+
 export type SocialStory = {
   id: string;
   mediaUrl: string;
@@ -135,6 +143,9 @@ export type SocialStory = {
   createdAt: string;
   viewedByMe: boolean;
   viewCount?: number;
+  reactionCount?: number;
+  reactionCounts?: Partial<Record<StoryReactionType, number>>;
+  reactionByMe?: StoryReactionType | null;
   music?: StoryMusicTrack | null;
   author: SocialUser;
 };
@@ -530,6 +541,42 @@ export const socialService = {
   async viewStory(storyId: string) {
     const response = await privateApi.post(`/social/stories/${storyId}/view`);
     return response.data;
+  },
+
+  async storyViewers(storyId: string) {
+    const response = await privateApi.get(
+      `/social/stories/${storyId}/viewers`,
+    );
+    return response.data as {
+      storyId: string;
+      viewCount: number;
+      reactionCount: number;
+      viewers: SocialStoryViewer[];
+    };
+  },
+
+  async reactStory(storyId: string, reaction: StoryReactionType) {
+    const response = await privateApi.post(
+      `/social/stories/${storyId}/reaction`,
+      { reaction },
+    );
+    return response.data as {
+      storyId: string;
+      reaction: StoryReactionType;
+      reactionCount: number;
+      reactionCounts: Partial<Record<StoryReactionType, number>>;
+    };
+  },
+
+  async removeStoryReaction(storyId: string) {
+    const response = await privateApi.delete(
+      `/social/stories/${storyId}/reaction`,
+    );
+    return response.data as {
+      storyId: string;
+      reaction: null;
+      reactionCount: number;
+    };
   },
 
   async deleteStory(storyId: string) {
