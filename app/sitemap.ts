@@ -13,6 +13,10 @@ type SocialSeoIndex = {
     id: string;
     updatedAt: string;
   }>;
+  rooms: Array<{
+    id: string;
+    updatedAt: string;
+  }>;
   hashtags: Array<{
     tag: string;
     count: number;
@@ -30,7 +34,7 @@ function jobSlug(job: JobPosting) {
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   let jobs: JobPosting[] = [];
-  let socialSeo: SocialSeoIndex = { posts: [], hashtags: [] };
+  let socialSeo: SocialSeoIndex = { posts: [], rooms: [], hashtags: [] };
 
   await Promise.all([
     (async () => {
@@ -66,7 +70,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
           socialSeo = await response.json();
         }
       } catch {
-        socialSeo = { posts: [], hashtags: [] };
+        socialSeo = { posts: [], rooms: [], hashtags: [] };
       }
     })(),
   ]);
@@ -133,6 +137,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified: new Date(post.updatedAt),
       changeFrequency: "weekly" as const,
       priority: 0.7,
+    })),
+    ...socialSeo.rooms.map((room) => ({
+      url: `${baseUrl}/property/${room.id}`,
+      lastModified: new Date(room.updatedAt),
+      changeFrequency: "daily" as const,
+      priority: 0.85,
     })),
     ...socialSeo.hashtags.map(({ tag }) => ({
       url: `${baseUrl}/hashtag/${encodeURIComponent(tag)}`,
