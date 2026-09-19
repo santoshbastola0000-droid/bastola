@@ -292,6 +292,16 @@ privateApi.interceptors.response.use(
     const errorUrl = String(originalRequest?.url || "").split("?")[0];
     if (errorUrl === "/social/feed") endFeedGate();
 
+    const securityData = error.response?.data as any;
+    if (
+      typeof window !== "undefined" &&
+      error.response?.status === 403 &&
+      securityData?.code === "SECURITY_CHALLENGE_REQUIRED"
+    ) {
+      window.dispatchEvent(new CustomEvent("roomkhoj:security-challenge"));
+      return Promise.reject(error);
+    }
+
     if (originalRequest && isTransientNetworkFailure(error)) {
       const retryCount = originalRequest._networkRetryCount || 0;
       const retryLimit = networkRetryLimit(originalRequest);
