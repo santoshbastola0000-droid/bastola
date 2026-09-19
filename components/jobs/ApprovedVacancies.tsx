@@ -221,7 +221,7 @@ export default function ApprovedVacancies({
                   )}
                 </div>
 
-                <h3 className="mt-5 text-xl font-extrabold capitalize text-slate-950">{job.jobTitle}</h3>
+                <h3 className="mt-5 text-xl font-extrabold capitalize text-slate-950"><HashtagText text={job.jobTitle} /></h3>
                 <div className="mt-3 space-y-2.5 text-sm text-slate-600">
                   <div className="flex items-center gap-2">
                     <Building2 className="h-4 w-4 shrink-0 text-slate-400" />
