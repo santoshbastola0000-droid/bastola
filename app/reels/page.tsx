@@ -628,64 +628,53 @@ export default function ReelsPage() {
         const form = new FormData();
         form.append("file", uploadFile);
 
-        let uploadResponse: Response;
+        let uploadResponse: Response | null = null;
         try {
           uploadResponse = await fetch(stream.uploadURL, {
             method: "POST",
             body: form,
           });
         } catch {
-          if (uploadFile.size <= MAX_FALLBACK_REEL_UPLOAD_BYTES) {
-            setUploadStage("Fast upload unavailable — using backup upload…");
-            await socialService.createPost({
-              content: uploadCaption.trim(),
-              visibility: uploadVisibility,
-              files: [uploadFile],
-            });
-            uploadResponse = new Response(null, { status: 204 });
-          } else {
-            throw new Error(
-              "Fast video upload अहिले उपलब्ध छैन। 80 MB भन्दा सानो video try गर्नुहोस् वा फेरि प्रयास गर्नुहोस्।",
-            );
-          }
+          uploadResponse = null;
         }
 
-        if (!uploadResponse.ok) {
-          if (uploadFile.size <= MAX_FALLBACK_REEL_UPLOAD_BYTES) {
-            setUploadStage("Fast upload failed — using backup upload…");
-            await socialService.createPost({
-              content: uploadCaption.trim(),
-              visibility: uploadVisibility,
-              files: [uploadFile],
-            });
-            uploadResponse = new Response(null, { status: 204 });
-          } else {
+        let uploadedViaFallback = false;
+        if (!uploadResponse || !uploadResponse.ok) {
+          if (uploadFile.size > MAX_FALLBACK_REEL_UPLOAD_BYTES) {
+            const statusText = uploadResponse
+              ? ` (${uploadResponse.status})`
+              : "";
             throw new Error(
-              `Fast video upload failed (${uploadResponse.status}). फेरि try गर्नुहोस्।`,
+              `Fast video upload failed${statusText}. 80 MB भन्दा सानो video try गर्नुहोस् वा फेरि प्रयास गर्नुहोस्।`,
             );
           }
-        }
 
-        if (uploadResponse.status === 204) {
-          // Backup upload already created the reel, so Cloudflare finalization
-          // is intentionally skipped.
-        } else {
-          setUploadStage("Optimizing video for fast playback…");
-        let finalized:
-          | Awaited<ReturnType<typeof socialService.finalizeStreamPost>>
-          | undefined;
-
-        for (let attempt = 0; attempt < 45; attempt += 1) {
-          finalized = await socialService.finalizeStreamPost({
-            uid: stream.uid,
+          setUploadStage("Fast upload unavailable — using backup upload…");
+          await socialService.createPost({
             content: uploadCaption.trim(),
             visibility: uploadVisibility,
+            files: [uploadFile],
           });
-          if (finalized.ready) break;
-          await new Promise((resolve) =>
-            window.setTimeout(resolve, attempt < 8 ? 1000 : 2000),
-          );
+          uploadedViaFallback = true;
         }
+
+        if (!uploadedViaFallback) {
+          setUploadStage("Optimizing video for fast playback…");
+          let finalized:
+            | Awaited<ReturnType<typeof socialService.finalizeStreamPost>>
+            | undefined;
+
+          for (let attempt = 0; attempt < 45; attempt += 1) {
+            finalized = await socialService.finalizeStreamPost({
+              uid: stream.uid,
+              content: uploadCaption.trim(),
+              visibility: uploadVisibility,
+            });
+            if (finalized.ready) break;
+            await new Promise((resolve) =>
+              window.setTimeout(resolve, attempt < 8 ? 1000 : 2000),
+            );
+          }
 
           if (!finalized?.ready) {
             throw new Error(
