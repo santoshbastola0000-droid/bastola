@@ -1,4 +1,5 @@
 import { privateApi } from "@/http/api/privateApi";
+import useTokenStore from "@/store";
 
 const DIRECT_UPLOAD_BASE_URL = String(
   process.env.NEXT_PUBLIC_BACKEND_URL || "https://api.roomkhoj.com",
@@ -387,27 +388,58 @@ export const socialService = {
     chunk: Blob,
     originalName: string,
   ) {
-    const send = () => {
+    const send = async () => {
       const form = new FormData();
       form.append("chunk", chunk, `${originalName}.part-${index}`);
-      return privateApi.post(
-        `/social/reels/fallback/${encodeURIComponent(uploadId)}/chunks/${index}`,
-        form,
+
+      const token = useTokenStore.getState().token;
+      const headers = new Headers();
+      if (token) headers.set("Authorization", `Bearer ${token}`);
+
+      const response = await fetch(
+        `/api/social/reels/fallback/${encodeURIComponent(uploadId)}/chunks/${index}`,
+        {
+          method: "POST",
+          headers,
+          body: form,
+          credentials: "include",
+          cache: "no-store",
+        },
       );
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        const error: any = new Error(
+          String(payload?.message || `Chunk upload failed (${response.status})`),
+        );
+        error.response = {
+          status: response.status,
+          data: payload,
+        };
+        throw error;
+      }
+
+      return response.json();
     };
 
-    let response;
     try {
-      response = await send();
-    } catch {
-      response = await send();
+      return (await send()) as {
+        ok: boolean;
+        index: number;
+        receivedBytes: number;
+        totalChunks: number;
+      };
+    } catch (firstError: any) {
+      // Retry once on connection-level failures only. HTTP failures already
+      // reached the server and should be surfaced immediately.
+      if (firstError?.response?.status) throw firstError;
+      return (await send()) as {
+        ok: boolean;
+        index: number;
+        receivedBytes: number;
+        totalChunks: number;
+      };
     }
-    return response.data as {
-      ok: boolean;
-      index: number;
-      receivedBytes: number;
-      totalChunks: number;
-    };
   },
 
   async completeReelFallbackUpload(
