@@ -36,7 +36,6 @@ const backendUrl = String(
 ).replace(/\/$/, "");
 
 const MAX_REEL_UPLOAD_BYTES = 200 * 1024 * 1024;
-const MAX_FALLBACK_REEL_UPLOAD_BYTES = 200 * 1024 * 1024;
 
 function media(value?: string | null) {
   const raw = String(value || "").trim();
@@ -610,154 +609,21 @@ export default function ReelsPage() {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  const uploadReelViaChunks = async () => {
-    if (!uploadFile) return;
-
-    if (uploadFile.size > MAX_FALLBACK_REEL_UPLOAD_BYTES) {
-      throw new Error("Reel 200 MB भन्दा सानो हुनुपर्छ।");
-    }
-
-    setUploadStage("Starting backup upload…");
-    let session: Awaited<
-      ReturnType<typeof socialService.startReelFallbackUpload>
-    >;
-    try {
-      session = await socialService.startReelFallbackUpload(uploadFile);
-    } catch (error: any) {
-      const status = Number(error?.response?.status || 0);
-      throw new Error(
-        status
-          ? `Backup upload start failed (HTTP ${status}).`
-          : "Backup upload start server सम्म पुग्न सकेन।",
-      );
-    }
-
-    for (let index = 0; index < session.totalChunks; index += 1) {
-      const start = index * session.chunkSize;
-      const end = Math.min(uploadFile.size, start + session.chunkSize);
-      const chunk = uploadFile.slice(
-        start,
-        end,
-        uploadFile.type || "application/octet-stream",
-      );
-
-      const progress = Math.max(
-        1,
-        Math.round(((index + 1) / session.totalChunks) * 100),
-      );
-      setUploadStage(`Backup upload ${progress}%…`);
-
-      try {
-        await socialService.uploadReelFallbackChunk(
-          session.uploadId,
-          index,
-          chunk,
-          uploadFile.name,
-        );
-      } catch (error: any) {
-        const status = Number(error?.response?.status || 0);
-        throw new Error(
-          status
-            ? `Backup video part ${index + 1}/${session.totalChunks} failed (HTTP ${status}).`
-            : `Backup video part ${index + 1}/${session.totalChunks} server सम्म पुग्न सकेन।`,
-        );
-      }
-    }
-
-    setUploadStage("Finishing reel…");
-    try {
-      await socialService.completeReelFallbackUpload(session.uploadId, {
-        content: uploadCaption.trim(),
-        visibility: uploadVisibility,
-      });
-    } catch (error: any) {
-      const status = Number(error?.response?.status || 0);
-      throw new Error(
-        status
-          ? `Reel finalize failed (HTTP ${status}).`
-          : "Reel finalize server सम्म पुग्न सकेन।",
-      );
-    }
-  };
-
   const publishReel = async () => {
     if (!uploadFile || uploading) return;
 
     setUploading(true);
-    setUploadStage("Preparing fast video upload…");
+    setUploadStage("Posting video…");
     setUploadError("");
+
     try {
-      const stream = await socialService
-        .createStreamUpload({
-          name: uploadFile.name,
-          maxDurationSeconds: 600,
-        })
-        .catch(() => ({ configured: false, uid: null, uploadURL: null }));
-
-      if (stream.configured && stream.uid && stream.uploadURL) {
-        setUploadStage("Uploading video to CDN…");
-        const form = new FormData();
-        form.append("file", uploadFile);
-
-        let uploadResponse: Response | null = null;
-        try {
-          uploadResponse = await fetch(stream.uploadURL, {
-            method: "POST",
-            body: form,
-          });
-        } catch {
-          uploadResponse = null;
-        }
-
-        let uploadedViaFallback = false;
-        if (!uploadResponse || !uploadResponse.ok) {
-          if (uploadFile.size > MAX_FALLBACK_REEL_UPLOAD_BYTES) {
-            const statusText = uploadResponse
-              ? ` (${uploadResponse.status})`
-              : "";
-            throw new Error(
-              `Fast video upload failed${statusText}. 200 MB भन्दा सानो video try गर्नुहोस् वा फेरि प्रयास गर्नुहोस्।`,
-            );
-          }
-
-          setUploadStage("Fast upload unavailable — using backup upload…");
-          await uploadReelViaChunks();
-          uploadedViaFallback = true;
-        }
-
-        if (!uploadedViaFallback) {
-          setUploadStage("Optimizing video for fast playback…");
-          let finalized:
-            | Awaited<ReturnType<typeof socialService.finalizeStreamPost>>
-            | undefined;
-
-          for (let attempt = 0; attempt < 45; attempt += 1) {
-            finalized = await socialService.finalizeStreamPost({
-              uid: stream.uid,
-              content: uploadCaption.trim(),
-              visibility: uploadVisibility,
-            });
-            if (finalized.ready) break;
-            await new Promise((resolve) =>
-              window.setTimeout(resolve, attempt < 8 ? 1000 : 2000),
-            );
-          }
-
-          if (!finalized?.ready) {
-            throw new Error(
-              "Video upload भयो तर processing अझै सकिएको छैन। केही समयपछि फेरि try गर्नुहोस्।",
-            );
-          }
-        }
-      } else {
-        if (uploadFile.size > MAX_FALLBACK_REEL_UPLOAD_BYTES) {
-          throw new Error(
-            "Fast video upload अहिले उपलब्ध छैन। 200 MB भन्दा सानो video try गर्नुहोस् वा फेरि प्रयास गर्नुहोस्।",
-          );
-        }
-        setUploadStage("Using backup upload…");
-        await uploadReelViaChunks();
-      }
+      // Reuse the exact same media-post flow as Feed → Photo/video.
+      // Video posts are returned by /social/reels automatically.
+      await socialService.createPost({
+        content: uploadCaption.trim(),
+        visibility: uploadVisibility,
+        files: [uploadFile],
+      });
 
       setUploadFile(null);
       setUploadCaption("");
@@ -772,7 +638,6 @@ export default function ReelsPage() {
       const message = Array.isArray(rawMessage)
         ? rawMessage.join(", ")
         : String(rawMessage || "").trim();
-      const localMessage = String(error?.message || "").trim();
 
       if (status === 413) {
         setUploadError("Video धेरै ठूलो छ। 200 MB भन्दा सानो reel upload गर्नुहोस्।");
@@ -780,17 +645,8 @@ export default function ReelsPage() {
         setUploadError("Session expire भएको छ। फेरि login गरेर upload गर्नुहोस्।");
       } else if (message) {
         setUploadError(message);
-      } else if (
-        localMessage &&
-        !["Failed to fetch", "Network Error"].includes(localMessage)
-      ) {
-        setUploadError(localMessage);
-      } else if (!error?.response) {
-        setUploadError(
-          "Upload server सम्म पुग्न सकेन। Internet check गरेर फेरि try गर्नुहोस्।",
-        );
       } else {
-        setUploadError("Reel upload failed. Please try again.");
+        setUploadError("Video post गर्न सकिएन। फेरि try गर्नुहोस्।");
       }
     } finally {
       setUploading(false);
