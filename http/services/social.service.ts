@@ -290,6 +290,42 @@ export const socialService = {
   },
 
 
+  async createStreamUpload(input: {
+    name?: string;
+    maxDurationSeconds?: number;
+  }) {
+    const response = await privateApi.post("/social/stream/direct-upload", input);
+    return response.data as {
+      configured: boolean;
+      uid: string | null;
+      uploadURL: string | null;
+    };
+  },
+
+  async finalizeStreamPost(input: {
+    uid: string;
+    content: string;
+    visibility: "PUBLIC" | "FRIENDS" | "GROUP";
+    groupId?: string;
+    mentionUserIds?: string[];
+  }) {
+    const response = await privateApi.post("/social/stream/finalize", input);
+    return response.data as {
+      ready: boolean;
+      post?: SocialPost;
+      stream: {
+        uid: string;
+        readyToStream: boolean;
+        state: string;
+        pctComplete: string;
+        duration: number;
+        hlsUrl: string;
+        dashUrl: string;
+        thumbnailUrl: string;
+      };
+    };
+  },
+
   async uploadProfilePhoto(file: File) {
     const form = new FormData();
     form.append("media", file);
