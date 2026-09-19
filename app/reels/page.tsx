@@ -35,7 +35,7 @@ const backendUrl = String(
   process.env.NEXT_PUBLIC_BACKEND_URL || "https://api.roomkhoj.com",
 ).replace(/\/$/, "");
 
-const MAX_REEL_UPLOAD_BYTES = 80 * 1024 * 1024;
+const MAX_REEL_UPLOAD_BYTES = 200 * 1024 * 1024;\nconst MAX_FALLBACK_REEL_UPLOAD_BYTES = 80 * 1024 * 1024;
 
 function media(value?: string | null) {
   const raw = String(value || "").trim();
@@ -628,16 +628,49 @@ export default function ReelsPage() {
         const form = new FormData();
         form.append("file", uploadFile);
 
-        const uploadResponse = await fetch(stream.uploadURL, {
-          method: "POST",
-          body: form,
-        });
-
-        if (!uploadResponse.ok) {
-          throw new Error(`CDN upload failed (${uploadResponse.status})`);
+        let uploadResponse: Response;
+        try {
+          uploadResponse = await fetch(stream.uploadURL, {
+            method: "POST",
+            body: form,
+          });
+        } catch {
+          if (uploadFile.size <= MAX_FALLBACK_REEL_UPLOAD_BYTES) {
+            setUploadStage("Fast upload unavailable — using backup upload…");
+            await socialService.createPost({
+              content: uploadCaption.trim(),
+              visibility: uploadVisibility,
+              files: [uploadFile],
+            });
+            uploadResponse = new Response(null, { status: 204 });
+          } else {
+            throw new Error(
+              "Fast video upload अहिले उपलब्ध छैन। 80 MB भन्दा सानो video try गर्नुहोस् वा फेरि प्रयास गर्नुहोस्।",
+            );
+          }
         }
 
-        setUploadStage("Optimizing video for fast playback…");
+        if (!uploadResponse.ok) {
+          if (uploadFile.size <= MAX_FALLBACK_REEL_UPLOAD_BYTES) {
+            setUploadStage("Fast upload failed — using backup upload…");
+            await socialService.createPost({
+              content: uploadCaption.trim(),
+              visibility: uploadVisibility,
+              files: [uploadFile],
+            });
+            uploadResponse = new Response(null, { status: 204 });
+          } else {
+            throw new Error(
+              `Fast video upload failed (${uploadResponse.status}). फेरि try गर्नुहोस्।`,
+            );
+          }
+        }
+
+        if (uploadResponse.status === 204) {
+          // Backup upload already created the reel, so Cloudflare finalization
+          // is intentionally skipped.
+        } else {
+          setUploadStage("Optimizing video for fast playback…");
         let finalized:
           | Awaited<ReturnType<typeof socialService.finalizeStreamPost>>
           | undefined;
@@ -654,12 +687,18 @@ export default function ReelsPage() {
           );
         }
 
-        if (!finalized?.ready) {
-          throw new Error(
-            "Video upload भयो तर processing अझै सकिएको छैन। केही समयपछि फेरि try गर्नुहोस्।",
-          );
+          if (!finalized?.ready) {
+            throw new Error(
+              "Video upload भयो तर processing अझै सकिएको छैन। केही समयपछि फेरि try गर्नुहोस्।",
+            );
+          }
         }
       } else {
+        if (uploadFile.size > MAX_FALLBACK_REEL_UPLOAD_BYTES) {
+          throw new Error(
+            "Fast video upload अहिले उपलब्ध छैन। 80 MB भन्दा सानो video try गर्नुहोस् वा फेरि प्रयास गर्नुहोस्।",
+          );
+        }
         setUploadStage("Uploading reel…");
         await socialService.createPost({
           content: uploadCaption.trim(),
@@ -681,6 +720,7 @@ export default function ReelsPage() {
       const message = Array.isArray(rawMessage)
         ? rawMessage.join(", ")
         : String(rawMessage || "").trim();
+      const localMessage = String(error?.message || "").trim();
 
       if (status === 413) {
         setUploadError("Video धेरै ठूलो छ। 80 MB भन्दा सानो reel upload गर्नुहोस्।");
@@ -688,6 +728,11 @@ export default function ReelsPage() {
         setUploadError("Session expire भएको छ। फेरि login गरेर upload गर्नुहोस्।");
       } else if (message) {
         setUploadError(message);
+      } else if (
+        localMessage &&
+        !["Failed to fetch", "Network Error"].includes(localMessage)
+      ) {
+        setUploadError(localMessage);
       } else if (!error?.response) {
         setUploadError(
           "Upload server सम्म पुग्न सकेन। Internet check गरेर फेरि try गर्नुहोस्।",
@@ -753,7 +798,7 @@ export default function ReelsPage() {
           <input
             ref={fileInputRef}
             type="file"
-            accept="video/*"
+            accept="video/*,.mp4,.mov,.m4v,.webm"
             className="hidden"
             onChange={(event) => {
               const file = event.target.files?.[0] || null;
@@ -761,7 +806,7 @@ export default function ReelsPage() {
 
               if (file && file.size > MAX_REEL_UPLOAD_BYTES) {
                 setUploadFile(null);
-                setUploadError("Reel 80 MB भन्दा सानो हुनुपर्छ।");
+                setUploadError("Reel 200 MB भन्दा सानो हुनुपर्छ।");
                 event.target.value = "";
                 return;
               }
