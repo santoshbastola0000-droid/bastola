@@ -133,6 +133,13 @@ export type SocialStoryViewer = {
   reaction?: StoryReactionType | null;
 };
 
+export type SocialStoryReply = {
+  id: string;
+  content: string;
+  createdAt: string;
+  user: SocialUser;
+};
+
 export type SocialStory = {
   id: string;
   mediaUrl: string;
@@ -551,6 +558,8 @@ export const socialService = {
       storyId: string;
       viewCount: number;
       reactionCount: number;
+      replyCount: number;
+      replies: SocialStoryReply[];
       viewers: SocialStoryViewer[];
     };
   },
@@ -566,6 +575,14 @@ export const socialService = {
       reactionCount: number;
       reactionCounts: Partial<Record<StoryReactionType, number>>;
     };
+  },
+
+  async replyStory(storyId: string, content: string) {
+    const response = await privateApi.post(
+      `/social/stories/${storyId}/reply`,
+      { content },
+    );
+    return response.data as SocialStoryReply & { storyId: string };
   },
 
   async removeStoryReaction(storyId: string) {
