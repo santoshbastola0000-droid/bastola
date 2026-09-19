@@ -19,8 +19,9 @@ import {
   CreditCard,
   Headphones,
   FileText,
-BriefcaseBusiness,  
+BriefcaseBusiness,
 Globe,
+Hash,
 } from "lucide-react";
 import { Logo } from "@/components/Logo";
 
@@ -37,6 +38,7 @@ const quickLinks = [
     label: "Jobs in Nepal",
     icon: BriefcaseBusiness,
   },
+  { href: "/hashtags", label: "Popular Hashtags", icon: Hash },
   { href: "/host", label: "Become a Host", icon: Key },
   { href: "/about", label: "About Us", icon: Users },
   { href: "/contact", label: "Contact", icon: Headphones },
