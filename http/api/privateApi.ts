@@ -183,7 +183,12 @@ privateApi.interceptors.request.use(async (config) => {
   }
 
   if (typeof FormData !== "undefined" && config.data instanceof FormData) {
-    config.data = await optimizeFormDataImages(config.data);
+    // Government ID documents used in a ban appeal must be uploaded exactly
+    // as selected by the user. Do not run image optimization/compression on
+    // identity documents.
+    if (requestUrl !== "/user/me/ban-appeal") {
+      config.data = await optimizeFormDataImages(config.data);
+    }
     delete config.headers["Content-Type"];
     delete config.headers["content-type"];
   }
