@@ -35,7 +35,8 @@ const backendUrl = String(
   process.env.NEXT_PUBLIC_BACKEND_URL || "https://api.roomkhoj.com",
 ).replace(/\/$/, "");
 
-const MAX_REEL_UPLOAD_BYTES = 200 * 1024 * 1024;\nconst MAX_FALLBACK_REEL_UPLOAD_BYTES = 200 * 1024 * 1024;
+const MAX_REEL_UPLOAD_BYTES = 200 * 1024 * 1024;
+const MAX_FALLBACK_REEL_UPLOAD_BYTES = 200 * 1024 * 1024;
 
 function media(value?: string | null) {
   const raw = String(value || "").trim();
