@@ -290,6 +290,7 @@ export default function UsersList() {
         style: { background: SUCCESSTOAST, color: "#fff" },
       });
       setDeleteDialogOpen(false);
+      setSelectedUser(null);
     },
     onError: (error: any) => {
       toast.error(error?.response?.data?.message || "Failed to delete user", {
@@ -568,55 +569,66 @@ export default function UsersList() {
           <Wallet className="h-3 w-3 text-primary" />
           <span>{formatPriceNPR(user.balance ?? 0)}</span>
         </div>
-        <div className="col-span-2 flex justify-between items-center pt-2 border-t">
-          <div>{getVerificationBadge(user.isVerified)}</div>
-          <div className="flex items-center gap-2">
-            <Link href={`/admin/dashboard/messages?userId=${encodeURIComponent(user.id)}`}>
+        <div className="col-span-2 space-y-3 border-t pt-3">
+          <div className="flex items-center justify-between gap-2">
+            <div>{getVerificationBadge(user.isVerified)}</div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <Link
+              href={`/admin/dashboard/messages?userId=${encodeURIComponent(user.id)}`}
+              className="min-w-0"
+            >
               <Button
                 variant="outline"
                 size="sm"
-                className="cursor-pointer border-violet-300 bg-violet-50 text-violet-700 hover:bg-violet-100"
+                className="w-full cursor-pointer border-violet-300 bg-violet-50 text-violet-700 hover:bg-violet-100"
               >
                 <MessageSquare className="mr-1 h-4 w-4" />
-                View Messages
+                Messages
               </Button>
             </Link>
-            {(
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleAddBalance(user)}
-                disabled={adminCreditMutation.isPending}
-                className="cursor-pointer border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100"
-              >
-                <Wallet className="mr-1 h-4 w-4" />
-                Add Balance
-              </Button>
-            )}
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleAddBalance(user)}
+              disabled={adminCreditMutation.isPending}
+              className="w-full cursor-pointer border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100"
+            >
+              <Wallet className="mr-1 h-4 w-4" />
+              Add Balance
+            </Button>
+
             {Number(user.pendingBalance ?? 0) > 0 && (
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => handleReleasePending(user)}
-                className="cursor-pointer border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                className="col-span-2 w-full cursor-pointer border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
                 disabled={releasePendingMutation.isPending}
               >
                 Release Pending
               </Button>
             )}
-            {user.role !== UserRole.ADMIN && (
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={() => handleDeleteClick(user)}
-                className="cursor-pointer"
-                disabled={deleteUserMutation.isPending}
-              >
-                <Trash2 className="h-4 w-4 mr-1" />
-                Delete
-              </Button>
-            )}
           </div>
+
+          {user.role !== UserRole.ADMIN && (
+            <Button
+              variant="destructive"
+              onClick={() => handleDeleteClick(user)}
+              className="h-11 w-full cursor-pointer text-sm font-bold"
+              disabled={deleteUserMutation.isPending}
+            >
+              {deleteUserMutation.isPending &&
+              selectedUser?.id === user.id ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Trash2 className="mr-2 h-4 w-4" />
+              )}
+              Delete User Permanently
+            </Button>
+          )}
         </div>
       </div>
     </div>
