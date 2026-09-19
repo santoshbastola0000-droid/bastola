@@ -249,6 +249,9 @@ const user = useUserStore(
   const [search, setSearch] =
     useState("");
 
+  const [inboxFilter, setInboxFilter] =
+    useState<"ALL" | "UNREAD">("ALL");
+
   const [isDarkMode, setIsDarkMode] = useState(false);
 
   useEffect(() => {
@@ -1812,7 +1815,14 @@ const user = useUserStore(
     };
 
   // Search results must show RoomKhoj users, not old conversation names.
-  const filtered = search.trim() ? [] : conversations;
+  const filtered = search.trim()
+    ? []
+    : inboxFilter === "UNREAD"
+      ? conversations.filter(
+          (conversation) =>
+            Number(conversation.unreadCount || 0) > 0,
+        )
+      : conversations;
 
   const otherUserId =
     selected?.otherUser?.id ||
@@ -1888,7 +1898,11 @@ const user = useUserStore(
   return (
     <>
     <main
-      className={`${isDarkMode ? "dark" : ""} mx-auto h-[calc(100dvh-68px)] w-full max-w-7xl overflow-hidden bg-background text-foreground md:h-screen md:max-w-none md:p-0`}
+      className={`${isDarkMode ? "dark" : ""} mx-auto w-full max-w-7xl overflow-hidden bg-background text-foreground md:h-screen md:max-w-none md:p-0 ${
+        selected
+          ? "fixed inset-0 z-[70] h-[100dvh] md:static md:z-auto"
+          : "h-[calc(100dvh-68px)]"
+      }`}
       style={
         mobileChatViewport
           ? {
@@ -1955,10 +1969,29 @@ const user = useUserStore(
               />
             </div>
 
-            <div className="mt-3 flex gap-2 md:hidden">
-              <span className="rounded-full bg-primary px-4 py-2 text-xs font-semibold text-white">All</span>
-              <span className="rounded-full border border-border bg-secondary px-4 py-2 text-xs text-foreground">Unread</span>
-              <span className="rounded-full border border-border bg-secondary px-4 py-2 text-xs text-foreground">Favorites</span>
+            <div className="mt-3 flex gap-2 overflow-x-auto pb-0.5 md:hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              <button
+                type="button"
+                onClick={() => setInboxFilter("ALL")}
+                className={`min-h-10 shrink-0 rounded-full px-4 text-xs font-bold transition ${
+                  inboxFilter === "ALL"
+                    ? "bg-primary text-primary-foreground"
+                    : "border border-border bg-secondary text-foreground"
+                }`}
+              >
+                All
+              </button>
+              <button
+                type="button"
+                onClick={() => setInboxFilter("UNREAD")}
+                className={`min-h-10 shrink-0 rounded-full px-4 text-xs font-bold transition ${
+                  inboxFilter === "UNREAD"
+                    ? "bg-primary text-primary-foreground"
+                    : "border border-border bg-secondary text-foreground"
+                }`}
+              >
+                Unread
+              </button>
             </div>
 
             {phoneResults.length > 0 && (
@@ -2160,8 +2193,10 @@ const user = useUserStore(
           ) : filtered.length === 0 ? (
             <div className="p-10 text-center">
               <MessageCircle className="mx-auto h-10 w-10 text-muted-foreground" />
-              <p className="mt-3 text-sm text-muted-foreground">
-                No conversations yet
+              <p className="mt-3 text-sm font-medium text-muted-foreground">
+                {inboxFilter === "UNREAD"
+                  ? "No unread messages"
+                  : "No conversations yet"}
               </p>
             </div>
           ) : (
@@ -2185,7 +2220,7 @@ const user = useUserStore(
                           conversation,
                         )
                       }
-                      className="flex w-full min-w-0 max-w-full gap-3 overflow-hidden px-3 py-3 text-left transition hover:bg-muted"
+                      className="flex min-h-[72px] w-full min-w-0 max-w-full items-center gap-3 overflow-hidden px-3 py-3 text-left transition active:bg-muted hover:bg-muted sm:px-4"
                     >
                       <div className="relative shrink-0">
                         <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted font-semibold text-foreground">
@@ -2400,10 +2435,10 @@ const user = useUserStore(
             </div>
           ) : (
             <>
-              <header className="flex min-h-[60px] items-center gap-2 border-b border-border bg-card px-2 pb-1.5 pt-[calc(0.35rem+env(safe-area-inset-top))] text-foreground shadow-none md:min-h-0 md:bg-muted md:px-4 md:py-2">
+              <header className="flex min-h-[64px] shrink-0 items-center gap-2 border-b border-border bg-card px-2.5 pb-2 pt-[calc(0.5rem+env(safe-area-inset-top))] text-foreground shadow-sm md:min-h-0 md:bg-muted md:px-4 md:py-2 md:shadow-none">
                 <button
                   type="button"
-                  className="flex h-10 items-center gap-0.5 rounded-full px-1 text-foreground md:hidden"
+                  className="flex h-11 min-w-11 items-center justify-center rounded-full text-foreground active:bg-muted md:hidden"
                   onClick={() => {
                     if (safeReturnTo) {
                       router.push(safeReturnTo);
@@ -2421,7 +2456,7 @@ const user = useUserStore(
                   className="relative shrink-0"
                   aria-label="Open profile"
                 >
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#6a7175] text-sm font-bold text-white">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#6a7175] text-sm font-bold text-white">
                     {otherUserId
                       .slice(0, 2)
                       .toUpperCase()}
@@ -2435,7 +2470,7 @@ const user = useUserStore(
                 </button>
 
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-[15px] font-bold text-foreground">
+                  <p className="truncate text-[16px] font-bold leading-tight text-foreground">
                     {selected.otherUser?.name || "RoomKhoj user"}
                   </p>
 
@@ -2444,20 +2479,20 @@ const user = useUserStore(
                   </p>
                 </div>
                 <div className="ml-auto flex items-center gap-0.5 rounded-full border border-border bg-muted/80 p-1 shadow-sm">
-                  <Button type="button" size="icon" variant="ghost" className="h-8 w-8 rounded-full text-foreground hover:bg-primary/10 hover:text-primary" onClick={() => startCall("video")} aria-label="Video call"><Video className="h-5 w-5" /></Button>
-                  <Button type="button" size="icon" variant="ghost" className="h-8 w-8 rounded-full text-foreground hover:bg-primary/10 hover:text-primary" onClick={() => startCall("audio")} aria-label="Voice call"><Phone className="h-5 w-5" /></Button>
+                  <Button type="button" size="icon" variant="ghost" className="h-10 w-10 rounded-full text-foreground hover:bg-primary/10 hover:text-primary" onClick={() => startCall("video")} aria-label="Video call"><Video className="h-5 w-5" /></Button>
+                  <Button type="button" size="icon" variant="ghost" className="h-10 w-10 rounded-full text-foreground hover:bg-primary/10 hover:text-primary" onClick={() => startCall("audio")} aria-label="Voice call"><Phone className="h-5 w-5" /></Button>
                 </div>
               </header>
               <audio ref={remoteAudioRef} autoPlay playsInline />
 
               {contextPost && (
-                <div className="border-b border-border bg-card px-3 py-2 md:px-4 md:py-3">
+                <div className="shrink-0 border-b border-border bg-card px-2.5 py-2 md:px-4 md:py-3">
                   <button
                     type="button"
                     onClick={() => router.push(contextPost.url)}
-                    className="flex w-full items-center gap-3 rounded-xl border border-border bg-muted p-3 text-left shadow-sm transition-colors hover:bg-accent/10"
+                    className="flex w-full items-center gap-2.5 rounded-xl border border-border bg-muted p-2.5 text-left shadow-sm transition-colors active:bg-accent/10 hover:bg-accent/10 md:gap-3 md:p-3"
                   >
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-card text-xl">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-card text-lg md:h-12 md:w-12 md:text-xl">
                       {contextPost.image ? (
                         <img
                           src={resolveImageUrl(contextPost.image)}
@@ -2505,7 +2540,7 @@ const user = useUserStore(
                 </div>
               )}
 
-              <div ref={messagesScrollerRef} className="min-h-0 flex-1 touch-pan-y overscroll-contain space-y-2 overflow-y-auto bg-[#efe9df] bg-[radial-gradient(circle_at_18%_22%,rgba(255,255,255,0.55)_0_1px,transparent_1px),radial-gradient(circle_at_82%_65%,rgba(0,0,0,0.045)_0_1px,transparent_1px)] bg-[length:26px_26px,34px_34px] px-2.5 py-3 pb-4 dark:bg-[#0b141a] sm:px-5 md:px-[6%] md:py-5 md:pb-6">
+              <div ref={messagesScrollerRef} className="min-h-0 flex-1 touch-pan-y overscroll-contain space-y-2.5 overflow-y-auto scroll-smooth bg-[#efe9df] bg-[radial-gradient(circle_at_18%_22%,rgba(255,255,255,0.55)_0_1px,transparent_1px),radial-gradient(circle_at_82%_65%,rgba(0,0,0,0.045)_0_1px,transparent_1px)] bg-[length:26px_26px,34px_34px] px-2.5 py-3 pb-4 dark:bg-[#0b141a] sm:px-5 md:px-[6%] md:py-5 md:pb-6">
                 {messagesLoading ? (
                   <div className="flex justify-center p-10">
                     <Loader2 className="h-6 w-6 animate-spin text-primary" />
@@ -2534,7 +2569,7 @@ const user = useUserStore(
                             onPointerUp={clearDeleteHoldTimer}
                             onPointerLeave={clearDeleteHoldTimer}
                             onPointerCancel={clearDeleteHoldTimer}
-                            className={`max-w-[80%] rounded-2xl px-2.5 py-1.5 text-[13px] leading-[18px] shadow-sm ${
+                            className={`max-w-[88%] rounded-2xl px-3 py-2 text-[14px] leading-5 shadow-sm sm:max-w-[78%] sm:text-[13px] sm:leading-[18px] ${
                               mine
                                 ? "rounded-br-md border border-primary/15 bg-primary/15 text-foreground"
                                 : "rounded-bl-md border border-black/5 bg-white text-slate-900 dark:border-white/10 dark:bg-[#202c33] dark:text-white"
@@ -2642,8 +2677,8 @@ const user = useUserStore(
               </div>
 
               {selectedMedia && mediaPreview && (
-                <div className="border-t border-border bg-card p-3">
-                  <div className="flex items-center gap-3">
+                <div className="shrink-0 border-t border-border bg-card p-2.5 sm:p-3">
+                  <div className="flex flex-wrap items-center gap-2.5 sm:flex-nowrap sm:gap-3">
                     {selectedMedia.type.startsWith("video/") ? (
                       <video src={mediaPreview} className="h-16 w-16 rounded-lg object-cover" />
                     ) : (
@@ -2652,8 +2687,8 @@ const user = useUserStore(
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium">{selectedMedia.name}</p>
                     </div>
-                    <Button variant="ghost" onClick={removeSelectedMedia}>Remove</Button>
-                    <Button onClick={() => void uploadMedia()} disabled={mediaSending}>
+                    <Button size="sm" variant="ghost" onClick={removeSelectedMedia}>Remove</Button>
+                    <Button size="sm" onClick={() => void uploadMedia()} disabled={mediaSending}>
                       {mediaSending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Send"}
                     </Button>
                   </div>
@@ -2662,7 +2697,7 @@ const user = useUserStore(
 
               {replyingTo && !editingMessageId && (
                 <div className="border-t border-black/5 bg-white/95 px-3 py-2 dark:bg-[#202c33]/95 md:px-4">
-                  <div className="mx-auto flex max-w-3xl items-center gap-2 rounded-xl bg-primary/5 px-3 py-2">
+                  <div className="mx-auto flex max-w-3xl items-center gap-2 rounded-xl bg-primary/5 px-2.5 py-2 sm:px-3">
                     <div className="min-w-0 flex-1 border-l-4 border-primary pl-3"><p className="text-[11px] font-bold text-primary">Replying to</p><p className="truncate text-xs text-muted-foreground">{replyingTo.content || "Message"}</p></div>
                     <button type="button" onClick={() => setReplyingTo(null)} className="px-2 py-1 text-muted-foreground">✕</button>
                   </div>
@@ -2671,7 +2706,7 @@ const user = useUserStore(
 
               {editingMessageId && (
                 <div className="border-t border-black/5 bg-white/95 px-3 py-2 backdrop-blur dark:border-white/10 dark:bg-[#202c33]/95 md:px-4">
-                  <div className="mx-auto flex max-w-3xl items-center gap-2 rounded-2xl border border-primary/20 bg-primary/5 p-2">
+                  <div className="mx-auto flex max-w-3xl flex-wrap items-center gap-2 rounded-2xl border border-primary/20 bg-primary/5 p-2 sm:flex-nowrap">
                     <div className="min-w-0 flex-1 border-l-4 border-primary pl-3">
                       <p className="text-[11px] font-bold text-primary">Edit message · 1 minute limit</p>
                       <input value={editingDraft} onChange={(e) => setEditingDraft(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void saveEditedMessage(); } }} autoFocus className="mt-0.5 w-full bg-transparent text-sm outline-none" />
@@ -2682,18 +2717,18 @@ const user = useUserStore(
                 </div>
               )}
               <div
-                className="w-full max-w-full overflow-visible border-t border-black/5 bg-[#f7f7f7]/95 py-1.5 pb-[calc(0.4rem+env(safe-area-inset-bottom))] backdrop-blur dark:border-white/10 dark:bg-[#202c33]/95 md:px-4 md:py-2"
+                className="w-full max-w-full shrink-0 overflow-visible border-t border-black/5 bg-[#f7f7f7]/95 py-2 pb-[calc(0.55rem+env(safe-area-inset-bottom))] backdrop-blur dark:border-white/10 dark:bg-[#202c33]/95 md:px-4 md:py-2"
                 style={{
                   paddingLeft: "max(0.5rem, env(safe-area-inset-left))",
                   paddingRight: "max(0.5rem, env(safe-area-inset-right))",
                 }}
               >
-                <div className="grid w-full max-w-full grid-cols-[40px_minmax(0,1fr)_40px] items-end gap-1.5 sm:gap-2">
-                  <div className="relative h-10 w-10 shrink-0">
+                <div className="grid w-full max-w-full grid-cols-[44px_minmax(0,1fr)_44px] items-end gap-1.5 sm:grid-cols-[40px_minmax(0,1fr)_40px] sm:gap-2">
+                  <div className="relative h-11 w-11 shrink-0 sm:h-10 sm:w-10">
                     <button
                       type="button"
                       onClick={() => setShowPlusMenu((open) => !open)}
-                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-primary transition hover:bg-primary/10"
+                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-primary transition active:bg-primary/10 hover:bg-primary/10 sm:h-10 sm:w-10"
                       aria-label="Message actions"
                     >
                       <Plus className="h-5 w-5" />
@@ -2706,9 +2741,9 @@ const user = useUserStore(
                           aria-label="Close actions"
                           onClick={() => setShowPlusMenu(false)}
                         />
-                        <div className="fixed inset-x-2 bottom-[calc(4.8rem+env(safe-area-inset-bottom))] z-50 rounded-[30px] border border-border/70 bg-[#eef1f6] p-4 pb-5 shadow-2xl dark:bg-[#1f2c33] md:absolute md:bottom-14 md:left-0 md:right-auto md:w-[420px]">
+                        <div className="fixed inset-x-2 bottom-[calc(4.9rem+env(safe-area-inset-bottom))] z-50 max-h-[68dvh] overflow-y-auto overscroll-contain rounded-[26px] border border-border/70 bg-[#eef1f6] p-4 pb-5 shadow-2xl dark:bg-[#1f2c33] md:absolute md:bottom-14 md:left-0 md:right-auto md:max-h-none md:w-[420px] md:overflow-visible">
                           <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-slate-300 md:hidden" />
-                          <div className="grid grid-cols-4 gap-x-2 gap-y-5">
+                          <div className="grid grid-cols-3 gap-x-2 gap-y-4 min-[390px]:grid-cols-4 min-[390px]:gap-y-5">
                             <button type="button" onClick={() => { setShowPlusMenu(false); mediaInputRef.current?.click(); }} className="flex flex-col items-center gap-2 text-center text-xs font-semibold text-foreground"><span className="flex h-14 w-14 items-center justify-center rounded-full bg-white shadow-sm dark:bg-slate-800"><Camera className="h-6 w-6 text-primary" /></span>Camera</button>
                             <button type="button" onClick={() => { setShowPlusMenu(false); mediaInputRef.current?.click(); }} className="flex flex-col items-center gap-2 text-center text-xs font-semibold text-foreground"><span className="flex h-14 w-14 items-center justify-center rounded-full bg-white shadow-sm dark:bg-slate-800"><ImageIcon className="h-6 w-6 text-primary" /></span>Photos</button>
                             <button type="button" onClick={() => { setShowPlusMenu(false); toast.info("Document sharing छिट्टै आउँदैछ."); }} className="flex flex-col items-center gap-2 text-center text-xs font-semibold text-foreground"><span className="flex h-14 w-14 items-center justify-center rounded-full bg-white shadow-sm dark:bg-slate-800"><FileText className="h-6 w-6 text-primary" /></span>Document</button>
@@ -2732,7 +2767,7 @@ const user = useUserStore(
                     onChange={handleMediaSelect}
                   />
 
-                  <div className="flex min-h-10 min-w-0 w-full items-center overflow-hidden rounded-[20px] border border-black/5 bg-white px-2.5 shadow-sm dark:border-white/10 dark:bg-[#2a3942]">
+                  <div className="flex min-h-11 min-w-0 w-full items-center overflow-hidden rounded-[22px] border border-black/5 bg-white px-3 shadow-sm dark:border-white/10 dark:bg-[#2a3942] sm:min-h-10 sm:rounded-[20px] sm:px-2.5">
                     <textarea
                       data-message-composer="true"
                       value={draft}
@@ -2763,7 +2798,7 @@ const user = useUserStore(
                       placeholder="Type a message"
                       enterKeyHint="send"
                       rows={1}
-                      className="max-h-24 min-h-6 min-w-0 flex-1 resize-none bg-transparent py-1.5 text-[14px] leading-5 outline-none placeholder:text-muted-foreground"
+                      className="max-h-28 min-h-7 min-w-0 flex-1 resize-none bg-transparent py-2 text-[16px] leading-5 outline-none placeholder:text-muted-foreground sm:max-h-24 sm:min-h-6 sm:py-1.5 sm:text-[14px]"
                     />
                     <Smile className="h-4 w-4 shrink-0 text-muted-foreground" />
                   </div>
@@ -2771,7 +2806,7 @@ const user = useUserStore(
                   <Button
                     type="button"
                     size="icon"
-                    className="relative z-10 h-10 w-10 min-w-10 max-w-10 shrink-0 rounded-full bg-primary p-0 text-primary-foreground shadow-sm disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100"
+                    className="relative z-10 h-11 w-11 min-w-11 max-w-11 shrink-0 rounded-full bg-primary p-0 text-primary-foreground shadow-sm active:scale-95 disabled:bg-muted disabled:text-muted-foreground disabled:opacity-100 sm:h-10 sm:w-10 sm:min-w-10 sm:max-w-10"
                     onPointerDown={(event) => {
                       event.preventDefault();
                     }}
