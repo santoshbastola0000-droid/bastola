@@ -83,13 +83,28 @@ function ProfilePostMedia({ post }: { post: SocialPost }) {
       >
         {post.mediaUrls.slice(0, 4).map((url, index) =>
           post.mediaTypes[index] === "VIDEO" ? (
-            <video
+            <button
               key={`${url}-${index}`}
-              src={media(url)}
-              controls
-              preload="metadata"
-              className="max-h-[640px] w-full object-contain"
-            />
+              type="button"
+              onClick={() =>
+                window.location.assign(
+                  `/reels?post=${encodeURIComponent(post.id)}&media=${index}`,
+                )
+              }
+              className="group relative block w-full cursor-pointer bg-black"
+              aria-label="Open video in Reels"
+            >
+              <video
+                src={media(url)}
+                muted
+                playsInline
+                preload="metadata"
+                className="pointer-events-none max-h-[640px] w-full object-contain"
+              />
+              <span className="pointer-events-none absolute left-1/2 top-1/2 flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-black/55 text-2xl text-white shadow-lg backdrop-blur-sm transition group-active:scale-95">
+                ▶
+              </span>
+            </button>
           ) : (
             <img
               key={`${url}-${index}`}
