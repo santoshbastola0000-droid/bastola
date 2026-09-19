@@ -438,6 +438,17 @@ export function SocialFeedScreen() {
           postInput={postInput}
         />
 
+        <Link
+          href="/rooms"
+          className="flex items-center justify-between border-y bg-white px-4 py-2.5 text-[14px] font-bold text-red-600 shadow-sm transition hover:bg-red-50 sm:rounded-xl sm:border"
+          aria-label="Browse rooms"
+        >
+          <span className="flex items-center gap-2">
+            <MapPin className="h-4.5 w-4.5" />
+            Browse Rooms
+          </span>
+          <span aria-hidden="true">→</span>
+        </Link>
 
         <StoryCarousel
           stories={stories}
