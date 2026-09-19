@@ -81,6 +81,7 @@ import {
 import { UserRole } from "@/types/user.types";
 import { api } from "@/http/api/api";
 import { RoomUnlockDialog } from "@/components/rooms/RoomUnlockDialog";
+import { HashtagText } from "@/components/social/HashtagText";
 import { TopUpRequestDialog } from "@/components/wallet/TopUpRequestDialog";
 import { unlockService } from "@/http/services/unlock.service";
 import { useUserStore } from "@/stores/user-store";
@@ -1351,7 +1352,7 @@ export default function PropertyDetailsPage() {
             className="mb-5"
           >
             <h1 className="text-[28px] font-black leading-tight tracking-[-0.025em] text-slate-950 sm:text-[34px]">
-              {room.title}
+              <HashtagText text={room.title} />
             </h1>
 
             <div className="mt-2 flex items-baseline gap-2">
@@ -1568,7 +1569,7 @@ export default function PropertyDetailsPage() {
                   About this property
                 </h2>
                 <p className="text-slate-600 text-sm leading-relaxed whitespace-pre-wrap">
-                  {room.description}
+                  <HashtagText text={room.description} />
                 </p>
               </motion.div>
 
