@@ -290,6 +290,29 @@ export const socialService = {
   },
 
 
+  async createLiveInput(name = "RoomKhoj Live") {
+    const response = await privateApi.post("/social/stream/live-input", { name });
+    return response.data as {
+      uid: string;
+      publishUrl: string;
+      playbackUrl: string;
+      rtmpsUrl: string;
+      rtmpsKey: string;
+    };
+  },
+
+  async liveInput(uid: string) {
+    const response = await privateApi.get(
+      `/social/stream/live-input/${encodeURIComponent(uid)}`,
+    );
+    return response.data as {
+      uid: string;
+      playbackUrl: string;
+      hlsUrl: string;
+      status: string;
+    };
+  },
+
   async createStreamUpload(input: {
     name?: string;
     maxDurationSeconds?: number;
