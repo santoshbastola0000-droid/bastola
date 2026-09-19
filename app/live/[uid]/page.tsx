@@ -8,13 +8,6 @@ import { ArrowLeft, Loader2, Radio, RefreshCw, Volume2, VolumeX } from "lucide-r
 import { socialService } from "@/http/services/social.service";
 import { useUserStore } from "@/stores/user-store";
 
-type LiveInfo = {
-  uid: string;
-  playbackUrl: string;
-  hlsUrl: string;
-  status: string;
-};
-
 export default function LiveViewerPage() {
   const params = useParams<{ uid: string }>();
   const uid = String(params?.uid || "").trim();
