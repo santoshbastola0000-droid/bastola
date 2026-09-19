@@ -93,13 +93,19 @@ export async function generateMetadata({
   const firstImageIndex = post.mediaTypes.findIndex((type) => type === "IMAGE");
   const firstImage =
     firstImageIndex >= 0 ? media(post.mediaUrls?.[firstImageIndex]) : "";
+  const meaningfulText = text
+    .replace(/#[A-Za-z0-9_\u0900-\u097F]{2,50}/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const hashtagCount = post.hashtags?.length || 0;
+  const shouldIndex = meaningfulText.length >= 20 && hashtagCount <= 12;
 
   return {
     title: `${title} | RoomKhoj`,
     description,
     alternates: { canonical },
     robots: {
-      index: text.length >= 20 || Boolean(firstImage),
+      index: shouldIndex,
       follow: true,
     },
     openGraph: {
