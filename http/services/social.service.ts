@@ -387,15 +387,14 @@ export const socialService = {
     chunk: Blob,
     originalName: string,
   ) {
-    const form = new FormData();
-    form.append("chunk", chunk, `${originalName}.part-${index}`);
-
-    const send = () =>
-      privateApi.post(
+    const send = () => {
+      const form = new FormData();
+      form.append("chunk", chunk, `${originalName}.part-${index}`);
+      return privateApi.post(
         `/social/reels/fallback/${encodeURIComponent(uploadId)}/chunks/${index}`,
         form,
-        directMultipartConfig,
       );
+    };
 
     let response;
     try {
