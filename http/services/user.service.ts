@@ -62,6 +62,17 @@ export const userService = {
     return response.data;
   },
 
+  setProfileVerified: async (
+    userId: string,
+    isVerified: boolean,
+  ): Promise<{ userId: string; isVerified: boolean }> => {
+    const response = await privateApi.patch(
+      `/user/admin/users/${userId}/profile-verified`,
+      { isVerified },
+    );
+    return response.data;
+  },
+
   setUserBanned: async (
     userId: string,
     isBanned: boolean,
