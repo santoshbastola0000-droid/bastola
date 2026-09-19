@@ -113,6 +113,22 @@ export default function ReelsPage() {
 
   const videoRefs = useRef<Record<string, HTMLVideoElement | null>>({});
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const fastReelsApiAvailable = useRef<boolean | null>(null);
+
+  const fetchReelPage = useCallback(async (before?: string) => {
+    if (fastReelsApiAvailable.current !== false) {
+      try {
+        const result = await socialService.reels(before, 12);
+        fastReelsApiAvailable.current = true;
+        return result;
+      } catch {
+        // Keep Reels working while an older API deployment is still live.
+        fastReelsApiAvailable.current = false;
+      }
+    }
+
+    return socialService.feed(before);
+  }, []);
 
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [uploadPreview, setUploadPreview] = useState("");
@@ -154,48 +170,54 @@ export default function ReelsPage() {
     const load = async () => {
       setLoading(true);
       try {
-        let next: string | undefined;
-        let collected: Reel[] = [];
+        const params =
+          typeof window !== "undefined"
+            ? new URLSearchParams(window.location.search)
+            : new URLSearchParams();
+        const requestedPostId = params.get("post");
+        const requestedMediaIndex = Number(params.get("media"));
+
+        // Fetch the selected deep-link post and the first video-only page in
+        // parallel. The first visible reel no longer waits for 4-5 feed requests.
+        const [requestedPost, firstPage] = await Promise.all([
+          requestedPostId
+            ? socialService.post(requestedPostId).catch(() => null)
+            : Promise.resolve(null),
+          fetchReelPage(),
+        ]);
+
         let pinned: Reel[] = [];
+        if (requestedPost) {
+          const requestedReels = reelsFromPost(requestedPost);
+          const requestedId =
+            Number.isInteger(requestedMediaIndex) && requestedMediaIndex >= 0
+              ? `${requestedPost.id}-${requestedMediaIndex}`
+              : null;
+          const selected = requestedId
+            ? requestedReels.find((item) => item.id === requestedId)
+            : requestedReels[0];
 
-        // When a video is opened from Feed/Profile/Post, put that exact video at
-        // the top of Reels first, then continue into the normal endless stream.
-        if (typeof window !== "undefined") {
-          const params = new URLSearchParams(window.location.search);
-          const requestedPostId = params.get("post");
-          const requestedMediaIndex = Number(params.get("media"));
-
-          if (requestedPostId) {
-            try {
-              const requestedPost = await socialService.post(requestedPostId);
-              const requestedReels = reelsFromPost(requestedPost);
-              const requestedId =
-                Number.isInteger(requestedMediaIndex) && requestedMediaIndex >= 0
-                  ? `${requestedPost.id}-${requestedMediaIndex}`
-                  : null;
-              const selected = requestedId
-                ? requestedReels.find((item) => item.id === requestedId)
-                : requestedReels[0];
-
-              pinned = selected
-                ? [
-                    selected,
-                    ...requestedReels.filter((item) => item.id !== selected.id),
-                  ]
-                : requestedReels;
-            } catch {
-              // If the deep-linked post is unavailable, fall back to normal Reels.
-            }
-          }
+          pinned = selected
+            ? [
+                selected,
+                ...requestedReels.filter((item) => item.id !== selected.id),
+              ]
+            : requestedReels;
         }
 
-        // A social feed page can contain rooms/jobs/images, so keep walking a few
-        // pages until we have enough actual videos for the first Reels session.
-        for (let page = 0; page < 5 && collected.length < 12; page += 1) {
-          const result = await socialService.feed(next);
+        let next = firstPage.nextCursor || undefined;
+        let collected = reelsFromItems(firstPage.items || []);
+
+        // Old API fallback can return a page without a video. Only in that case
+        // walk a couple more pages; the new /social/reels endpoint never needs it.
+        for (
+          let page = 0;
+          collected.length === 0 && next && page < 2;
+          page += 1
+        ) {
+          const result = await fetchReelPage(next);
           collected = mergeReels(collected, reelsFromItems(result.items || []));
           next = result.nextCursor || undefined;
-          if (!next) break;
         }
 
         if (cancelled) return;
@@ -220,7 +242,7 @@ export default function ReelsPage() {
     return () => {
       cancelled = true;
     };
-  }, [isLoaded, user, refreshKey]);
+  }, [fetchReelPage, isLoaded, user, refreshKey]);
 
   useEffect(() => {
     const nodes = Array.from(
@@ -275,8 +297,11 @@ export default function ReelsPage() {
       let next: string | undefined = cursor;
       let collected: Reel[] = [];
 
-      for (let page = 0; page < 4 && collected.length < 8; page += 1) {
-        const result = await socialService.feed(next);
+      // The dedicated endpoint already returns video posts only, so one request
+      // normally fills the next batch. Fallback pages are only walked when an
+      // older backend returns no videos at all.
+      for (let page = 0; page < 3 && collected.length === 0; page += 1) {
+        const result = await fetchReelPage(next);
         collected = mergeReels(collected, reelsFromItems(result.items || []));
         next = result.nextCursor || undefined;
         if (!next) break;
@@ -288,7 +313,7 @@ export default function ReelsPage() {
     } finally {
       setLoadingMore(false);
     }
-  }, [cursor, hasMore, loadingMore, user]);
+  }, [cursor, fetchReelPage, hasMore, loadingMore, user]);
 
   useEffect(() => {
     if (!activeId || reels.length < 2) return;
@@ -312,6 +337,10 @@ export default function ReelsPage() {
   const empty = useMemo(
     () => !loading && reels.length === 0,
     [loading, reels.length],
+  );
+  const activeIndex = useMemo(
+    () => Math.max(0, reels.findIndex((item) => item.id === activeId)),
+    [activeId, reels],
   );
 
   const toggleSound = () => {
@@ -538,7 +567,7 @@ export default function ReelsPage() {
           </div>
         ) : (
           <div className="h-[100dvh] snap-y snap-mandatory overflow-y-auto overscroll-y-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {reels.map((reel) => {
+            {reels.map((reel, reelIndex) => {
               const active = activeId === reel.id;
               const liked = Boolean(reel.post.likedByMe);
 
@@ -556,7 +585,11 @@ export default function ReelsPage() {
                     playsInline
                     loop
                     muted={!soundOn}
-                    preload={active ? "auto" : "metadata"}
+                    preload={
+                      reelIndex >= activeIndex - 1 && reelIndex <= activeIndex + 2
+                        ? "auto"
+                        : "none"
+                    }
                     controls={false}
                     disablePictureInPicture
                     onContextMenu={(event) => event.preventDefault()}
