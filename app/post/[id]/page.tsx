@@ -90,7 +90,7 @@ export async function generateMetadata({
     ? text.slice(0, 155)
     : "View this public RoomKhoj post.";
   const canonical = `${baseUrl}/post/${post.id}`;
-  const firstImageIndex = post.mediaTypes?.findIndex((type) => type === "IMAGE");
+  const firstImageIndex = post.mediaTypes.findIndex((type) => type === "IMAGE");
   const firstImage =
     firstImageIndex >= 0 ? media(post.mediaUrls?.[firstImageIndex]) : "";
 
