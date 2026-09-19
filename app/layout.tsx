@@ -17,6 +17,7 @@ import { AutoLocationUpdate } from "@/components/AutoLocationUpdate";
 import { PermissionStatusSync } from "@/components/PermissionStatusSync";
 import { EngagementTracker } from "@/components/EngagementTracker";
 import { SiteNoticeBanner } from "@/components/common/site-notice";
+import { RoomKhojStartupSplash } from "@/components/RoomKhojStartupSplash";
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -106,6 +107,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased pb-[calc(68px+env(safe-area-inset-bottom))] md:pb-0`}
       >
+        <RoomKhojStartupSplash />
         <LanguageProvider>
         <SessionChecker />
         <AutoPushPermission />
