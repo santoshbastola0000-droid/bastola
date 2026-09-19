@@ -402,16 +402,21 @@ export default function PostVacancyPage() {
 
                   <div className="mt-7">
                     {current.key === "description" ? (
-                      <textarea
-                        autoFocus
-                        rows={6}
-                        value={form.description}
-                        onChange={(e) =>
-                          updateField(e.target.value)
-                        }
-                        className="w-full rounded-2xl border border-slate-200 p-4 outline-none transition focus:border-red-400 focus:ring-2 focus:ring-red-100"
-                        placeholder="Write job description..."
-                      />
+                      <>
+                        <textarea
+                          autoFocus
+                          rows={6}
+                          value={form.description}
+                          onChange={(e) =>
+                            updateField(e.target.value)
+                          }
+                          className="w-full rounded-2xl border border-slate-200 p-4 outline-none transition focus:border-red-400 focus:ring-2 focus:ring-red-100"
+                          placeholder="Write job description..."
+                        />
+                        <p className="mt-2 text-xs leading-5 text-slate-500">
+                          Use only relevant hashtags, for example #JobInPokhara or #WaiterJob. Public tags can appear on RoomKhoj hashtag pages.
+                        </p>
+                      </>
                     ) : current.key ===
                       "applicationDeadline" ? (
                       <input
