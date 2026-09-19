@@ -8,6 +8,7 @@ import {
   SocialUser,
   socialService,
 } from "@/http/services/social.service";
+import { MentionInput } from "@/components/social/MentionInput";
 
 const backendUrl = String(
   process.env.NEXT_PUBLIC_BACKEND_URL || "https://api.roomkhoj.com",
@@ -46,6 +47,7 @@ export function CommentThread({
 }) {
   const [comments, setComments] = useState<SocialComment[]>([]);
   const [draft, setDraft] = useState("");
+  const [mentionUserIds, setMentionUserIds] = useState<string[]>([]);
   const [replyTo, setReplyTo] = useState<SocialComment | null>(null);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
@@ -108,10 +110,21 @@ export function CommentThread({
     try {
       const rootParentId = replyTo?.parentCommentId || replyTo?.id;
       const created = rootParentId
-        ? await socialService.replyComment(rootParentId, postId, content)
-        : await socialService.addComment(postId, content);
+        ? await socialService.replyComment(
+            rootParentId,
+            postId,
+            content,
+            mentionUserIds,
+          )
+        : await socialService.addComment(
+            postId,
+            content,
+            undefined,
+            mentionUserIds,
+          );
       setComments((current) => [...current, created]);
       setDraft("");
+      setMentionUserIds([]);
       setReplyTo(null);
     } catch (error: any) {
       toast.error(error?.response?.data?.message || "Comment send failed");
@@ -211,11 +224,13 @@ export function CommentThread({
           </div>
         )}
         <div className="flex min-w-0 flex-1 items-center rounded-full bg-slate-100 px-3">
-          <input
+          <MentionInput
+            userId={currentUserId}
             value={draft}
-            onChange={(event) => setDraft(event.target.value)}
+            onChange={setDraft}
+            onMentionIdsChange={setMentionUserIds}
             placeholder={replyTo ? `Reply to ${replyTo.author.name}…` : "Write a comment…"}
-            className="min-w-0 flex-1 bg-transparent py-2 text-[14px] outline-none placeholder:text-slate-400"
+            className="w-full min-w-0 bg-transparent py-2 text-[14px] outline-none placeholder:text-slate-400"
             maxLength={1000}
           />
           <button
