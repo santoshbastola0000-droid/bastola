@@ -610,6 +610,46 @@ export default function ReelsPage() {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
+  const uploadReelViaChunks = async () => {
+    if (!uploadFile) return;
+
+    if (uploadFile.size > MAX_FALLBACK_REEL_UPLOAD_BYTES) {
+      throw new Error("Reel 200 MB भन्दा सानो हुनुपर्छ।");
+    }
+
+    setUploadStage("Starting backup upload…");
+    const session = await socialService.startReelFallbackUpload(uploadFile);
+
+    for (let index = 0; index < session.totalChunks; index += 1) {
+      const start = index * session.chunkSize;
+      const end = Math.min(uploadFile.size, start + session.chunkSize);
+      const chunk = uploadFile.slice(
+        start,
+        end,
+        uploadFile.type || "application/octet-stream",
+      );
+
+      const progress = Math.max(
+        1,
+        Math.round(((index + 1) / session.totalChunks) * 100),
+      );
+      setUploadStage(`Backup upload ${progress}%…`);
+
+      await socialService.uploadReelFallbackChunk(
+        session.uploadId,
+        index,
+        chunk,
+        uploadFile.name,
+      );
+    }
+
+    setUploadStage("Finishing reel…");
+    await socialService.completeReelFallbackUpload(session.uploadId, {
+      content: uploadCaption.trim(),
+      visibility: uploadVisibility,
+    });
+  };
+
   const publishReel = async () => {
     if (!uploadFile || uploading) return;
 
@@ -651,11 +691,7 @@ export default function ReelsPage() {
           }
 
           setUploadStage("Fast upload unavailable — using backup upload…");
-          await socialService.createPost({
-            content: uploadCaption.trim(),
-            visibility: uploadVisibility,
-            files: [uploadFile],
-          });
+          await uploadReelViaChunks();
           uploadedViaFallback = true;
         }
 
@@ -689,12 +725,8 @@ export default function ReelsPage() {
             "Fast video upload अहिले उपलब्ध छैन। 200 MB भन्दा सानो video try गर्नुहोस् वा फेरि प्रयास गर्नुहोस्।",
           );
         }
-        setUploadStage("Uploading reel…");
-        await socialService.createPost({
-          content: uploadCaption.trim(),
-          visibility: uploadVisibility,
-          files: [uploadFile],
-        });
+        setUploadStage("Using backup upload…");
+        await uploadReelViaChunks();
       }
 
       setUploadFile(null);
