@@ -50,20 +50,27 @@ type Reel = {
   url: string;
 };
 
+function reelsFromPost(post: SocialPost) {
+  const result: Reel[] = [];
+
+  post.mediaUrls.forEach((url, index) => {
+    if (post.mediaTypes[index] !== "VIDEO") return;
+    result.push({
+      id: `${post.id}-${index}`,
+      post,
+      url,
+    });
+  });
+
+  return result;
+}
+
 function reelsFromItems(items: SocialFeedItem[]) {
   const result: Reel[] = [];
 
   for (const item of items || []) {
     if (item.type !== "POST") continue;
-
-    item.post.mediaUrls.forEach((url, index) => {
-      if (item.post.mediaTypes[index] !== "VIDEO") return;
-      result.push({
-        id: `${item.post.id}-${index}`,
-        post: item.post,
-        url,
-      });
-    });
+    result.push(...reelsFromPost(item.post));
   }
 
   return result;
@@ -149,6 +156,38 @@ export default function ReelsPage() {
       try {
         let next: string | undefined;
         let collected: Reel[] = [];
+        let pinned: Reel[] = [];
+
+        // When a video is opened from Feed/Profile/Post, put that exact video at
+        // the top of Reels first, then continue into the normal endless stream.
+        if (typeof window !== "undefined") {
+          const params = new URLSearchParams(window.location.search);
+          const requestedPostId = params.get("post");
+          const requestedMediaIndex = Number(params.get("media"));
+
+          if (requestedPostId) {
+            try {
+              const requestedPost = await socialService.post(requestedPostId);
+              const requestedReels = reelsFromPost(requestedPost);
+              const requestedId =
+                Number.isInteger(requestedMediaIndex) && requestedMediaIndex >= 0
+                  ? `${requestedPost.id}-${requestedMediaIndex}`
+                  : null;
+              const selected = requestedId
+                ? requestedReels.find((item) => item.id === requestedId)
+                : requestedReels[0];
+
+              pinned = selected
+                ? [
+                    selected,
+                    ...requestedReels.filter((item) => item.id !== selected.id),
+                  ]
+                : requestedReels;
+            } catch {
+              // If the deep-linked post is unavailable, fall back to normal Reels.
+            }
+          }
+        }
 
         // A social feed page can contain rooms/jobs/images, so keep walking a few
         // pages until we have enough actual videos for the first Reels session.
@@ -160,10 +199,11 @@ export default function ReelsPage() {
         }
 
         if (cancelled) return;
-        setReels(collected);
+        const combined = mergeReels(pinned, collected);
+        setReels(combined);
         setCursor(next || null);
         setHasMore(Boolean(next));
-        setActiveId(collected[0]?.id || null);
+        setActiveId(combined[0]?.id || null);
       } catch {
         if (!cancelled) {
           setReels([]);
