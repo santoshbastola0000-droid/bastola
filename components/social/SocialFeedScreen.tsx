@@ -218,7 +218,14 @@ export function SocialFeedScreen() {
       // Critical path: only wait for the actual feed. Stories, groups, profile
       // data and suggestions are useful, but they must never block Home.
       const feed = await socialService.feed();
-      setItems(feed.items || []);
+      setItems(
+        (feed.items || []).filter(
+          (item) =>
+            item.type === "POST" ||
+            item.type === "ROOM" ||
+            item.type === "JOB",
+        ),
+      );
       setNextCursor(feed.nextCursor || null);
     } catch (error: any) {
       toast.error(error?.response?.data?.message || "Feed load failed");
@@ -282,7 +289,13 @@ export function SocialFeedScreen() {
     setLoadingMore(true);
     try {
       const result = await socialService.feed(nextCursor);
-      setItems((current) => [...current, ...(result.items || [])]);
+      const allowed = (result.items || []).filter(
+        (item) =>
+          item.type === "POST" ||
+          item.type === "ROOM" ||
+          item.type === "JOB",
+      );
+      setItems((current) => [...current, ...allowed]);
       setNextCursor(result.nextCursor || null);
     } finally {
       setLoadingMore(false);
@@ -353,12 +366,6 @@ export function SocialFeedScreen() {
   const people = [...requests, ...suggestions].filter(
     (person, index, list) => list.findIndex((candidate) => candidate.id === person.id) === index,
   );
-
-  const roomItems = items.filter(
-    (item): item is Extract<SocialFeedItem, { type: "ROOM" }> =>
-      item.type === "ROOM",
-  );
-  const firstRoomItemId = roomItems[0]?.id || null;
 
   return (
     <div className="min-h-screen bg-red-50/30 font-sans text-slate-950 antialiased">
@@ -557,16 +564,15 @@ export function SocialFeedScreen() {
 
         {items.map((item) => {
           if (item.type === "ROOM") {
-            if (item.id !== firstRoomItemId) return null;
             return (
               <RoomCarousel
-                key="room-carousel"
-                items={roomItems.slice(0, 12)}
+                key={`room-${item.id}`}
+                items={[item]}
               />
             );
           }
           if (item.type === "JOB") return <JobCard key={`job-${item.id}`} item={item} />;
-          if (item.type === "SERVICE") return <ServiceCard key={`service-${item.id}`} item={item} />;
+          if (item.type !== "POST") return null;
           const post = item.post;
           return (
             <PostCard
@@ -1218,27 +1224,6 @@ function JobCard({ item }: { item: Extract<SocialFeedItem, { type: "JOB" }> }) {
             {item.job.salary ? `Rs. ${Number(item.job.salary).toLocaleString("en-IN")}` : "Salary negotiable"}
           </div>
           <div className="mt-1 flex items-center gap-1 text-[12px] text-slate-500"><MapPin className="h-3.5 w-3.5" /> {item.job.location}</div>
-        </div>
-      </div>
-    </Link>
-  );
-}
-
-function ServiceCard({ item }: { item: Extract<SocialFeedItem, { type: "SERVICE" }> }) {
-  return (
-    <Link
-      href={item.service.href}
-      className="block border-y bg-white p-4 shadow-sm sm:rounded-xl sm:border"
-    >
-      <div className="flex items-start gap-3">
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-red-50 text-red-600">
-          <Plus className="h-6 w-6" />
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="text-[11px] font-bold uppercase tracking-wide text-red-600">RoomKhoj service</div>
-          <div className="mt-0.5 text-[16px] font-semibold leading-tight">{item.service.title}</div>
-          <p className="mt-1 text-[13px] leading-5 text-slate-600">{item.service.body}</p>
-          <div className="mt-2 text-[12px] font-bold text-red-600">Open →</div>
         </div>
       </div>
     </Link>
