@@ -618,7 +618,19 @@ export default function ReelsPage() {
     }
 
     setUploadStage("Starting backup upload…");
-    const session = await socialService.startReelFallbackUpload(uploadFile);
+    let session: Awaited<
+      ReturnType<typeof socialService.startReelFallbackUpload>
+    >;
+    try {
+      session = await socialService.startReelFallbackUpload(uploadFile);
+    } catch (error: any) {
+      const status = Number(error?.response?.status || 0);
+      throw new Error(
+        status
+          ? `Backup upload start failed (HTTP ${status}).`
+          : "Backup upload start server सम्म पुग्न सकेन।",
+      );
+    }
 
     for (let index = 0; index < session.totalChunks; index += 1) {
       const start = index * session.chunkSize;
@@ -635,19 +647,37 @@ export default function ReelsPage() {
       );
       setUploadStage(`Backup upload ${progress}%…`);
 
-      await socialService.uploadReelFallbackChunk(
-        session.uploadId,
-        index,
-        chunk,
-        uploadFile.name,
-      );
+      try {
+        await socialService.uploadReelFallbackChunk(
+          session.uploadId,
+          index,
+          chunk,
+          uploadFile.name,
+        );
+      } catch (error: any) {
+        const status = Number(error?.response?.status || 0);
+        throw new Error(
+          status
+            ? `Backup video part ${index + 1}/${session.totalChunks} failed (HTTP ${status}).`
+            : `Backup video part ${index + 1}/${session.totalChunks} server सम्म पुग्न सकेन।`,
+        );
+      }
     }
 
     setUploadStage("Finishing reel…");
-    await socialService.completeReelFallbackUpload(session.uploadId, {
-      content: uploadCaption.trim(),
-      visibility: uploadVisibility,
-    });
+    try {
+      await socialService.completeReelFallbackUpload(session.uploadId, {
+        content: uploadCaption.trim(),
+        visibility: uploadVisibility,
+      });
+    } catch (error: any) {
+      const status = Number(error?.response?.status || 0);
+      throw new Error(
+        status
+          ? `Reel finalize failed (HTTP ${status}).`
+          : "Reel finalize server सम्म पुग्न सकेन।",
+      );
+    }
   };
 
   const publishReel = async () => {
