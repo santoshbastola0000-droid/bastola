@@ -120,7 +120,19 @@ export const useRegisterMutation = () => {
   return useMutation({
     mutationKey: [AUTH_QUERY_KEYS.REGISTER],
     mutationFn: async (data: TRegister & { referralCode?: string }) => {
-      const response = await api.post("/user", data);
+      // confirmPassword is only for client-side validation. The backend DTO
+      // intentionally does not accept it (forbidNonWhitelisted is enabled),
+      // so send only fields supported by CreateUserDTO.
+      const payload = {
+        name: data.name,
+        email: data.email,
+        phoneNumber: data.phoneNumber,
+        password: data.password,
+        accountPurpose: data.accountPurpose,
+        referralCode: data.referralCode,
+      };
+
+      const response = await api.post("/user", payload);
       return {
         ...response.data,
         email: data.email,
