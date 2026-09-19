@@ -35,7 +35,7 @@ const backendUrl = String(
   process.env.NEXT_PUBLIC_BACKEND_URL || "https://api.roomkhoj.com",
 ).replace(/\/$/, "");
 
-const MAX_REEL_UPLOAD_BYTES = 200 * 1024 * 1024;\nconst MAX_FALLBACK_REEL_UPLOAD_BYTES = 80 * 1024 * 1024;
+const MAX_REEL_UPLOAD_BYTES = 200 * 1024 * 1024;\nconst MAX_FALLBACK_REEL_UPLOAD_BYTES = 200 * 1024 * 1024;
 
 function media(value?: string | null) {
   const raw = String(value || "").trim();
@@ -645,7 +645,7 @@ export default function ReelsPage() {
               ? ` (${uploadResponse.status})`
               : "";
             throw new Error(
-              `Fast video upload failed${statusText}. 80 MB भन्दा सानो video try गर्नुहोस् वा फेरि प्रयास गर्नुहोस्।`,
+              `Fast video upload failed${statusText}. 200 MB भन्दा सानो video try गर्नुहोस् वा फेरि प्रयास गर्नुहोस्।`,
             );
           }
 
@@ -685,7 +685,7 @@ export default function ReelsPage() {
       } else {
         if (uploadFile.size > MAX_FALLBACK_REEL_UPLOAD_BYTES) {
           throw new Error(
-            "Fast video upload अहिले उपलब्ध छैन। 80 MB भन्दा सानो video try गर्नुहोस् वा फेरि प्रयास गर्नुहोस्।",
+            "Fast video upload अहिले उपलब्ध छैन। 200 MB भन्दा सानो video try गर्नुहोस् वा फेरि प्रयास गर्नुहोस्।",
           );
         }
         setUploadStage("Uploading reel…");
@@ -712,7 +712,7 @@ export default function ReelsPage() {
       const localMessage = String(error?.message || "").trim();
 
       if (status === 413) {
-        setUploadError("Video धेरै ठूलो छ। 80 MB भन्दा सानो reel upload गर्नुहोस्।");
+        setUploadError("Video धेरै ठूलो छ। 200 MB भन्दा सानो reel upload गर्नुहोस्।");
       } else if (status === 401) {
         setUploadError("Session expire भएको छ। फेरि login गरेर upload गर्नुहोस्।");
       } else if (message) {
