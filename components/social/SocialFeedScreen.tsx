@@ -7,6 +7,7 @@ import {
   BriefcaseBusiness,
   Camera,
   Check,
+  Eye,
   Image as ImageIcon,
   Loader2,
   MapPin,
@@ -14,6 +15,7 @@ import {
   MessageCircle,
   MoreHorizontal,
   Plus,
+  Send,
   Share2,
   UserPlus,
   X,
@@ -34,6 +36,7 @@ import {
   SocialGroup,
   SocialPost,
   SocialStory,
+  StoryReactionType,
   SocialUser,
   socialService,
 } from "@/http/services/social.service";
@@ -1255,6 +1258,31 @@ function StoryViewer({
 }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [reaction, setReaction] = useState<StoryReactionType | null>(
+    story.reactionByMe || null,
+  );
+  const [reactionCount, setReactionCount] = useState(
+    Number(story.reactionCount || 0),
+  );
+  const [replyText, setReplyText] = useState("");
+  const [replying, setReplying] = useState(false);
+  const [insightsOpen, setInsightsOpen] = useState(false);
+  const [insightsLoading, setInsightsLoading] = useState(false);
+  const [insights, setInsights] = useState<Awaited<
+    ReturnType<typeof socialService.storyViewers>
+  > | null>(null);
+
+  const reactions: Array<{
+    type: StoryReactionType;
+    emoji: string;
+    label: string;
+  }> = [
+    { type: "LOVE", emoji: "❤️", label: "Love" },
+    { type: "HAHA", emoji: "😂", label: "Haha" },
+    { type: "WOW", emoji: "😮", label: "Wow" },
+    { type: "SAD", emoji: "😢", label: "Sad" },
+    { type: "ANGRY", emoji: "😡", label: "Angry" },
+  ];
 
   useEffect(() => {
     const video = videoRef.current;
@@ -1276,12 +1304,74 @@ function StoryViewer({
     };
   }, [story.id]);
 
+  const loadInsights = async () => {
+    if (!own || insightsLoading) return;
+    setInsightsOpen(true);
+    setInsightsLoading(true);
+    try {
+      setInsights(await socialService.storyViewers(story.id));
+    } catch (error: any) {
+      toast.error(
+        error?.response?.data?.message || "Story viewers load गर्न सकिएन।",
+      );
+    } finally {
+      setInsightsLoading(false);
+    }
+  };
+
+  const toggleReaction = async (next: StoryReactionType) => {
+    if (own) return;
+
+    const previous = reaction;
+    const previousCount = reactionCount;
+
+    try {
+      if (previous === next) {
+        setReaction(null);
+        setReactionCount(Math.max(0, previousCount - 1));
+        const result = await socialService.removeStoryReaction(story.id);
+        setReactionCount(Number(result.reactionCount || 0));
+        return;
+      }
+
+      setReaction(next);
+      if (!previous) setReactionCount(previousCount + 1);
+      const result = await socialService.reactStory(story.id, next);
+      setReaction(result.reaction);
+      setReactionCount(Number(result.reactionCount || 0));
+    } catch (error: any) {
+      setReaction(previous);
+      setReactionCount(previousCount);
+      toast.error(
+        error?.response?.data?.message || "Story reaction पठाउन सकिएन।",
+      );
+    }
+  };
+
+  const sendReply = async () => {
+    const value = replyText.trim();
+    if (!value || replying || own) return;
+
+    setReplying(true);
+    try {
+      await socialService.replyStory(story.id, value);
+      setReplyText("");
+      toast.success("Story reply पठाइयो");
+    } catch (error: any) {
+      toast.error(
+        error?.response?.data?.message || "Story reply पठाउन सकिएन।",
+      );
+    } finally {
+      setReplying(false);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-[240] flex items-center justify-center bg-black/95 p-0 sm:p-3">
       <button
         type="button"
         onClick={onClose}
-        className="absolute right-4 top-[calc(1rem+env(safe-area-inset-top))] z-20 rounded-full bg-black/45 p-2 text-white backdrop-blur"
+        className="absolute right-4 top-[calc(1rem+env(safe-area-inset-top))] z-30 rounded-full bg-black/45 p-2 text-white backdrop-blur"
         aria-label="Close story"
       >
         <X className="h-6 w-6" />
@@ -1291,7 +1381,7 @@ function StoryViewer({
         <button
           type="button"
           onClick={() => void onDelete()}
-          className="absolute left-4 top-[calc(1rem+env(safe-area-inset-top))] z-20 rounded-full bg-red-600 px-4 py-2 text-[13px] font-bold text-white"
+          className="absolute left-4 top-[calc(1rem+env(safe-area-inset-top))] z-30 rounded-full bg-red-600 px-4 py-2 text-[13px] font-bold text-white"
         >
           Delete
         </button>
@@ -1319,6 +1409,12 @@ function StoryViewer({
           />
         )}
 
+        {story.caption && (
+          <div className="absolute left-4 right-4 top-[calc(4.5rem+env(safe-area-inset-top))] rounded-xl bg-black/45 px-3 py-2 text-sm font-semibold text-white backdrop-blur">
+            {story.caption}
+          </div>
+        )}
+
         {story.music?.audioUrl && (
           <>
             <audio
@@ -1328,7 +1424,7 @@ function StoryViewer({
               loop
               preload="auto"
             />
-            <div className="absolute bottom-[calc(1.25rem+env(safe-area-inset-bottom))] left-4 right-4 flex items-center gap-2 rounded-xl bg-black/60 px-3 py-2 text-white backdrop-blur">
+            <div className="absolute bottom-[calc(7.8rem+env(safe-area-inset-bottom))] left-4 right-4 flex items-center gap-2 rounded-xl bg-black/60 px-3 py-2 text-white backdrop-blur">
               <span className="text-base">♪</span>
               <div className="min-w-0">
                 <div className="truncate text-xs font-bold">
@@ -1341,7 +1437,181 @@ function StoryViewer({
             </div>
           </>
         )}
+
+        {own ? (
+          <button
+            type="button"
+            onClick={() => void loadInsights()}
+            className="absolute bottom-[calc(1rem+env(safe-area-inset-bottom))] left-4 right-4 z-20 flex items-center justify-center gap-2 rounded-full bg-black/65 px-4 py-3 text-sm font-bold text-white backdrop-blur"
+          >
+            <Eye className="h-5 w-5" />
+            Seen by {Number(story.viewCount || insights?.viewCount || 0)}
+            {reactionCount > 0 ? ` · ${reactionCount} reactions` : ""}
+          </button>
+        ) : (
+          <div className="absolute bottom-[calc(0.7rem+env(safe-area-inset-bottom))] left-3 right-3 z-20 space-y-2">
+            <div className="flex items-center justify-center gap-2">
+              {reactions.map((item) => (
+                <button
+                  key={item.type}
+                  type="button"
+                  onClick={() => void toggleReaction(item.type)}
+                  aria-label={item.label}
+                  className={`flex h-11 w-11 items-center justify-center rounded-full text-2xl transition active:scale-90 ${
+                    reaction === item.type
+                      ? "bg-white ring-2 ring-red-500"
+                      : "bg-black/55 backdrop-blur"
+                  }`}
+                >
+                  {item.emoji}
+                </button>
+              ))}
+            </div>
+
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
+                void sendReply();
+              }}
+              className="flex items-center gap-2 rounded-full bg-black/65 p-1.5 pl-4 backdrop-blur"
+            >
+              <input
+                value={replyText}
+                onChange={(event) => setReplyText(event.target.value)}
+                maxLength={1000}
+                placeholder="Reply to story…"
+                className="min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-white/60"
+              />
+              <button
+                type="submit"
+                disabled={!replyText.trim() || replying}
+                className="flex h-10 w-10 items-center justify-center rounded-full bg-red-600 text-white disabled:opacity-40"
+                aria-label="Send story reply"
+              >
+                {replying ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4" />
+                )}
+              </button>
+            </form>
+          </div>
+        )}
       </div>
+
+      {own && insightsOpen && (
+        <div className="absolute inset-0 z-40 flex items-end bg-black/45">
+          <button
+            type="button"
+            className="absolute inset-0"
+            onClick={() => setInsightsOpen(false)}
+            aria-label="Close story insights"
+          />
+          <div className="relative z-10 max-h-[72vh] w-full overflow-y-auto rounded-t-3xl bg-white p-4 text-slate-950 shadow-2xl sm:mx-auto sm:max-w-[560px]">
+            <div className="mx-auto mb-3 h-1.5 w-12 rounded-full bg-slate-300" />
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-black">Story activity</h3>
+                <p className="text-xs text-slate-500">
+                  {insights?.viewCount ?? story.viewCount ?? 0} views ·{" "}
+                  {insights?.reactionCount ?? reactionCount} reactions ·{" "}
+                  {insights?.replyCount ?? 0} replies
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setInsightsOpen(false)}
+                className="rounded-full bg-slate-100 p-2"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {insightsLoading ? (
+              <div className="flex justify-center py-12">
+                <Loader2 className="h-6 w-6 animate-spin" />
+              </div>
+            ) : (
+              <>
+                {Boolean(insights?.replies?.length) && (
+                  <div className="mt-5">
+                    <div className="mb-2 text-xs font-black uppercase tracking-wide text-slate-500">
+                      Replies
+                    </div>
+                    <div className="space-y-2">
+                      {insights?.replies.map((reply) => (
+                        <div
+                          key={reply.id}
+                          className="flex gap-3 rounded-2xl bg-slate-50 p-3"
+                        >
+                          <Avatar user={reply.user} />
+                          <div className="min-w-0 flex-1">
+                            <div className="text-sm font-bold">
+                              {reply.user.name}
+                            </div>
+                            <div className="mt-0.5 whitespace-pre-wrap text-sm text-slate-700">
+                              {reply.content}
+                            </div>
+                            <div className="mt-1 text-[11px] text-slate-400">
+                              {ago(reply.createdAt)}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="mt-5">
+                  <div className="mb-2 text-xs font-black uppercase tracking-wide text-slate-500">
+                    Viewers
+                  </div>
+                  {insights?.viewers?.length ? (
+                    <div className="space-y-1">
+                      {insights.viewers.map((viewer) => {
+                        const emoji =
+                          viewer.reaction === "LOVE"
+                            ? "❤️"
+                            : viewer.reaction === "HAHA"
+                              ? "😂"
+                              : viewer.reaction === "WOW"
+                                ? "😮"
+                                : viewer.reaction === "SAD"
+                                  ? "😢"
+                                  : viewer.reaction === "ANGRY"
+                                    ? "😡"
+                                    : "";
+                        return (
+                          <Link
+                            key={viewer.user.id}
+                            href={`/profile/${viewer.user.id}`}
+                            className="flex items-center gap-3 rounded-xl px-2 py-2 hover:bg-slate-50"
+                          >
+                            <Avatar user={viewer.user} />
+                            <div className="min-w-0 flex-1">
+                              <div className="truncate text-sm font-bold">
+                                {viewer.user.name}
+                              </div>
+                              <div className="text-[11px] text-slate-500">
+                                Viewed {ago(viewer.viewedAt)}
+                              </div>
+                            </div>
+                            {emoji && <span className="text-xl">{emoji}</span>}
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="py-8 text-center text-sm text-slate-500">
+                      अहिलेसम्म कसैले story हेरेको छैन।
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
