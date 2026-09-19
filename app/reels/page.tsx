@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import {
+  forwardRef,
   useCallback,
   useEffect,
   useMemo,
@@ -88,6 +89,144 @@ function mergeReels(current: Reel[], incoming: Reel[]) {
   ];
 }
 
+const HLS_JS_URL =
+  "https://cdn.jsdelivr.net/npm/hls.js@1.7.3/dist/hls.min.js";
+let hlsLoader: Promise<any> | null = null;
+
+function isHlsUrl(value: string) {
+  return /\.m3u8(?:$|\?)/i.test(String(value || ""));
+}
+
+function streamPoster(value: string) {
+  if (!isHlsUrl(value)) return undefined;
+  return value.replace(
+    /\/manifest\/video\.m3u8(?:\?.*)?$/i,
+    "/thumbnails/thumbnail.jpg?time=1s&height=720",
+  );
+}
+
+function loadHlsJs() {
+  if (typeof window === "undefined") return Promise.resolve(null);
+  const existing = (window as any).Hls;
+  if (existing) return Promise.resolve(existing);
+  if (hlsLoader) return hlsLoader;
+
+  hlsLoader = new Promise((resolve, reject) => {
+    const existingScript = document.querySelector<HTMLScriptElement>(
+      `script[src="${HLS_JS_URL}"]`,
+    );
+    if (existingScript) {
+      existingScript.addEventListener("load", () =>
+        resolve((window as any).Hls || null),
+      );
+      existingScript.addEventListener("error", reject);
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.src = HLS_JS_URL;
+    script.async = true;
+    script.crossOrigin = "anonymous";
+    script.onload = () => resolve((window as any).Hls || null);
+    script.onerror = reject;
+    document.head.appendChild(script);
+  });
+
+  return hlsLoader;
+}
+
+const AdaptiveReelVideo = forwardRef<
+  HTMLVideoElement,
+  {
+    source: string;
+    muted: boolean;
+    preload: "auto" | "metadata" | "none";
+    onClick: (event: React.MouseEvent<HTMLVideoElement>) => void;
+  }
+>(function AdaptiveReelVideo(
+  { source, muted, preload, onClick },
+  forwardedRef,
+) {
+  const innerRef = useRef<HTMLVideoElement | null>(null);
+
+  const setRef = useCallback(
+    (node: HTMLVideoElement | null) => {
+      innerRef.current = node;
+      if (typeof forwardedRef === "function") forwardedRef(node);
+      else if (forwardedRef) forwardedRef.current = node;
+    },
+    [forwardedRef],
+  );
+
+  useEffect(() => {
+    const video = innerRef.current;
+    if (!video || !source) return;
+
+    let destroyed = false;
+    let hls: any = null;
+
+    if (!isHlsUrl(source)) {
+      video.src = source;
+      return;
+    }
+
+    if (video.canPlayType("application/vnd.apple.mpegurl")) {
+      video.src = source;
+      return;
+    }
+
+    void loadHlsJs()
+      .then((Hls) => {
+        if (destroyed || !Hls || !Hls.isSupported?.()) return;
+
+        hls = new Hls({
+          startLevel: -1,
+          capLevelToPlayerSize: true,
+          maxBufferLength: 8,
+          maxMaxBufferLength: 16,
+          backBufferLength: 3,
+          abrEwmaDefaultEstimate: 1_500_000,
+          enableWorker: true,
+        });
+        hls.attachMedia(video);
+        hls.on(Hls.Events.MEDIA_ATTACHED, () => {
+          if (!destroyed) hls.loadSource(source);
+        });
+        hls.on(Hls.Events.ERROR, (_event: unknown, data: any) => {
+          if (!data?.fatal || destroyed) return;
+          if (data.type === Hls.ErrorTypes.NETWORK_ERROR) hls.startLoad();
+          else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
+            hls.recoverMediaError();
+          } else {
+            hls.destroy();
+          }
+        });
+      })
+      .catch(() => undefined);
+
+    return () => {
+      destroyed = true;
+      hls?.destroy?.();
+    };
+  }, [source]);
+
+  return (
+    <video
+      ref={setRef}
+      playsInline
+      loop
+      muted={muted}
+      preload={preload}
+      poster={streamPoster(source)}
+      controls={false}
+      disablePictureInPicture
+      onContextMenu={(event) => event.preventDefault()}
+      onClick={onClick}
+      className="h-full w-full bg-black object-contain"
+    />
+  );
+});
+
 function timeAgo(value: string) {
   const time = new Date(value).getTime();
   const seconds = Math.max(1, Math.floor((Date.now() - time) / 1000));
@@ -137,6 +276,7 @@ export default function ReelsPage() {
     "PUBLIC",
   );
   const [uploading, setUploading] = useState(false);
+  const [uploadStage, setUploadStage] = useState("");
   const [uploadError, setUploadError] = useState("");
 
   const [commentsPostId, setCommentsPostId] = useState<string | null>(null);
@@ -450,16 +590,65 @@ export default function ReelsPage() {
     if (!uploadFile || uploading) return;
 
     setUploading(true);
+    setUploadStage("Preparing fast video upload…");
     setUploadError("");
     try {
-      await socialService.createPost({
-        content: uploadCaption.trim(),
-        visibility: uploadVisibility,
-        files: [uploadFile],
-      });
+      const stream = await socialService
+        .createStreamUpload({
+          name: uploadFile.name,
+          maxDurationSeconds: 600,
+        })
+        .catch(() => ({ configured: false, uid: null, uploadURL: null }));
+
+      if (stream.configured && stream.uid && stream.uploadURL) {
+        setUploadStage("Uploading video to CDN…");
+        const form = new FormData();
+        form.append("file", uploadFile);
+
+        const uploadResponse = await fetch(stream.uploadURL, {
+          method: "POST",
+          body: form,
+        });
+
+        if (!uploadResponse.ok) {
+          throw new Error(`CDN upload failed (${uploadResponse.status})`);
+        }
+
+        setUploadStage("Optimizing video for fast playback…");
+        let finalized:
+          | Awaited<ReturnType<typeof socialService.finalizeStreamPost>>
+          | undefined;
+
+        for (let attempt = 0; attempt < 45; attempt += 1) {
+          finalized = await socialService.finalizeStreamPost({
+            uid: stream.uid,
+            content: uploadCaption.trim(),
+            visibility: uploadVisibility,
+          });
+          if (finalized.ready) break;
+          await new Promise((resolve) =>
+            window.setTimeout(resolve, attempt < 8 ? 1000 : 2000),
+          );
+        }
+
+        if (!finalized?.ready) {
+          throw new Error(
+            "Video upload भयो तर processing अझै सकिएको छैन। केही समयपछि फेरि try गर्नुहोस्।",
+          );
+        }
+      } else {
+        setUploadStage("Uploading reel…");
+        await socialService.createPost({
+          content: uploadCaption.trim(),
+          visibility: uploadVisibility,
+          files: [uploadFile],
+        });
+      }
+
       setUploadFile(null);
       setUploadCaption("");
       setUploadVisibility("PUBLIC");
+      setUploadStage("");
       setUploadError("");
       if (fileInputRef.current) fileInputRef.current.value = "";
       setRefreshKey((value) => value + 1);
@@ -485,6 +674,7 @@ export default function ReelsPage() {
       }
     } finally {
       setUploading(false);
+      setUploadStage("");
     }
   };
 
@@ -577,22 +767,17 @@ export default function ReelsPage() {
                   data-reel-id={reel.id}
                   className="relative h-[100dvh] snap-start snap-always overflow-hidden bg-black"
                 >
-                  <video
+                  <AdaptiveReelVideo
                     ref={(node) => {
                       videoRefs.current[reel.id] = node;
                     }}
-                    src={media(reel.url)}
-                    playsInline
-                    loop
+                    source={media(reel.url)}
                     muted={!soundOn}
                     preload={
                       reelIndex >= activeIndex - 1 && reelIndex <= activeIndex + 2
                         ? "auto"
                         : "none"
                     }
-                    controls={false}
-                    disablePictureInPicture
-                    onContextMenu={(event) => event.preventDefault()}
                     onClick={(event) => {
                       const video = event.currentTarget;
                       if (video.paused) {
@@ -601,7 +786,6 @@ export default function ReelsPage() {
                         video.pause();
                       }
                     }}
-                    className="h-full w-full bg-black object-contain"
                   />
 
                   <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[48%] bg-gradient-to-t from-black/85 via-black/25 to-transparent" />
@@ -887,6 +1071,12 @@ export default function ReelsPage() {
                 )}
               </button>
             </div>
+
+            {uploadStage && (
+              <p className="text-center text-xs font-semibold text-white/70">
+                {uploadStage}
+              </p>
+            )}
 
             {uploadError && (
               <p className="text-center text-xs font-semibold text-red-400">
