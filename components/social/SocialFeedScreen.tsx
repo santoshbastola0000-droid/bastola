@@ -177,7 +177,6 @@ export function SocialFeedScreen() {
 
   const lastScrollY = useRef(0);
   const postInput = useRef<HTMLInputElement>(null);
-  const profileInput = useRef<HTMLInputElement>(null);
   const sentinel = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -419,6 +418,27 @@ export function SocialFeedScreen() {
             />
           )}
 
+        <Composer
+          userId={String(user.id)}
+          userName={user.name}
+          myPhoto={myPhoto}
+          text={text}
+          setText={setText}
+          setMentionUserIds={setMentionUserIds}
+          files={files}
+          setFiles={setFiles}
+          previews={previews}
+          visibility={visibility}
+          setVisibility={setVisibility}
+          groupId={groupId}
+          setGroupId={setGroupId}
+          groups={groups}
+          posting={posting}
+          onPublish={publish}
+          postInput={postInput}
+        />
+
+
         <StoryCarousel
           stories={stories}
           userName={user.name}
@@ -453,40 +473,6 @@ export function SocialFeedScreen() {
                   ? "Story added with music for 24 hours"
                   : "Story added for 24 hours",
               );
-            }
-          }}
-        />
-
-        <Composer
-          userId={String(user.id)}
-          userName={user.name}
-          myPhoto={myPhoto}
-          text={text}
-          setText={setText}
-          setMentionUserIds={setMentionUserIds}
-          files={files}
-          setFiles={setFiles}
-          previews={previews}
-          visibility={visibility}
-          setVisibility={setVisibility}
-          groupId={groupId}
-          setGroupId={setGroupId}
-          groups={groups}
-          posting={posting}
-          onPublish={publish}
-          postInput={postInput}
-          profileInput={profileInput}
-          onProfilePhoto={async (file) => {
-            try {
-              const result = await profileService.uploadProfilePhoto(file);
-              const nextPhoto = result?.profilePhotoUrl || result?.user?.profilePhotoUrl || result?.data?.profilePhotoUrl || null;
-              if (nextPhoto) setMyPhoto(nextPhoto);
-              else await loadSecondary();
-              toast.success("Profile photo updated");
-            } catch {
-              const result = await socialService.uploadProfilePhoto(file);
-              setMyPhoto(result.profilePhotoUrl);
-              toast.success("Profile photo updated");
             }
           }}
         />
@@ -757,8 +743,6 @@ function Composer({
   posting,
   onPublish,
   postInput,
-  profileInput,
-  onProfilePhoto,
 }: {
   userId: string;
   userName: string;
@@ -777,33 +761,19 @@ function Composer({
   posting: boolean;
   onPublish: () => void | Promise<void>;
   postInput: React.RefObject<HTMLInputElement | null>;
-  profileInput: React.RefObject<HTMLInputElement | null>;
-  onProfilePhoto: (file: File) => void | Promise<void>;
 }) {
   return (
     <section id="feed-composer" className="scroll-mt-20 border-y bg-white p-3 shadow-sm sm:rounded-xl sm:border">
       <div className="flex items-center gap-2.5">
-        <button className="relative" onClick={() => profileInput.current?.click()}>
-          <Avatar user={{ id: "me", name: userName }} src={myPhoto} />
-          <Camera className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full bg-white p-0.5" />
-        </button>
-        <input
-          ref={profileInput}
-          type="file"
-          accept="image/*"
-          className="hidden"
-          onChange={async (event) => {
-            const file = event.target.files?.[0];
-            if (file) await onProfilePhoto(file);
-            event.target.value = "";
-          }}
-        />
+        <Link href={`/profile/${userId}`} className="relative shrink-0" aria-label="Open my profile">
+          <Avatar user={{ id: userId, name: userName }} src={myPhoto} />
+        </Link>
         <MentionInput
           userId={userId}
           value={text}
           onChange={setText}
           onMentionIdsChange={setMentionUserIds}
-          placeholder="What's on your mind?  @ mention"
+          placeholder="What's on your mind?"
           className="min-w-0 w-full rounded-full bg-slate-100 px-4 py-2.5 text-[16px] outline-none placeholder:text-slate-500"
           maxLength={3000}
         />
