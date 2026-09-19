@@ -310,11 +310,50 @@ export const socialService = {
 
 
   async createLiveInput(name = "RoomKhoj Live") {
-    const response = await privateApi.post("/social/stream/live-input", { name });
-    return response.data as {
+    const token = useTokenStore.getState().token;
+    const response = await fetch(
+      `${DIRECT_UPLOAD_BASE_URL}/social/stream/live-input`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        credentials: "include",
+        cache: "no-store",
+        body: JSON.stringify({ name }),
+      },
+    );
+
+    const text = await response.text().catch(() => "");
+    let payload: any = null;
+    try {
+      payload = text ? JSON.parse(text) : null;
+    } catch {
+      payload = null;
+    }
+
+    if (!response.ok) {
+      const message = String(
+        payload?.message ||
+          payload?.error ||
+          text ||
+          `Live input request failed (HTTP ${response.status})`,
+      );
+      const error: any = new Error(message);
+      error.response = {
+        status: response.status,
+        data: payload || { message },
+      };
+      throw error;
+    }
+
+    return payload as {
       uid: string;
       publishUrl: string;
       playbackUrl: string;
+      hlsUrl?: string;
+      dashUrl?: string;
       rtmpsUrl: string;
       rtmpsKey: string;
     };
