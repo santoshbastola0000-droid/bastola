@@ -13,7 +13,7 @@ type SocialSeoIndex = {
     id: string;
     updatedAt: string;
   }>;
-  rooms: Array<{
+  rooms?: Array<{
     id: string;
     updatedAt: string;
   }>;
@@ -138,13 +138,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "weekly" as const,
       priority: 0.7,
     })),
-    ...socialSeo.rooms.map((room) => ({
+    ...(socialSeo.rooms || []).map((room) => ({
       url: `${baseUrl}/property/${room.id}`,
       lastModified: new Date(room.updatedAt),
       changeFrequency: "daily" as const,
       priority: 0.85,
     })),
-    ...socialSeo.hashtags.map(({ tag }) => ({
+    ...(socialSeo.hashtags || []).map(({ tag }) => ({
       url: `${baseUrl}/hashtag/${encodeURIComponent(tag)}`,
       lastModified: now,
       changeFrequency: "daily" as const,
