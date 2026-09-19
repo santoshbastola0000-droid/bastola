@@ -367,6 +367,66 @@ export const socialService = {
     };
   },
 
+  async startReelFallbackUpload(file: File) {
+    const response = await privateApi.post("/social/reels/fallback/start", {
+      fileName: file.name,
+      mimeType: file.type || "application/octet-stream",
+      size: file.size,
+    });
+    return response.data as {
+      uploadId: string;
+      chunkSize: number;
+      totalChunks: number;
+      maxSize: number;
+    };
+  },
+
+  async uploadReelFallbackChunk(
+    uploadId: string,
+    index: number,
+    chunk: Blob,
+    originalName: string,
+  ) {
+    const form = new FormData();
+    form.append("chunk", chunk, `${originalName}.part-${index}`);
+
+    const send = () =>
+      privateApi.post(
+        `/social/reels/fallback/${encodeURIComponent(uploadId)}/chunks/${index}`,
+        form,
+        directMultipartConfig,
+      );
+
+    let response;
+    try {
+      response = await send();
+    } catch {
+      response = await send();
+    }
+    return response.data as {
+      ok: boolean;
+      index: number;
+      receivedBytes: number;
+      totalChunks: number;
+    };
+  },
+
+  async completeReelFallbackUpload(
+    uploadId: string,
+    input: {
+      content: string;
+      visibility: "PUBLIC" | "FRIENDS" | "GROUP";
+      groupId?: string;
+      mentionUserIds?: string[];
+    },
+  ) {
+    const response = await privateApi.post(
+      `/social/reels/fallback/${encodeURIComponent(uploadId)}/complete`,
+      input,
+    );
+    return response.data as SocialPost;
+  },
+
   async uploadProfilePhoto(file: File) {
     const form = new FormData();
     form.append("media", file);
