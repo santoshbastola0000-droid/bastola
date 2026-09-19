@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Ban, FileCheck2, Loader2, ShieldAlert } from "lucide-react";
+import { Ban, FileCheck2, Loader2, LogOut, ShieldAlert } from "lucide-react";
 import { privateApi } from "@/http/api/privateApi";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+import { useLogout } from "@/hooks/useLogout";
 
 type BanStatus = {
   isBanned: boolean;
@@ -22,6 +23,8 @@ export default function AccountBannedPage() {
   const [message, setMessage] = useState("");
   const [document, setDocument] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
+  const { logout } = useLogout();
 
   const load = async () => {
     try {
@@ -33,6 +36,17 @@ export default function AccountBannedPage() {
   };
 
   useEffect(() => { void load(); }, []);
+
+  const handleLogout = async () => {
+    if (loggingOut) return;
+    setLoggingOut(true);
+    try {
+      await privateApi.post("/user/logout").catch(() => undefined);
+      await logout();
+    } finally {
+      setLoggingOut(false);
+    }
+  };
 
   const submit = async () => {
     if (!document) return toast.error("Government identity document छान्नुहोस्।");
@@ -86,6 +100,23 @@ export default function AccountBannedPage() {
               <p className="text-xs text-muted-foreground">JPG, PNG, WEBP वा PDF · maximum 5 MB</p>
             </div>
           )}
+
+          <div className="border-t pt-5">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => void handleLogout()}
+              disabled={loggingOut}
+              className="w-full rounded-xl border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+            >
+              {loggingOut ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <LogOut className="mr-2 h-4 w-4" />
+              )}
+              Logout
+            </Button>
+          </div>
         </div>
       </div>
     </main>
