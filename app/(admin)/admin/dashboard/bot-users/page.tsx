@@ -16,6 +16,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 type BotIdentity = {
   id: string;
   displayName: string;
+  bio?: string | null;
   email: string;
   enabled: boolean;
   identityType: "SYNTHETIC_TEST";
@@ -593,18 +594,18 @@ export default function BotUsersPage() {
         <CardContent>
           <div className="overflow-x-auto rounded-lg border">
             <Table>
-              <TableHeader><TableRow><TableHead>Profile</TableHead><TableHead>Name</TableHead><TableHead>Email</TableHead><TableHead>Status</TableHead><TableHead>Created</TableHead><TableHead className="text-right">Action</TableHead></TableRow></TableHeader>
+              <TableHeader><TableRow><TableHead>Profile</TableHead><TableHead>Name</TableHead><TableHead>Bio</TableHead><TableHead>Email</TableHead><TableHead>Status</TableHead><TableHead>Created</TableHead><TableHead className="text-right">Action</TableHead></TableRow></TableHeader>
               <TableBody>
                 {botsQuery.isLoading ? (
-                  <TableRow><TableCell colSpan={6} className="py-10 text-center">Loading bot users...</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={7} className="py-10 text-center">Loading bot users...</TableCell></TableRow>
                 ) : botsQuery.isError ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="py-10 text-center text-destructive">
+                    <TableCell colSpan={7} className="py-10 text-center text-destructive">
                       Could not load bot users. Tap Refresh and try again.
                     </TableCell>
                   </TableRow>
                 ) : bots.length === 0 ? (
-                  <TableRow><TableCell colSpan={6} className="py-10 text-center text-muted-foreground">No bot users found.</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={7} className="py-10 text-center text-muted-foreground">No bot users found.</TableCell></TableRow>
                 ) : bots.map((bot) => (
                   <TableRow key={bot.id}>
                     <TableCell>
@@ -624,6 +625,9 @@ export default function BotUsersPage() {
                       </Avatar>
                     </TableCell>
                     <TableCell className="font-medium">{bot.displayName}</TableCell>
+                    <TableCell className="max-w-[260px] truncate text-sm text-muted-foreground">
+                      {bot.bio || "RoomKhoj community ma active."}
+                    </TableCell>
                     <TableCell className="max-w-[280px] truncate">{bot.email}</TableCell>
                     <TableCell><Badge variant={bot.enabled ? "default" : "secondary"}>{bot.enabled ? "Enabled" : "Disabled"}</Badge></TableCell>
                     <TableCell>{new Date(bot.createdAt).toLocaleString()}</TableCell>
