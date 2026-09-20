@@ -63,6 +63,19 @@ type BotVideoAsset = {
 };
 
 
+type BotFriendActivityItem = {
+  id: string;
+  status: "PENDING" | "ACCEPTED";
+  sentAt: string;
+  acceptedAt?: string | null;
+  botId: string;
+  botName: string;
+  userId: string;
+  userName: string;
+  userEmail?: string | null;
+};
+
+
 function botAvatarDataUrl(bot: Pick<BotIdentity, "id" | "displayName">) {
   const name = String(bot.displayName || "Bot").trim();
   const initials = name
@@ -297,6 +310,18 @@ export default function BotUsersPage() {
     },
   });
 
+
+  const friendActivityQuery = useQuery({
+    queryKey: ["admin-bot-friend-activity"],
+    queryFn: async () => {
+      const res = await privateApi.get("/social/admin/bot-friend-automation/activity", {
+        params: { limit: 50 },
+      });
+      return res.data?.data ?? res.data;
+    },
+    refetchInterval: 5000,
+  });
+
   useEffect(() => {
     const data = friendAutomationQuery.data;
     if (!data) return;
@@ -335,6 +360,7 @@ export default function BotUsersPage() {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["admin-bot-friend-automation"] }),
         queryClient.invalidateQueries({ queryKey: ["admin-bot-simulation-stats"] }),
+        queryClient.invalidateQueries({ queryKey: ["admin-bot-friend-activity"] }),
       ]);
       toast.success(String(Number(result?.sent ?? 0)) + " bot friend request(s) sent");
     },
@@ -390,6 +416,7 @@ export default function BotUsersPage() {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ["admin-synthetic-bots"] }),
       queryClient.invalidateQueries({ queryKey: ["admin-synthetic-bots-stats"] }),
+      queryClient.invalidateQueries({ queryKey: ["admin-bot-friend-activity"] }),
     ]);
   };
 
@@ -792,6 +819,74 @@ export default function BotUsersPage() {
                 Next run: {new Date(friendAutomationQuery.data.nextRunAt).toLocaleString()}
               </Badge>
             )}
+          </div>
+
+          <div className="space-y-3 rounded-xl border p-3">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="font-medium">Live Friend Request Activity</p>
+                <p className="text-xs text-muted-foreground">
+                  Auto-refresh every 5 seconds — which bot sent a request to which user.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Badge variant="secondary">
+                  24h: {Number(friendActivityQuery.data?.summary?.sent24h ?? 0).toLocaleString()}
+                </Badge>
+                <Badge variant="outline">
+                  Pending: {Number(friendActivityQuery.data?.summary?.pending ?? 0).toLocaleString()}
+                </Badge>
+                <Badge variant="outline">
+                  Accepted: {Number(friendActivityQuery.data?.summary?.accepted ?? 0).toLocaleString()}
+                </Badge>
+              </div>
+            </div>
+
+            <div className="max-h-80 overflow-auto rounded-lg border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Bot</TableHead>
+                    <TableHead>Sent to</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Time</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {friendActivityQuery.isLoading ? (
+                    <TableRow>
+                      <TableCell colSpan={4} className="py-6 text-center text-muted-foreground">
+                        Loading live activity...
+                      </TableCell>
+                    </TableRow>
+                  ) : !Array.isArray(friendActivityQuery.data?.items) || friendActivityQuery.data.items.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={4} className="py-6 text-center text-muted-foreground">
+                        No bot friend requests sent yet.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    (friendActivityQuery.data.items as BotFriendActivityItem[]).map((item) => (
+                      <TableRow key={item.id}>
+                        <TableCell className="font-medium">{item.botName}</TableCell>
+                        <TableCell>
+                          <div className="font-medium">{item.userName}</div>
+                          <div className="text-xs text-muted-foreground">{item.userEmail || item.userId}</div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={item.status === "ACCEPTED" ? "default" : "secondary"}>
+                            {item.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
+                          {new Date(item.sentAt).toLocaleString()}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
           </div>
 
           <p className="text-xs text-muted-foreground">
