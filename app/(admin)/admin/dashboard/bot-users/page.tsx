@@ -7,6 +7,7 @@ import { toast } from "sonner";
 
 import { privateApi } from "@/http/api/privateApi";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -33,6 +34,49 @@ type BotListResponse = {
   };
   synthetic: true;
 };
+
+
+function botAvatarDataUrl(bot: Pick<BotIdentity, "id" | "displayName">) {
+  const name = String(bot.displayName || "Bot").trim();
+  const initials = name
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part.slice(0, 1).toUpperCase())
+    .join("") || "B";
+
+  let hash = 0;
+  const seed = `${bot.id}:${name}`;
+  for (let index = 0; index < seed.length; index += 1) {
+    hash = (hash * 31 + seed.charCodeAt(index)) >>> 0;
+  }
+
+  const hue = hash % 360;
+  const hue2 = (hue + 48 + (hash % 72)) % 360;
+  const skin = ["#f1c27d", "#e0ac69", "#c68642", "#8d5524"][hash % 4];
+  const hair = ["#231f20", "#4b2e1f", "#6b4423", "#1f2937"][Math.floor(hash / 5) % 4];
+
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="160" height="160" viewBox="0 0 160 160">
+      <defs>
+        <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="hsl(${hue} 72% 66%)"/>
+          <stop offset="100%" stop-color="hsl(${hue2} 70% 52%)"/>
+        </linearGradient>
+      </defs>
+      <rect width="160" height="160" rx="80" fill="url(#bg)"/>
+      <circle cx="80" cy="66" r="34" fill="${skin}"/>
+      <path d="M47 62c2-25 17-39 34-39 21 0 34 15 34 41-11-9-22-14-36-14-11 0-21 4-32 12z" fill="${hair}"/>
+      <circle cx="67" cy="67" r="3" fill="#222"/>
+      <circle cx="93" cy="67" r="3" fill="#222"/>
+      <path d="M69 84c7 6 15 6 22 0" stroke="#7c3f2d" stroke-width="3" fill="none" stroke-linecap="round"/>
+      <path d="M34 146c7-32 24-48 46-48s39 16 46 48" fill="rgba(255,255,255,.88)"/>
+      <circle cx="124" cy="124" r="20" fill="rgba(17,24,39,.82)"/>
+      <text x="124" y="131" text-anchor="middle" font-family="Arial,sans-serif" font-size="17" font-weight="700" fill="#fff">${initials}</text>
+    </svg>
+  `;
+
+  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+}
 
 export default function BotUsersPage() {
   const queryClient = useQueryClient();
@@ -271,20 +315,36 @@ export default function BotUsersPage() {
         <CardContent>
           <div className="overflow-x-auto rounded-lg border">
             <Table>
-              <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Email</TableHead><TableHead>Status</TableHead><TableHead>Created</TableHead><TableHead className="text-right">Action</TableHead></TableRow></TableHeader>
+              <TableHeader><TableRow><TableHead>Profile</TableHead><TableHead>Name</TableHead><TableHead>Email</TableHead><TableHead>Status</TableHead><TableHead>Created</TableHead><TableHead className="text-right">Action</TableHead></TableRow></TableHeader>
               <TableBody>
                 {botsQuery.isLoading ? (
-                  <TableRow><TableCell colSpan={5} className="py-10 text-center">Loading bot users...</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={6} className="py-10 text-center">Loading bot users...</TableCell></TableRow>
                 ) : botsQuery.isError ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="py-10 text-center text-destructive">
+                    <TableCell colSpan={6} className="py-10 text-center text-destructive">
                       Could not load bot users. Tap Refresh and try again.
                     </TableCell>
                   </TableRow>
                 ) : bots.length === 0 ? (
-                  <TableRow><TableCell colSpan={5} className="py-10 text-center text-muted-foreground">No bot users found.</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={6} className="py-10 text-center text-muted-foreground">No bot users found.</TableCell></TableRow>
                 ) : bots.map((bot) => (
                   <TableRow key={bot.id}>
+                    <TableCell>
+                      <Avatar className="h-11 w-11 border shadow-sm">
+                        <AvatarImage
+                          src={botAvatarDataUrl(bot)}
+                          alt={`${bot.displayName} profile`}
+                        />
+                        <AvatarFallback>
+                          {bot.displayName
+                            .split(/\s+/)
+                            .slice(0, 2)
+                            .map((part) => part.slice(0, 1))
+                            .join("")
+                            .toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                    </TableCell>
                     <TableCell className="font-medium">{bot.displayName}</TableCell>
                     <TableCell className="max-w-[280px] truncate">{bot.email}</TableCell>
                     <TableCell><Badge variant={bot.enabled ? "default" : "secondary"}>{bot.enabled ? "Enabled" : "Disabled"}</Badge></TableCell>
