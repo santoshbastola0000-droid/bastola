@@ -30,6 +30,7 @@ import {
   type SocialPost,
 } from "@/http/services/social.service";
 import { useUserStore } from "@/stores/user-store";
+import { syntheticBotAvatarDataUrl } from "@/lib/synthetic-bot-avatar";
 
 const backendUrl = String(
   process.env.NEXT_PUBLIC_BACKEND_URL || "https://api.roomkhoj.com",
@@ -925,32 +926,51 @@ export default function ReelsPage() {
                 </div>
               ) : comments.length ? (
                 <div className="space-y-4">
-                  {comments.map((comment) => (
-                    <div key={comment.id} className="flex gap-3">
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-slate-200 text-xs font-black">
-                        {comment.author.profilePhotoUrl ? (
-                          <img
-                            src={media(comment.author.profilePhotoUrl)}
-                            alt={comment.author.name}
-                            className="h-full w-full object-cover"
-                          />
-                        ) : (
-                          comment.author.name.slice(0, 1).toUpperCase()
-                        )}
-                      </div>
-                      <div className="min-w-0">
-                        <div className="text-xs font-black">
-                          {comment.author.name}
+                  {comments.map((comment) => {
+                    const avatar = comment.author.isSynthetic
+                      ? syntheticBotAvatarDataUrl({
+                          id: comment.author.id,
+                          name: comment.author.name,
+                        })
+                      : media(comment.author.profilePhotoUrl);
+
+                    return (
+                      <div key={comment.id} className="flex gap-3">
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-slate-200 text-xs font-black">
+                          {avatar ? (
+                            <img
+                              src={avatar}
+                              alt={comment.author.name}
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            comment.author.name.slice(0, 1).toUpperCase()
+                          )}
                         </div>
-                        <p className="mt-0.5 whitespace-pre-wrap break-words text-[14px] leading-5">
-                          {comment.content}
-                        </p>
-                        <div className="mt-1 text-[10px] font-semibold text-slate-400">
-                          {timeAgo(comment.createdAt)}
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 text-xs font-black">
+                            <span>{comment.author.name}</span>
+                            {comment.author.isSynthetic && (
+                              <span className="rounded-full bg-slate-100 px-1.5 py-0.5 text-[9px] font-bold text-slate-500">
+                                Bot
+                              </span>
+                            )}
+                          </div>
+                          {comment.author.isSynthetic && comment.author.bio && (
+                            <div className="mt-0.5 max-w-[260px] truncate text-[10px] text-slate-500">
+                              {comment.author.bio}
+                            </div>
+                          )}
+                          <p className="mt-0.5 whitespace-pre-wrap break-words text-[14px] leading-5">
+                            {comment.content}
+                          </p>
+                          <div className="mt-1 text-[10px] font-semibold text-slate-400">
+                            {timeAgo(comment.createdAt)}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               ) : (
                 <div className="py-10 text-center text-sm font-semibold text-slate-400">
