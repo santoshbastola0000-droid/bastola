@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   motion,
@@ -79,7 +79,7 @@ import {
   GenderPreference,
 } from "@/types/room.types";
 import { UserRole } from "@/types/user.types";
-import { api } from "@/http/api/api";
+import { roomService } from "@/http/services/room.service";
 import { RoomUnlockDialog } from "@/components/rooms/RoomUnlockDialog";
 import { HashtagText } from "@/components/social/HashtagText";
 import { TopUpRequestDialog } from "@/components/wallet/TopUpRequestDialog";
@@ -1164,6 +1164,7 @@ function getRoomFromApiResponse(payload: unknown): Room | null {
 
 export default function PropertyDetailsPage() {
   const { id } = useParams<{ id: string }>();
+  const router = useRouter();
   const roomId = id;
   const user = useUserStore((state) => state.user);
   const isLoaded = useUserStore((state) => state.isLoaded);
@@ -1182,14 +1183,24 @@ export default function PropertyDetailsPage() {
   const [savedListing, setSavedListing] = useState(false);
 
   useEffect(() => {
-    if (!roomId) return;
+    if (!isLoaded || !roomId) return;
+
+    if (!isAuthenticated) {
+      try {
+        sessionStorage.setItem(
+          "roomkhoj_post_auth_redirect",
+          `/property/${roomId}`,
+        );
+      } catch {}
+      router.push("/auth/login");
+      setLoading(false);
+      return;
+    }
+
     (async () => {
       try {
-        const res = await fetch(
-          `${api.defaults.baseURL}/rooms/${encodeURIComponent(roomId)}`,
-        );
-        const data = await res.json();
-        const loadedRoom = getRoomFromApiResponse(data);
+        const response = await roomService.getRoomById(roomId);
+        const loadedRoom = response.data;
         if (!loadedRoom) {
           setRoom(null);
           toast.error("Property data is unavailable right now.");
@@ -1203,13 +1214,24 @@ export default function PropertyDetailsPage() {
           loadedRoom.location?.city || loadedRoom.address,
           Number(loadedRoom.price),
         );
-      } catch {
-        toast.error("Failed to load property");
+      } catch (error: any) {
+        setRoom(null);
+        if (Number(error?.response?.status) === 403) {
+          toast.error("Room listings हेर्न account verify गर्नुहोस्।");
+        } else {
+          toast.error("Failed to load property");
+        }
       } finally {
         setLoading(false);
       }
     })();
-  }, [roomId, trackRoomView]);
+  }, [
+    roomId,
+    trackRoomView,
+    isLoaded,
+    isAuthenticated,
+    router,
+  ]);
 
   useEffect(() => {
     if (!isLoaded || !isAuthenticated || !roomId) return;
