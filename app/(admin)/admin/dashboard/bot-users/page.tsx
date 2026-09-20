@@ -178,6 +178,26 @@ export default function BotUsersPage() {
       toast.error(error?.response?.data?.message || "Could not run auto engagement"),
   });
 
+  const simulationClearMutation = useMutation({
+    mutationFn: async () => {
+      const res = await privateApi.delete("/social/admin/bot-simulation/engagement", {
+        params: { confirm: "CLEAR_SYNTHETIC_ENGAGEMENT" },
+      });
+      return res.data?.data ?? res.data;
+    },
+    onSuccess: async (result: any) => {
+      await queryClient.invalidateQueries({ queryKey: ["admin-bot-simulation-stats"] });
+      toast.success(
+        String(Number(result?.reactionsDeleted ?? 0)) +
+          " reactions and " +
+          String(Number(result?.commentsDeleted ?? 0)) +
+          " comments cleared",
+      );
+    },
+    onError: (error: any) =>
+      toast.error(error?.response?.data?.message || "Could not clear bot engagement"),
+  });
+
   const friendAutomationQuery = useQuery({
     queryKey: ["admin-bot-friend-automation"],
     queryFn: async () => {
@@ -456,6 +476,18 @@ export default function BotUsersPage() {
               disabled={simulationRunMutation.isPending || total === 0}
             >
               Run Once Now
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={() => {
+                if (window.confirm("Clear all bot-generated likes/reactions and comments?")) {
+                  simulationClearMutation.mutate();
+                }
+              }}
+              disabled={simulationClearMutation.isPending}
+            >
+              Clear Bot Engagement
             </Button>
           </div>
 
