@@ -86,13 +86,14 @@ export function EngagementTracker() {
 
     const params = new URLSearchParams(window.location.search);
     const eventId = params.get("rk_event");
+    const signature = params.get("rk_sig");
 
-    if (eventId) {
+    if (eventId && signature) {
       fetch("/api/notifications/engagement/click", {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ eventId }),
+        body: JSON.stringify({ eventId, signature }),
         keepalive: true,
       }).catch(() => undefined);
     }
