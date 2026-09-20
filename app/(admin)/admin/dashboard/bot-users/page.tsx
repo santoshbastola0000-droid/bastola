@@ -148,6 +148,12 @@ export default function BotUsersPage() {
   const [videoSearch, setVideoSearch] = useState("room interior nepal");
   const [videoSearchSubmitted, setVideoSearchSubmitted] = useState("");
 
+  const [activityEnabled, setActivityEnabled] = useState(false);
+  const [activityHours, setActivityHours] = useState<string[]>(
+    () => Array.from({ length: 24 }, () => "0"),
+  );
+  const [activityAllCount, setActivityAllCount] = useState("0");
+
   const [networkEnabled, setNetworkEnabled] = useState(false);
   const [networkRealAcceptPercent, setNetworkRealAcceptPercent] = useState("30");
   const [networkRealMinDelay, setNetworkRealMinDelay] = useState("5");
@@ -316,6 +322,66 @@ export default function BotUsersPage() {
     },
     onError: (error: any) =>
       toast.error(error?.response?.data?.message || "Could not remove video"),
+  });
+
+  const botActivityQuery = useQuery({
+    queryKey: ["admin-bot-activity-schedule"],
+    queryFn: async () => {
+      const res = await privateApi.get("/social/admin/bot-activity-schedule");
+      return res.data?.data ?? res.data;
+    },
+    refetchInterval: 10000,
+  });
+
+  useEffect(() => {
+    const data = botActivityQuery.data;
+    if (!data) return;
+    setActivityEnabled(Boolean(data.enabled));
+    const next = Array.from({ length: 24 }, () => "0");
+    for (const item of Array.isArray(data.schedule) ? data.schedule : []) {
+      const hour = Number(item?.hour);
+      if (Number.isInteger(hour) && hour >= 0 && hour <= 23) {
+        next[hour] = String(Number(item?.targetActiveCount ?? 0));
+      }
+    }
+    setActivityHours(next);
+  }, [botActivityQuery.data]);
+
+  const botActivityMutation = useMutation({
+    mutationFn: async () => {
+      const res = await privateApi.patch("/social/admin/bot-activity-schedule", {
+        enabled: activityEnabled,
+        hours: activityHours.map((value, hour) => ({
+          hour,
+          targetActiveCount: Math.max(
+            0,
+            Math.min(50000, Math.floor(Number(value) || 0)),
+          ),
+        })),
+      });
+      return res.data?.data ?? res.data;
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["admin-bot-activity-schedule"] });
+      toast.success("24-hour bot activity timing saved");
+    },
+    onError: (error: any) =>
+      toast.error(error?.response?.data?.message || "Could not save bot activity timing"),
+  });
+
+  const botActivityRunMutation = useMutation({
+    mutationFn: async () => {
+      const res = await privateApi.post("/social/admin/bot-activity-schedule/run");
+      return res.data?.data ?? res.data;
+    },
+    onSuccess: async (result: any) => {
+      await queryClient.invalidateQueries({ queryKey: ["admin-bot-activity-schedule"] });
+      toast.success(
+        `${Number(result?.activeCount ?? 0)} bots active for hour ${String(result?.currentHour ?? "")}:00`,
+      );
+    },
+    onError: (error: any) =>
+      toast.error(error?.response?.data?.message || "Could not run bot activity timing"),
   });
 
   const botNetworkQuery = useQuery({
@@ -827,6 +893,123 @@ export default function BotUsersPage() {
 
           <p className="text-xs text-muted-foreground">
             Search and import uses licensed Pexels videos only. Source and license metadata are saved with every imported file.
+          </p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Bot className="h-5 w-5" />
+            24-Hour Bot Activity
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="font-medium">{activityEnabled ? "Activity schedule ON" : "Activity schedule OFF"}</p>
+              <p className="text-sm text-muted-foreground">
+                Set exactly how many synthetic bots may be active for each Nepal-time hour. Bots rotate so older/inactive bots also get activity sessions.
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant={activityEnabled ? "default" : "outline"}
+              onClick={() => setActivityEnabled((value) => !value)}
+            >
+              {activityEnabled ? "Timing ON" : "Timing OFF"}
+            </Button>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <Badge variant="secondary">
+              Timezone: {String(botActivityQuery.data?.timezone || "Asia/Kathmandu")}
+            </Badge>
+            <Badge variant="outline">
+              Current hour: {String(botActivityQuery.data?.currentHour ?? 0).padStart(2, "0")}:00
+            </Badge>
+            <Badge variant="outline">
+              Active now: {Number(botActivityQuery.data?.activeCount ?? 0).toLocaleString()}
+            </Badge>
+            <Badge variant="outline">
+              Enabled bots: {Number(botActivityQuery.data?.enabledBotCount ?? 0).toLocaleString()}
+            </Badge>
+          </div>
+
+          <div className="flex flex-col gap-2 rounded-xl border p-3 sm:flex-row sm:items-end">
+            <label className="space-y-1 text-sm sm:max-w-56">
+              <span className="font-medium">Same count for all 24 hours</span>
+              <Input
+                type="number"
+                min={0}
+                max={50000}
+                value={activityAllCount}
+                onChange={(event) => setActivityAllCount(event.target.value)}
+              />
+            </label>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                const value = String(
+                  Math.max(0, Math.min(50000, Math.floor(Number(activityAllCount) || 0))),
+                );
+                setActivityHours(Array.from({ length: 24 }, () => value));
+              }}
+            >
+              Apply to all hours
+            </Button>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+            {activityHours.map((value, hour) => {
+              const isCurrent = Number(botActivityQuery.data?.currentHour) === hour;
+              return (
+                <label
+                  key={hour}
+                  className={`space-y-1 rounded-lg border p-2 text-sm ${isCurrent ? "ring-2 ring-primary/40" : ""}`}
+                >
+                  <span className="flex items-center justify-between gap-2 font-medium">
+                    <span>{String(hour).padStart(2, "0")}:00</span>
+                    {isCurrent && <Badge variant="secondary">Now</Badge>}
+                  </span>
+                  <Input
+                    type="number"
+                    min={0}
+                    max={50000}
+                    value={value}
+                    onChange={(event) => {
+                      const next = [...activityHours];
+                      next[hour] = event.target.value;
+                      setActivityHours(next);
+                    }}
+                    aria-label={`Active bot count for ${hour}:00`}
+                  />
+                </label>
+              );
+            })}
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              onClick={() => botActivityMutation.mutate()}
+              disabled={botActivityMutation.isPending || botActivityQuery.isLoading}
+            >
+              Save 24-Hour Timing
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => botActivityRunMutation.mutate()}
+              disabled={botActivityRunMutation.isPending || total === 0}
+            >
+              Apply Current Hour Now
+            </Button>
+          </div>
+
+          <p className="text-xs text-muted-foreground">
+            When this schedule is ON, synthetic likes/comments use only bots active in the current schedule. In Messages, accepted synthetic friends can show Online only while scheduled active and remain labelled Bot.
           </p>
         </CardContent>
       </Card>
