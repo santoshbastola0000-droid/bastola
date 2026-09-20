@@ -343,7 +343,7 @@ export default function PublicProfilePage() {
       router.push(
         `/messages?conversation=${encodeURIComponent(
           conversationId,
-        )}`,
+        )}&returnTo=${encodeURIComponent(`/profile/${userId}`)}`,
       );
     } catch (error: any) {
       toast.error(
