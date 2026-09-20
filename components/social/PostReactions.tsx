@@ -8,6 +8,7 @@ import {
   SocialReactionType,
   socialService,
 } from "@/http/services/social.service";
+import { syntheticBotAvatarDataUrl } from "@/lib/synthetic-bot-avatar";
 
 const backendUrl = String(
   process.env.NEXT_PUBLIC_BACKEND_URL || "https://api.roomkhoj.com",
@@ -395,7 +396,9 @@ export function PostReactions({
               {loadingList && <div className="px-3 py-7 text-center text-sm text-slate-500">Loading reactions...</div>}
               {!loadingList && filteredLikers.length === 0 && <div className="px-3 py-7 text-center text-sm text-slate-500">No reactions yet.</div>}
               {!loadingList && filteredLikers.map((entry) => {
-                const photo = profilePhoto(entry.user.profilePhotoUrl);
+                const photo = entry.user.isSynthetic
+                  ? syntheticBotAvatarDataUrl({ id: entry.user.id, name: entry.user.name })
+                  : profilePhoto(entry.user.profilePhotoUrl);
                 const emoji = REACTIONS.find((item) => item.type === entry.reaction)?.emoji || "👍";
                 return (
                   <div key={`${entry.user.id}-${entry.createdAt}`} className="flex items-center gap-3 rounded-2xl px-2 py-2.5">
@@ -403,8 +406,24 @@ export function PostReactions({
                       {photo ? <img src={photo} alt={entry.user.name} className="h-12 w-12 rounded-full bg-slate-100 object-cover" /> : <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-200 font-bold">{entry.user.name.slice(0, 1).toUpperCase()}</div>}
                       <span className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full border-2 border-white bg-white text-sm shadow-sm">{emoji}</span>
                     </div>
-                    <div className="min-w-0 flex-1 truncate text-[15px] font-semibold">{entry.user.name}</div>
-                    {String(entry.user.id) !== String(currentUserId) && <button type="button" onClick={() => { window.location.href = `/messages?userId=${encodeURIComponent(entry.user.id)}`; }} className="shrink-0 rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white">Message</button>}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex min-w-0 items-center gap-2">
+                        <span className="truncate text-[15px] font-semibold">{entry.user.name}</span>
+                        {entry.user.isSynthetic && (
+                          <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-600">
+                            Bot
+                          </span>
+                        )}
+                      </div>
+                      {entry.user.isSynthetic && entry.user.bio && (
+                        <div className="mt-0.5 truncate text-[11px] text-slate-500">{entry.user.bio}</div>
+                      )}
+                    </div>
+                    {!entry.user.isSynthetic && String(entry.user.id) !== String(currentUserId) && (
+                      <button type="button" onClick={() => { window.location.href = `/messages?userId=${encodeURIComponent(entry.user.id)}`; }} className="shrink-0 rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white">
+                        Message
+                      </button>
+                    )}
                   </div>
                 );
               })}
