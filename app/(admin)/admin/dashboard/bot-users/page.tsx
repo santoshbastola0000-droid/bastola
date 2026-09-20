@@ -83,7 +83,36 @@ export default function BotUsersPage() {
     queryKey: ["admin-synthetic-bots", params],
     queryFn: async () => {
       const res = await privateApi.get("/social/admin/synthetic-bots", { params });
-      return (res.data?.data ?? res.data) as BotListResponse;
+      const payload = res.data;
+
+      // The API may be returned directly or inside the app's standard
+      // response envelope. A list response itself also has a "data" field,
+      // so blindly doing payload.data would turn the response into only the
+      // array and lose pagination/total information.
+      if (Array.isArray(payload?.data) && payload?.pagination) {
+        return payload as BotListResponse;
+      }
+
+      if (Array.isArray(payload?.data?.data) && payload?.data?.pagination) {
+        return payload.data as BotListResponse;
+      }
+
+      if (Array.isArray(payload)) {
+        return {
+          data: payload,
+          pagination: {
+            page,
+            take: 50,
+            total: payload.length,
+            count: payload.length,
+            previousPage: page > 0 ? page - 1 : null,
+            nextPage: null,
+          },
+          synthetic: true,
+        } as BotListResponse;
+      }
+
+      throw new Error("Invalid bot list response from server");
     },
   });
 
@@ -232,6 +261,12 @@ export default function BotUsersPage() {
               <TableBody>
                 {botsQuery.isLoading ? (
                   <TableRow><TableCell colSpan={5} className="py-10 text-center">Loading bot users...</TableCell></TableRow>
+                ) : botsQuery.isError ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="py-10 text-center text-destructive">
+                      Could not load bot users. Tap Refresh and try again.
+                    </TableCell>
+                  </TableRow>
                 ) : bots.length === 0 ? (
                   <TableRow><TableCell colSpan={5} className="py-10 text-center text-muted-foreground">No bot users found.</TableCell></TableRow>
                 ) : bots.map((bot) => (
@@ -259,7 +294,14 @@ export default function BotUsersPage() {
           </div>
 
           <div className="mt-4 flex items-center justify-between">
-            <p className="text-sm text-muted-foreground">Total {Number(pagination?.total ?? 0).toLocaleString()}</p>
+            <p className="text-sm text-muted-foreground">
+              {Number(pagination?.total ?? 0) > 0
+                ? `Showing ${page * Number(pagination?.take ?? 50) + 1}–${Math.min(
+                    page * Number(pagination?.take ?? 50) + bots.length,
+                    Number(pagination?.total ?? 0),
+                  )} of ${Number(pagination?.total ?? 0).toLocaleString()}`
+                : "Total 0"}
+            </p>
             <div className="flex gap-2">
               <Button variant="outline" size="sm" disabled={pagination?.previousPage == null} onClick={() => setPage(Math.max(0, page - 1))}>Previous</Button>
               <Button variant="outline" size="sm" disabled={pagination?.nextPage == null} onClick={() => setPage(page + 1)}>Next</Button>
