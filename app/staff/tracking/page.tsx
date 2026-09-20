@@ -83,6 +83,8 @@ export default function StaffTrackingPage() {
   const [currentDistanceKm, setCurrentDistanceKm] = useState<number | null>(null);
   const [visit, setVisit] = useState({ leadName: "", note: "", roomId: "" });
   const watchIdRef = useRef<number | null>(null);
+  const syncTimerRef = useRef<number | null>(null);
+  const syncInFlightRef = useRef(false);
   const lastPingRef = useRef(0);
   const dueToastShownRef = useRef(false);
 
@@ -130,7 +132,12 @@ export default function StaffTrackingPage() {
     if (watchIdRef.current !== null && navigator.geolocation) {
       navigator.geolocation.clearWatch(watchIdRef.current);
     }
+    if (syncTimerRef.current !== null) {
+      window.clearInterval(syncTimerRef.current);
+    }
     watchIdRef.current = null;
+    syncTimerRef.current = null;
+    syncInFlightRef.current = false;
     setTrackingState("Stopped");
   };
 
@@ -156,44 +163,78 @@ export default function StaffTrackingPage() {
     if (
       !navigator.geolocation ||
       data?.profile?.staffType !== "MARKETING" ||
-      watchIdRef.current !== null
+      watchIdRef.current !== null ||
+      syncTimerRef.current !== null
     ) {
       return;
     }
 
-    setTrackingState("Tracking active");
-    watchIdRef.current = navigator.geolocation.watchPosition(
-      async (position) => {
-        const now = Date.now();
-        if (now - lastPingRef.current < 45_000) return;
-        lastPingRef.current = now;
-        try {
-          const result = await staffTrackingService.pingLocation({
-            ...positionPayload(position),
-            source: "AUTO",
-          });
-          setLastLocationAt(new Date().toISOString());
-          setTrackingState("Tracking active");
-          setPermissionState("granted");
-          if (Number.isFinite(Number(result?.distanceFromStartKm))) {
-            setCurrentDistanceKm(Number(result.distanceFromStartKm));
-          }
+    const syncPosition = async (position: GeolocationPosition) => {
+      const now = Date.now();
+      if (syncInFlightRef.current || now - lastPingRef.current < 45_000) return;
 
-          if (result?.autoCompleted) {
-            stopWatcher();
-            await handleCreditResult(result.credit, true);
-            await load();
-          }
-        } catch {
-          setTrackingState("Tracking gap / sync failed");
+      syncInFlightRef.current = true;
+      try {
+        const result = await staffTrackingService.pingLocation({
+          ...positionPayload(position),
+          source: "AUTO",
+        });
+        lastPingRef.current = Date.now();
+        setLastLocationAt(new Date().toISOString());
+        setTrackingState("Tracking active");
+        setPermissionState("granted");
+
+        if (Number.isFinite(Number(result?.distanceFromStartKm))) {
+          setCurrentDistanceKm(Number(result.distanceFromStartKm));
         }
+
+        if (result?.autoCompleted) {
+          stopWatcher();
+          await handleCreditResult(result.credit, true);
+          await load();
+        }
+      } catch {
+        setTrackingState("Tracking gap / sync failed");
+      } finally {
+        syncInFlightRef.current = false;
+      }
+    };
+
+    const syncCurrentPosition = () => {
+      if (!navigator.geolocation || syncInFlightRef.current) return;
+
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          void syncPosition(position);
+        },
+        (error) => {
+          setTrackingState("Location permission/offline gap");
+          if (error.code === error.PERMISSION_DENIED) {
+            setPermissionState("denied");
+          }
+        },
+        { enableHighAccuracy: true, maximumAge: 30_000, timeout: 20_000 },
+      );
+    };
+
+    setTrackingState("Starting GPS tracking...");
+
+    // watchPosition gives fast movement updates while the browser is active.
+    watchIdRef.current = navigator.geolocation.watchPosition(
+      (position) => {
+        void syncPosition(position);
       },
       (error) => {
         setTrackingState("Location permission/offline gap");
         if (error.code === error.PERMISSION_DENIED) setPermissionState("denied");
       },
-      { enableHighAccuracy: true, maximumAge: 20000, timeout: 20000 },
+      { enableHighAccuracy: true, maximumAge: 20_000, timeout: 20_000 },
     );
+
+    // Some mobile browsers throttle watchPosition when the device is stationary.
+    // Keep an explicit foreground heartbeat so the server still receives GPS points.
+    syncTimerRef.current = window.setInterval(syncCurrentPosition, 60_000);
+    syncCurrentPosition();
   };
 
   useEffect(() => {
