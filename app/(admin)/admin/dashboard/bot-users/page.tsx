@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Bot, Pause, Play, Plus, RefreshCw, Search, Trash2, UserPlus } from "lucide-react";
+import { Bot, Download, Pause, Play, Plus, RefreshCw, Search, Trash2, UserPlus, Video } from "lucide-react";
 import { toast } from "sonner";
 
 import { privateApi } from "@/http/api/privateApi";
@@ -34,6 +34,32 @@ type BotListResponse = {
     nextPage: number | null;
   };
   synthetic: true;
+};
+
+
+type BotVideoSearchItem = {
+  id: number;
+  sourcePageUrl: string;
+  previewImageUrl: string;
+  durationSeconds: number;
+  creator?: { name?: string; url?: string };
+  recommendedFile?: { quality?: string; width?: number | null; height?: number | null } | null;
+};
+
+type BotVideoAsset = {
+  id: string;
+  botId?: string | null;
+  botName?: string | null;
+  provider: string;
+  providerVideoId: string;
+  sourcePageUrl: string;
+  creatorName?: string | null;
+  licenseUrl: string;
+  previewImageUrl?: string | null;
+  localUrl: string;
+  durationSeconds?: number | null;
+  fileSizeBytes?: number;
+  createdAt: string;
 };
 
 
@@ -94,6 +120,8 @@ export default function BotUsersPage() {
   const [postAgeHours, setPostAgeHours] = useState("72");
   const [simulationMinDelay, setSimulationMinDelay] = useState("1");
   const [simulationMaxDelay, setSimulationMaxDelay] = useState("400");
+  const [videoSearch, setVideoSearch] = useState("room interior nepal");
+  const [videoSearchSubmitted, setVideoSearchSubmitted] = useState("");
 
   const [friendEnabled, setFriendEnabled] = useState(false);
   const [friendStrategy, setFriendStrategy] = useState<"MUTUAL_FIRST" | "RANDOM">("MUTUAL_FIRST");
@@ -196,6 +224,69 @@ export default function BotUsersPage() {
     },
     onError: (error: any) =>
       toast.error(error?.response?.data?.message || "Could not clear bot engagement"),
+  });
+
+  const videoCollectorStatusQuery = useQuery({
+    queryKey: ["admin-bot-video-collector-status"],
+    queryFn: async () => {
+      const res = await privateApi.get("/social/admin/bot-video-collector/status");
+      return res.data?.data ?? res.data;
+    },
+  });
+
+  const videoAssetsQuery = useQuery({
+    queryKey: ["admin-bot-video-assets"],
+    queryFn: async () => {
+      const res = await privateApi.get("/social/admin/bot-video-collector/assets", {
+        params: { limit: 12 },
+      });
+      return res.data?.data ?? res.data;
+    },
+  });
+
+  const videoSearchQuery = useQuery({
+    queryKey: ["admin-bot-video-search", videoSearchSubmitted],
+    enabled: Boolean(videoSearchSubmitted),
+    queryFn: async () => {
+      const res = await privateApi.get("/social/admin/bot-video-collector/search", {
+        params: { q: videoSearchSubmitted, perPage: 12 },
+      });
+      return res.data?.data ?? res.data;
+    },
+  });
+
+  const videoImportMutation = useMutation({
+    mutationFn: async (videoId: number) => {
+      const res = await privateApi.post("/social/admin/bot-video-collector/import", {
+        videoId,
+      });
+      return res.data?.data ?? res.data;
+    },
+    onSuccess: async (result: any) => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["admin-bot-video-assets"] }),
+        queryClient.invalidateQueries({ queryKey: ["admin-bot-video-collector-status"] }),
+      ]);
+      toast.success(result?.duplicate ? "Video already imported" : "Video imported to RoomKhoj server");
+    },
+    onError: (error: any) =>
+      toast.error(error?.response?.data?.message || "Could not import video"),
+  });
+
+  const videoDeleteMutation = useMutation({
+    mutationFn: async (assetId: string) => {
+      const res = await privateApi.delete(`/social/admin/bot-video-collector/assets/${assetId}`);
+      return res.data?.data ?? res.data;
+    },
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["admin-bot-video-assets"] }),
+        queryClient.invalidateQueries({ queryKey: ["admin-bot-video-collector-status"] }),
+      ]);
+      toast.success("Imported video removed");
+    },
+    onError: (error: any) =>
+      toast.error(error?.response?.data?.message || "Could not remove video"),
   });
 
   const friendAutomationQuery = useQuery({
@@ -500,6 +591,128 @@ export default function BotUsersPage() {
               <Badge variant="outline">Next run: {new Date(simulationQuery.data.nextRunAt).toLocaleString()}</Badge>
             )}
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Video className="h-5 w-5" />
+            Bot Video Collector
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <Input
+              value={videoSearch}
+              onChange={(event) => setVideoSearch(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && videoSearch.trim()) {
+                  setVideoSearchSubmitted(videoSearch.trim());
+                }
+              }}
+              placeholder="Search licensed videos e.g. room interior, Pokhara, apartment"
+            />
+            <Button
+              type="button"
+              onClick={() => setVideoSearchSubmitted(videoSearch.trim())}
+              disabled={!videoSearch.trim() || videoSearchQuery.isFetching}
+            >
+              <Search className="mr-2 h-4 w-4" />
+              Search Videos
+            </Button>
+          </div>
+
+          <div className="flex flex-wrap gap-2 text-sm">
+            <Badge variant={videoCollectorStatusQuery.data?.configured ? "default" : "secondary"}>
+              {videoCollectorStatusQuery.data?.configured ? "Pexels connected" : "PEXELS_API_KEY needed"}
+            </Badge>
+            <Badge variant="outline">
+              Saved: {Number(videoCollectorStatusQuery.data?.totalAssets ?? 0).toLocaleString()}
+            </Badge>
+            <Badge variant="outline">Licensed source only</Badge>
+          </div>
+
+          {videoSearchQuery.isError && (
+            <p className="text-sm text-destructive">
+              {(videoSearchQuery.error as any)?.response?.data?.message || "Could not search videos"}
+            </p>
+          )}
+
+          {Array.isArray(videoSearchQuery.data?.videos) && videoSearchQuery.data.videos.length > 0 && (
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {(videoSearchQuery.data.videos as BotVideoSearchItem[]).map((video) => (
+                <div key={video.id} className="overflow-hidden rounded-xl border bg-card">
+                  <div className="aspect-video bg-muted">
+                    {video.previewImageUrl ? (
+                      <img
+                        src={video.previewImageUrl}
+                        alt={video.creator?.name ? `Video by ${video.creator.name}` : "Pexels video"}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-full items-center justify-center text-muted-foreground">
+                        <Video className="h-8 w-8" />
+                      </div>
+                    )}
+                  </div>
+                  <div className="space-y-2 p-3">
+                    <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+                      <span>{video.creator?.name || "Pexels creator"}</span>
+                      <span>{Number(video.durationSeconds || 0)}s</span>
+                    </div>
+                    <Button
+                      type="button"
+                      className="w-full"
+                      size="sm"
+                      onClick={() => videoImportMutation.mutate(video.id)}
+                      disabled={videoImportMutation.isPending}
+                    >
+                      <Download className="mr-2 h-4 w-4" />
+                      Import to Server
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {Array.isArray(videoAssetsQuery.data?.assets) && videoAssetsQuery.data.assets.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-sm font-medium">Recent imported videos</p>
+              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                {(videoAssetsQuery.data.assets as BotVideoAsset[]).map((asset) => (
+                  <div key={asset.id} className="flex items-center gap-3 rounded-lg border p-2">
+                    <div className="h-14 w-20 overflow-hidden rounded bg-muted">
+                      {asset.previewImageUrl ? (
+                        <img src={asset.previewImageUrl} alt="Imported video preview" className="h-full w-full object-cover" />
+                      ) : (
+                        <div className="flex h-full items-center justify-center"><Video className="h-5 w-5" /></div>
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium">{asset.provider} #{asset.providerVideoId}</p>
+                      <p className="truncate text-xs text-muted-foreground">{asset.creatorName || "Licensed video"}</p>
+                    </div>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => videoDeleteMutation.mutate(asset.id)}
+                      disabled={videoDeleteMutation.isPending}
+                      aria-label="Delete imported video"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <p className="text-xs text-muted-foreground">
+            Search and import uses licensed Pexels videos only. Source and license metadata are saved with every imported file.
+          </p>
         </CardContent>
       </Card>
 
