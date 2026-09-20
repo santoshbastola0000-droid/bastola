@@ -434,7 +434,7 @@ export default function PeoplePage() {
                             className="shrink-0 disabled:cursor-default"
                             aria-label={
                               person.isSynthetic
-                                ? `${person.name} automated account`
+                                ? `${person.name} bot account`
                                 : `Open ${person.name} profile`
                             }
                           >
@@ -460,10 +460,15 @@ export default function PeoplePage() {
                               <span className="truncate">{person.name}</span>
                               {person.isSynthetic && (
                                 <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-bold text-slate-600">
-                                  Automated
+                                  Bot
                                 </span>
                               )}
                             </p>
+                            {person.isSynthetic && person.bio && (
+                              <p className="mt-0.5 truncate text-[13px] font-medium text-muted-foreground">
+                                {person.bio}
+                              </p>
+                            )}
                             <p className="mt-0.5 text-[15px] font-semibold leading-5 text-foreground">
                               {kind ===
                               "REQUEST"
