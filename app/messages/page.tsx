@@ -76,6 +76,8 @@ type InboxFriend = {
   profilePhotoUrl?: string | null;
   isOnline?: boolean;
   lastActiveAt?: string | null;
+  isSynthetic?: boolean;
+  identityLabel?: string | null;
 };
 
 function normalizeInboxFriend(value: any): InboxFriend | null {
@@ -113,6 +115,15 @@ function normalizeInboxFriend(value: any): InboxFriend | null {
     lastActiveAt:
       source?.lastActiveAt ??
       value?.lastActiveAt ??
+      null,
+    isSynthetic: Boolean(
+      source?.isSynthetic ??
+        value?.isSynthetic ??
+        false,
+    ),
+    identityLabel:
+      source?.identityLabel ??
+      value?.identityLabel ??
       null,
   };
 }
@@ -2060,15 +2071,17 @@ const user = useUserStore(
                           <button
                             key={friend.id}
                             type="button"
-                            onClick={() =>
-                              void openFriendConversation(
-                                friend,
-                              )
+                            onClick={() => {
+                              if (friend.isSynthetic) {
+                                toast.info("Bot account — automated presence");
+                                return;
+                              }
+                              void openFriendConversation(friend);
                             }
                             className="w-[68px] shrink-0 text-center"
                             title={
                               online
-                                ? `${friend.name} is online`
+                                ? `${friend.name} is online${friend.isSynthetic ? " · Bot" : ""}`
                                 : friend.lastActiveAt
                                   ? `${friend.name} · last active ${inboxTimeAgo(friend.lastActiveAt)} ago`
                                   : friend.name
@@ -2100,6 +2113,11 @@ const user = useUserStore(
                             <p className="mt-1 truncate text-xs font-semibold text-foreground">
                               {friend.name}
                             </p>
+                            {friend.isSynthetic && (
+                              <p className="truncate text-[9px] font-bold uppercase tracking-wide text-muted-foreground">
+                                Bot
+                              </p>
+                            )}
 
                             {!online &&
                               friend.lastActiveAt && (
