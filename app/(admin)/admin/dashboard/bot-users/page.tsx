@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Bot, Pause, Play, Plus, RefreshCw, Search, Trash2 } from "lucide-react";
+import { Bot, Pause, Play, Plus, RefreshCw, Search, Trash2, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 
 import { privateApi } from "@/http/api/privateApi";
@@ -83,6 +83,11 @@ export default function BotUsersPage() {
   const [page, setPage] = useState(0);
   const [search, setSearch] = useState("");
   const [generateCount, setGenerateCount] = useState("100");
+  const [friendEnabled, setFriendEnabled] = useState(false);
+  const [friendStrategy, setFriendStrategy] = useState<"MUTUAL_FIRST" | "RANDOM">("MUTUAL_FIRST");
+  const [friendRequestsPerRun, setFriendRequestsPerRun] = useState("1");
+  const [friendMinDelay, setFriendMinDelay] = useState("60");
+  const [friendMaxDelay, setFriendMaxDelay] = useState("360");
 
   const params = useMemo(() => ({ page, take: 50, search: search.trim() || undefined }), [page, search]);
 
@@ -123,6 +128,58 @@ export default function BotUsersPage() {
     onError: (error: any) => toast.error(error?.response?.data?.message || "Could not update simulation"),
   });
 
+  const friendAutomationQuery = useQuery({
+    queryKey: ["admin-bot-friend-automation"],
+    queryFn: async () => {
+      const res = await privateApi.get("/social/admin/bot-friend-automation");
+      return res.data?.data ?? res.data;
+    },
+  });
+
+  useEffect(() => {
+    const data = friendAutomationQuery.data;
+    if (!data) return;
+    setFriendEnabled(Boolean(data.enabled));
+    setFriendStrategy(data.strategy === "RANDOM" ? "RANDOM" : "MUTUAL_FIRST");
+    setFriendRequestsPerRun(String(data.requestsPerRun ?? 1));
+    setFriendMinDelay(String(data.minDelayMinutes ?? 60));
+    setFriendMaxDelay(String(data.maxDelayMinutes ?? 360));
+  }, [friendAutomationQuery.data]);
+
+  const friendAutomationMutation = useMutation({
+    mutationFn: async () => {
+      const res = await privateApi.patch("/social/admin/bot-friend-automation", {
+        enabled: friendEnabled,
+        strategy: friendStrategy,
+        requestsPerRun: Math.max(1, Math.min(20, Number(friendRequestsPerRun) || 1)),
+        minDelayMinutes: Math.max(1, Number(friendMinDelay) || 60),
+        maxDelayMinutes: Math.max(1, Number(friendMaxDelay) || 360),
+      });
+      return res.data?.data ?? res.data;
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["admin-bot-friend-automation"] });
+      toast.success("Bot friend-request automation saved");
+    },
+    onError: (error: any) =>
+      toast.error(error?.response?.data?.message || "Could not save friend automation"),
+  });
+
+  const friendAutomationRunMutation = useMutation({
+    mutationFn: async () => {
+      const res = await privateApi.post("/social/admin/bot-friend-automation/run");
+      return res.data?.data ?? res.data;
+    },
+    onSuccess: async (result: any) => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["admin-bot-friend-automation"] }),
+        queryClient.invalidateQueries({ queryKey: ["admin-bot-simulation-stats"] }),
+      ]);
+      toast.success(String(Number(result?.sent ?? 0)) + " bot friend request(s) sent");
+    },
+    onError: (error: any) =>
+      toast.error(error?.response?.data?.message || "Could not run friend automation"),
+  });
   const botsQuery = useQuery({
     queryKey: ["admin-synthetic-bots", params],
     queryFn: async () => {
@@ -275,6 +332,89 @@ export default function BotUsersPage() {
         </CardContent>
       </Card>
 
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <UserPlus className="h-5 w-5" />
+            Friend Request Automation
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="font-medium">{friendEnabled ? "Enabled" : "Disabled"}</p>
+              <p className="text-sm text-muted-foreground">
+                Bots can send friend requests to real users. Mutual-first prefers users connected to people who already accepted that bot.
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant={friendEnabled ? "default" : "outline"}
+              onClick={() => setFriendEnabled((value) => !value)}
+            >
+              {friendEnabled ? "Automation ON" : "Automation OFF"}
+            </Button>
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-4">
+            <label className="space-y-1 text-sm">
+              <span className="font-medium">Target strategy</span>
+              <select
+                value={friendStrategy}
+                onChange={(event) =>
+                  setFriendStrategy(event.target.value === "RANDOM" ? "RANDOM" : "MUTUAL_FIRST")
+                }
+                className="h-10 w-full rounded-md border bg-background px-3"
+              >
+                <option value="MUTUAL_FIRST">Mutual first</option>
+                <option value="RANDOM">Random real users</option>
+              </select>
+            </label>
+
+            <label className="space-y-1 text-sm">
+              <span className="font-medium">Requests / run</span>
+              <Input type="number" min={1} max={20} value={friendRequestsPerRun} onChange={(event) => setFriendRequestsPerRun(event.target.value)} />
+            </label>
+
+            <label className="space-y-1 text-sm">
+              <span className="font-medium">Min delay (min)</span>
+              <Input type="number" min={1} max={1440} value={friendMinDelay} onChange={(event) => setFriendMinDelay(event.target.value)} />
+            </label>
+
+            <label className="space-y-1 text-sm">
+              <span className="font-medium">Max delay (min)</span>
+              <Input type="number" min={1} max={1440} value={friendMaxDelay} onChange={(event) => setFriendMaxDelay(event.target.value)} />
+            </label>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              onClick={() => friendAutomationMutation.mutate()}
+              disabled={friendAutomationMutation.isPending || friendAutomationQuery.isLoading}
+            >
+              Save Friend Automation
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => friendAutomationRunMutation.mutate()}
+              disabled={friendAutomationRunMutation.isPending || total === 0}
+            >
+              Run Once Now
+            </Button>
+            {friendAutomationQuery.data?.nextRunAt && (
+              <Badge variant="outline">
+                Next run: {new Date(friendAutomationQuery.data.nextRunAt).toLocaleString()}
+              </Badge>
+            )}
+          </div>
+
+          <p className="text-xs text-muted-foreground">
+            Bot accounts stay hidden from normal friend suggestions and real users cannot send requests to bots. Incoming bot requests are labeled Automated.
+          </p>
+        </CardContent>
+      </Card>
       <Card>
         <CardHeader><CardTitle>Generate Bot Users</CardTitle></CardHeader>
         <CardContent className="flex flex-col gap-3 sm:flex-row">
