@@ -27,6 +27,8 @@ export type SocialUser = {
   priorityTier?: number;
   reason?: string;
   previewMediaUrls?: string[];
+  isSynthetic?: boolean;
+  identityLabel?: string | null;
 };
 
 export type SocialReactionType =
