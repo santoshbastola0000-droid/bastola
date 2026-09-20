@@ -149,6 +149,9 @@ export default function BotUsersPage() {
   const [videoSearchSubmitted, setVideoSearchSubmitted] = useState("");
 
   const [networkEnabled, setNetworkEnabled] = useState(false);
+  const [networkRealAcceptPercent, setNetworkRealAcceptPercent] = useState("30");
+  const [networkRealMinDelay, setNetworkRealMinDelay] = useState("5");
+  const [networkRealMaxDelay, setNetworkRealMaxDelay] = useState("720");
   const [friendEnabled, setFriendEnabled] = useState(false);
   const [friendStrategy, setFriendStrategy] = useState<"MUTUAL_FIRST" | "RANDOM">("MUTUAL_FIRST");
   const [friendRequestsPerRun, setFriendRequestsPerRun] = useState("1");
@@ -337,6 +340,9 @@ export default function BotUsersPage() {
   useEffect(() => {
     if (!botNetworkQuery.data) return;
     setNetworkEnabled(Boolean(botNetworkQuery.data.enabled));
+    setNetworkRealAcceptPercent(String(botNetworkQuery.data.realToBotAcceptPercent ?? 30));
+    setNetworkRealMinDelay(String(botNetworkQuery.data.realToBotMinAcceptDelayMinutes ?? 5));
+    setNetworkRealMaxDelay(String(botNetworkQuery.data.realToBotMaxAcceptDelayMinutes ?? 720));
   }, [botNetworkQuery.data]);
 
   const botNetworkMutation = useMutation({
@@ -352,6 +358,9 @@ export default function BotUsersPage() {
         maxAcceptDelayMinutes: Number(current.maxAcceptDelayMinutes ?? 720),
         minRunDelayMinutes: Number(current.minRunDelayMinutes ?? 720),
         maxRunDelayMinutes: Number(current.maxRunDelayMinutes ?? 1440),
+        realToBotAcceptPercent: Math.max(0, Math.min(100, Number(networkRealAcceptPercent) || 0)),
+        realToBotMinAcceptDelayMinutes: Math.max(1, Number(networkRealMinDelay) || 5),
+        realToBotMaxAcceptDelayMinutes: Math.max(1, Number(networkRealMaxDelay) || 720),
       });
       return res.data?.data ?? res.data;
     },
@@ -861,6 +870,39 @@ export default function BotUsersPage() {
             </Badge>
           </div>
 
+          <div className="grid gap-3 md:grid-cols-3">
+            <label className="space-y-1 text-sm">
+              <span className="font-medium">Real user → bot accept %</span>
+              <Input
+                type="number"
+                min={0}
+                max={100}
+                value={networkRealAcceptPercent}
+                onChange={(event) => setNetworkRealAcceptPercent(event.target.value)}
+              />
+            </label>
+            <label className="space-y-1 text-sm">
+              <span className="font-medium">Bot accept min delay (min)</span>
+              <Input
+                type="number"
+                min={1}
+                max={10080}
+                value={networkRealMinDelay}
+                onChange={(event) => setNetworkRealMinDelay(event.target.value)}
+              />
+            </label>
+            <label className="space-y-1 text-sm">
+              <span className="font-medium">Bot accept max delay (min)</span>
+              <Input
+                type="number"
+                min={1}
+                max={10080}
+                value={networkRealMaxDelay}
+                onChange={(event) => setNetworkRealMaxDelay(event.target.value)}
+              />
+            </label>
+          </div>
+
           <div className="flex flex-wrap items-center gap-2">
             <Button
               type="button"
@@ -946,7 +988,7 @@ export default function BotUsersPage() {
           </div>
 
           <p className="text-xs text-muted-foreground">
-            This graph is synthetic-only and remains separate from real-user friendship counts, mutual-friend ranking and real-user presence.
+            Bot-to-bot links remain synthetic-only. Real users can only send requests to clearly-labelled Bot accounts after real-user suggestions are exhausted; by default about 30% of those bot requests auto-accept after a random delay.
           </p>
         </CardContent>
       </Card>
