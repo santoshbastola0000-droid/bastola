@@ -93,7 +93,6 @@ import type {
   UnlockStatus,
 } from "@/types/unlock.types";
 import { cn } from "@/lib/utils";
-import { isObjectRecord, isRoomLike } from "@/lib/room-guards";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { RoomActionCenter } from "@/components/rooms/RoomActionCenter";
 import { RoomMessageSellerCard } from "@/components/rooms/RoomMessageSellerCard";
@@ -1151,16 +1150,6 @@ const LockedPlaceholder = ({
     </div>
   );
 };
-
-function getRoomFromApiResponse(payload: unknown): Room | null {
-  if (!isObjectRecord(payload)) return null;
-
-  const data = payload.data;
-  if (isRoomLike(data)) return data;
-  if (isRoomLike(payload)) return payload;
-
-  return null;
-}
 
 export default function PropertyDetailsPage() {
   const { id } = useParams<{ id: string }>();
