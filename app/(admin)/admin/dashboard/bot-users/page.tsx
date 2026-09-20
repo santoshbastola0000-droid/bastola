@@ -83,6 +83,17 @@ export default function BotUsersPage() {
   const [page, setPage] = useState(0);
   const [search, setSearch] = useState("");
   const [generateCount, setGenerateCount] = useState("100");
+  const [simulationEnabled, setSimulationEnabled] = useState(false);
+  const [reactionsEnabled, setReactionsEnabled] = useState(true);
+  const [commentsEnabled, setCommentsEnabled] = useState(true);
+  const [reactionChance, setReactionChance] = useState("70");
+  const [commentChance, setCommentChance] = useState("30");
+  const [actionsPerRun, setActionsPerRun] = useState("2");
+  const [maxBotsPerPost, setMaxBotsPerPost] = useState("4");
+  const [postAgeHours, setPostAgeHours] = useState("72");
+  const [simulationMinDelay, setSimulationMinDelay] = useState("1");
+  const [simulationMaxDelay, setSimulationMaxDelay] = useState("400");
+
   const [friendEnabled, setFriendEnabled] = useState(false);
   const [friendStrategy, setFriendStrategy] = useState<"MUTUAL_FIRST" | "RANDOM">("MUTUAL_FIRST");
   const [friendRequestsPerRun, setFriendRequestsPerRun] = useState("1");
@@ -107,14 +118,34 @@ export default function BotUsersPage() {
     },
   });
 
+  useEffect(() => {
+    const data = simulationQuery.data;
+    if (!data) return;
+    setSimulationEnabled(Boolean(data.enabled));
+    setReactionsEnabled(Boolean(data.reactionsEnabled));
+    setCommentsEnabled(Boolean(data.commentsEnabled));
+    setReactionChance(String(data.reactionChancePercent ?? 70));
+    setCommentChance(String(data.commentChancePercent ?? 30));
+    setActionsPerRun(String(data.actionsPerRun ?? 2));
+    setMaxBotsPerPost(String(data.maxBotsPerPost ?? 4));
+    setPostAgeHours(String(data.postAgeHours ?? 72));
+    setSimulationMinDelay(String(data.minDelayMinutes ?? 1));
+    setSimulationMaxDelay(String(data.maxDelayMinutes ?? 400));
+  }, [simulationQuery.data]);
+
   const simulationMutation = useMutation({
-    mutationFn: async (enabled: boolean) => {
+    mutationFn: async () => {
       const res = await privateApi.patch("/social/admin/bot-simulation", {
-        enabled,
-        minDelayMinutes: 1,
-        maxDelayMinutes: 400,
-        reactionsEnabled: true,
-        commentsEnabled: true,
+        enabled: simulationEnabled,
+        minDelayMinutes: Math.max(1, Math.min(1440, Number(simulationMinDelay) || 1)),
+        maxDelayMinutes: Math.max(1, Math.min(1440, Number(simulationMaxDelay) || 400)),
+        reactionsEnabled,
+        commentsEnabled,
+        reactionChancePercent: Math.max(0, Math.min(100, Number(reactionChance) || 0)),
+        commentChancePercent: Math.max(0, Math.min(100, Number(commentChance) || 0)),
+        actionsPerRun: Math.max(1, Math.min(20, Number(actionsPerRun) || 2)),
+        maxBotsPerPost: Math.max(1, Math.min(50, Number(maxBotsPerPost) || 4)),
+        postAgeHours: Math.max(1, Math.min(720, Number(postAgeHours) || 72)),
       });
       return res.data?.data ?? res.data;
     },
@@ -123,9 +154,27 @@ export default function BotUsersPage() {
         queryClient.invalidateQueries({ queryKey: ["admin-bot-simulation"] }),
         queryClient.invalidateQueries({ queryKey: ["admin-bot-simulation-stats"] }),
       ]);
-      toast.success("Simulation setting updated");
+      toast.success("Auto like/comment settings saved");
     },
     onError: (error: any) => toast.error(error?.response?.data?.message || "Could not update simulation"),
+  });
+
+  const simulationRunMutation = useMutation({
+    mutationFn: async () => {
+      const res = await privateApi.post("/social/admin/bot-simulation/run");
+      return res.data?.data ?? res.data;
+    },
+    onSuccess: async (result: any) => {
+      await queryClient.invalidateQueries({ queryKey: ["admin-bot-simulation-stats"] });
+      toast.success(
+        String(Number(result?.reactions ?? 0)) +
+          " like/reaction(s), " +
+          String(Number(result?.comments ?? 0)) +
+          " comment(s) created",
+      );
+    },
+    onError: (error: any) =>
+      toast.error(error?.response?.data?.message || "Could not run auto engagement"),
   });
 
   const friendAutomationQuery = useQuery({
@@ -306,28 +355,117 @@ export default function BotUsersPage() {
       </div>
 
       <Card>
-        <CardHeader><CardTitle>Simulation Mode</CardTitle></CardHeader>
-        <CardContent className="space-y-3">
+        <CardHeader>
+          <CardTitle>Auto Like & Comment</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="font-medium">{simulationQuery.data?.enabled ? "Running" : "Paused"}</p>
+              <p className="font-medium">{simulationEnabled ? "Running" : "Paused"}</p>
               <p className="text-sm text-muted-foreground">
-                Synthetic-only test activity · random 1–400 minute schedule · reactions and contextual test comments.
+                Bot reactions and contextual comments run only on recent public posts.
               </p>
             </div>
             <Button
-              variant={simulationQuery.data?.enabled ? "outline" : "default"}
-              onClick={() => simulationMutation.mutate(!simulationQuery.data?.enabled)}
-              disabled={simulationMutation.isPending || simulationQuery.isLoading}
+              type="button"
+              variant={simulationEnabled ? "default" : "outline"}
+              onClick={() => setSimulationEnabled((value) => !value)}
             >
-              {simulationQuery.data?.enabled ? <Pause className="mr-2 h-4 w-4" /> : <Play className="mr-2 h-4 w-4" />}
-              {simulationQuery.data?.enabled ? "Pause Simulation" : "Start Simulation"}
+              {simulationEnabled ? <Pause className="mr-2 h-4 w-4" /> : <Play className="mr-2 h-4 w-4" />}
+              {simulationEnabled ? "Automation ON" : "Automation OFF"}
             </Button>
           </div>
+
+          <div className="grid gap-3 md:grid-cols-2">
+            <button
+              type="button"
+              onClick={() => setReactionsEnabled((value) => !value)}
+              className="flex items-center justify-between rounded-xl border p-3 text-left"
+            >
+              <div>
+                <p className="font-medium">Auto reactions</p>
+                <p className="text-xs text-muted-foreground">LIKE / LOVE / WOW / HAHA</p>
+              </div>
+              <Badge variant={reactionsEnabled ? "default" : "secondary"}>
+                {reactionsEnabled ? "ON" : "OFF"}
+              </Badge>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setCommentsEnabled((value) => !value)}
+              className="flex items-center justify-between rounded-xl border p-3 text-left"
+            >
+              <div>
+                <p className="font-medium">Auto comments</p>
+                <p className="text-xs text-muted-foreground">Room/job/general context templates</p>
+              </div>
+              <Badge variant={commentsEnabled ? "default" : "secondary"}>
+                {commentsEnabled ? "ON" : "OFF"}
+              </Badge>
+            </button>
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-5">
+            <label className="space-y-1 text-sm">
+              <span className="font-medium">Reaction chance %</span>
+              <Input type="number" min={0} max={100} value={reactionChance} onChange={(e) => setReactionChance(e.target.value)} />
+            </label>
+            <label className="space-y-1 text-sm">
+              <span className="font-medium">Comment chance %</span>
+              <Input type="number" min={0} max={100} value={commentChance} onChange={(e) => setCommentChance(e.target.value)} />
+            </label>
+            <label className="space-y-1 text-sm">
+              <span className="font-medium">Actions / run</span>
+              <Input type="number" min={1} max={20} value={actionsPerRun} onChange={(e) => setActionsPerRun(e.target.value)} />
+            </label>
+            <label className="space-y-1 text-sm">
+              <span className="font-medium">Max bots / post</span>
+              <Input type="number" min={1} max={50} value={maxBotsPerPost} onChange={(e) => setMaxBotsPerPost(e.target.value)} />
+            </label>
+            <label className="space-y-1 text-sm">
+              <span className="font-medium">Post age (hours)</span>
+              <Input type="number" min={1} max={720} value={postAgeHours} onChange={(e) => setPostAgeHours(e.target.value)} />
+            </label>
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-2">
+            <label className="space-y-1 text-sm">
+              <span className="font-medium">Min delay (minutes)</span>
+              <Input type="number" min={1} max={1440} value={simulationMinDelay} onChange={(e) => setSimulationMinDelay(e.target.value)} />
+            </label>
+            <label className="space-y-1 text-sm">
+              <span className="font-medium">Max delay (minutes)</span>
+              <Input type="number" min={1} max={1440} value={simulationMaxDelay} onChange={(e) => setSimulationMaxDelay(e.target.value)} />
+            </label>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              onClick={() => simulationMutation.mutate()}
+              disabled={simulationMutation.isPending || simulationQuery.isLoading}
+            >
+              Save Auto Engagement
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => simulationRunMutation.mutate()}
+              disabled={simulationRunMutation.isPending || total === 0}
+            >
+              Run Once Now
+            </Button>
+          </div>
+
           <div className="flex flex-wrap gap-2 text-sm">
-            <Badge variant="secondary">Total test actions: {Number(simulationStatsQuery.data?.totalActions ?? 0).toLocaleString()}</Badge>
+            <Badge variant="secondary">All actions: {Number(simulationStatsQuery.data?.totalActions ?? 0).toLocaleString()}</Badge>
             <Badge variant="secondary">Last 24h: {Number(simulationStatsQuery.data?.actions24h ?? 0).toLocaleString()}</Badge>
-            {simulationQuery.data?.nextRunAt && <Badge variant="outline">Next run: {new Date(simulationQuery.data.nextRunAt).toLocaleString()}</Badge>}
+            <Badge variant="outline">Reactions: {Number(simulationStatsQuery.data?.reactions ?? 0).toLocaleString()}</Badge>
+            <Badge variant="outline">Comments: {Number(simulationStatsQuery.data?.comments ?? 0).toLocaleString()}</Badge>
+            {simulationQuery.data?.nextRunAt && (
+              <Badge variant="outline">Next run: {new Date(simulationQuery.data.nextRunAt).toLocaleString()}</Badge>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -411,7 +549,7 @@ export default function BotUsersPage() {
           </div>
 
           <p className="text-xs text-muted-foreground">
-            Bot accounts stay hidden from normal friend suggestions and real users cannot send requests to bots. Incoming bot requests are labeled Automated.
+            Bot accounts stay hidden from normal friend suggestions and real users cannot send requests to bots. Incoming bot requests show the bot bio and a Bot label.
           </p>
         </CardContent>
       </Card>
