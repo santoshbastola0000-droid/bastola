@@ -7,7 +7,6 @@ import {
   RoomStats,
   RoomStatus,
 } from "@/types/room.types";
-import { api } from "../api/api";
 import { isObjectRecord, isRoomLike } from "@/lib/room-guards";
 
 function getRoomsArray(payload: unknown): Room[] {
@@ -77,7 +76,7 @@ export const roomService = {
   },
 
   getPublicRooms: async (params: RoomFilters = {}): Promise<RoomsResponse> => {
-    const response = await api.get("/rooms/public", { params });
+    const response = await privateApi.get("/rooms/public", { params });
     return normalizeRoomsResponse(response.data);
   },
 
@@ -119,7 +118,7 @@ export const roomService = {
   },
 
   getRoomById: async (id: string): Promise<{ data: Room }> => {
-    const response = await api.get(`/rooms/${id}`);
+    const response = await privateApi.get(`/rooms/${id}`);
     return response.data;
   },
 
