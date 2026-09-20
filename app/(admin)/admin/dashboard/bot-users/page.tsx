@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Bot, Pause, Play, Plus, RefreshCw, Search, Trash2, UserPlus } from "lucide-react";
+import { Bot, Download, Pause, Play, Plus, RefreshCw, Search, Trash2, UserPlus, Video } from "lucide-react";
 import { toast } from "sonner";
 
 import { privateApi } from "@/http/api/privateApi";
@@ -34,6 +34,57 @@ type BotListResponse = {
     nextPage: number | null;
   };
   synthetic: true;
+};
+
+
+type BotVideoSearchItem = {
+  id: number;
+  sourcePageUrl: string;
+  previewImageUrl: string;
+  durationSeconds: number;
+  creator?: { name?: string; url?: string };
+  recommendedFile?: { quality?: string; width?: number | null; height?: number | null } | null;
+};
+
+type BotVideoAsset = {
+  id: string;
+  botId?: string | null;
+  botName?: string | null;
+  provider: string;
+  providerVideoId: string;
+  sourcePageUrl: string;
+  creatorName?: string | null;
+  licenseUrl: string;
+  previewImageUrl?: string | null;
+  localUrl: string;
+  durationSeconds?: number | null;
+  fileSizeBytes?: number;
+  createdAt: string;
+};
+
+
+type BotFriendActivityItem = {
+  id: string;
+  status: "PENDING" | "ACCEPTED";
+  sentAt: string;
+  acceptedAt?: string | null;
+  botId: string;
+  botName: string;
+  userId: string;
+  userName: string;
+  userEmail?: string | null;
+};
+
+type BotNetworkActivityItem = {
+  id: string;
+  status: "PENDING" | "ACCEPTED";
+  sentAt: string;
+  acceptAt: string;
+  acceptedAt?: string | null;
+  requesterBotId: string;
+  requesterBotName: string;
+  receiverBotId: string;
+  receiverBotName: string;
 };
 
 
@@ -94,7 +145,19 @@ export default function BotUsersPage() {
   const [postAgeHours, setPostAgeHours] = useState("72");
   const [simulationMinDelay, setSimulationMinDelay] = useState("1");
   const [simulationMaxDelay, setSimulationMaxDelay] = useState("400");
+  const [videoSearch, setVideoSearch] = useState("room interior nepal");
+  const [videoSearchSubmitted, setVideoSearchSubmitted] = useState("");
 
+  const [activityEnabled, setActivityEnabled] = useState(false);
+  const [activityHours, setActivityHours] = useState<string[]>(
+    () => Array.from({ length: 24 }, () => "0"),
+  );
+  const [activityAllCount, setActivityAllCount] = useState("0");
+
+  const [networkEnabled, setNetworkEnabled] = useState(false);
+  const [networkRealAcceptPercent, setNetworkRealAcceptPercent] = useState("30");
+  const [networkRealMinDelay, setNetworkRealMinDelay] = useState("5");
+  const [networkRealMaxDelay, setNetworkRealMaxDelay] = useState("720");
   const [friendEnabled, setFriendEnabled] = useState(false);
   const [friendStrategy, setFriendStrategy] = useState<"MUTUAL_FIRST" | "RANDOM">("MUTUAL_FIRST");
   const [friendRequestsPerRun, setFriendRequestsPerRun] = useState("1");
@@ -198,12 +261,219 @@ export default function BotUsersPage() {
       toast.error(error?.response?.data?.message || "Could not clear bot engagement"),
   });
 
+  const videoCollectorStatusQuery = useQuery({
+    queryKey: ["admin-bot-video-collector-status"],
+    queryFn: async () => {
+      const res = await privateApi.get("/social/admin/bot-video-collector/status");
+      return res.data?.data ?? res.data;
+    },
+  });
+
+  const videoAssetsQuery = useQuery({
+    queryKey: ["admin-bot-video-assets"],
+    queryFn: async () => {
+      const res = await privateApi.get("/social/admin/bot-video-collector/assets", {
+        params: { limit: 12 },
+      });
+      return res.data?.data ?? res.data;
+    },
+  });
+
+  const videoSearchQuery = useQuery({
+    queryKey: ["admin-bot-video-search", videoSearchSubmitted],
+    enabled: Boolean(videoSearchSubmitted),
+    queryFn: async () => {
+      const res = await privateApi.get("/social/admin/bot-video-collector/search", {
+        params: { q: videoSearchSubmitted, perPage: 12 },
+      });
+      return res.data?.data ?? res.data;
+    },
+  });
+
+  const videoImportMutation = useMutation({
+    mutationFn: async (videoId: number) => {
+      const res = await privateApi.post("/social/admin/bot-video-collector/import", {
+        videoId,
+      });
+      return res.data?.data ?? res.data;
+    },
+    onSuccess: async (result: any) => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["admin-bot-video-assets"] }),
+        queryClient.invalidateQueries({ queryKey: ["admin-bot-video-collector-status"] }),
+      ]);
+      toast.success(result?.duplicate ? "Video already imported" : "Video imported to RoomKhoj server");
+    },
+    onError: (error: any) =>
+      toast.error(error?.response?.data?.message || "Could not import video"),
+  });
+
+  const videoDeleteMutation = useMutation({
+    mutationFn: async (assetId: string) => {
+      const res = await privateApi.delete(`/social/admin/bot-video-collector/assets/${assetId}`);
+      return res.data?.data ?? res.data;
+    },
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["admin-bot-video-assets"] }),
+        queryClient.invalidateQueries({ queryKey: ["admin-bot-video-collector-status"] }),
+      ]);
+      toast.success("Imported video removed");
+    },
+    onError: (error: any) =>
+      toast.error(error?.response?.data?.message || "Could not remove video"),
+  });
+
+  const botActivityQuery = useQuery({
+    queryKey: ["admin-bot-activity-schedule"],
+    queryFn: async () => {
+      const res = await privateApi.get("/social/admin/bot-activity-schedule");
+      return res.data?.data ?? res.data;
+    },
+    refetchInterval: 10000,
+  });
+
+  useEffect(() => {
+    const data = botActivityQuery.data;
+    if (!data) return;
+    setActivityEnabled(Boolean(data.enabled));
+    const next = Array.from({ length: 24 }, () => "0");
+    for (const item of Array.isArray(data.schedule) ? data.schedule : []) {
+      const hour = Number(item?.hour);
+      if (Number.isInteger(hour) && hour >= 0 && hour <= 23) {
+        next[hour] = String(Number(item?.targetActiveCount ?? 0));
+      }
+    }
+    setActivityHours(next);
+  }, [botActivityQuery.data]);
+
+  const botActivityMutation = useMutation({
+    mutationFn: async () => {
+      const res = await privateApi.patch("/social/admin/bot-activity-schedule", {
+        enabled: activityEnabled,
+        hours: activityHours.map((value, hour) => ({
+          hour,
+          targetActiveCount: Math.max(
+            0,
+            Math.min(50000, Math.floor(Number(value) || 0)),
+          ),
+        })),
+      });
+      return res.data?.data ?? res.data;
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["admin-bot-activity-schedule"] });
+      toast.success("24-hour bot activity timing saved");
+    },
+    onError: (error: any) =>
+      toast.error(error?.response?.data?.message || "Could not save bot activity timing"),
+  });
+
+  const botActivityRunMutation = useMutation({
+    mutationFn: async () => {
+      const res = await privateApi.post("/social/admin/bot-activity-schedule/run");
+      return res.data?.data ?? res.data;
+    },
+    onSuccess: async (result: any) => {
+      await queryClient.invalidateQueries({ queryKey: ["admin-bot-activity-schedule"] });
+      toast.success(
+        `${Number(result?.activeCount ?? 0)} bots active for hour ${String(result?.currentHour ?? "")}:00`,
+      );
+    },
+    onError: (error: any) =>
+      toast.error(error?.response?.data?.message || "Could not run bot activity timing"),
+  });
+
+  const botNetworkQuery = useQuery({
+    queryKey: ["admin-bot-network-automation"],
+    queryFn: async () => {
+      const res = await privateApi.get("/social/admin/bot-network-automation");
+      return res.data?.data ?? res.data;
+    },
+  });
+
+  const botNetworkActivityQuery = useQuery({
+    queryKey: ["admin-bot-network-activity"],
+    queryFn: async () => {
+      const res = await privateApi.get("/social/admin/bot-network-automation/activity", {
+        params: { limit: 50 },
+      });
+      return res.data?.data ?? res.data;
+    },
+    refetchInterval: 5000,
+  });
+
+  useEffect(() => {
+    if (!botNetworkQuery.data) return;
+    setNetworkEnabled(Boolean(botNetworkQuery.data.enabled));
+    setNetworkRealAcceptPercent(String(botNetworkQuery.data.realToBotAcceptPercent ?? 30));
+    setNetworkRealMinDelay(String(botNetworkQuery.data.realToBotMinAcceptDelayMinutes ?? 5));
+    setNetworkRealMaxDelay(String(botNetworkQuery.data.realToBotMaxAcceptDelayMinutes ?? 720));
+  }, [botNetworkQuery.data]);
+
+  const botNetworkMutation = useMutation({
+    mutationFn: async () => {
+      const current = botNetworkQuery.data || {};
+      const res = await privateApi.patch("/social/admin/bot-network-automation", {
+        enabled: networkEnabled,
+        normalMinRequests: Number(current.normalMinRequests ?? 2),
+        normalMaxRequests: Number(current.normalMaxRequests ?? 4),
+        burstChancePercent: Number(current.burstChancePercent ?? 3),
+        burstRequestCount: Number(current.burstRequestCount ?? 100),
+        minAcceptDelayMinutes: Number(current.minAcceptDelayMinutes ?? 5),
+        maxAcceptDelayMinutes: Number(current.maxAcceptDelayMinutes ?? 720),
+        minRunDelayMinutes: Number(current.minRunDelayMinutes ?? 720),
+        maxRunDelayMinutes: Number(current.maxRunDelayMinutes ?? 1440),
+        realToBotAcceptPercent: Math.max(0, Math.min(100, Number(networkRealAcceptPercent) || 0)),
+        realToBotMinAcceptDelayMinutes: Math.max(1, Number(networkRealMinDelay) || 5),
+        realToBotMaxAcceptDelayMinutes: Math.max(1, Number(networkRealMaxDelay) || 720),
+      });
+      return res.data?.data ?? res.data;
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["admin-bot-network-automation"] });
+      toast.success("Synthetic bot network automation saved");
+    },
+    onError: (error: any) =>
+      toast.error(error?.response?.data?.message || "Could not save bot network automation"),
+  });
+
+  const botNetworkRunMutation = useMutation({
+    mutationFn: async () => {
+      const res = await privateApi.post("/social/admin/bot-network-automation/run");
+      return res.data?.data ?? res.data;
+    },
+    onSuccess: async (result: any) => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["admin-bot-network-automation"] }),
+        queryClient.invalidateQueries({ queryKey: ["admin-bot-network-activity"] }),
+      ]);
+      toast.success(
+        `${Number(result?.created ?? 0)} synthetic bot request(s) created; ${Number(result?.acceptedDue ?? 0)} auto-accepted`,
+      );
+    },
+    onError: (error: any) =>
+      toast.error(error?.response?.data?.message || "Could not run bot network automation"),
+  });
+
   const friendAutomationQuery = useQuery({
     queryKey: ["admin-bot-friend-automation"],
     queryFn: async () => {
       const res = await privateApi.get("/social/admin/bot-friend-automation");
       return res.data?.data ?? res.data;
     },
+  });
+
+
+  const friendActivityQuery = useQuery({
+    queryKey: ["admin-bot-friend-activity"],
+    queryFn: async () => {
+      const res = await privateApi.get("/social/admin/bot-friend-automation/activity", {
+        params: { limit: 50 },
+      });
+      return res.data?.data ?? res.data;
+    },
+    refetchInterval: 5000,
   });
 
   useEffect(() => {
@@ -244,6 +514,7 @@ export default function BotUsersPage() {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["admin-bot-friend-automation"] }),
         queryClient.invalidateQueries({ queryKey: ["admin-bot-simulation-stats"] }),
+        queryClient.invalidateQueries({ queryKey: ["admin-bot-friend-activity"] }),
       ]);
       toast.success(String(Number(result?.sent ?? 0)) + " bot friend request(s) sent");
     },
@@ -299,6 +570,7 @@ export default function BotUsersPage() {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ["admin-synthetic-bots"] }),
       queryClient.invalidateQueries({ queryKey: ["admin-synthetic-bots-stats"] }),
+      queryClient.invalidateQueries({ queryKey: ["admin-bot-friend-activity"] }),
     ]);
   };
 
@@ -506,6 +778,407 @@ export default function BotUsersPage() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
+            <Video className="h-5 w-5" />
+            Bot Video Collector
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <Input
+              value={videoSearch}
+              onChange={(event) => setVideoSearch(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && videoSearch.trim()) {
+                  setVideoSearchSubmitted(videoSearch.trim());
+                }
+              }}
+              placeholder="Search licensed videos e.g. room interior, Pokhara, apartment"
+            />
+            <Button
+              type="button"
+              onClick={() => setVideoSearchSubmitted(videoSearch.trim())}
+              disabled={!videoSearch.trim() || videoSearchQuery.isFetching}
+            >
+              <Search className="mr-2 h-4 w-4" />
+              Search Videos
+            </Button>
+          </div>
+
+          <div className="flex flex-wrap gap-2 text-sm">
+            <Badge variant={videoCollectorStatusQuery.data?.configured ? "default" : "secondary"}>
+              {videoCollectorStatusQuery.data?.configured ? "Pexels connected" : "PEXELS_API_KEY needed"}
+            </Badge>
+            <Badge variant="outline">
+              Saved: {Number(videoCollectorStatusQuery.data?.totalAssets ?? 0).toLocaleString()}
+            </Badge>
+            <Badge variant="outline">Licensed source only</Badge>
+          </div>
+
+          {videoSearchQuery.isError && (
+            <p className="text-sm text-destructive">
+              {(videoSearchQuery.error as any)?.response?.data?.message || "Could not search videos"}
+            </p>
+          )}
+
+          {Array.isArray(videoSearchQuery.data?.videos) && videoSearchQuery.data.videos.length > 0 && (
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {(videoSearchQuery.data.videos as BotVideoSearchItem[]).map((video) => (
+                <div key={video.id} className="overflow-hidden rounded-xl border bg-card">
+                  <div className="aspect-video bg-muted">
+                    {video.previewImageUrl ? (
+                      <img
+                        src={video.previewImageUrl}
+                        alt={video.creator?.name ? `Video by ${video.creator.name}` : "Pexels video"}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-full items-center justify-center text-muted-foreground">
+                        <Video className="h-8 w-8" />
+                      </div>
+                    )}
+                  </div>
+                  <div className="space-y-2 p-3">
+                    <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+                      <span>{video.creator?.name || "Pexels creator"}</span>
+                      <span>{Number(video.durationSeconds || 0)}s</span>
+                    </div>
+                    <Button
+                      type="button"
+                      className="w-full"
+                      size="sm"
+                      onClick={() => videoImportMutation.mutate(video.id)}
+                      disabled={videoImportMutation.isPending}
+                    >
+                      <Download className="mr-2 h-4 w-4" />
+                      Import to Server
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {Array.isArray(videoAssetsQuery.data?.assets) && videoAssetsQuery.data.assets.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-sm font-medium">Recent imported videos</p>
+              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                {(videoAssetsQuery.data.assets as BotVideoAsset[]).map((asset) => (
+                  <div key={asset.id} className="flex items-center gap-3 rounded-lg border p-2">
+                    <div className="h-14 w-20 overflow-hidden rounded bg-muted">
+                      {asset.previewImageUrl ? (
+                        <img src={asset.previewImageUrl} alt="Imported video preview" className="h-full w-full object-cover" />
+                      ) : (
+                        <div className="flex h-full items-center justify-center"><Video className="h-5 w-5" /></div>
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium">{asset.provider} #{asset.providerVideoId}</p>
+                      <p className="truncate text-xs text-muted-foreground">{asset.creatorName || "Licensed video"}</p>
+                    </div>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => videoDeleteMutation.mutate(asset.id)}
+                      disabled={videoDeleteMutation.isPending}
+                      aria-label="Delete imported video"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <p className="text-xs text-muted-foreground">
+            Search and import uses licensed Pexels videos only. Source and license metadata are saved with every imported file.
+          </p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Bot className="h-5 w-5" />
+            24-Hour Bot Activity
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="font-medium">{activityEnabled ? "Activity schedule ON" : "Activity schedule OFF"}</p>
+              <p className="text-sm text-muted-foreground">
+                Set exactly how many synthetic bots may be active for each Nepal-time hour. Bots rotate so older/inactive bots also get activity sessions.
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant={activityEnabled ? "default" : "outline"}
+              onClick={() => setActivityEnabled((value) => !value)}
+            >
+              {activityEnabled ? "Timing ON" : "Timing OFF"}
+            </Button>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <Badge variant="secondary">
+              Timezone: {String(botActivityQuery.data?.timezone || "Asia/Kathmandu")}
+            </Badge>
+            <Badge variant="outline">
+              Current hour: {String(botActivityQuery.data?.currentHour ?? 0).padStart(2, "0")}:00
+            </Badge>
+            <Badge variant="outline">
+              Active now: {Number(botActivityQuery.data?.activeCount ?? 0).toLocaleString()}
+            </Badge>
+            <Badge variant="outline">
+              Enabled bots: {Number(botActivityQuery.data?.enabledBotCount ?? 0).toLocaleString()}
+            </Badge>
+          </div>
+
+          <div className="flex flex-col gap-2 rounded-xl border p-3 sm:flex-row sm:items-end">
+            <label className="space-y-1 text-sm sm:max-w-56">
+              <span className="font-medium">Same count for all 24 hours</span>
+              <Input
+                type="number"
+                min={0}
+                max={50000}
+                value={activityAllCount}
+                onChange={(event) => setActivityAllCount(event.target.value)}
+              />
+            </label>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                const value = String(
+                  Math.max(0, Math.min(50000, Math.floor(Number(activityAllCount) || 0))),
+                );
+                setActivityHours(Array.from({ length: 24 }, () => value));
+              }}
+            >
+              Apply to all hours
+            </Button>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+            {activityHours.map((value, hour) => {
+              const isCurrent = Number(botActivityQuery.data?.currentHour) === hour;
+              return (
+                <label
+                  key={hour}
+                  className={`space-y-1 rounded-lg border p-2 text-sm ${isCurrent ? "ring-2 ring-primary/40" : ""}`}
+                >
+                  <span className="flex items-center justify-between gap-2 font-medium">
+                    <span>{String(hour).padStart(2, "0")}:00</span>
+                    {isCurrent && <Badge variant="secondary">Now</Badge>}
+                  </span>
+                  <Input
+                    type="number"
+                    min={0}
+                    max={50000}
+                    value={value}
+                    onChange={(event) => {
+                      const next = [...activityHours];
+                      next[hour] = event.target.value;
+                      setActivityHours(next);
+                    }}
+                    aria-label={`Active bot count for ${hour}:00`}
+                  />
+                </label>
+              );
+            })}
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              onClick={() => botActivityMutation.mutate()}
+              disabled={botActivityMutation.isPending || botActivityQuery.isLoading}
+            >
+              Save 24-Hour Timing
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => botActivityRunMutation.mutate()}
+              disabled={botActivityRunMutation.isPending || total === 0}
+            >
+              Apply Current Hour Now
+            </Button>
+          </div>
+
+          <p className="text-xs text-muted-foreground">
+            When this schedule is ON, synthetic likes/comments use only bots active in the current schedule. In Messages, accepted synthetic friends can show Online only while scheduled active and remain labelled Bot.
+          </p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Bot className="h-5 w-5" />
+            Bot-to-Bot Network
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="font-medium">{networkEnabled ? "Enabled" : "Disabled"}</p>
+              <p className="text-sm text-muted-foreground">
+                Synthetic bots send requests only to other synthetic bots. Typical run creates 2-4 requests; rare test bursts can create 100.
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant={networkEnabled ? "default" : "outline"}
+              onClick={() => setNetworkEnabled((value) => !value)}
+            >
+              {networkEnabled ? "Automation ON" : "Automation OFF"}
+            </Button>
+          </div>
+
+          <div className="flex flex-wrap gap-2 text-sm">
+            <Badge variant="outline">
+              Normal: {Number(botNetworkQuery.data?.normalMinRequests ?? 2)}-{Number(botNetworkQuery.data?.normalMaxRequests ?? 4)}
+            </Badge>
+            <Badge variant="outline">
+              Burst: {Number(botNetworkQuery.data?.burstRequestCount ?? 100)}
+            </Badge>
+            <Badge variant="outline">
+              Burst chance: {Number(botNetworkQuery.data?.burstChancePercent ?? 3)}%
+            </Badge>
+            <Badge variant="outline">
+              Auto-accept: {Number(botNetworkQuery.data?.minAcceptDelayMinutes ?? 5)}-{Number(botNetworkQuery.data?.maxAcceptDelayMinutes ?? 720)} min
+            </Badge>
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-3">
+            <label className="space-y-1 text-sm">
+              <span className="font-medium">Real user → bot accept %</span>
+              <Input
+                type="number"
+                min={0}
+                max={100}
+                value={networkRealAcceptPercent}
+                onChange={(event) => setNetworkRealAcceptPercent(event.target.value)}
+              />
+            </label>
+            <label className="space-y-1 text-sm">
+              <span className="font-medium">Bot accept min delay (min)</span>
+              <Input
+                type="number"
+                min={1}
+                max={10080}
+                value={networkRealMinDelay}
+                onChange={(event) => setNetworkRealMinDelay(event.target.value)}
+              />
+            </label>
+            <label className="space-y-1 text-sm">
+              <span className="font-medium">Bot accept max delay (min)</span>
+              <Input
+                type="number"
+                min={1}
+                max={10080}
+                value={networkRealMaxDelay}
+                onChange={(event) => setNetworkRealMaxDelay(event.target.value)}
+              />
+            </label>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              onClick={() => botNetworkMutation.mutate()}
+              disabled={botNetworkMutation.isPending || botNetworkQuery.isLoading}
+            >
+              Save Network Automation
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => botNetworkRunMutation.mutate()}
+              disabled={botNetworkRunMutation.isPending || total < 2}
+            >
+              Run Once Now
+            </Button>
+            {botNetworkQuery.data?.nextRunAt && (
+              <Badge variant="outline">
+                Next run: {new Date(botNetworkQuery.data.nextRunAt).toLocaleString()}
+              </Badge>
+            )}
+          </div>
+
+          <div className="space-y-3 rounded-xl border p-3">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="font-medium">Live Bot Network Activity</p>
+                <p className="text-xs text-muted-foreground">
+                  Requests are accepted automatically after a random delay and refresh here every 5 seconds.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Badge variant="secondary">
+                  24h sent: {Number(botNetworkActivityQuery.data?.summary?.sent24h ?? 0).toLocaleString()}
+                </Badge>
+                <Badge variant="outline">
+                  Pending: {Number(botNetworkActivityQuery.data?.summary?.pending ?? 0).toLocaleString()}
+                </Badge>
+                <Badge variant="outline">
+                  Accepted: {Number(botNetworkActivityQuery.data?.summary?.accepted ?? 0).toLocaleString()}
+                </Badge>
+              </div>
+            </div>
+
+            <div className="max-h-72 overflow-auto rounded-lg border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>From bot</TableHead>
+                    <TableHead>To bot</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Accept time</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {!Array.isArray(botNetworkActivityQuery.data?.items) || botNetworkActivityQuery.data.items.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={4} className="py-6 text-center text-muted-foreground">
+                        No synthetic bot-to-bot requests yet.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    (botNetworkActivityQuery.data.items as BotNetworkActivityItem[]).map((item) => (
+                      <TableRow key={item.id}>
+                        <TableCell className="font-medium">{item.requesterBotName}</TableCell>
+                        <TableCell>{item.receiverBotName}</TableCell>
+                        <TableCell>
+                          <Badge variant={item.status === "ACCEPTED" ? "default" : "secondary"}>
+                            {item.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
+                          {item.status === "ACCEPTED" && item.acceptedAt
+                            ? new Date(item.acceptedAt).toLocaleString()
+                            : new Date(item.acceptAt).toLocaleString()}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+
+          <p className="text-xs text-muted-foreground">
+            Bot-to-bot links remain synthetic-only. Real users can only send requests to clearly-labelled Bot accounts after real-user suggestions are exhausted; by default about 30% of those bot requests auto-accept after a random delay.
+          </p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
             <UserPlus className="h-5 w-5" />
             Friend Request Automation
           </CardTitle>
@@ -579,6 +1252,74 @@ export default function BotUsersPage() {
                 Next run: {new Date(friendAutomationQuery.data.nextRunAt).toLocaleString()}
               </Badge>
             )}
+          </div>
+
+          <div className="space-y-3 rounded-xl border p-3">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="font-medium">Live Friend Request Activity</p>
+                <p className="text-xs text-muted-foreground">
+                  Auto-refresh every 5 seconds — which bot sent a request to which user.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Badge variant="secondary">
+                  24h: {Number(friendActivityQuery.data?.summary?.sent24h ?? 0).toLocaleString()}
+                </Badge>
+                <Badge variant="outline">
+                  Pending: {Number(friendActivityQuery.data?.summary?.pending ?? 0).toLocaleString()}
+                </Badge>
+                <Badge variant="outline">
+                  Accepted: {Number(friendActivityQuery.data?.summary?.accepted ?? 0).toLocaleString()}
+                </Badge>
+              </div>
+            </div>
+
+            <div className="max-h-80 overflow-auto rounded-lg border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Bot</TableHead>
+                    <TableHead>Sent to</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Time</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {friendActivityQuery.isLoading ? (
+                    <TableRow>
+                      <TableCell colSpan={4} className="py-6 text-center text-muted-foreground">
+                        Loading live activity...
+                      </TableCell>
+                    </TableRow>
+                  ) : !Array.isArray(friendActivityQuery.data?.items) || friendActivityQuery.data.items.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={4} className="py-6 text-center text-muted-foreground">
+                        No bot friend requests sent yet.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    (friendActivityQuery.data.items as BotFriendActivityItem[]).map((item) => (
+                      <TableRow key={item.id}>
+                        <TableCell className="font-medium">{item.botName}</TableCell>
+                        <TableCell>
+                          <div className="font-medium">{item.userName}</div>
+                          <div className="text-xs text-muted-foreground">{item.userEmail || item.userId}</div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={item.status === "ACCEPTED" ? "default" : "secondary"}>
+                            {item.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
+                          {new Date(item.sentAt).toLocaleString()}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
           </div>
 
           <p className="text-xs text-muted-foreground">
