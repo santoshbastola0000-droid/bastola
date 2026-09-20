@@ -898,7 +898,13 @@ function PostCard({
   return (
     <article className="overflow-hidden border-y bg-white font-sans text-slate-950 shadow-sm sm:rounded-xl sm:border">
       <header className="relative flex items-center gap-2.5 px-3 pb-2 pt-3">
-        <Avatar user={post.author} />
+        <Link
+          href={`/profile/${post.author.id}`}
+          className="relative shrink-0"
+          aria-label={`Open ${post.author.name} profile`}
+        >
+          <Avatar user={post.author} />
+        </Link>
         <div className="min-w-0 flex-1">
           <Link href={`/profile/${post.author.id}`} className="block truncate text-[15px] font-semibold leading-tight">
             {post.author.name}
