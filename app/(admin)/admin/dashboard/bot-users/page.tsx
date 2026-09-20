@@ -138,8 +138,22 @@ export default function BotUsersPage() {
       return res.data?.data ?? res.data;
     },
     onSuccess: async (result: any) => {
-      toast.success(`${result?.created ?? 0} bot users generated`);
-      await refresh();
+      const created = Number(result?.created ?? 0);
+      setSearch("");
+      setPage(0);
+
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["admin-synthetic-bots"] }),
+        queryClient.invalidateQueries({ queryKey: ["admin-synthetic-bots-stats"] }),
+        queryClient.refetchQueries({ queryKey: ["admin-synthetic-bots"], type: "active" }),
+        queryClient.refetchQueries({ queryKey: ["admin-synthetic-bots-stats"], type: "active" }),
+      ]);
+
+      if (created > 0) {
+        toast.success(`${created} bot users created and loaded`);
+      } else {
+        toast.error("Server returned 0 created users");
+      }
     },
     onError: (error: any) => toast.error(error?.response?.data?.message || "Could not generate bot users"),
   });
