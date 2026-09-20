@@ -75,6 +75,18 @@ type BotFriendActivityItem = {
   userEmail?: string | null;
 };
 
+type BotNetworkActivityItem = {
+  id: string;
+  status: "PENDING" | "ACCEPTED";
+  sentAt: string;
+  acceptAt: string;
+  acceptedAt?: string | null;
+  requesterBotId: string;
+  requesterBotName: string;
+  receiverBotId: string;
+  receiverBotName: string;
+};
+
 
 function botAvatarDataUrl(bot: Pick<BotIdentity, "id" | "displayName">) {
   const name = String(bot.displayName || "Bot").trim();
@@ -136,6 +148,7 @@ export default function BotUsersPage() {
   const [videoSearch, setVideoSearch] = useState("room interior nepal");
   const [videoSearchSubmitted, setVideoSearchSubmitted] = useState("");
 
+  const [networkEnabled, setNetworkEnabled] = useState(false);
   const [friendEnabled, setFriendEnabled] = useState(false);
   const [friendStrategy, setFriendStrategy] = useState<"MUTUAL_FIRST" | "RANDOM">("MUTUAL_FIRST");
   const [friendRequestsPerRun, setFriendRequestsPerRun] = useState("1");
@@ -300,6 +313,72 @@ export default function BotUsersPage() {
     },
     onError: (error: any) =>
       toast.error(error?.response?.data?.message || "Could not remove video"),
+  });
+
+  const botNetworkQuery = useQuery({
+    queryKey: ["admin-bot-network-automation"],
+    queryFn: async () => {
+      const res = await privateApi.get("/social/admin/bot-network-automation");
+      return res.data?.data ?? res.data;
+    },
+  });
+
+  const botNetworkActivityQuery = useQuery({
+    queryKey: ["admin-bot-network-activity"],
+    queryFn: async () => {
+      const res = await privateApi.get("/social/admin/bot-network-automation/activity", {
+        params: { limit: 50 },
+      });
+      return res.data?.data ?? res.data;
+    },
+    refetchInterval: 5000,
+  });
+
+  useEffect(() => {
+    if (!botNetworkQuery.data) return;
+    setNetworkEnabled(Boolean(botNetworkQuery.data.enabled));
+  }, [botNetworkQuery.data]);
+
+  const botNetworkMutation = useMutation({
+    mutationFn: async () => {
+      const current = botNetworkQuery.data || {};
+      const res = await privateApi.patch("/social/admin/bot-network-automation", {
+        enabled: networkEnabled,
+        normalMinRequests: Number(current.normalMinRequests ?? 2),
+        normalMaxRequests: Number(current.normalMaxRequests ?? 4),
+        burstChancePercent: Number(current.burstChancePercent ?? 3),
+        burstRequestCount: Number(current.burstRequestCount ?? 100),
+        minAcceptDelayMinutes: Number(current.minAcceptDelayMinutes ?? 5),
+        maxAcceptDelayMinutes: Number(current.maxAcceptDelayMinutes ?? 720),
+        minRunDelayMinutes: Number(current.minRunDelayMinutes ?? 720),
+        maxRunDelayMinutes: Number(current.maxRunDelayMinutes ?? 1440),
+      });
+      return res.data?.data ?? res.data;
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["admin-bot-network-automation"] });
+      toast.success("Synthetic bot network automation saved");
+    },
+    onError: (error: any) =>
+      toast.error(error?.response?.data?.message || "Could not save bot network automation"),
+  });
+
+  const botNetworkRunMutation = useMutation({
+    mutationFn: async () => {
+      const res = await privateApi.post("/social/admin/bot-network-automation/run");
+      return res.data?.data ?? res.data;
+    },
+    onSuccess: async (result: any) => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["admin-bot-network-automation"] }),
+        queryClient.invalidateQueries({ queryKey: ["admin-bot-network-activity"] }),
+      ]);
+      toast.success(
+        `${Number(result?.created ?? 0)} synthetic bot request(s) created; ${Number(result?.acceptedDue ?? 0)} auto-accepted`,
+      );
+    },
+    onError: (error: any) =>
+      toast.error(error?.response?.data?.message || "Could not run bot network automation"),
   });
 
   const friendAutomationQuery = useQuery({
@@ -739,6 +818,135 @@ export default function BotUsersPage() {
 
           <p className="text-xs text-muted-foreground">
             Search and import uses licensed Pexels videos only. Source and license metadata are saved with every imported file.
+          </p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Bot className="h-5 w-5" />
+            Bot-to-Bot Network
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="font-medium">{networkEnabled ? "Enabled" : "Disabled"}</p>
+              <p className="text-sm text-muted-foreground">
+                Synthetic bots send requests only to other synthetic bots. Typical run creates 2-4 requests; rare test bursts can create 100.
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant={networkEnabled ? "default" : "outline"}
+              onClick={() => setNetworkEnabled((value) => !value)}
+            >
+              {networkEnabled ? "Automation ON" : "Automation OFF"}
+            </Button>
+          </div>
+
+          <div className="flex flex-wrap gap-2 text-sm">
+            <Badge variant="outline">
+              Normal: {Number(botNetworkQuery.data?.normalMinRequests ?? 2)}-{Number(botNetworkQuery.data?.normalMaxRequests ?? 4)}
+            </Badge>
+            <Badge variant="outline">
+              Burst: {Number(botNetworkQuery.data?.burstRequestCount ?? 100)}
+            </Badge>
+            <Badge variant="outline">
+              Burst chance: {Number(botNetworkQuery.data?.burstChancePercent ?? 3)}%
+            </Badge>
+            <Badge variant="outline">
+              Auto-accept: {Number(botNetworkQuery.data?.minAcceptDelayMinutes ?? 5)}-{Number(botNetworkQuery.data?.maxAcceptDelayMinutes ?? 720)} min
+            </Badge>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              onClick={() => botNetworkMutation.mutate()}
+              disabled={botNetworkMutation.isPending || botNetworkQuery.isLoading}
+            >
+              Save Network Automation
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => botNetworkRunMutation.mutate()}
+              disabled={botNetworkRunMutation.isPending || total < 2}
+            >
+              Run Once Now
+            </Button>
+            {botNetworkQuery.data?.nextRunAt && (
+              <Badge variant="outline">
+                Next run: {new Date(botNetworkQuery.data.nextRunAt).toLocaleString()}
+              </Badge>
+            )}
+          </div>
+
+          <div className="space-y-3 rounded-xl border p-3">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="font-medium">Live Bot Network Activity</p>
+                <p className="text-xs text-muted-foreground">
+                  Requests are accepted automatically after a random delay and refresh here every 5 seconds.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Badge variant="secondary">
+                  24h sent: {Number(botNetworkActivityQuery.data?.summary?.sent24h ?? 0).toLocaleString()}
+                </Badge>
+                <Badge variant="outline">
+                  Pending: {Number(botNetworkActivityQuery.data?.summary?.pending ?? 0).toLocaleString()}
+                </Badge>
+                <Badge variant="outline">
+                  Accepted: {Number(botNetworkActivityQuery.data?.summary?.accepted ?? 0).toLocaleString()}
+                </Badge>
+              </div>
+            </div>
+
+            <div className="max-h-72 overflow-auto rounded-lg border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>From bot</TableHead>
+                    <TableHead>To bot</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Accept time</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {!Array.isArray(botNetworkActivityQuery.data?.items) || botNetworkActivityQuery.data.items.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={4} className="py-6 text-center text-muted-foreground">
+                        No synthetic bot-to-bot requests yet.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    (botNetworkActivityQuery.data.items as BotNetworkActivityItem[]).map((item) => (
+                      <TableRow key={item.id}>
+                        <TableCell className="font-medium">{item.requesterBotName}</TableCell>
+                        <TableCell>{item.receiverBotName}</TableCell>
+                        <TableCell>
+                          <Badge variant={item.status === "ACCEPTED" ? "default" : "secondary"}>
+                            {item.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
+                          {item.status === "ACCEPTED" && item.acceptedAt
+                            ? new Date(item.acceptedAt).toLocaleString()
+                            : new Date(item.acceptAt).toLocaleString()}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+
+          <p className="text-xs text-muted-foreground">
+            This graph is synthetic-only and remains separate from real-user friendship counts, mutual-friend ranking and real-user presence.
           </p>
         </CardContent>
       </Card>
