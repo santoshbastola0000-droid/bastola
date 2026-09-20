@@ -85,6 +85,7 @@ export default function StaffTrackingPage() {
   const watchIdRef = useRef<number | null>(null);
   const syncTimerRef = useRef<number | null>(null);
   const syncInFlightRef = useRef(false);
+  const resumeSyncRef = useRef<(() => void) | null>(null);
   const lastPingRef = useRef(0);
   const dueToastShownRef = useRef(false);
 
@@ -138,6 +139,7 @@ export default function StaffTrackingPage() {
     watchIdRef.current = null;
     syncTimerRef.current = null;
     syncInFlightRef.current = false;
+    resumeSyncRef.current = null;
     setTrackingState("Stopped");
   };
 
@@ -217,6 +219,10 @@ export default function StaffTrackingPage() {
       );
     };
 
+    // Mobile Safari/Chrome can pause timers while the tab is hidden. Keep a
+    // one-shot sync callback so returning to the app immediately repairs the gap.
+    resumeSyncRef.current = syncCurrentPosition;
+
     setTrackingState("Starting GPS tracking...");
 
     // watchPosition gives fast movement updates while the browser is active.
@@ -244,6 +250,25 @@ export default function StaffTrackingPage() {
     return () => stopWatcher();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data?.activeSession?.id, data?.profile?.staffType]);
+
+  useEffect(() => {
+    const resumeTracking = () => {
+      if (document.visibilityState !== "visible") return;
+      resumeSyncRef.current?.();
+    };
+
+    document.addEventListener("visibilitychange", resumeTracking);
+    window.addEventListener("focus", resumeTracking);
+    window.addEventListener("pageshow", resumeTracking);
+    window.addEventListener("online", resumeTracking);
+
+    return () => {
+      document.removeEventListener("visibilitychange", resumeTracking);
+      window.removeEventListener("focus", resumeTracking);
+      window.removeEventListener("pageshow", resumeTracking);
+      window.removeEventListener("online", resumeTracking);
+    };
+  }, []);
 
   useEffect(() => {
     const session = data?.activeSession;
@@ -365,11 +390,9 @@ export default function StaffTrackingPage() {
       setBusy(true);
       let payload: any = {};
       if (data.profile.staffType === "MARKETING") {
-        try {
-          payload = await getPosition();
-        } catch {
-          payload = {};
-        }
+        // Never complete a marketing shift without a fresh final GPS point.
+        // If location fails, keep the session active so the staff member can retry.
+        payload = await getPosition();
       }
       const result = await staffTrackingService.end(payload);
       stopWatcher();
@@ -380,7 +403,12 @@ export default function StaffTrackingPage() {
       }
       await load();
     } catch (error: any) {
-      toast.error(error?.response?.data?.message || "Work end failed");
+      if (error?.code === 1) setPermissionState("denied");
+      toast.error(
+        error?.response?.data?.message ||
+          error?.message ||
+          "Final location लिन सकिएन। Location permission ON गरेर फेरि प्रयास गर्नुहोस्।",
+      );
     } finally {
       setBusy(false);
     }
@@ -545,7 +573,7 @@ export default function StaffTrackingPage() {
                           ? `Start location बाट ${currentDistanceKm.toFixed(2)} km`
                           : lastLocationAt
                             ? `Last synced ${new Date(lastLocationAt).toLocaleTimeString()}`
-                            : "Browser open हुँदा foreground GPS sync हुन्छ।"}
+                            : "Browser foreground मा GPS sync हुन्छ; app मा फर्किँदा तुरुन्त auto-resync हुन्छ।"}
                       </div>
                     </div>
                     <Badge
