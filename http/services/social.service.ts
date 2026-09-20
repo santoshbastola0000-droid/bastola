@@ -166,6 +166,7 @@ export type SocialComment = {
   parentCommentId?: string | null;
   content: string;
   createdAt: string;
+  isSynthetic?: boolean;
   author: SocialUser;
 };
 
