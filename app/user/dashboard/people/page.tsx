@@ -55,6 +55,35 @@ function timeAgo(value?: string | null) {
   return new Date(value).toLocaleDateString();
 }
 
+function syntheticAvatarDataUrl(person: SocialUser) {
+  const seed = `${person.id}:${person.name}`;
+  let hash = 0;
+  for (let index = 0; index < seed.length; index += 1) {
+    hash = (hash * 31 + seed.charCodeAt(index)) >>> 0;
+  }
+
+  const hue = hash % 360;
+  const hue2 = (hue + 64) % 360;
+  const initial = String(person.name || "B").slice(0, 1).toUpperCase();
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="160" height="160" viewBox="0 0 160 160">
+      <defs>
+        <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="hsl(${hue} 70% 66%)"/>
+          <stop offset="100%" stop-color="hsl(${hue2} 68% 52%)"/>
+        </linearGradient>
+      </defs>
+      <rect width="160" height="160" rx="80" fill="url(#g)"/>
+      <circle cx="80" cy="65" r="33" fill="#d9a066"/>
+      <path d="M48 61c4-25 18-38 33-38 21 0 34 16 34 41-12-9-23-14-36-14-10 0-21 4-31 11z" fill="#2d241f"/>
+      <path d="M35 147c7-31 24-47 45-47s38 16 45 47" fill="rgba(255,255,255,.9)"/>
+      <circle cx="126" cy="126" r="21" fill="rgba(17,24,39,.84)"/>
+      <text x="126" y="133" text-anchor="middle" font-family="Arial,sans-serif" font-size="18" font-weight="700" fill="#fff">${initial}</text>
+    </svg>
+  `;
+  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+}
+
 function Avatar({
   person,
   size = "md",
@@ -62,9 +91,9 @@ function Avatar({
   person: SocialUser;
   size?: "md" | "lg";
 }) {
-  const photo = profileMediaUrl(
-    person.profilePhotoUrl,
-  );
+  const photo = person.isSynthetic
+    ? syntheticAvatarDataUrl(person)
+    : profileMediaUrl(person.profilePhotoUrl);
 
   const dimensions =
     size === "lg"
@@ -396,13 +425,18 @@ export default function PeoplePage() {
                         >
                           <button
                             type="button"
-                            onClick={() =>
-                              router.push(
-                                `/profile/${person.id}`,
-                              )
+                            onClick={() => {
+                              if (!person.isSynthetic) {
+                                router.push(`/profile/${person.id}`);
+                              }
+                            }}
+                            disabled={Boolean(person.isSynthetic)}
+                            className="shrink-0 disabled:cursor-default"
+                            aria-label={
+                              person.isSynthetic
+                                ? `${person.name} automated account`
+                                : `Open ${person.name} profile`
                             }
-                            className="shrink-0"
-                            aria-label={`Open ${person.name} profile`}
                           >
                             <Avatar
                               person={
@@ -414,17 +448,21 @@ export default function PeoplePage() {
 
                           <button
                             type="button"
-                            onClick={() =>
-                              router.push(
-                                `/profile/${person.id}`,
-                              )
-                            }
-                            className="min-w-0 flex-1 text-left"
-                          >
-                            <p className="truncate text-[16px] font-black">
-                              {
-                                person.name
+                            onClick={() => {
+                              if (!person.isSynthetic) {
+                                router.push(`/profile/${person.id}`);
                               }
+                            }}
+                            disabled={Boolean(person.isSynthetic)}
+                            className="min-w-0 flex-1 text-left disabled:cursor-default"
+                          >
+                            <p className="flex items-center gap-2 truncate text-[16px] font-black">
+                              <span className="truncate">{person.name}</span>
+                              {person.isSynthetic && (
+                                <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-bold text-slate-600">
+                                  Automated
+                                </span>
+                              )}
                             </p>
                             <p className="mt-0.5 text-[15px] font-semibold leading-5 text-foreground">
                               {kind ===
@@ -462,6 +500,15 @@ export default function PeoplePage() {
                               ) : (
                                 "Accept"
                               )}
+                            </Button>
+                          ) : person.isSynthetic ? (
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              disabled
+                              className="h-11 shrink-0 rounded-full px-5 font-bold"
+                            >
+                              Bot
                             </Button>
                           ) : (
                             <Button
