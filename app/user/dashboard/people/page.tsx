@@ -425,13 +425,8 @@ export default function PeoplePage() {
                         >
                           <button
                             type="button"
-                            onClick={() => {
-                              if (!person.isSynthetic) {
-                                router.push(`/profile/${person.id}`);
-                              }
-                            }}
-                            disabled={Boolean(person.isSynthetic)}
-                            className="shrink-0 disabled:cursor-default"
+                            onClick={() => router.push(`/profile/${person.id}`)}
+                            className="shrink-0"
                             aria-label={`Open ${person.name} profile`}
                           >
                             <Avatar
@@ -444,13 +439,8 @@ export default function PeoplePage() {
 
                           <button
                             type="button"
-                            onClick={() => {
-                              if (!person.isSynthetic) {
-                                router.push(`/profile/${person.id}`);
-                              }
-                            }}
-                            disabled={Boolean(person.isSynthetic)}
-                            className="min-w-0 flex-1 text-left disabled:cursor-default"
+                            onClick={() => router.push(`/profile/${person.id}`)}
+                            className="min-w-0 flex-1 text-left"
                           >
                             <p className="flex items-center gap-2 truncate text-[16px] font-black">
                               <span className="truncate">{person.name}</span>
