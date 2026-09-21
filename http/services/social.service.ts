@@ -212,6 +212,7 @@ export type GlobalSearchResult = {
     id: string;
     name: string;
     profilePhotoUrl?: string | null;
+    isSynthetic?: boolean;
     href: string;
   }>;
   posts: Array<SocialPost & { href: string }>;
