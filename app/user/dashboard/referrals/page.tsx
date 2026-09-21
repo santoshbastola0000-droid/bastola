@@ -73,10 +73,17 @@ export default function ReferralPage() {
     staleTime: 60_000,
   });
 
-  const getShareText = () =>
-    selectedReferralType === "MONETIZATION"
-      ? "💰 RoomKhoj Premium Referral! मेरो एउटै link बाट account बनाउनुहोस्। OTP verify भएपछि हामी दुवैलाई Rs. 5/5 आउँछ। त्यसपछि Rs. 500 Premium Agent लिँदा referred user लाई Rs. 100 discount, referrer लाई Rs. 300 र RoomKhoj लाई Rs. 100 जान्छ।"
+  const getShareText = () => {
+    if (selectedReferralType === "MONETIZATION") {
+      return referralContent?.promoText?.trim()
+        ? `💰 RoomKhoj: ${referralContent.promoText.trim()}`
+        : "💰 RoomKhoj Premium Referral! मेरो एउटै link बाट account बनाउनुहोस्। OTP verify भएपछि हामी दुवैलाई Rs. 5/5 आउँछ। त्यसपछि Rs. 500 Premium Agent लिँदा referred user लाई Rs. 100 discount, referrer लाई Rs. 300 र RoomKhoj लाई Rs. 100 जान्छ।";
+    }
+
+    return referralContent?.introText?.trim()
+      ? `🎁 RoomKhoj: ${referralContent.introText.trim()}`
       : "🎁 RoomKhoj Invite & Earn! मेरो एउटै link बाट verified account बनाउनुहोस्। OTP verify भएपछि referrer र नयाँ user दुवैलाई Rs. 5/5 wallet reward आउँछ।";
+  };
 
   const copyLink = async () => {
     if (!data?.referralLink) return;
