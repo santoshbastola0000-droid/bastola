@@ -35,6 +35,7 @@ import {
   type PublicProfile,
 } from "@/http/services/profile.service";
 import { profileMediaUrl } from "@/lib/profile-media";
+import { syntheticBotAvatarDataUrl } from "@/lib/synthetic-bot-avatar";
 import { messageService } from "@/http/services/message.service";
 import { useUserStore } from "@/stores/user-store";
 import {
@@ -142,7 +143,7 @@ export default function PublicProfilePage() {
       const [uiSettingsResult, socialPostsResult] =
         await Promise.allSettled([
           profileService.getProfileUiSettings(),
-          currentUser?.id
+          currentUser?.id && !data.user.isSynthetic
             ? socialService.userPosts(userId, 100)
             : Promise.resolve(fallbackPosts),
         ]);
@@ -165,6 +166,7 @@ export default function PublicProfilePage() {
 
       if (
         currentUser?.id &&
+        !data.user.isSynthetic &&
         String(currentUser.id) !== userId
       ) {
         void profileService
@@ -172,29 +174,34 @@ export default function PublicProfilePage() {
           .catch(() => undefined);
       }
 
-      try {
-        const status =
-          await profileService
-            .getFriendStatus(
-              userId,
-            );
+      if (data.user.isSynthetic) {
+        setFriendStatus("NONE");
+        setFriends([]);
+      } else {
+        try {
+          const status =
+            await profileService
+              .getFriendStatus(
+                userId,
+              );
 
-        setFriendStatus(
-          status.status,
-        );
-      } catch {}
+          setFriendStatus(
+            status.status,
+          );
+        } catch {}
 
-      try {
-        const list =
-          await profileService
-            .getFriends(userId);
+        try {
+          const list =
+            await profileService
+              .getFriends(userId);
 
-        setFriends(
-          Array.isArray(list)
-            ? list
-            : [],
-        );
-      } catch {}
+          setFriends(
+            Array.isArray(list)
+              ? list
+              : [],
+          );
+        } catch {}
+      }
     } catch {
       toast.error(
         "Profile load हुन सकेन",
@@ -384,10 +391,15 @@ export default function PublicProfilePage() {
   const profilePhoto =
     profile.user.isBanned
       ? null
-      : profileMediaUrl(
-          profile.user
-            .profilePhotoUrl,
-        );
+      : profile.user.isSynthetic
+        ? syntheticBotAvatarDataUrl({
+            id: profile.user.id,
+            name: profile.user.name,
+          })
+        : profileMediaUrl(
+            profile.user
+              .profilePhotoUrl,
+          );
 
   const coverPhoto =
     profileMediaUrl(
@@ -507,7 +519,7 @@ export default function PublicProfilePage() {
                 )}
               </div>
 
-              {friendStatus !== "SELF" && (
+              {!profile.user.isSynthetic && friendStatus !== "SELF" && (
                 <div className="mt-5 grid w-full max-w-xl grid-cols-2 gap-2">
                   <Button
                     onClick={handleFriend}
