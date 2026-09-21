@@ -30,6 +30,7 @@ import {
   type SocialPost,
 } from "@/http/services/social.service";
 import { useUserStore } from "@/stores/user-store";
+import { UserRole } from "@/types/user.types";
 import { syntheticBotAvatarDataUrl } from "@/lib/synthetic-bot-avatar";
 
 const backendUrl = String(
@@ -601,6 +602,30 @@ export default function ReelsPage() {
     }
   };
 
+  const removeComment = async (comment: SocialComment) => {
+    if (user?.role !== UserRole.ADMIN) return;
+    if (!window.confirm("Remove this comment?")) return;
+
+    try {
+      await socialService.deleteComment(comment.id);
+      setComments((current) =>
+        current.filter(
+          (item) => item.id !== comment.id && item.parentCommentId !== comment.id,
+        ),
+      );
+      if (commentsPostId) {
+        updatePost(commentsPostId, (current) => ({
+          ...current,
+          commentCount: Math.max(0, Number(current.commentCount || 0) - 1),
+        }));
+      }
+    } catch (error: any) {
+      window.alert(
+        String(error?.response?.data?.message || "Comment remove failed"),
+      );
+    }
+  };
+
   const closeUpload = () => {
     if (uploading) return;
     setUploadFile(null);
@@ -963,8 +988,17 @@ export default function ReelsPage() {
                           <p className="mt-0.5 whitespace-pre-wrap break-words text-[14px] leading-5">
                             {comment.content}
                           </p>
-                          <div className="mt-1 text-[10px] font-semibold text-slate-400">
-                            {timeAgo(comment.createdAt)}
+                          <div className="mt-1 flex items-center gap-3 text-[10px] font-semibold text-slate-400">
+                            <span>{timeAgo(comment.createdAt)}</span>
+                            {user?.role === UserRole.ADMIN && (
+                              <button
+                                type="button"
+                                onClick={() => void removeComment(comment)}
+                                className="font-bold text-red-600 hover:underline"
+                              >
+                                Remove
+                              </button>
+                            )}
                           </div>
                         </div>
                       </div>
