@@ -36,11 +36,15 @@ class WalletService {
 
   async getMonetizationStatus(): Promise<{
     isMonetized: boolean;
+    isPremiumActive: boolean;
+    isAgentMode: boolean;
+    accountMode: "USER" | "ADMIN" | "AGENT";
     monetizedAt: string | null;
+    monetizationExpiresAt: string | null;
     monetizationFeePaid: number;
     monetizationFee: number;
     canEarnFromRooms: boolean;
-    currentPlan: "FREE" | "STARTER";
+    currentPlan: "FREE" | "PREMIUM";
     totalEarned: number;
     freeEarningLimit: number;
     freeEarningRemaining: number;
@@ -93,7 +97,12 @@ class WalletService {
     );
     return response.data.data as {
       isMonetized: boolean;
+      isPremiumActive: boolean;
+      isAgentMode: boolean;
+      accountMode: "USER" | "ADMIN" | "AGENT";
+      currentPlan: "PREMIUM";
       monetizedAt: string | null;
+      monetizationExpiresAt: string | null;
       monetizationFeePaid: number;
       balance?: number;
       alreadyActive: boolean;
