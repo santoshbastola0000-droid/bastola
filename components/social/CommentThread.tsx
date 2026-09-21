@@ -317,6 +317,11 @@ function CommentRow({
             >
               {comment.author.name}
             </a>
+            {comment.author.isSynthetic && (
+              <span className="rounded-full border border-slate-200 bg-white px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-slate-500">
+                Content
+              </span>
+            )}
           </div>
           <div className="mt-0.5 whitespace-pre-wrap break-words text-[14px] leading-[1.3] text-slate-900">{comment.content}</div>
         </div>
