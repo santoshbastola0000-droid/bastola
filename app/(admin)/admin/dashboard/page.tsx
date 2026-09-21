@@ -21,6 +21,7 @@ import {
   ChevronRight,
   UserPlus,
   PhoneCall,
+  Radar,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -338,6 +339,30 @@ export default function AdminDashboard() {
           </Button>
         </div>
       </div>
+
+      <Card className="border-primary/20 bg-primary/5">
+        <CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-primary/10">
+              <Radar className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <p className="font-semibold text-foreground">Traffic Tracker</p>
+              <p className="text-sm text-muted-foreground">
+                Google, ChatGPT, Facebook, TikTok, Direct traffic र AI/Search crawlers हेर्नुहोस्।
+              </p>
+            </div>
+          </div>
+
+          <Button
+            type="button"
+            onClick={() => router.push("/admin/dashboard/traffic")}
+            className="min-w-32"
+          >
+            Open Traffic
+          </Button>
+        </CardContent>
+      </Card>
 
       <Card id="inter-call" className="border-primary/20 scroll-mt-6">
         <CardContent className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
