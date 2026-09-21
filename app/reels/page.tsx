@@ -936,7 +936,11 @@ export default function ReelsPage() {
 
                     return (
                       <div key={comment.id} className="flex gap-3">
-                        <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-slate-200 text-xs font-black">
+                        <a
+                          href={`/profile/${encodeURIComponent(comment.author.id)}`}
+                          className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-slate-200 text-xs font-black"
+                          aria-label={`Open ${comment.author.name} profile`}
+                        >
                           {avatar ? (
                             <img
                               src={avatar}
@@ -946,10 +950,15 @@ export default function ReelsPage() {
                           ) : (
                             comment.author.name.slice(0, 1).toUpperCase()
                           )}
-                        </div>
+                        </a>
                         <div className="min-w-0">
                           <div className="flex items-center gap-2 text-xs font-black">
-                            <span>{comment.author.name}</span>
+                            <a
+                              href={`/profile/${encodeURIComponent(comment.author.id)}`}
+                              className="hover:underline"
+                            >
+                              {comment.author.name}
+                            </a>
                           </div>
                           <p className="mt-0.5 whitespace-pre-wrap break-words text-[14px] leading-5">
                             {comment.content}
