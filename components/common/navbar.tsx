@@ -166,12 +166,35 @@ export function NavBar() {
 
   const suggestionItems = searchSuggestions
     ? [
-        ...searchSuggestions.users.slice(0, 2).map((item) => ({ label: item.name, sub: "User", href: item.href })),
-        ...searchSuggestions.posts.slice(0, 2).map((item) => ({ label: item.content || "Post", sub: item.author?.name || "Post", href: item.href })),
-        ...searchSuggestions.rooms.slice(0, 2).map((item) => ({ label: item.title, sub: item.address || "Room", href: item.href })),
-        ...searchSuggestions.jobs.slice(0, 2).map((item) => ({ label: item.title, sub: item.location || "Job", href: item.href })),
-        ...searchSuggestions.services.slice(0, 2).map((item) => ({ label: item.title, sub: "Service", href: item.href })),
-      ].slice(0, 6)
+        // People are intentionally first. Synthetic profiles are returned by
+        // the API in this same users array, so they render exactly like normal
+        // users with no separate bot label or treatment.
+        ...searchSuggestions.users.slice(0, 4).map((item) => ({
+          label: item.name,
+          sub: "User",
+          href: item.href,
+        })),
+        ...searchSuggestions.posts.slice(0, 2).map((item) => ({
+          label: item.content || "Post",
+          sub: item.author?.name || "Post",
+          href: item.href,
+        })),
+        ...searchSuggestions.rooms.slice(0, 2).map((item) => ({
+          label: item.title,
+          sub: item.address || "Room",
+          href: item.href,
+        })),
+        ...searchSuggestions.jobs.slice(0, 2).map((item) => ({
+          label: item.title,
+          sub: item.location || "Job",
+          href: item.href,
+        })),
+        ...searchSuggestions.services.slice(0, 2).map((item) => ({
+          label: item.title,
+          sub: "Service",
+          href: item.href,
+        })),
+      ].slice(0, 8)
     : [];
 
 
