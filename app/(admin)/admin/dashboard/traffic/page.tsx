@@ -4,9 +4,11 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   BarChart3,
+  Bot,
   ExternalLink,
   Globe2,
   MousePointerClick,
+  Radar,
   Users,
 } from "lucide-react";
 
@@ -14,6 +16,41 @@ import { privateApi } from "@/http/api/privateApi";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+
+type CrawlerAnalytics = {
+  days: number;
+  summary: {
+    requests: number;
+    uniqueBots: number;
+    lastSeen: string | null;
+  };
+  bots: Array<{
+    bot: string;
+    family: string;
+    requests: number;
+    lastSeen: string | null;
+  }>;
+  daily: Array<{
+    date: string;
+    requests: number;
+  }>;
+  recent: Array<{
+    id: string;
+    bot: string;
+    family: string;
+    path: string;
+    host?: string | null;
+    verification: string;
+    createdAt: string;
+  }>;
+  topPaths: Array<{
+    bot: string;
+    path: string;
+    requests: number;
+    lastSeen: string | null;
+  }>;
+  verification: string;
+};
 
 type TrafficAnalytics = {
   days: number;
@@ -83,6 +120,21 @@ export default function AdminTrafficPage() {
         `/notifications/admin/traffic-analytics?days=${days}`,
       );
       return response.data as TrafficAnalytics;
+    },
+    refetchInterval: 60_000,
+  });
+
+  const {
+    data: crawlerData,
+    isLoading: crawlerLoading,
+    isFetching: crawlerFetching,
+  } = useQuery({
+    queryKey: ["admin-crawler-analytics", days],
+    queryFn: async () => {
+      const response = await privateApi.get(
+        `/notifications/admin/crawler-analytics?days=${days}`,
+      );
+      return response.data as CrawlerAnalytics;
     },
     refetchInterval: 60_000,
   });
@@ -187,6 +239,152 @@ export default function AdminTrafficPage() {
                     </div>
                   );
                 })
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Bot className="h-5 w-5" />
+                Crawler / AI Bots
+                {crawlerFetching && (
+                  <span className="text-xs font-normal text-muted-foreground">
+                    Updating…
+                  </span>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              {crawlerLoading || !crawlerData ? (
+                <div className="grid gap-3 md:grid-cols-3">
+                  {[1, 2, 3].map((item) => (
+                    <Skeleton key={item} className="h-20 rounded-xl" />
+                  ))}
+                </div>
+              ) : (
+                <>
+                  <div className="grid gap-3 md:grid-cols-3">
+                    <div className="rounded-xl border p-4">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        Bot requests
+                      </p>
+                      <p className="mt-1 text-2xl font-black">
+                        {number(crawlerData.summary.requests)}
+                      </p>
+                    </div>
+                    <div className="rounded-xl border p-4">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        Detected bots
+                      </p>
+                      <p className="mt-1 text-2xl font-black">
+                        {number(crawlerData.summary.uniqueBots)}
+                      </p>
+                    </div>
+                    <div className="rounded-xl border p-4">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        Last seen
+                      </p>
+                      <p className="mt-1 text-sm font-bold">
+                        {crawlerData.summary.lastSeen
+                          ? new Date(crawlerData.summary.lastSeen).toLocaleString()
+                          : "No crawler seen yet"}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="mb-3 flex items-center gap-2">
+                      <Radar className="h-4 w-4 text-primary" />
+                      <h3 className="font-black">Detected crawler types</h3>
+                    </div>
+                    {crawlerData.bots.length === 0 ? (
+                      <p className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">
+                        Googlebot, OAI-SearchBot, Bingbot वा अन्य crawler आएपछि यहाँ देखिन्छ।
+                      </p>
+                    ) : (
+                      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                        {crawlerData.bots.map((item) => (
+                          <div
+                            key={item.bot}
+                            className="rounded-xl border bg-card p-4"
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div>
+                                <p className="font-black">{item.bot}</p>
+                                <p className="mt-1 text-xs font-semibold text-muted-foreground">
+                                  {item.family.replaceAll("_", " ")}
+                                </p>
+                              </div>
+                              <span className="rounded-full bg-primary/10 px-2.5 py-1 text-xs font-black text-primary">
+                                {number(item.requests)}
+                              </span>
+                            </div>
+                            <p className="mt-3 text-xs text-muted-foreground">
+                              Last:{" "}
+                              {item.lastSeen
+                                ? new Date(item.lastSeen).toLocaleString()
+                                : "—"}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="grid gap-5 xl:grid-cols-2">
+                    <div>
+                      <h3 className="mb-3 font-black">Recent crawler requests</h3>
+                      <div className="space-y-2">
+                        {crawlerData.recent.slice(0, 15).map((item) => (
+                          <div
+                            key={item.id}
+                            className="rounded-xl border p-3"
+                          >
+                            <div className="flex items-center justify-between gap-3">
+                              <p className="font-bold">{item.bot}</p>
+                              <span className="text-[11px] font-semibold text-muted-foreground">
+                                {new Date(item.createdAt).toLocaleString()}
+                              </span>
+                            </div>
+                            <p className="mt-1 break-all text-xs text-muted-foreground">
+                              {item.path}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <h3 className="mb-3 font-black">Most crawled pages</h3>
+                      <div className="space-y-2">
+                        {crawlerData.topPaths.slice(0, 15).map((item, index) => (
+                          <div
+                            key={`${item.bot}-${item.path}-${index}`}
+                            className="rounded-xl border p-3"
+                          >
+                            <div className="flex items-center justify-between gap-3">
+                              <p className="font-bold">{item.bot}</p>
+                              <span className="text-xs font-black">
+                                {number(item.requests)} hits
+                              </span>
+                            </div>
+                            <p className="mt-1 break-all text-xs text-muted-foreground">
+                              {item.path}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  <p className="rounded-xl bg-amber-50 p-3 text-xs leading-5 text-amber-900">
+                    Bot identity अहिले User-Agent बाट detect हुन्छ। त्यसैले
+                    “Googlebot” देखिनु request को User-Agent evidence हो; reverse-DNS
+                    verified identity होइन। Exact final HTTP 200/404/403 status हेर्न
+                    Cloudflare/Vercel edge logs चाहिन्छ।
+                  </p>
+                </>
               )}
             </CardContent>
           </Card>
