@@ -275,21 +275,32 @@ function CommentRow({
 
   return (
     <div className="flex items-start gap-2">
-      {photo ? (
-        <img
-          src={photo}
-          alt={comment.author.name}
-          className={`${avatarSize} shrink-0 rounded-full bg-slate-100 object-cover`}
-        />
-      ) : (
-        <div className={`${avatarSize} flex shrink-0 items-center justify-center rounded-full bg-slate-200 text-[11px] font-bold text-slate-600`}>
-          {initials(comment.author)}
-        </div>
-      )}
+      <a
+        href={`/profile/${encodeURIComponent(comment.author.id)}`}
+        className="shrink-0"
+        aria-label={`Open ${comment.author.name} profile`}
+      >
+        {photo ? (
+          <img
+            src={photo}
+            alt={comment.author.name}
+            className={`${avatarSize} rounded-full bg-slate-100 object-cover`}
+          />
+        ) : (
+          <div className={`${avatarSize} flex items-center justify-center rounded-full bg-slate-200 text-[11px] font-bold text-slate-600`}>
+            {initials(comment.author)}
+          </div>
+        )}
+      </a>
       <div className="min-w-0 flex-1">
         <div className="inline-block max-w-full rounded-2xl bg-slate-100 px-3 py-2 align-top">
           <div className="flex items-center gap-2 text-[13px] font-semibold leading-tight text-slate-950">
-            <span>{comment.author.name}</span>
+            <a
+              href={`/profile/${encodeURIComponent(comment.author.id)}`}
+              className="hover:underline"
+            >
+              {comment.author.name}
+            </a>
           </div>
           <div className="mt-0.5 whitespace-pre-wrap break-words text-[14px] leading-[1.3] text-slate-900">{comment.content}</div>
         </div>
