@@ -107,11 +107,9 @@ const SocialCallbackPage = () => {
 
         if (!cancelled) {
           const provider = params.get("provider");
-          const isNewSocialUser = params.get("new") === "1";
 
           if (
             provider === "google" &&
-            isNewSocialUser &&
             user.role === "User"
           ) {
             setPendingRedirect(redirect);
@@ -179,18 +177,18 @@ const SocialCallbackPage = () => {
 
   return (
     <main className="flex min-h-[60vh] items-center justify-center px-4">
-      <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
         <h1 className="text-center text-lg font-semibold text-slate-900">RoomKhoj</h1>
 
         {!showPromoStep ? (
           <p className="mt-2 text-center text-sm text-slate-600">{message}</p>
         ) : (
           <div className="mt-4">
-            <p className="text-center text-sm font-bold text-slate-900">
-              Google login successful
+            <p className="text-center text-base font-black text-slate-900">
+              Promo Code
             </p>
             <p className="mt-1 text-center text-xs leading-5 text-slate-500">
-              Promo code optional हो। Valid 5-character code हाल्दा तपाईं र
+              Optional हो। Valid 5-character promo code हाल्दा तपाईं र
               refer गर्ने user दुवैको wallet मा Rs. 5/5 एकपटक credit हुन्छ।
             </p>
 
