@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { BriefcaseBusiness, Building2, Loader2, Search, UserRound, Wrench } from "lucide-react";
 import { NavBar } from "@/components/common/navbar";
 import { socialService, type GlobalSearchResult, type SearchSuggestion } from "@/http/services/social.service";
+import { syntheticBotAvatarDataUrl } from "@/lib/synthetic-bot-avatar";
 
 const backendUrl = String(
   process.env.NEXT_PUBLIC_BACKEND_URL || "https://api.roomkhoj.com",
@@ -276,7 +277,12 @@ function SearchContent() {
               {result.users.length > 0 && (
                 <Section title="People" icon={<UserRound className="h-5 w-5" />}>
                   {result.users.map((user) => {
-                    const photo = media(user.profilePhotoUrl);
+                    const photo = user.isSynthetic
+                      ? syntheticBotAvatarDataUrl({
+                          id: user.id,
+                          name: user.name,
+                        })
+                      : media(user.profilePhotoUrl);
                     return (
                       <Link key={user.id} href={user.href} className="flex items-center gap-3 rounded-xl px-3 py-3 hover:bg-slate-50">
                         {photo ? (
