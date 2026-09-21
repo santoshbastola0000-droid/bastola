@@ -160,6 +160,23 @@ export default function BotUsersPage() {
     onError: (error: any) => toast.error(error?.response?.data?.message || "Could not update simulation"),
   });
 
+  const simulationToggleMutation = useMutation({
+    mutationFn: async (enabled: boolean) => {
+      const res = await privateApi.patch("/social/admin/bot-simulation", { enabled });
+      return res.data?.data ?? res.data;
+    },
+    onSuccess: async (data: any) => {
+      setSimulationEnabled(Boolean(data?.enabled));
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["admin-bot-simulation"] }),
+        queryClient.invalidateQueries({ queryKey: ["admin-bot-simulation-stats"] }),
+      ]);
+      toast.success(Boolean(data?.enabled) ? "Auto like/comment started" : "Auto like/comment paused");
+    },
+    onError: (error: any) =>
+      toast.error(error?.response?.data?.message || "Could not change auto engagement"),
+  });
+
   const simulationRunMutation = useMutation({
     mutationFn: async () => {
       const res = await privateApi.post("/social/admin/bot-simulation/run");
@@ -390,10 +407,15 @@ export default function BotUsersPage() {
             <Button
               type="button"
               variant={simulationEnabled ? "default" : "outline"}
-              onClick={() => setSimulationEnabled((value) => !value)}
+              onClick={() => simulationToggleMutation.mutate(!simulationEnabled)}
+              disabled={simulationToggleMutation.isPending || simulationQuery.isLoading}
             >
               {simulationEnabled ? <Pause className="mr-2 h-4 w-4" /> : <Play className="mr-2 h-4 w-4" />}
-              {simulationEnabled ? "Automation ON" : "Automation OFF"}
+              {simulationToggleMutation.isPending
+                ? "Saving..."
+                : simulationEnabled
+                  ? "Automation ON"
+                  : "Automation OFF"}
             </Button>
           </div>
 
