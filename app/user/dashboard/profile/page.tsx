@@ -132,11 +132,15 @@ export default function ProfilePage() {
 
   const [monetization, setMonetization] = useState<{
     isMonetized: boolean;
+    isPremiumActive: boolean;
+    isAgentMode: boolean;
+    accountMode: "USER" | "ADMIN" | "AGENT";
     monetizedAt: string | null;
+    monetizationExpiresAt: string | null;
     monetizationFeePaid: number;
     monetizationFee: number;
     canEarnFromRooms: boolean;
-    currentPlan: "FREE" | "STARTER";
+    currentPlan: "FREE" | "PREMIUM";
     totalEarned: number;
     freeEarningLimit: number;
     freeEarningRemaining: number;
@@ -459,13 +463,13 @@ export default function ProfilePage() {
       setShowMonetizationTopup(true);
       return;
     }
-    if (!window.confirm(`Rs. ${fee.toLocaleString()} wallet बाट काटेर Starter plan activate गर्ने?`)) return;
+    if (!window.confirm(`Rs. ${fee.toLocaleString()} wallet बाट काटेर Premium Agent plan activate गर्ने?`)) return;
     try {
       setMonetizationActivating(true);
       await walletService.activateMonetization();
       await loadMonetization();
       setShowMonetizationConfirm(false);
-      toast.success("Account Monetize Starter plan activated");
+      toast.success("Premium activated — Agent mode is now ON");
     } catch (error: any) {
       const message = error?.response?.data?.message || "Account monetization activate गर्न सकिएन.";
       if (String(message).toLowerCase().includes("insufficient")) {
@@ -931,6 +935,14 @@ export default function ProfilePage() {
                 <BadgeCheck className="h-6 w-6 shrink-0 text-primary" />
               )}
             </div>
+            <div className="mt-2 flex justify-center">
+              <span className="rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[11px] font-black uppercase tracking-[0.12em] text-primary">
+                {monetization?.accountMode ||
+                  ((user as any)?.role === "Admin" || (user as any)?.role === "SuperAdmin"
+                    ? "ADMIN"
+                    : "USER")} MODE
+              </span>
+            </div>
 
             <p className="mt-1 text-sm font-bold text-muted-foreground sm:text-base">
               {friends.length} {friends.length === 1 ? "friend" : "friends"}
@@ -1211,7 +1223,7 @@ export default function ProfilePage() {
           <div className="mb-5">
             <div className="flex items-center gap-2"><Crown className="h-5 w-5 text-amber-700" /><span className="text-xs font-black uppercase tracking-[0.18em] text-amber-700">Earn with RoomKhoj</span></div>
             <h2 className="mt-1 text-xl font-black">Account Monetize</h2>
-            <p className="mt-1 text-sm text-muted-foreground">पहिला plan हेर्नुहोस्। Free बाट सुरु गर्न सकिन्छ; paid Account Monetize गर्न identity verification आवश्यक हुन्छ।</p>
+            <p className="mt-1 text-sm text-muted-foreground">एउटै Premium plan छ: Rs. 499 / 30 days। Premium activate भएपछि Agent mode स्वतः ON हुन्छ र room बाट earning गर्न सकिन्छ।</p>
           </div>
 
           {!monetization?.isMonetized && !kycLoading && (
@@ -1298,123 +1310,78 @@ export default function ProfilePage() {
           )}
 
           {monetizationLoading ? (
-            <div className="flex items-center gap-3"><Loader2 className="h-5 w-5 animate-spin" /><span className="text-sm text-muted-foreground">Checking plans...</span></div>
+            <div className="flex items-center gap-3">
+              <Loader2 className="h-5 w-5 animate-spin" />
+              <span className="text-sm text-muted-foreground">Checking Premium...</span>
+            </div>
           ) : (
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-              {[
-                {
-                  name: "Free",
-                  price: 0,
-                  note: "Start earning without payment",
-                  active: !monetization?.isMonetized,
-                  action: false,
-                  features: [
-                    "Room post गर्न मिल्ने",
-                    "Room browse, save र message",
-                    "Chat बाट payment request",
-                    "Escrow payment receive",
-                    "Rs. 1,500 सम्म total earning",
-                    "Basic wallet & transaction history",
-                  ],
-                },
-                {
-                  name: "Starter",
-                  price: Number(monetization?.monetizationFee || 499),
-                  note: "Best for new earning users",
-                  active: !!monetization?.isMonetized,
-                  action: !monetization?.isMonetized,
-                  features: [
-                    "Free plan का सबै सुविधा",
-                    "12 वटा active room listings",
-                    "30 days plan validity",
-                    "Rs. 6,000 सम्म earning",
-                    "Chat बाट payment request & escrow",
-                    "Escrow release request",
-                    "0% RoomKhoj platform fee",
-                    "Monetized profile badge",
-                    "Wallet withdrawal eligibility",
-                    "Customer support: 10 AM–5 PM",
-                    "Basic marketing guide",
-                  ],
-                },
-                {
-                  name: "Growth",
-                  price: 899,
-                  note: "For users growing their room business",
-                  active: false,
-                  action: false,
-                  features: [
-                    "Starter का सबै सुविधा",
-                    "Priority room visibility",
-                    "More active room listings",
-                    "Basic earning analytics",
-                    "Lead activity insights",
-                    "Faster support priority",
-                  ],
-                },
-                {
-                  name: "Pro",
-                  price: 999,
-                  note: "For active agents and frequent earners",
-                  active: false,
-                  action: false,
-                  features: [
-                    "Growth का सबै सुविधा",
-                    "Featured room boosts",
-                    "Advanced earning analytics",
-                    "Lead & payment history tools",
-                    "Priority placement",
-                    "Agent-friendly earning dashboard",
-                  ],
-                },
-                {
-                  name: "VIP",
-                  price: 1999,
-                  note: "Premium plan for serious agents",
-                  active: false,
-                  action: false,
-                  features: [
-                    "Pro का सबै सुविधा",
-                    "VIP profile badge",
-                    "Highest room visibility priority",
-                    "Premium featured placement",
-                    "Advanced agent analytics",
-                    "Priority support",
-                    "Early access to new earning features",
-                  ],
-                },
-              ].map((plan) => (
-                <div key={plan.name} className={`relative rounded-2xl border p-4 ${plan.active ? "border-amber-400 bg-amber-50 shadow-sm" : "border-border bg-background"}`}>
-                  {plan.active && <span className="absolute right-3 top-3 rounded-full bg-emerald-100 px-2 py-1 text-[10px] font-bold text-emerald-700">ACTIVE</span>}
-                  <p className="text-sm font-black">{plan.name}</p>
-                  <p className="mt-2 text-2xl font-black">{plan.price === 0 ? "Free" : `Rs. ${plan.price.toLocaleString()}`}</p>
-                  <p className="mt-2 min-h-10 text-xs text-muted-foreground">{plan.note}</p>
-                  <div className="mt-3 space-y-2">
-                    {plan.features.map((feature) => (
-                      <div key={feature} className="flex items-start gap-2 text-xs">
-                        <BadgeCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-600" />
-                        <span>{feature}</span>
-                      </div>
-                    ))}
-                  </div>
-                  {plan.name === "Free" && !monetization?.isMonetized && (
-                    <div className="mt-3 rounded-xl bg-muted/60 p-2 text-xs font-semibold">
-                      Remaining: Rs. {Number(monetization?.freeEarningRemaining ?? 1500).toLocaleString()} / 1,500
-                    </div>
-                  )}
-                  {plan.action && (
-                    <Button type="button" onClick={activateMonetization} disabled={monetizationActivating} className="mt-3 w-full rounded-full font-bold">
-                      {monetizationActivating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Crown className="mr-2 h-4 w-4" />}
-                      Choose Starter
-                    </Button>
-                  )}
-                  {!plan.active && !plan.action && plan.price > 499 && (
-                    <div className="mt-3 rounded-full border px-3 py-2 text-center text-xs font-semibold text-muted-foreground">
-                      Admin controlled
-                    </div>
-                  )}
+            <div className="mx-auto max-w-xl">
+              <div className={`relative rounded-3xl border p-5 shadow-sm ${monetization?.isMonetized ? "border-amber-400 bg-amber-50" : "border-border bg-background"}`}>
+                {monetization?.isMonetized && (
+                  <span className="absolute right-4 top-4 rounded-full bg-emerald-100 px-2.5 py-1 text-[10px] font-black text-emerald-700">
+                    AGENT MODE ON
+                  </span>
+                )}
+                <div className="flex items-center gap-2">
+                  <Crown className="h-5 w-5 text-amber-600" />
+                  <p className="text-lg font-black">Premium Agent</p>
                 </div>
-              ))}
+                <p className="mt-3 text-3xl font-black">
+                  Rs. {Number(monetization?.monetizationFee || 499).toLocaleString()}
+                  <span className="ml-1 text-sm font-semibold text-muted-foreground">/ 30 days</span>
+                </p>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Premium activate भएपछि account automatically Agent mode मा जान्छ।
+                </p>
+
+                <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                  {[
+                    "Agent mode automatically ON",
+                    "12 वटा active room listings",
+                    "Rs. 6,000 सम्म plan-period earning",
+                    "Room service-charge earning",
+                    "Chat payment request & escrow",
+                    "Wallet withdrawal eligibility",
+                    "Monetized profile badge",
+                    "Priority room visibility",
+                  ].map((feature) => (
+                    <div key={feature} className="flex items-start gap-2 text-xs font-semibold">
+                      <BadgeCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-600" />
+                      <span>{feature}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {monetization?.isMonetized ? (
+                  <div className="mt-5 rounded-2xl bg-emerald-50 p-3 text-sm font-bold text-emerald-700">
+                    Premium active · Agent mode ON
+                    {monetization.monetizationExpiresAt ? (
+                      <span className="block mt-1 text-xs font-semibold text-emerald-700/80">
+                        Valid until {new Date(monetization.monetizationExpiresAt).toLocaleDateString()}
+                      </span>
+                    ) : null}
+                  </div>
+                ) : (
+                  <Button
+                    type="button"
+                    onClick={() =>
+                      void chooseMonetizationPlan({
+                        name: "Premium Agent",
+                        price: Number(monetization?.monetizationFee || 499),
+                      })
+                    }
+                    disabled={monetizationActivating}
+                    className="mt-5 w-full rounded-full font-black"
+                  >
+                    {monetizationActivating ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Crown className="mr-2 h-4 w-4" />
+                    )}
+                    Activate Premium & Agent Mode
+                  </Button>
+                )}
+              </div>
             </div>
           )}
         </CardContent>
@@ -1494,7 +1461,7 @@ export default function ProfilePage() {
         <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/50 p-4">
           <Card className="w-full max-w-md">
             <CardContent className="p-6">
-              <h3 className="text-xl font-black">Confirm Account Monetize</h3>
+              <h3 className="text-xl font-black">Confirm Premium Agent</h3>
               <p className="mt-2 text-sm text-muted-foreground">
                 {selectedMonetizationPlan.name} · Rs. {Number(selectedMonetizationPlan.price).toLocaleString()} · 30 days
               </p>
