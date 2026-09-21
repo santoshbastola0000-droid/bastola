@@ -418,6 +418,11 @@ export function PostReactions({
                         >
                           {entry.user.name}
                         </a>
+                        {entry.user.isSynthetic && (
+                          <span className="shrink-0 rounded-full border border-slate-200 bg-slate-100 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-slate-500">
+                            Content
+                          </span>
+                        )}
                       </div>
                     </div>
                     {!entry.user.isSynthetic && String(entry.user.id) !== String(currentUserId) && (
