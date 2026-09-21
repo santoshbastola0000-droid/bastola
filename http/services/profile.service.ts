@@ -9,6 +9,7 @@ export interface PublicProfileUser {
   isVerified?: boolean;
   isPremium?: boolean;
   isBanned?: boolean;
+  isSynthetic?: boolean;
   profilePhotoUrl?: string | null;
   coverPhotoUrl?: string | null;
 }
