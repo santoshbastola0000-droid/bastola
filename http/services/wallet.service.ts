@@ -43,6 +43,11 @@ class WalletService {
     monetizationExpiresAt: string | null;
     monetizationFeePaid: number;
     monetizationFee: number;
+    hasReferralDiscount: boolean;
+    referralDiscount: number;
+    payableAmount: number;
+    referralReward: number;
+    platformShare: number;
     canEarnFromRooms: boolean;
     currentPlan: "PREMIUM" | null;
     totalEarned: number;
@@ -102,6 +107,12 @@ class WalletService {
       monetizedAt: string | null;
       monetizationExpiresAt: string | null;
       monetizationFeePaid: number;
+      monetizationFee: number;
+      hasReferralDiscount: boolean;
+      referralDiscount: number;
+      payableAmount: number;
+      referralReward: number;
+      platformShare: number;
       balance?: number;
       alreadyActive: boolean;
     };
