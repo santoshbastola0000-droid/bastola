@@ -12,13 +12,16 @@ import {
   Search,
   Trophy,
   Users,
+  Save,
 } from "lucide-react";
 
 import { privateApi } from "@/http/api/privateApi";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
+import { toast } from "sonner";
 
 type LeaderboardUser = {
   userId: string;
@@ -38,6 +41,15 @@ type ReferralNode = {
   referralStatus?: "PENDING" | "QUALIFIED" | "REJECTED";
   children: ReferralNode[];
   hasMore?: boolean;
+};
+
+type ReferralContentSettings = {
+  title: string;
+  introText: string;
+  earningRulesText: string;
+  promoText: string;
+  disclaimerText: string;
+  updatedAt?: string | null;
 };
 
 type ReferralOfferClickAnalytics = {
@@ -194,11 +206,59 @@ function ReferralTreeNode({
 
 export default function AdminReferralPage() {
   const [userId, setUserId] = useState("");
+  const [savingContent, setSavingContent] = useState(false);
+  const [contentForm, setContentForm] = useState<ReferralContentSettings>({
+    title: "Invite & Earn",
+    introText: "",
+    earningRulesText: "",
+    promoText: "",
+    disclaimerText: "",
+  });
 
   useEffect(() => {
     const selected = new URLSearchParams(window.location.search).get("userId");
     if (selected) setUserId(selected);
   }, []);
+
+  const { data: referralContent } = useQuery({
+    queryKey: ["admin-referral-content"],
+    queryFn: async () => {
+      const response = await privateApi.get("/referral/content");
+      return response.data.data as ReferralContentSettings;
+    },
+  });
+
+  useEffect(() => {
+    if (!referralContent) return;
+    setContentForm({
+      title: referralContent.title || "Invite & Earn",
+      introText: referralContent.introText || "",
+      earningRulesText: referralContent.earningRulesText || "",
+      promoText: referralContent.promoText || "",
+      disclaimerText: referralContent.disclaimerText || "",
+      updatedAt: referralContent.updatedAt || null,
+    });
+  }, [referralContent]);
+
+  const saveReferralContent = async () => {
+    try {
+      setSavingContent(true);
+      const response = await privateApi.patch(
+        "/referral/admin/content",
+        contentForm,
+      );
+      const next = response.data.data as ReferralContentSettings;
+      setContentForm(next);
+      toast.success("Refer & Earn text updated");
+    } catch (error: any) {
+      toast.error(
+        error?.response?.data?.message ||
+          "Referral text update गर्न सकिएन.",
+      );
+    } finally {
+      setSavingContent(false);
+    }
+  };
 
   const { data: leaderboard = [], isLoading: leaderboardLoading } = useQuery({
     queryKey: ["referral-leaderboard"],
@@ -244,6 +304,105 @@ export default function AdminReferralPage() {
           Mobile र desktop दुवैमा को कसको referral बाट आयो र कसले क-कसलाई ल्यायो हेर्नुहोस्।
         </p>
       </div>
+
+      <Card className="border-primary/20">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Save className="h-5 w-5 text-primary" />
+            Edit Refer & Earn User Text
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div>
+            <p className="mb-1.5 text-sm font-semibold">Page title</p>
+            <Input
+              value={contentForm.title}
+              onChange={(event) =>
+                setContentForm((current) => ({
+                  ...current,
+                  title: event.target.value,
+                }))
+              }
+              maxLength={160}
+            />
+          </div>
+
+          <div>
+            <p className="mb-1.5 text-sm font-semibold">Intro text</p>
+            <Textarea
+              value={contentForm.introText}
+              onChange={(event) =>
+                setContentForm((current) => ({
+                  ...current,
+                  introText: event.target.value,
+                }))
+              }
+              rows={4}
+            />
+          </div>
+
+          <div>
+            <p className="mb-1.5 text-sm font-semibold">Network earning rules</p>
+            <Textarea
+              value={contentForm.earningRulesText}
+              onChange={(event) =>
+                setContentForm((current) => ({
+                  ...current,
+                  earningRulesText: event.target.value,
+                }))
+              }
+              rows={6}
+            />
+            <p className="mt-1 text-xs text-muted-foreground">
+              Default payout engine: RoomKhoj 5% · direct referrer 5% · second level 2.5% · remaining amount agent.
+            </p>
+          </div>
+
+          <div>
+            <p className="mb-1.5 text-sm font-semibold">Premium / promo explanation</p>
+            <Textarea
+              value={contentForm.promoText}
+              onChange={(event) =>
+                setContentForm((current) => ({
+                  ...current,
+                  promoText: event.target.value,
+                }))
+              }
+              rows={4}
+            />
+          </div>
+
+          <div>
+            <p className="mb-1.5 text-sm font-semibold">Disclaimer / important note</p>
+            <Textarea
+              value={contentForm.disclaimerText}
+              onChange={(event) =>
+                setContentForm((current) => ({
+                  ...current,
+                  disclaimerText: event.target.value,
+                }))
+              }
+              rows={4}
+            />
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3">
+            <Button
+              type="button"
+              onClick={() => void saveReferralContent()}
+              disabled={savingContent}
+            >
+              <Save className="mr-2 h-4 w-4" />
+              {savingContent ? "Saving..." : "Save User Text"}
+            </Button>
+            {contentForm.updatedAt && (
+              <span className="text-xs text-muted-foreground">
+                Last updated {new Date(contentForm.updatedAt).toLocaleString()}
+              </span>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       <Card className="border-amber-200 bg-gradient-to-br from-amber-50/70 to-rose-50/50">
         <CardHeader>
