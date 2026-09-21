@@ -487,8 +487,8 @@ const GAME_MODES: GameMode[] = [
     english: ["post room and earn", "active room listing", "tenant takes room", "confirm rented deal", "listing earns reward", "twelve active listings", "fast tenant match", "priority room visibility", "approved room listing"],
     nepali: ["कोठा पोस्ट गरेर कमाउनुहोस्", "सक्रिय कोठा लिस्टिङ", "भाडावालाले कोठा लियो", "सफल डिल पुष्टि", "लिस्टिङबाट पुरस्कार", "बाह्र सक्रिय लिस्टिङ", "छिटो भाडावाला मिलान"] } },
   { id: "location-hunt", name: "Referral Rewards", nepaliName: "रेफरल पुरस्कार", emoji: "🎁", description: "Invite and Earn सम्बन्धित शब्द", words: {
-    english: ["invite and earn", "referral link", "referred user", "referral reward", "fifty percent commission", "one hundred rupees bonus", "verified referral", "share referral code", "referral earnings"],
-    nepali: ["निमन्त्रणा गरेर कमाउनुहोस्", "रेफरल लिङ्क", "रेफरलबाट आएको प्रयोगकर्ता", "रेफरल पुरस्कार", "पचास प्रतिशत कमिसन", "एक सय रुपैयाँ बोनस", "प्रमाणित रेफरल"] } },
+    english: ["invite and earn", "referral link", "referred user", "referral reward", "sixty percent commission", "one hundred rupees bonus", "verified referral", "share referral code", "referral earnings"],
+    nepali: ["निमन्त्रणा गरेर कमाउनुहोस्", "रेफरल लिङ्क", "रेफरलबाट आएको प्रयोगकर्ता", "रेफरल पुरस्कार", "साठी प्रतिशत कमिसन", "एक सय रुपैयाँ बोनस", "प्रमाणित रेफरल"] } },
   { id: "facility-blast", name: "Wallet Blast", nepaliName: "वालेट ब्लास्ट", emoji: "👛", description: "Wallet, payment र withdrawal अभ्यास", words: {
     english: ["wallet balance", "pending balance", "available balance", "payment request", "payment confirmed", "release request", "release payment", "withdraw earnings", "wallet transaction", "load balance", "escrow payment"],
     nepali: ["वालेट ब्यालेन्स", "पेन्डिङ रकम", "उपलब्ध रकम", "भुक्तानी अनुरोध", "भुक्तानी पुष्टि", "रकम रिलिज अनुरोध", "कमाइ झिक्नुहोस्", "वालेट कारोबार", "ब्यालेन्स लोड"] } },
