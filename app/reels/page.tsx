@@ -37,7 +37,7 @@ const backendUrl = String(
   process.env.NEXT_PUBLIC_BACKEND_URL || "https://api.roomkhoj.com",
 ).replace(/\/$/, "");
 
-const MAX_REEL_UPLOAD_BYTES = 200 * 1024 * 1024;
+const MAX_REEL_UPLOAD_BYTES = 95 * 1024 * 1024;
 
 function media(value?: string | null) {
   const raw = String(value || "").trim();
@@ -666,7 +666,7 @@ export default function ReelsPage() {
         : String(rawMessage || "").trim();
 
       if (status === 413) {
-        setUploadError("Video धेरै ठूलो छ। 200 MB भन्दा सानो reel upload गर्नुहोस्।");
+        setUploadError("Video धेरै ठूलो छ। 95 MB भन्दा सानो reel upload गर्नुहोस्।");
       } else if (status === 401) {
         setUploadError("Session expire भएको छ। फेरि login गरेर upload गर्नुहोस्।");
       } else if (message) {
@@ -740,7 +740,7 @@ export default function ReelsPage() {
 
               if (file && file.size > MAX_REEL_UPLOAD_BYTES) {
                 setUploadFile(null);
-                setUploadError("Reel 200 MB भन्दा सानो हुनुपर्छ।");
+                setUploadError("Reel 95 MB भन्दा सानो हुनुपर्छ।");
                 event.target.value = "";
                 return;
               }
