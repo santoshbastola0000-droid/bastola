@@ -56,6 +56,18 @@ class WalletService {
     return response.data.data;
   }
 
+  async applyPromoCode(promoCode: string) {
+    const response = await privateApi.post("/referral/apply-promo", {
+      promoCode: promoCode.trim().toUpperCase(),
+    });
+    return response.data.data as {
+      applied: boolean;
+      alreadyApplied: boolean;
+      promoCode: string;
+      referralId: string;
+    };
+  }
+
   async getMonetizationKyc(): Promise<{
     status: "NOT_SUBMITTED" | "PENDING" | "APPROVED" | "REJECTED";
     fullName: string | null;
