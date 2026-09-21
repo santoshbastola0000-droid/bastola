@@ -292,7 +292,14 @@ function SearchContent() {
                             {user.name.slice(0, 1).toUpperCase()}
                           </div>
                         )}
-                        <div className="font-semibold text-slate-950">{user.name}</div>
+                        <div className="flex min-w-0 items-center gap-2">
+                          <div className="truncate font-semibold text-slate-950">{user.name}</div>
+                          {user.isSynthetic && (
+                            <span className="shrink-0 rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-slate-600">
+                              Content
+                            </span>
+                          )}
+                        </div>
                       </Link>
                     );
                   })}
