@@ -432,11 +432,7 @@ export default function PeoplePage() {
                             }}
                             disabled={Boolean(person.isSynthetic)}
                             className="shrink-0 disabled:cursor-default"
-                            aria-label={
-                              person.isSynthetic
-                                ? `${person.name} bot account`
-                                : `Open ${person.name} profile`
-                            }
+                            aria-label={`Open ${person.name} profile`}
                           >
                             <Avatar
                               person={
@@ -458,17 +454,7 @@ export default function PeoplePage() {
                           >
                             <p className="flex items-center gap-2 truncate text-[16px] font-black">
                               <span className="truncate">{person.name}</span>
-                              {person.isSynthetic && (
-                                <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-bold text-slate-600">
-                                  Bot
-                                </span>
-                              )}
                             </p>
-                            {person.isSynthetic && person.bio && (
-                              <p className="mt-0.5 truncate text-[13px] font-medium text-muted-foreground">
-                                {person.bio}
-                              </p>
-                            )}
                             <p className="mt-0.5 text-[15px] font-semibold leading-5 text-foreground">
                               {kind ===
                               "REQUEST"
@@ -506,16 +492,7 @@ export default function PeoplePage() {
                                 "Accept"
                               )}
                             </Button>
-                          ) : person.isSynthetic ? (
-                            <Button
-                              type="button"
-                              variant="secondary"
-                              disabled
-                              className="h-11 shrink-0 rounded-full px-5 font-bold"
-                            >
-                              Bot
-                            </Button>
-                          ) : (
+                          ) : person.isSynthetic ? null : (
                             <Button
                               type="button"
                               variant="secondary"
