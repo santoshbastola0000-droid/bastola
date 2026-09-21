@@ -1002,6 +1002,61 @@ function PostCard({
   );
 }
 
+function InlineFeedVideo({
+  source,
+  poster,
+}: {
+  source: string;
+  poster?: string;
+}) {
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry?.isIntersecting && entry.intersectionRatio >= 0.45) {
+          video.muted = true;
+          void video.play().catch(() => undefined);
+        } else {
+          video.pause();
+        }
+      },
+      { threshold: [0, 0.45, 0.75] },
+    );
+
+    observer.observe(video);
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <video
+      ref={videoRef}
+      src={source}
+      poster={poster || undefined}
+      muted
+      loop
+      playsInline
+      preload="metadata"
+      controls={false}
+      disablePictureInPicture
+      onCanPlay={(event) => {
+        const rect = event.currentTarget.getBoundingClientRect();
+        const visible =
+          rect.bottom > 0 &&
+          rect.top < (window.innerHeight || document.documentElement.clientHeight);
+        if (visible) {
+          event.currentTarget.muted = true;
+          void event.currentTarget.play().catch(() => undefined);
+        }
+      }}
+      className="pointer-events-none max-h-[70vh] w-full bg-black object-contain sm:max-h-[640px]"
+    />
+  );
+}
+
 function PostMedia({ post }: { post: SocialPost }) {
   const [active, setActive] = useState(0);
   const scroller = useRef<HTMLDivElement>(null);
@@ -1025,25 +1080,12 @@ function PostMedia({ post }: { post: SocialPost }) {
               className="group relative block w-full cursor-pointer bg-black"
               aria-label="Open video in Reels"
             >
-              {streamVideoPoster(url) ? (
-                <img
-                  src={streamVideoPoster(url)}
-                  alt="Video preview"
-                  loading="lazy"
-                  decoding="async"
-                  className="pointer-events-none max-h-[640px] w-full bg-black object-contain"
-                />
-              ) : (
-                <video
-                  src={media(url)}
-                  muted
-                  playsInline
-                  preload="metadata"
-                  className="pointer-events-none max-h-[640px] w-full bg-black object-contain"
-                />
-              )}
-              <span className="pointer-events-none absolute left-1/2 top-1/2 flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-black/55 text-2xl text-white shadow-lg backdrop-blur-sm transition group-active:scale-95">
-                ▶
+              <InlineFeedVideo
+                source={media(url)}
+                poster={streamVideoPoster(url) || undefined}
+              />
+              <span className="pointer-events-none absolute bottom-3 right-3 rounded-full bg-black/55 px-3 py-1.5 text-xs font-bold text-white backdrop-blur-sm">
+                Reels
               </span>
             </button>
           ) : (
