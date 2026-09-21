@@ -48,6 +48,7 @@ const fieldOrder: (keyof TRegister)[] = [
 const RegisterForm = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [referralCode, setReferralCode] = useState("");
+  const [promoCode, setPromoCode] = useState("");
 
   useEffect(() => {
     const code = new URLSearchParams(window.location.search).get("ref")?.trim().toUpperCase();
@@ -108,7 +109,11 @@ const RegisterForm = () => {
           onSubmit={form.handleSubmit((values) => {
             if (referralCode) sessionStorage.setItem("roomkhoj_signup_has_referral", "1");
             else sessionStorage.removeItem("roomkhoj_signup_has_referral");
-            register({ ...values, referralCode: referralCode || undefined });
+            register({
+              ...values,
+              referralCode: referralCode || undefined,
+              promoCode: promoCode.trim().toUpperCase() || undefined,
+            });
           }, handleInvalid)}
           className="space-y-4"
         >
@@ -140,6 +145,31 @@ const RegisterForm = () => {
           <div data-register-field="phoneNumber"><FormField control={form.control} name="phoneNumber" render={({ field }) => <FormItem><FormLabel>Phone Number</FormLabel><FormControl><Input placeholder="+977 98XXXXXXXX" type="tel" className="h-12 rounded-xl border-gray-200 px-4" {...field} disabled={isPending} /></FormControl><FormMessage /></FormItem>} /></div>
           <div data-register-field="password"><FormField control={form.control} name="password" render={({ field }) => <FormItem><FormLabel>Password</FormLabel><FormControl><div className="relative"><Input placeholder="At least 8 characters" type={showPassword ? "text" : "password"} className="h-12 rounded-xl border-gray-200 px-4 pr-12" {...field} disabled={isPending} /><button type="button" onClick={() => setShowPassword((value) => !value)} className="absolute right-3 top-3 text-slate-400 hover:text-slate-700" aria-label={showPassword ? "Hide password" : "Show password"}>{showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}</button></div></FormControl><FormMessage /></FormItem>} /></div>
           <div data-register-field="confirmPassword"><FormField control={form.control} name="confirmPassword" render={({ field }) => <FormItem><FormLabel>Confirm Password</FormLabel><FormControl><Input placeholder="Repeat your password" type={showPassword ? "text" : "password"} className="h-12 rounded-xl border-gray-200 px-4" {...field} disabled={isPending} /></FormControl><FormMessage /></FormItem>} /></div>
+
+          <div>
+            <FormLabel>Promo Code <span className="font-normal text-slate-400">(optional)</span></FormLabel>
+            <Input
+              value={promoCode}
+              onChange={(event) =>
+                setPromoCode(
+                  event.target.value
+                    .toUpperCase()
+                    .replace(/[^A-Z0-9]/g, "")
+                    .slice(0, 5),
+                )
+              }
+              placeholder="ABCDE"
+              maxLength={5}
+              autoComplete="off"
+              className="mt-2 h-12 rounded-xl border-gray-200 px-4 uppercase tracking-[0.22em]"
+              disabled={isPending}
+            />
+            {referralCode && (
+              <p className="mt-1.5 text-xs text-emerald-700">
+                Referral link detected. Promo code हाल्दा दुवै एउटै referrer को हुनुपर्छ।
+              </p>
+            )}
+          </div>
 
           <Button type="submit" className="h-12 w-full rounded-xl text-base font-medium" disabled={isPending} isLoading={isPending}>Create Account</Button>
         </form>
