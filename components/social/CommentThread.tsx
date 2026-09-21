@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { CornerUpLeft, Send } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -291,7 +292,7 @@ function CommentRow({
 
   return (
     <div className="flex items-start gap-2">
-      <a
+      <Link
         href={`/profile/${encodeURIComponent(comment.author.id)}`}
         className="shrink-0"
         aria-label={`Open ${comment.author.name} profile`}
@@ -307,16 +308,17 @@ function CommentRow({
             {initials(comment.author)}
           </div>
         )}
-      </a>
+      </Link>
       <div className="min-w-0 flex-1">
-        <div className="inline-block max-w-full rounded-2xl bg-slate-100 px-3 py-2 align-top">
+        <Link
+          href={`/profile/${encodeURIComponent(comment.author.id)}`}
+          className="inline-block max-w-full rounded-2xl bg-slate-100 px-3 py-2 align-top transition hover:bg-slate-200/80"
+          aria-label={`Open ${comment.author.name} profile`}
+        >
           <div className="flex items-center gap-2 text-[13px] font-semibold leading-tight text-slate-950">
-            <a
-              href={`/profile/${encodeURIComponent(comment.author.id)}`}
-              className="hover:underline"
-            >
+            <span className="hover:underline">
               {comment.author.name}
-            </a>
+            </span>
             {comment.author.isSynthetic && (
               <span className="rounded-full border border-slate-200 bg-white px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-slate-500">
                 Content
@@ -324,7 +326,7 @@ function CommentRow({
             )}
           </div>
           <div className="mt-0.5 whitespace-pre-wrap break-words text-[14px] leading-[1.3] text-slate-900">{comment.content}</div>
-        </div>
+        </Link>
         <div className="mt-0.5 flex items-center gap-3 pl-2 text-[11px] font-medium text-slate-500">
           <span>{ago(comment.createdAt)}</span>
           {!comment.author.isSynthetic && (
