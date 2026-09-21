@@ -87,12 +87,12 @@ export default function ReferralNetworkInfo({
           <p className="font-black text-violet-950">A → B → C को सजिलो उदाहरण</p>
           <div className="mt-3 space-y-3 text-sm leading-6 text-violet-950">
             <p>
-              <b>A ले B लाई refer गर्‍यो:</b> B को Rs. 1,000 room service-charge
+              <b>A (तपाईं) → B:</b> B को Rs. 1,000 room service-charge
               escrow release हुँदा RoomKhoj लाई Rs. 50 (5%), A लाई Rs. 50 (5%)
               र B लाई Rs. 900 जान्छ।
             </p>
             <p>
-              <b>B ले C लाई refer गर्‍यो:</b> C को Rs. 1,000 service-charge
+              <b>B → C:</b> C को Rs. 1,000 service-charge
               release हुँदा RoomKhoj लाई Rs. 50 (5%), B लाई Rs. 50 (5%), A लाई
               Rs. 25 (2.5%) र C लाई Rs. 875 जान्छ।
             </p>
