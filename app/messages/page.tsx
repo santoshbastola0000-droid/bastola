@@ -68,6 +68,8 @@ type EscrowCard = {
   amount: number;
   platformFee: number;
   agentAmount: number;
+  requesterId?: string;
+  payerId?: string;
 };
 
 type InboxFriend = {
@@ -166,7 +168,7 @@ function isActivityInboxNotification(
 
 function parseEscrowCard(message: ChatMessage): EscrowCard | null {
   if (message.type !== "PAYMENT") return null;
-  const [marker, id, status, amount, fee, agentAmount] =
+  const [marker, id, status, amount, fee, agentAmount, requesterId, payerId] =
     String(message.content || "").split("|");
   if (marker !== "ESCROW_PAYMENT" || !id) return null;
   return {
@@ -175,6 +177,8 @@ function parseEscrowCard(message: ChatMessage): EscrowCard | null {
     amount: Number(amount || 0),
     platformFee: Number(fee || 0),
     agentAmount: Number(agentAmount || 0),
+    requesterId: requesterId || undefined,
+    payerId: payerId || undefined,
   };
 }
 
@@ -314,6 +318,7 @@ const user = useUserStore(
 
   const [paymentActionId, setPaymentActionId] =
     useState<string | null>(null);
+  const paymentActionGuardRef = useRef<Set<string>>(new Set());
 
   const [pendingContextPost, setPendingContextPost] =
     useState<MessageConversation["contextPost"]>(null);
@@ -1552,6 +1557,9 @@ const user = useUserStore(
 
   const createPaymentRequest = async () => {
     if (!selected) return;
+    const guardKey = `create:${selected.id}`;
+    if (paymentActionGuardRef.current.has(guardKey)) return;
+
     const raw = window.prompt("Service charge amount (Rs.)");
     if (raw === null) return;
     const amount = Number(raw);
@@ -1559,6 +1567,8 @@ const user = useUserStore(
       toast.error("Valid amount enter गर्नुहोस्.");
       return;
     }
+
+    paymentActionGuardRef.current.add(guardKey);
     try {
       setPaymentActionId("create");
       const result = await messageService.createPaymentRequest(
@@ -1574,39 +1584,70 @@ const user = useUserStore(
           "Payment request send गर्न सकिएन.",
       );
     } finally {
+      paymentActionGuardRef.current.delete(guardKey);
       setPaymentActionId(null);
     }
   };
 
   const runPaymentAction = async (
     paymentId: string,
-    action: "pay" | "release-request" | "release" | "dispute",
+    action:
+      | "pay"
+      | "cancel"
+      | "release-request"
+      | "release"
+      | "refund"
+      | "dispute",
   ) => {
+    const guardKey = `${paymentId}:${action}`;
+    if (paymentActionGuardRef.current.has(guardKey)) return;
+    paymentActionGuardRef.current.add(guardKey);
+
     try {
       setPaymentActionId(paymentId);
       let result;
+
       if (action === "pay") {
+        const ok = window.confirm(
+          "यो payment accept गरेर रकम escrow मा hold गर्ने?",
+        );
+        if (!ok) return;
         result = await messageService.payPaymentRequest(paymentId);
+      } else if (action === "cancel") {
+        const ok = window.confirm("यो unpaid payment request cancel गर्ने?");
+        if (!ok) return;
+        result = await messageService.cancelPaymentRequest(paymentId);
       } else if (action === "release-request") {
         result = await messageService.requestPaymentRelease(paymentId);
       } else if (action === "release") {
         const ok = window.confirm(
-          "Room लिएको confirm गरेर agent लाई payment release गर्ने?",
+          "Room/service पाएको confirm गरेर receiver लाई payment release गर्ने?",
         );
         if (!ok) return;
         result = await messageService.confirmPaymentRelease(paymentId);
+      } else if (action === "refund") {
+        const ok = window.confirm(
+          "Escrow मा रहेको पूरा रकम payer लाई refund गर्ने?",
+        );
+        if (!ok) return;
+        result = await messageService.refundPayment(paymentId);
       } else {
         const reason =
           window.prompt("Dispute reason (optional)") || undefined;
         result = await messageService.disputePayment(paymentId, reason);
       }
+
       appendPaymentMessage(result.message);
+      if (action === "pay") toast.success("Payment held safely in escrow");
+      if (action === "refund") toast.success("Payment refunded to payer");
+      if (action === "cancel") toast.success("Payment request cancelled");
     } catch (error: any) {
       toast.error(
         error?.response?.data?.message ||
           "Payment action complete गर्न सकिएन.",
       );
     } finally {
+      paymentActionGuardRef.current.delete(guardKey);
       setPaymentActionId(null);
     }
   };
@@ -2605,6 +2646,18 @@ const user = useUserStore(
                             {parseEscrowCard(message) && (() => {
                               const payment = parseEscrowCard(message)!;
                               const mine = message.senderId === currentUserId;
+                              const isRequester = payment.requesterId
+                                ? payment.requesterId === currentUserId
+                                : payment.status === "PAYMENT_REQUESTED"
+                                  ? mine
+                                  : payment.status === "ESCROW_HELD"
+                                    ? !mine
+                                    : payment.status === "RELEASE_REQUESTED"
+                                      ? mine
+                                      : false;
+                              const isPayer = payment.payerId
+                                ? payment.payerId === currentUserId
+                                : !isRequester;
                               return (
                                 <div className="mb-2 min-w-[250px] rounded-xl border border-border bg-background/80 p-3 text-foreground">
                                   <div className="flex items-center justify-between gap-3">
@@ -2620,17 +2673,34 @@ const user = useUserStore(
                                     RoomKhoj fee: Rs. {payment.platformFee.toLocaleString()} · Receiver gets Rs. {payment.agentAmount.toLocaleString()}
                                   </div>
                                   <div className="mt-3 flex flex-wrap gap-2">
-                                    {payment.status === "PAYMENT_REQUESTED" && !mine && (
+                                    {payment.status === "PAYMENT_REQUESTED" && isPayer && (
                                       <Button size="sm" onClick={() => void runPaymentAction(payment.id, "pay")} disabled={paymentActionId === payment.id}>
                                         Pay & hold in escrow
                                       </Button>
                                     )}
-                                    {payment.status === "ESCROW_HELD" && !mine && (
-                                      <Button size="sm" onClick={() => void runPaymentAction(payment.id, "release-request")} disabled={paymentActionId === payment.id}>
-                                        Request release
+                                    {payment.status === "PAYMENT_REQUESTED" && isRequester && (
+                                      <Button size="sm" variant="outline" onClick={() => void runPaymentAction(payment.id, "cancel")} disabled={paymentActionId === payment.id}>
+                                        Cancel request
                                       </Button>
                                     )}
-                                    {payment.status === "RELEASE_REQUESTED" && !mine && (
+
+                                    {payment.status === "ESCROW_HELD" && isRequester && (
+                                      <>
+                                        <Button size="sm" onClick={() => void runPaymentAction(payment.id, "release-request")} disabled={paymentActionId === payment.id}>
+                                          Request release
+                                        </Button>
+                                        <Button size="sm" variant="outline" onClick={() => void runPaymentAction(payment.id, "refund")} disabled={paymentActionId === payment.id}>
+                                          Refund payer
+                                        </Button>
+                                      </>
+                                    )}
+                                    {payment.status === "ESCROW_HELD" && isPayer && (
+                                      <Button size="sm" variant="outline" onClick={() => void runPaymentAction(payment.id, "dispute")} disabled={paymentActionId === payment.id}>
+                                        Raise dispute
+                                      </Button>
+                                    )}
+
+                                    {payment.status === "RELEASE_REQUESTED" && isPayer && (
                                       <>
                                         <Button size="sm" onClick={() => void runPaymentAction(payment.id, "release")} disabled={paymentActionId === payment.id}>
                                           Confirm & release
@@ -2639,6 +2709,17 @@ const user = useUserStore(
                                           Raise dispute
                                         </Button>
                                       </>
+                                    )}
+                                    {payment.status === "RELEASE_REQUESTED" && isRequester && (
+                                      <Button size="sm" variant="outline" onClick={() => void runPaymentAction(payment.id, "refund")} disabled={paymentActionId === payment.id}>
+                                        Refund payer
+                                      </Button>
+                                    )}
+
+                                    {payment.status === "DISPUTED" && isRequester && (
+                                      <Button size="sm" variant="outline" onClick={() => void runPaymentAction(payment.id, "refund")} disabled={paymentActionId === payment.id}>
+                                        Refund & close dispute
+                                      </Button>
                                     )}
                                   </div>
                                 </div>
