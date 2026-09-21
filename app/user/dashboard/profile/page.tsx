@@ -150,6 +150,8 @@ export default function ProfilePage() {
   } | null>(null);
   const [monetizationLoading, setMonetizationLoading] = useState(true);
   const [monetizationActivating, setMonetizationActivating] = useState(false);
+  const [promoCode, setPromoCode] = useState("");
+  const [promoApplying, setPromoApplying] = useState(false);
   const [selectedMonetizationPlan, setSelectedMonetizationPlan] = useState<any>(null);
   const [showMonetizationConfirm, setShowMonetizationConfirm] = useState(false);
   const [showMonetizationTopup, setShowMonetizationTopup] = useState(false);
@@ -456,6 +458,29 @@ export default function ProfilePage() {
       setShowMonetizationConfirm(true);
     } catch {
       toast.error("Wallet balance load गर्न सकिएन.");
+    }
+  };
+
+  const applyPremiumPromoCode = async () => {
+    const code = promoCode.trim().toUpperCase();
+    if (!/^[A-Z0-9]{5}$/.test(code)) {
+      toast.error("5-character promo code हाल्नुहोस्.");
+      return;
+    }
+
+    try {
+      setPromoApplying(true);
+      await walletService.applyPromoCode(code);
+      await loadMonetization();
+      setPromoCode("");
+      toast.success("Promo code applied — Rs. 100 discount unlocked");
+    } catch (error: any) {
+      toast.error(
+        error?.response?.data?.message ||
+          "Promo code apply गर्न सकिएन.",
+      );
+    } finally {
+      setPromoApplying(false);
     }
   };
 
@@ -1344,6 +1369,43 @@ export default function ProfilePage() {
                 <p className="mt-2 text-sm text-muted-foreground">
                   Premium activate भएपछि account automatically Agent mode मा जान्छ।
                 </p>
+                {!monetization?.isMonetized && !monetization?.hasReferralDiscount && (
+                  <div className="mt-3 rounded-2xl border bg-muted/30 p-3">
+                    <p className="text-xs font-black uppercase tracking-wide text-muted-foreground">
+                      Have a promo code?
+                    </p>
+                    <div className="mt-2 flex gap-2">
+                      <Input
+                        value={promoCode}
+                        onChange={(event) =>
+                          setPromoCode(
+                            event.target.value
+                              .toUpperCase()
+                              .replace(/[^A-Z0-9]/g, "")
+                              .slice(0, 5),
+                          )
+                        }
+                        placeholder="ABCDE"
+                        maxLength={5}
+                        autoComplete="off"
+                        className="h-10 uppercase tracking-[0.2em]"
+                        disabled={promoApplying}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => void applyPremiumPromoCode()}
+                        disabled={promoApplying || promoCode.length !== 5}
+                      >
+                        {promoApplying ? <Loader2 className="h-4 w-4 animate-spin" /> : "Apply"}
+                      </Button>
+                    </div>
+                    <p className="mt-2 text-[11px] text-muted-foreground">
+                      Valid referral promo code ले Rs. 100 discount दिन्छ। 5 गलत attempts पछि 1 घण्टा cooldown हुन्छ।
+                    </p>
+                  </div>
+                )}
+
                 {monetization?.hasReferralDiscount && !monetization?.isMonetized && (
                   <div className="mt-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-sm">
                     <p className="font-black text-emerald-700">Referral discount applied</p>
