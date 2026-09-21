@@ -70,12 +70,20 @@ function reelsFromPost(post: SocialPost) {
   return result;
 }
 
-function reelsFromItems(items: SocialFeedItem[]) {
+function reelsFromItems(items: Array<SocialFeedItem | SocialPost>) {
   const result: Reel[] = [];
 
   for (const item of items || []) {
-    if (item.type !== "POST") continue;
-    result.push(...reelsFromPost(item.post));
+    const candidate = item as any;
+    const post: SocialPost | null =
+      candidate?.type === "POST"
+        ? candidate.post
+        : Array.isArray(candidate?.mediaUrls)
+          ? (candidate as SocialPost)
+          : null;
+
+    if (!post) continue;
+    result.push(...reelsFromPost(post));
   }
 
   return result;
