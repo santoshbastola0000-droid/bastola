@@ -986,7 +986,7 @@ export default function ReelsPage() {
                         </Link>
                         <div className="min-w-0">
                           <div className="flex items-center gap-2 text-xs font-black">
-                            <a
+                            <Link
                               href={`/profile/${encodeURIComponent(comment.author.id)}`}
                               className="hover:underline"
                             >
