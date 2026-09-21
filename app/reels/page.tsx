@@ -969,7 +969,7 @@ export default function ReelsPage() {
 
                     return (
                       <div key={comment.id} className="flex gap-3">
-                        <a
+                        <Link
                           href={`/profile/${encodeURIComponent(comment.author.id)}`}
                           className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-slate-200 text-xs font-black"
                           aria-label={`Open ${comment.author.name} profile`}
@@ -983,7 +983,7 @@ export default function ReelsPage() {
                           ) : (
                             comment.author.name.slice(0, 1).toUpperCase()
                           )}
-                        </a>
+                        </Link>
                         <div className="min-w-0">
                           <div className="flex items-center gap-2 text-xs font-black">
                             <a
@@ -991,7 +991,7 @@ export default function ReelsPage() {
                               className="hover:underline"
                             >
                               {comment.author.name}
-                            </a>
+                            </Link>
                             {comment.author.isSynthetic && (
                               <span className="rounded-full border border-white/20 bg-white/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide">
                                 Content
