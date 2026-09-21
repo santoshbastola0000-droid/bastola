@@ -984,6 +984,11 @@ export default function ReelsPage() {
                             >
                               {comment.author.name}
                             </a>
+                            {comment.author.isSynthetic && (
+                              <span className="rounded-full border border-white/20 bg-white/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide">
+                                Content
+                              </span>
+                            )}
                           </div>
                           <p className="mt-0.5 whitespace-pre-wrap break-words text-[14px] leading-5">
                             {comment.content}
