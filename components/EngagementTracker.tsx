@@ -2,11 +2,24 @@
 
 import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
+import { api } from "@/http/api/api";
 import { privateApi } from "@/http/api/privateApi";
 import { useUserStore } from "@/stores/user-store";
 
 const SOURCE_KEY = "roomkhoj:entry-source";
 const INTENT_KEY = "roomkhoj:entry-intent";
+const TRAFFIC_CONTEXT_KEY = "roomkhoj:traffic-context";
+const TRAFFIC_SESSION_KEY = "roomkhoj:traffic-session";
+const TRAFFIC_ENTRY_SENT_KEY = "roomkhoj:traffic-entry-sent";
+
+type TrafficContext = {
+  source: string;
+  landingPath: string;
+  referrerHost: string;
+  utmSource: string;
+  utmMedium: string;
+  utmCampaign: string;
+};
 
 function detectIntent() {
   const params = new URLSearchParams(window.location.search);
@@ -48,30 +61,95 @@ function detectIntent() {
   return sessionStorage.getItem(INTENT_KEY) || "";
 }
 
-function detectSource() {
-  const params = new URLSearchParams(window.location.search);
-  const explicit = String(params.get("rk_source") || "").toLowerCase();
+function classifyEntrySource(
+  explicit: string,
+  utmSource: string,
+  referrerHost: string,
+) {
+  const haystack = `${explicit} ${utmSource} ${referrerHost}`.toLowerCase();
+  const rules: Array<[string, string[]]> = [
+    ["chatgpt", ["chatgpt", "chat.openai.com", "openai"]],
+    ["google", ["google"]],
+    ["facebook", ["facebook", "fb.com"]],
+    ["instagram", ["instagram"]],
+    ["tiktok", ["tiktok"]],
+    ["youtube", ["youtube", "youtu.be"]],
+    ["bing", ["bing"]],
+    ["yahoo", ["yahoo"]],
+    ["linkedin", ["linkedin"]],
+    ["x", ["twitter", "x.com", "t.co"]],
+    ["whatsapp", ["whatsapp", "wa.me"]],
+    ["reddit", ["reddit"]],
+    ["threads", ["threads.net"]],
+    ["email", ["email", "newsletter"]],
+    ["push", ["push"]],
+  ];
 
-  if (explicit === "email" || explicit === "push") {
-    sessionStorage.setItem(SOURCE_KEY, explicit);
-    return explicit;
+  for (const [source, terms] of rules) {
+    if (terms.some((term) => haystack.includes(term))) return source;
   }
 
-  const saved = sessionStorage.getItem(SOURCE_KEY);
-  if (saved === "email" || saved === "push") return saved;
+  if (explicit) return explicit.toLowerCase();
+  if (referrerHost) return "referral";
+  return "direct";
+}
 
+function getTrafficContext(): TrafficContext {
+  const saved = sessionStorage.getItem(TRAFFIC_CONTEXT_KEY);
+  if (saved) {
+    try {
+      return JSON.parse(saved) as TrafficContext;
+    } catch {
+      sessionStorage.removeItem(TRAFFIC_CONTEXT_KEY);
+    }
+  }
+
+  const params = new URLSearchParams(window.location.search);
+  const utmSource = String(params.get("utm_source") || "").trim().toLowerCase();
+  const utmMedium = String(params.get("utm_medium") || "").trim().toLowerCase();
+  const utmCampaign = String(params.get("utm_campaign") || "").trim();
+  const explicit = String(
+    params.get("rk_source") || sessionStorage.getItem(SOURCE_KEY) || "",
+  ).trim().toLowerCase();
+
+  let referrerHost = "";
   try {
     if (document.referrer) {
-      const ref = new URL(document.referrer);
-      if (ref.origin !== window.location.origin) {
-        return "referral";
+      const referrer = new URL(document.referrer);
+      if (referrer.origin !== window.location.origin) {
+        referrerHost = referrer.hostname.toLowerCase();
       }
     }
   } catch {
-    // Ignore malformed referrers.
+    referrerHost = "";
   }
 
-  return "direct";
+  const context: TrafficContext = {
+    source: classifyEntrySource(explicit, utmSource, referrerHost),
+    landingPath: `${window.location.pathname}${window.location.search}`.slice(0, 500),
+    referrerHost,
+    utmSource,
+    utmMedium,
+    utmCampaign,
+  };
+
+  sessionStorage.setItem(TRAFFIC_CONTEXT_KEY, JSON.stringify(context));
+  sessionStorage.setItem(SOURCE_KEY, context.source);
+  return context;
+}
+
+function getTrafficSessionId() {
+  const saved = sessionStorage.getItem(TRAFFIC_SESSION_KEY);
+  if (saved) return saved;
+
+  const fallback =
+    typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+      ? crypto.randomUUID()
+      : `rk-${Date.now()}-${Math.random().toString(36).slice(2, 12)}`;
+
+  const sessionId = fallback.replace(/[^A-Za-z0-9:_-]/g, "").slice(0, 80);
+  sessionStorage.setItem(TRAFFIC_SESSION_KEY, sessionId);
+  return sessionId;
 }
 
 export function EngagementTracker() {
@@ -80,8 +158,6 @@ export function EngagementTracker() {
   const lastTrackedRef = useRef<string>("");
 
   useEffect(() => {
-    // Persist the very first RoomKhoj intent even before login. After the user
-    // signs in we can still use it to seed feed/email personalization.
     detectIntent();
 
     const params = new URLSearchParams(window.location.search);
@@ -100,18 +176,38 @@ export function EngagementTracker() {
   }, []);
 
   useEffect(() => {
-    if (!userId || !pathname) return;
+    if (!pathname) return;
 
     const path = `${pathname}${window.location.search}`;
-    const trackingKey = `${userId}:${path}`;
+    const sessionId = getTrafficSessionId();
+    const trackingKey = `${sessionId}:${path}`;
 
-    // Prevent duplicate React renders of the same route while keeping real page navigations.
     if (lastTrackedRef.current === trackingKey) return;
     lastTrackedRef.current = trackingKey;
 
+    const context = getTrafficContext();
+    const isEntry = sessionStorage.getItem(TRAFFIC_ENTRY_SENT_KEY) !== "1";
+    if (isEntry) sessionStorage.setItem(TRAFFIC_ENTRY_SENT_KEY, "1");
+
+    api
+      .post("/notifications/traffic/visit", {
+        sessionId,
+        source: context.source,
+        path,
+        landingPath: context.landingPath,
+        referrerHost: context.referrerHost,
+        utmSource: context.utmSource,
+        utmMedium: context.utmMedium,
+        utmCampaign: context.utmCampaign,
+        isEntry,
+      })
+      .catch(() => undefined);
+
+    if (!userId) return;
+
     privateApi
       .post("/notifications/engagement/visit", {
-        source: detectSource(),
+        source: context.source,
         path,
         referrer: document.referrer || "",
         intent: detectIntent(),
