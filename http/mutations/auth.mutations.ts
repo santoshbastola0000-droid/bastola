@@ -43,11 +43,12 @@ export const useLoginMutation = () => {
 
   return useMutation({
     mutationKey: [AUTH_QUERY_KEYS.LOGIN],
-    mutationFn: async (email: string) => {
-      const response = await api.post("/user/login", { email });
+    mutationFn: async (data: { email: string; promoCode?: string }) => {
+      const response = await api.post("/user/login", data);
       return response.data;
     },
-    onSuccess: (_, email) => {
+    onSuccess: (_, variables) => {
+      const email = variables.email;
       toast.success(ToastText.Login.success.title, {
         description: ToastText.Login.success.description,
         style: {
@@ -60,7 +61,8 @@ export const useLoginMutation = () => {
 
       router.push(`/auth/verify/email?email=${encodeURIComponent(email)}`);
     },
-    onError: (error: AxiosError<any>, email: string) => {
+    onError: (error: AxiosError<any>, variables) => {
+      const email = variables.email;
       const errorData = error.response?.data;
       const statusCode = error.response?.status;
       const message = String(errorData?.message || "");
@@ -119,7 +121,9 @@ export const useRegisterMutation = () => {
 
   return useMutation({
     mutationKey: [AUTH_QUERY_KEYS.REGISTER],
-    mutationFn: async (data: TRegister & { referralCode?: string }) => {
+    mutationFn: async (
+      data: TRegister & { referralCode?: string; promoCode?: string },
+    ) => {
       // confirmPassword is only for client-side validation. The backend DTO
       // intentionally does not accept it (forbidNonWhitelisted is enabled),
       // so send only fields supported by CreateUserDTO.
@@ -130,6 +134,7 @@ export const useRegisterMutation = () => {
         password: data.password,
         accountPurpose: data.accountPurpose,
         referralCode: data.referralCode,
+        promoCode: data.promoCode,
       };
 
       const response = await api.post("/user", payload);
@@ -185,6 +190,7 @@ export const useRegisterMutation = () => {
 interface PasswordLoginData {
   identifier: string;
   password: string;
+  promoCode?: string;
 }
 
 export const usePasswordLoginMutation = () => {
