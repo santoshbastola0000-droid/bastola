@@ -606,6 +606,54 @@ export default function BotUsersPage() {
 
       <Card>
         <CardHeader>
+          <CardTitle>Recent Bot Comments</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {Array.isArray(simulationStatsQuery.data?.recentComments) &&
+          simulationStatsQuery.data.recentComments.length > 0 ? (
+            simulationStatsQuery.data.recentComments.map((item: any) => (
+              <div
+                key={item.id}
+                className="rounded-xl border bg-background p-3"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="font-semibold">
+                    {item.botName || "Bot user"}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {item.createdAt
+                      ? new Date(item.createdAt).toLocaleString()
+                      : ""}
+                  </div>
+                </div>
+                <div className="mt-2 text-sm font-medium">
+                  {item.content}
+                </div>
+                {item.postText && (
+                  <div className="mt-2 line-clamp-2 text-xs text-muted-foreground">
+                    Post: {item.postText}
+                  </div>
+                )}
+                {item.postId && (
+                  <a
+                    href={`/post/${encodeURIComponent(item.postId)}`}
+                    className="mt-2 inline-block text-xs font-bold text-red-600 hover:underline"
+                  >
+                    Open post
+                  </a>
+                )}
+              </div>
+            ))
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              No bot comments yet.
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <UserPlus className="h-5 w-5" />
             Friend Request Automation
