@@ -665,9 +665,11 @@ export const socialService = {
     musicAutoSelected?: boolean;
   }) {
     const form = new FormData();
-    form.append("media", input.file);
-    form.append("caption", input.caption || "");
+    // Multer chooses the Cloudinary delivery type while processing the file,
+    // so visibility must be parsed before the media field.
     form.append("visibility", input.visibility || "PUBLIC");
+    form.append("caption", input.caption || "");
+    form.append("media", input.file);
     if (input.musicTrackId) {
       form.append("musicTrackId", input.musicTrackId);
       form.append(
