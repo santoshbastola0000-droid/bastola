@@ -33,6 +33,7 @@ const LoginForm = ({ onSuccess }: LoginFormProps) => {
   const [mode, setMode] = useState<LoginMode>("otp");
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
+  const [promoCode, setPromoCode] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
   const form = useForm<TLogin>({
@@ -45,14 +46,24 @@ const LoginForm = ({ onSuccess }: LoginFormProps) => {
     usePasswordLoginMutation();
 
   const onOtpSubmit = (values: TLogin) => {
-    login(values.email, { onSuccess });
+    login(
+      {
+        email: values.email,
+        promoCode: promoCode.trim().toUpperCase() || undefined,
+      },
+      { onSuccess },
+    );
   };
 
   const onPasswordSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     passwordLogin(
-      { identifier, password },
+      {
+        identifier,
+        password,
+        promoCode: promoCode.trim().toUpperCase() || undefined,
+      },
       { onSuccess },
     );
   };
@@ -91,6 +102,28 @@ const LoginForm = ({ onSuccess }: LoginFormProps) => {
         >
           Password
         </button>
+      </div>
+
+      <div>
+        <Input
+          value={promoCode}
+          onChange={(event) =>
+            setPromoCode(
+              event.target.value
+                .toUpperCase()
+                .replace(/[^A-Z0-9]/g, "")
+                .slice(0, 5),
+            )
+          }
+          placeholder="Promo code (optional)"
+          autoComplete="off"
+          maxLength={5}
+          className="h-12 rounded-xl border-gray-200 px-4 uppercase tracking-[0.22em] focus:ring-2 focus:ring-primary/20"
+          disabled={isPending}
+        />
+        <p className="mt-1.5 text-xs text-slate-500">
+          5-character RoomKhoj promo code छ भने यहाँ हाल्नुहोस्।
+        </p>
       </div>
 
       {mode === "otp" ? (
