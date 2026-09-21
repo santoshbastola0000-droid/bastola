@@ -482,6 +482,11 @@ export default function PublicProfilePage() {
                 {verifiedBadgeEnabled && profile.user.isVerified && (
                   <BadgeCheck className="h-6 w-6 shrink-0 text-primary" />
                 )}
+                {profile.user.isSynthetic && (
+                  <span className="shrink-0 rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-slate-600">
+                    Content
+                  </span>
+                )}
               </div>
 
               <p className="mt-1 text-sm font-bold text-muted-foreground sm:text-base">
