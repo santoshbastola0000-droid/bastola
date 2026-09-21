@@ -62,7 +62,7 @@ export default function ReferralPage() {
 
   const getShareText = () =>
     selectedReferralType === "MONETIZATION"
-      ? "💰 RoomKhoj Account Monetize Referral! मेरो link बाट account बनाउनुहोस् र Starter monetization activate गर्नुहोस्। Monetization payment सफल भएपछि मलाई fee को 50% commission आउँछ र तपाईंलाई Rs. 100 cashback आफ्नै wallet मा आउँछ।"
+      ? "💰 RoomKhoj Account Monetize Referral! मेरो link बाट account बनाउनुहोस् र Premium Agent activate गर्नुहोस्। Premium payment सफल भएपछि मलाई paid fee को 60% commission आउँछ र तपाईंलाई Rs. 100 cashback आफ्नै wallet मा आउँछ।"
       : "🎁 RoomKhoj Invite & Win! मेरो link बाट verified account बनाउनुहोस्। हरेक verified signup मा Rs. 5 wallet reward आउँछ।";
 
   const copyLink = async () => {
@@ -172,7 +172,7 @@ export default function ReferralPage() {
           Invite & Earn
         </h1>
         <p className="mt-1 text-sm leading-6 text-muted-foreground">
-          आफ्नो एउटै referral link share गर्नुहोस्। Verified signup मा Rs. 5 र referral user ले Starter monetize गरेपछि 50% commission कमाउन सकिन्छ।
+          आफ्नो एउटै referral link share गर्नुहोस्। Verified signup मा Rs. 5 र referral user ले Premium Agent activate गरेपछि 60% commission कमाउन सकिन्छ।
         </p>
       </div>
 
@@ -200,10 +200,10 @@ export default function ReferralPage() {
                   )}
                 </div>
                 <p className="mt-2 text-sm text-muted-foreground">
-                  तपाईंको referral link बाट आएको user ले paid Starter Account Monetize activate गरेपछि तपाईंलाई fee को 50% commission आउँछ।
+                  तपाईंको referral link बाट आएको user ले paid Premium Agent activate गरेपछि तपाईंलाई actual paid fee को 60% commission आउँछ।
                 </p>
                 <div className="mt-3 space-y-1 text-sm font-semibold">
-                  <p>• Rs. 499 Starter → तपाईंलाई Rs. 249.50</p>
+                  <p>• Rs. 499 Premium → तपाईंलाई Rs. 299.40</p>
                   <p>• Referred user → Rs. 100 cashback</p>
                   <p>• Successful payment भएपछि मात्र commission</p>
                 </div>
@@ -260,7 +260,7 @@ export default function ReferralPage() {
             {data.referralLink}
           </div>
           <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm leading-6 text-amber-950">
-            <b>ध्यान दिनुहोस्:</b> user ले यही link बाट register गर्नुपर्छ। त्यसपछि OTP verify गर्दा Rs. 5 signup reward track हुन्छ; पछि उसैले Starter monetize गरेमा 50% monetization commission पनि यही referral relation बाट track हुन्छ।
+            <b>ध्यान दिनुहोस्:</b> user ले यही link बाट register गर्नुपर्छ। त्यसपछि OTP verify गर्दा Rs. 5 signup reward track हुन्छ; पछि उसैले Premium Agent activate गरेमा 60% monetization commission पनि यही referral relation बाट track हुन्छ।
           </div>
           <div className="flex flex-col gap-3 sm:flex-row">
             <Button onClick={copyLink} className="cursor-pointer">
@@ -346,7 +346,7 @@ export default function ReferralPage() {
         <CardContent className="space-y-3 text-sm text-muted-foreground">
           <p>1. माथि देखिएको आफ्नो referral link share गर्नुहोस्।</p>
           <p>2. नयाँ user यही link बाट register गरेर OTP verify गरेपछि Rs. {data.rewardPerVerifiedReferral} wallet reward आउँछ।</p>
-          <p>3. त्यही referred user ले Starter monetize गरेपछि Rs. 499 को 50% = Rs. 249.50 commission आउँछ।</p>
+          <p>3. त्यही referred user ले Premium Agent activate गरेपछि Rs. 499 को 60% = Rs. 299.40 commission आउँछ।</p>
           <p>4. Verified signup मात्र count हुन्छ; duplicate वा self-referral मानिँदैन।</p>
           <p>5. सबैभन्दा धेरै qualified referral ल्याउनेले monthly Rs. 10,000 जित्ने मौका पाउँछ।</p>
         </CardContent>
@@ -358,7 +358,7 @@ export default function ReferralPage() {
             <DialogTitle className="text-center text-xl">Share & Earn</DialogTitle>
             <DialogDescription className="text-center">
               {selectedReferralType === "MONETIZATION"
-                ? "Account Monetize referral share गर्नुहोस् — 50% commission + referred user लाई Rs. 100 cashback."
+                ? "Premium Agent referral share गर्नुहोस् — 60% commission + referred user लाई Rs. 100 cashback."
                 : "साथीलाई invite गर्नुहोस्। हरेक verified signup मा Rs. 5 पाउनुहोस्।"}
             </DialogDescription>
           </DialogHeader>
