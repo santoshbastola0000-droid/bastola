@@ -33,7 +33,9 @@ import {
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
-import ReferralNetworkInfo from "./ReferralNetworkInfo";
+import ReferralNetworkInfo, {
+  type ReferralContent,
+} from "./ReferralNetworkInfo";
 
 type ReferralStats = {
   referralCode: string;
@@ -60,6 +62,15 @@ export default function ReferralPage() {
       return response.data.data as ReferralStats;
     },
     staleTime: 30_000,
+  });
+
+  const { data: referralContent } = useQuery({
+    queryKey: ["referral-content"],
+    queryFn: async () => {
+      const response = await privateApi.get("/referral/content");
+      return response.data.data as ReferralContent;
+    },
+    staleTime: 60_000,
   });
 
   const getShareText = () =>
@@ -183,10 +194,11 @@ export default function ReferralPage() {
       <div>
         <h1 className="flex items-center gap-3 text-2xl font-bold md:text-3xl">
           <Gift className="h-7 w-7 text-primary" />
-          Invite & Earn
+          {referralContent?.title || "Invite & Earn"}
         </h1>
-        <p className="mt-1 text-sm leading-6 text-muted-foreground">
-          आफ्नो एउटै referral link share गर्नुहोस्। नयाँ user OTP verify भएपछि दुवैलाई Rs. 5/5 आउँछ। त्यही user ले Rs. 500 Premium लिएमा उसलाई Rs. 100 discount र तपाईंलाई Rs. 300 referral commission आउँछ।
+        <p className="mt-1 whitespace-pre-wrap text-sm leading-6 text-muted-foreground">
+          {referralContent?.introText ||
+            "आफ्नो referral link वा promo code share गर्नुहोस्। Verified signup र completed service-charge बाट referral income कमाउन सकिन्छ।"}
         </p>
       </div>
 
@@ -213,8 +225,9 @@ export default function ReferralPage() {
                     </span>
                   )}
                 </div>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  तपाईंको एउटै referral link बाट आएको user ले Rs. 500 Premium Agent activate गर्दा उसलाई Rs. 100 instant discount लाग्छ। बाँकी Rs. 400 payment बाट Rs. 300 तपाईंलाई र Rs. 100 RoomKhoj लाई जान्छ।
+                <p className="mt-2 whitespace-pre-wrap text-sm text-muted-foreground">
+                  {referralContent?.promoText ||
+                    "Rs. 500 Premium Agent plan मा referred user लाई Rs. 100 discount, referrer लाई Rs. 300 र RoomKhoj लाई Rs. 100 जान्छ।"}
                 </p>
                 <div className="mt-3 space-y-1 text-sm font-semibold">
                   <p>• Premium price → Rs. 500</p>
@@ -378,6 +391,7 @@ export default function ReferralPage() {
         directNetworkCount={directNetworkCount}
         qualifiedReferrals={data.qualifiedReferrals}
         pendingReferrals={data.pendingReferrals}
+        content={referralContent}
       />
 
       <Card>
@@ -385,6 +399,11 @@ export default function ReferralPage() {
           <CardTitle className="text-lg">How it works</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3 text-sm text-muted-foreground">
+          {referralContent?.earningRulesText && (
+            <p className="whitespace-pre-wrap rounded-xl bg-muted/50 p-3 font-medium text-foreground">
+              {referralContent.earningRulesText}
+            </p>
+          )}
           <p>1. माथि देखिएको आफ्नो referral link share गर्नुहोस्।</p>
           <p>2. नयाँ user यही link बाट register गरेर OTP verify गरेपछि referrer र नयाँ user दुवैलाई Rs. {data.rewardPerVerifiedReferral}/Rs. {data.rewardPerVerifiedReferral} wallet reward आउँछ।</p>
           <p>3. त्यही referred user ले Rs. 500 Premium Agent activate गर्दा Rs. 100 discount लाग्छ, उसले Rs. 400 pay गर्छ, तपाईंलाई Rs. 300 आउँछ र Rs. 100 RoomKhoj share हुन्छ।</p>
