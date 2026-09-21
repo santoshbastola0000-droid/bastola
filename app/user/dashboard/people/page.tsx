@@ -23,6 +23,7 @@ import {
   type SocialUser,
 } from "@/http/services/social.service";
 import { profileMediaUrl } from "@/lib/profile-media";
+import { syntheticBotAvatarDataUrl } from "@/lib/synthetic-bot-avatar";
 import { useUserStore } from "@/stores/user-store";
 
 type IncomingFriend = SocialUser & {
@@ -55,35 +56,6 @@ function timeAgo(value?: string | null) {
   return new Date(value).toLocaleDateString();
 }
 
-function syntheticAvatarDataUrl(person: SocialUser) {
-  const seed = `${person.id}:${person.name}`;
-  let hash = 0;
-  for (let index = 0; index < seed.length; index += 1) {
-    hash = (hash * 31 + seed.charCodeAt(index)) >>> 0;
-  }
-
-  const hue = hash % 360;
-  const hue2 = (hue + 64) % 360;
-  const initial = String(person.name || "B").slice(0, 1).toUpperCase();
-  const svg = `
-    <svg xmlns="http://www.w3.org/2000/svg" width="160" height="160" viewBox="0 0 160 160">
-      <defs>
-        <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stop-color="hsl(${hue} 70% 66%)"/>
-          <stop offset="100%" stop-color="hsl(${hue2} 68% 52%)"/>
-        </linearGradient>
-      </defs>
-      <rect width="160" height="160" rx="80" fill="url(#g)"/>
-      <circle cx="80" cy="65" r="33" fill="#d9a066"/>
-      <path d="M48 61c4-25 18-38 33-38 21 0 34 16 34 41-12-9-23-14-36-14-10 0-21 4-31 11z" fill="#2d241f"/>
-      <path d="M35 147c7-31 24-47 45-47s38 16 45 47" fill="rgba(255,255,255,.9)"/>
-      <circle cx="126" cy="126" r="21" fill="rgba(17,24,39,.84)"/>
-      <text x="126" y="133" text-anchor="middle" font-family="Arial,sans-serif" font-size="18" font-weight="700" fill="#fff">${initial}</text>
-    </svg>
-  `;
-  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
-}
-
 function Avatar({
   person,
   size = "md",
@@ -92,7 +64,10 @@ function Avatar({
   size?: "md" | "lg";
 }) {
   const photo = person.isSynthetic
-    ? syntheticAvatarDataUrl(person)
+    ? syntheticBotAvatarDataUrl({
+        id: person.id,
+        name: person.name,
+      })
     : profileMediaUrl(person.profilePhotoUrl);
 
   const dimensions =
