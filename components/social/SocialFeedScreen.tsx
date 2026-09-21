@@ -31,6 +31,7 @@ import {
 import { toast } from "sonner";
 
 import { useUserStore } from "@/stores/user-store";
+import { UserRole } from "@/types/user.types";
 import { profileService } from "@/http/services/profile.service";
 import {
   SocialFeedItem,
@@ -581,6 +582,7 @@ export function SocialFeedScreen() {
               post={post}
               currentUserId={user.id}
               currentUserPhotoUrl={myPhoto}
+              isAdmin={user.role === UserRole.ADMIN}
               commentsOpen={Boolean(openComments[post.id])}
               onToggleComments={() =>
                 setOpenComments((current) => ({ ...current, [post.id]: !current[post.id] }))
@@ -879,6 +881,7 @@ function PostCard({
   post,
   currentUserId,
   currentUserPhotoUrl,
+  isAdmin,
   commentsOpen,
   onToggleComments,
   onShare,
@@ -887,6 +890,7 @@ function PostCard({
   post: SocialPost;
   currentUserId: string;
   currentUserPhotoUrl?: string | null;
+  isAdmin: boolean;
   commentsOpen: boolean;
   onToggleComments: () => void;
   onShare: () => void | Promise<void>;
@@ -935,15 +939,27 @@ function PostCard({
               </>
             ) : (
               <>
-                <ActionButton label="Mute user" onClick={async () => {
-                  await socialService.updateRelation(post.author.id, { muted: true });
-                  await onChanged();
-                }} />
-                <ActionButton danger label="Block user" onClick={async () => {
-                  if (!window.confirm(`Block ${post.author.name}?`)) return;
-                  await socialService.updateRelation(post.author.id, { blocked: true });
-                  await onChanged();
-                }} />
+                {isAdmin && (
+                  <ActionButton danger label="Delete post" onClick={async () => {
+                    if (!window.confirm("Delete this post as admin?")) return;
+                    await socialService.deletePost(post.id);
+                    setPostMenu(false);
+                    await onChanged();
+                  }} />
+                )}
+                {!isAdmin && (
+                  <>
+                    <ActionButton label="Mute user" onClick={async () => {
+                      await socialService.updateRelation(post.author.id, { muted: true });
+                      await onChanged();
+                    }} />
+                    <ActionButton danger label="Block user" onClick={async () => {
+                      if (!window.confirm(`Block ${post.author.name}?`)) return;
+                      await socialService.updateRelation(post.author.id, { blocked: true });
+                      await onChanged();
+                    }} />
+                  </>
+                )}
                 <ActionButton danger label="Report post" onClick={async () => {
                   const reason = window.prompt("Why are you reporting this post?");
                   if (!reason?.trim()) return;
