@@ -166,12 +166,31 @@ export default function BotUsersPage() {
       return res.data?.data ?? res.data;
     },
     onSuccess: async (data: any) => {
-      setSimulationEnabled(Boolean(data?.enabled));
+      const enabled = Boolean(data?.enabled);
+      const firstRun = data?.firstRun;
+      const created = Number(firstRun?.created ?? 0);
+      const reactions = Number(firstRun?.reactions ?? 0);
+      const comments = Number(firstRun?.comments ?? 0);
+
+      setSimulationEnabled(enabled);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["admin-bot-simulation"] }),
         queryClient.invalidateQueries({ queryKey: ["admin-bot-simulation-stats"] }),
       ]);
-      toast.success(Boolean(data?.enabled) ? "Auto like/comment started" : "Auto like/comment paused");
+
+      if (!enabled) {
+        toast.success("Auto like/comment paused");
+      } else if (firstRun && created === 0) {
+        toast.warning(
+          "Auto like/comment started, but no eligible public post/bot was found for the first run.",
+        );
+      } else if (firstRun) {
+        toast.success(
+          `Auto like/comment started: ${reactions} reaction(s), ${comments} comment(s) created now`,
+        );
+      } else {
+        toast.success("Auto like/comment started");
+      }
     },
     onError: (error: any) =>
       toast.error(error?.response?.data?.message || "Could not change auto engagement"),
@@ -184,10 +203,23 @@ export default function BotUsersPage() {
     },
     onSuccess: async (result: any) => {
       await queryClient.invalidateQueries({ queryKey: ["admin-bot-simulation-stats"] });
+      const reactions = Number(result?.reactions ?? 0);
+      const comments = Number(result?.comments ?? 0);
+      const created = Number(result?.created ?? reactions + comments);
+
+      if (created === 0) {
+        toast.warning(
+          result?.reason === "NO_ELIGIBLE_POST_OR_BOT"
+            ? "No eligible public post/bot found. Check post age and max bots per post."
+            : "No bot engagement was created.",
+        );
+        return;
+      }
+
       toast.success(
-        String(Number(result?.reactions ?? 0)) +
+        String(reactions) +
           " like/reaction(s), " +
-          String(Number(result?.comments ?? 0)) +
+          String(comments) +
           " comment(s) created",
       );
     },
