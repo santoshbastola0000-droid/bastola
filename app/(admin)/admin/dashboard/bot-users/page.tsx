@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Bot, Pause, Play, Plus, RefreshCw, Search, Trash2, UserPlus } from "lucide-react";
@@ -576,9 +577,18 @@ export default function BotUsersPage() {
                 className="rounded-xl border bg-background p-3"
               >
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="font-semibold">
-                    {item.botName || "Bot user"}
-                  </div>
+                  {item.botId ? (
+                    <Link
+                      href={`/profile/${encodeURIComponent(item.botId)}`}
+                      className="font-semibold hover:underline"
+                    >
+                      {item.botName || "Content user"}
+                    </Link>
+                  ) : (
+                    <div className="font-semibold">
+                      {item.botName || "Content user"}
+                    </div>
+                  )}
                   <div className="text-xs text-muted-foreground">
                     {item.createdAt
                       ? new Date(item.createdAt).toLocaleString()
@@ -690,7 +700,7 @@ export default function BotUsersPage() {
           </div>
 
           <p className="text-xs text-muted-foreground">
-            Bot accounts stay hidden from normal friend suggestions and real users cannot send requests to bots. Incoming bot requests show the bot bio and a Bot label.
+            Content accounts stay hidden from normal friend suggestions and real users cannot send requests to them. Incoming requests show the account bio and Content label.
           </p>
         </CardContent>
       </Card>
@@ -769,25 +779,38 @@ export default function BotUsersPage() {
                       />
                     </TableCell>
                     <TableCell>
-                      <Avatar className="h-11 w-11 border shadow-sm">
-                        <AvatarImage
-                          src={syntheticBotAvatarDataUrl({
-                            id: bot.id,
-                            name: bot.displayName,
-                          })}
-                          alt={`${bot.displayName} profile`}
-                        />
-                        <AvatarFallback>
-                          {bot.displayName
-                            .split(/\s+/)
-                            .slice(0, 2)
-                            .map((part) => part.slice(0, 1))
-                            .join("")
-                            .toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
+                      <Link
+                        href={`/profile/${encodeURIComponent(bot.id)}`}
+                        className="inline-flex rounded-full focus:outline-none focus:ring-2 focus:ring-primary/40"
+                        aria-label={`Open ${bot.displayName} profile`}
+                      >
+                        <Avatar className="h-11 w-11 border shadow-sm">
+                          <AvatarImage
+                            src={syntheticBotAvatarDataUrl({
+                              id: bot.id,
+                              name: bot.displayName,
+                            })}
+                            alt={`${bot.displayName} profile`}
+                          />
+                          <AvatarFallback>
+                            {bot.displayName
+                              .split(/\s+/)
+                              .slice(0, 2)
+                              .map((part) => part.slice(0, 1))
+                              .join("")
+                              .toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                      </Link>
                     </TableCell>
-                    <TableCell className="font-medium">{bot.displayName}</TableCell>
+                    <TableCell className="font-medium">
+                      <Link
+                        href={`/profile/${encodeURIComponent(bot.id)}`}
+                        className="hover:underline"
+                      >
+                        {bot.displayName}
+                      </Link>
+                    </TableCell>
                     <TableCell className="max-w-[260px] truncate text-sm text-muted-foreground">
                       {bot.bio || "RoomKhoj community ma active."}
                     </TableCell>
