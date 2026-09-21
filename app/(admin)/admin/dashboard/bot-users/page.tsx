@@ -83,6 +83,7 @@ export default function BotUsersPage() {
   const queryClient = useQueryClient();
   const [page, setPage] = useState(0);
   const [search, setSearch] = useState("");
+  const [selectedBotIds, setSelectedBotIds] = useState<Set<string>>(new Set());
   const [generateCount, setGenerateCount] = useState("100");
   const [simulationEnabled, setSimulationEnabled] = useState(false);
   const [reactionsEnabled, setReactionsEnabled] = useState(true);
@@ -102,6 +103,10 @@ export default function BotUsersPage() {
   const [friendMaxDelay, setFriendMaxDelay] = useState("360");
 
   const params = useMemo(() => ({ page, take: 50, search: search.trim() || undefined }), [page, search]);
+
+  useEffect(() => {
+    setSelectedBotIds(new Set());
+  }, [page, search]);
 
   const simulationQuery = useQuery({
     queryKey: ["admin-bot-simulation"],
@@ -383,8 +388,25 @@ export default function BotUsersPage() {
       const res = await privateApi.delete(`/social/admin/synthetic-bots/${id}`);
       return res.data?.data ?? res.data;
     },
-    onSuccess: refresh,
+    onSuccess: async () => {
+      setSelectedBotIds(new Set());
+      await refresh();
+    },
     onError: (error: any) => toast.error(error?.response?.data?.message || "Could not delete bot user"),
+  });
+
+  const deleteSelectedMutation = useMutation({
+    mutationFn: async (ids: string[]) => {
+      const res = await privateApi.post("/social/admin/synthetic-bots/delete-selected", { ids });
+      return res.data?.data ?? res.data;
+    },
+    onSuccess: async (result: any) => {
+      toast.success(`${result?.deleted ?? 0} selected bot user(s) permanently deleted`);
+      setSelectedBotIds(new Set());
+      await refresh();
+    },
+    onError: (error: any) =>
+      toast.error(error?.response?.data?.message || "Could not delete selected bot users"),
   });
 
   const deleteAllMutation = useMutation({
@@ -396,6 +418,7 @@ export default function BotUsersPage() {
     },
     onSuccess: async (result: any) => {
       toast.success(`${result?.deleted ?? 0} bot users permanently deleted`);
+      setSelectedBotIds(new Set());
       setPage(0);
       await refresh();
     },
@@ -405,6 +428,30 @@ export default function BotUsersPage() {
   const bots = botsQuery.data?.data ?? [];
   const pagination = botsQuery.data?.pagination;
   const total = statsQuery.data?.total ?? pagination?.total ?? 0;
+
+  const allVisibleSelected =
+    bots.length > 0 && bots.every((bot) => selectedBotIds.has(bot.id));
+
+  const toggleSelected = (id: string) => {
+    setSelectedBotIds((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectVisible = () => {
+    setSelectedBotIds((current) => {
+      const next = new Set(current);
+      if (allVisibleSelected) {
+        for (const bot of bots) next.delete(bot.id);
+      } else {
+        for (const bot of bots) next.add(bot.id);
+      }
+      return next;
+    });
+  };
 
   return (
     <div className="space-y-6 p-4 md:p-6">
@@ -657,6 +704,18 @@ export default function BotUsersPage() {
           </Button>
           <Button
             variant="destructive"
+            disabled={deleteSelectedMutation.isPending || selectedBotIds.size === 0}
+            onClick={() => {
+              const ids = Array.from(selectedBotIds);
+              if (window.confirm(`Permanently delete ${ids.length} selected bot user(s)?`)) {
+                deleteSelectedMutation.mutate(ids);
+              }
+            }}
+          >
+            <Trash2 className="mr-2 h-4 w-4" /> Delete Selected ({selectedBotIds.size})
+          </Button>
+          <Button
+            variant="destructive"
             onClick={() => {
               if (window.confirm("Permanently delete ALL synthetic bot users?")) deleteAllMutation.mutate();
             }}
@@ -680,20 +739,28 @@ export default function BotUsersPage() {
         <CardContent>
           <div className="overflow-x-auto rounded-lg border">
             <Table>
-              <TableHeader><TableRow><TableHead>Profile</TableHead><TableHead>Name</TableHead><TableHead>Bio</TableHead><TableHead>Email</TableHead><TableHead>Status</TableHead><TableHead>Created</TableHead><TableHead className="text-right">Action</TableHead></TableRow></TableHeader>
+              <TableHeader><TableRow><TableHead className="w-10"><input type="checkbox" aria-label="Select visible bot users" checked={allVisibleSelected} onChange={toggleSelectVisible} /></TableHead><TableHead>Profile</TableHead><TableHead>Name</TableHead><TableHead>Bio</TableHead><TableHead>Email</TableHead><TableHead>Status</TableHead><TableHead>Created</TableHead><TableHead className="text-right">Action</TableHead></TableRow></TableHeader>
               <TableBody>
                 {botsQuery.isLoading ? (
-                  <TableRow><TableCell colSpan={7} className="py-10 text-center">Loading bot users...</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={8} className="py-10 text-center">Loading bot users...</TableCell></TableRow>
                 ) : botsQuery.isError ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="py-10 text-center text-destructive">
+                    <TableCell colSpan={8} className="py-10 text-center text-destructive">
                       Could not load bot users. Tap Refresh and try again.
                     </TableCell>
                   </TableRow>
                 ) : bots.length === 0 ? (
-                  <TableRow><TableCell colSpan={7} className="py-10 text-center text-muted-foreground">No bot users found.</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={8} className="py-10 text-center text-muted-foreground">No bot users found.</TableCell></TableRow>
                 ) : bots.map((bot) => (
                   <TableRow key={bot.id}>
+                    <TableCell>
+                      <input
+                        type="checkbox"
+                        aria-label={`Select ${bot.displayName}`}
+                        checked={selectedBotIds.has(bot.id)}
+                        onChange={() => toggleSelected(bot.id)}
+                      />
+                    </TableCell>
                     <TableCell>
                       <Avatar className="h-11 w-11 border shadow-sm">
                         <AvatarImage
