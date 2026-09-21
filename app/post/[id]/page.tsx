@@ -211,32 +211,15 @@ export default async function SocialPostPage({
           <div className={post.mediaUrls.length > 1 ? "grid grid-cols-2 gap-0.5" : ""}>
             {post.mediaUrls.slice(0, 4).map((url, index) =>
               post.mediaTypes?.[index] === "VIDEO" ? (
-                <Link
+                <video
                   key={url}
-                  href={`/reels?post=${encodeURIComponent(post.id)}&media=${index}`}
-                  className="group relative block w-full cursor-pointer bg-black"
-                  aria-label="Open video in Reels"
-                >
-                  {streamVideoPoster(url) ? (
-                    <img
-                      src={streamVideoPoster(url)}
-                      alt="Video preview"
-                      loading="lazy"
-                      className="pointer-events-none max-h-[680px] w-full bg-black object-contain"
-                    />
-                  ) : (
-                    <video
-                      src={media(url)}
-                      muted
-                      playsInline
-                      preload="metadata"
-                      className="pointer-events-none max-h-[680px] w-full bg-black object-contain"
-                    />
-                  )}
-                  <span className="pointer-events-none absolute left-1/2 top-1/2 flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-black/55 text-2xl text-white shadow-lg">
-                    ▶
-                  </span>
-                </Link>
+                  src={media(url)}
+                  poster={streamVideoPoster(url) || undefined}
+                  controls
+                  playsInline
+                  preload="metadata"
+                  className="max-h-[680px] w-full bg-black object-contain"
+                />
               ) : (
                 <img
                   key={url}
