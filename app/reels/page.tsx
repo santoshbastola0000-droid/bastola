@@ -950,17 +950,7 @@ export default function ReelsPage() {
                         <div className="min-w-0">
                           <div className="flex items-center gap-2 text-xs font-black">
                             <span>{comment.author.name}</span>
-                            {comment.author.isSynthetic && (
-                              <span className="rounded-full bg-slate-100 px-1.5 py-0.5 text-[9px] font-bold text-slate-500">
-                                Bot
-                              </span>
-                            )}
                           </div>
-                          {comment.author.isSynthetic && comment.author.bio && (
-                            <div className="mt-0.5 max-w-[260px] truncate text-[10px] text-slate-500">
-                              {comment.author.bio}
-                            </div>
-                          )}
                           <p className="mt-0.5 whitespace-pre-wrap break-words text-[14px] leading-5">
                             {comment.content}
                           </p>
