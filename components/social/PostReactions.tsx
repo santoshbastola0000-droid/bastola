@@ -402,13 +402,22 @@ export function PostReactions({
                 const emoji = REACTIONS.find((item) => item.type === entry.reaction)?.emoji || "👍";
                 return (
                   <div key={`${entry.user.id}-${entry.createdAt}`} className="flex items-center gap-3 rounded-2xl px-2 py-2.5">
-                    <div className="relative shrink-0">
+                    <a
+                      href={`/profile/${encodeURIComponent(entry.user.id)}`}
+                      className="relative shrink-0"
+                      aria-label={`Open ${entry.user.name} profile`}
+                    >
                       {photo ? <img src={photo} alt={entry.user.name} className="h-12 w-12 rounded-full bg-slate-100 object-cover" /> : <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-200 font-bold">{entry.user.name.slice(0, 1).toUpperCase()}</div>}
                       <span className="absolute -bottom-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full border-2 border-white bg-white text-sm shadow-sm">{emoji}</span>
-                    </div>
+                    </a>
                     <div className="min-w-0 flex-1">
                       <div className="flex min-w-0 items-center gap-2">
-                        <span className="truncate text-[15px] font-semibold">{entry.user.name}</span>
+                        <a
+                          href={`/profile/${encodeURIComponent(entry.user.id)}`}
+                          className="truncate text-[15px] font-semibold hover:underline"
+                        >
+                          {entry.user.name}
+                        </a>
                       </div>
                     </div>
                     {!entry.user.isSynthetic && String(entry.user.id) !== String(currentUserId) && (
