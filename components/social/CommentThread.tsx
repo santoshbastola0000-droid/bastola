@@ -10,6 +10,8 @@ import {
 } from "@/http/services/social.service";
 import { MentionInput } from "@/components/social/MentionInput";
 import { syntheticBotAvatarDataUrl } from "@/lib/synthetic-bot-avatar";
+import { useUserStore } from "@/stores/user-store";
+import { UserRole } from "@/types/user.types";
 
 const backendUrl = String(
   process.env.NEXT_PUBLIC_BACKEND_URL || "https://api.roomkhoj.com",
@@ -46,6 +48,8 @@ export function CommentThread({
   currentUserId: string;
   currentUserPhotoUrl?: string | null;
 }) {
+  const viewer = useUserStore((state) => state.user);
+  const isAdmin = viewer?.role === UserRole.ADMIN;
   const [comments, setComments] = useState<SocialComment[]>([]);
   const [draft, setDraft] = useState("");
   const [mentionUserIds, setMentionUserIds] = useState<string[]>([]);
@@ -146,12 +150,20 @@ export function CommentThread({
   };
 
   const remove = async (comment: SocialComment) => {
-    await socialService.deleteComment(comment.id);
-    setComments((current) =>
-      current.filter(
-        (item) => item.id !== comment.id && item.parentCommentId !== comment.id,
-      ),
-    );
+    if (!isAdmin) return;
+    if (!window.confirm("Remove this comment?")) return;
+
+    try {
+      await socialService.deleteComment(comment.id);
+      setComments((current) =>
+        current.filter(
+          (item) => item.id !== comment.id && item.parentCommentId !== comment.id,
+        ),
+      );
+      toast.success("Comment removed");
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || "Comment remove failed");
+    }
   };
 
   return (
@@ -180,6 +192,7 @@ export function CommentThread({
                   currentUserId={currentUserId}
                   onReply={() => setReplyTo(comment)}
                   onEdit={() => void edit(comment)}
+                  canDelete={isAdmin}
                   onDelete={() => void remove(comment)}
                 />
                 {replies.length > 0 && (
@@ -190,6 +203,7 @@ export function CommentThread({
                         comment={reply}
                         currentUserId={currentUserId}
                         compact
+                        canDelete={isAdmin}
                         onReply={() => setReplyTo(reply)}
                         onEdit={() => void edit(reply)}
                         onDelete={() => void remove(reply)}
@@ -251,6 +265,7 @@ function CommentRow({
   comment,
   currentUserId,
   compact = false,
+  canDelete = false,
   onReply,
   onEdit,
   onDelete,
@@ -258,6 +273,7 @@ function CommentRow({
   comment: SocialComment;
   currentUserId: string;
   compact?: boolean;
+  canDelete?: boolean;
   onReply: () => void;
   onEdit: () => void;
   onDelete: () => void;
@@ -312,10 +328,10 @@ function CommentRow({
             </button>
           )}
           {mine && (
-            <>
-              <button type="button" onClick={onEdit} className="hover:underline">Edit</button>
-              <button type="button" onClick={onDelete} className="text-red-500 hover:underline">Delete</button>
-            </>
+            <button type="button" onClick={onEdit} className="hover:underline">Edit</button>
+          )}
+          {canDelete && (
+            <button type="button" onClick={onDelete} className="text-red-500 hover:underline">Remove</button>
           )}
           {compact && <CornerUpLeft className="h-3 w-3 text-slate-300" />}
         </div>
