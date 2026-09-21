@@ -24,9 +24,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 
 type LeaderboardUser = {
-  userId: string;
   name: string;
-  referralCode: string;
   qualifiedReferrals: string | number;
 };
 
@@ -525,7 +523,7 @@ export default function AdminReferralPage() {
             <div className="space-y-2">
               {leaderboard.map((user, index) => (
                 <div
-                  key={user.userId}
+                  key={`${user.name}-${index}`}
                   className="flex items-center gap-3 rounded-xl border p-3"
                 >
                   <span className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-sm font-bold">
