@@ -237,12 +237,13 @@ export default function ReferralPage() {
                   )}
                 </div>
                 <p className="mt-2 text-sm text-muted-foreground">
-                  साथीले तपाईंको यही referral link बाट account बनाएर OTP verify गरेपछि normal referral reward आउँछ।
+                  साथीले तपाईंको यही referral link बाट नयाँ account बनाएर OTP verify गरेपछि दुवैको wallet मा reward आउँछ।
                 </p>
                 <div className="mt-3 space-y-1 text-sm font-semibold">
-                  <p>• Rs. {data.rewardPerVerifiedReferral} per verified signup</p>
+                  <p>• Referrer → Rs. {data.rewardPerVerifiedReferral}</p>
+                  <p>• New verified user → Rs. {data.rewardPerVerifiedReferral}</p>
                   <p>• Monthly referral competition मा count</p>
-                  <p>• Duplicate/self referral मानिँदैन</p>
+                  <p>• Duplicate/existing/self referral मानिँदैन</p>
                 </div>
               </div>
             </div>
