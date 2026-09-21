@@ -44,10 +44,8 @@ class WalletService {
     monetizationFeePaid: number;
     monetizationFee: number;
     canEarnFromRooms: boolean;
-    currentPlan: "FREE" | "PREMIUM";
+    currentPlan: "PREMIUM" | null;
     totalEarned: number;
-    freeEarningLimit: number;
-    freeEarningRemaining: number;
   }> {
     const response = await privateApi.get(`${this.baseUrl}/monetization`);
     return response.data.data;
