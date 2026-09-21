@@ -139,6 +139,11 @@ export default function ProfilePage() {
     monetizationExpiresAt: string | null;
     monetizationFeePaid: number;
     monetizationFee: number;
+    hasReferralDiscount: boolean;
+    referralDiscount: number;
+    payableAmount: number;
+    referralReward: number;
+    platformShare: number;
     canEarnFromRooms: boolean;
     currentPlan: "PREMIUM" | null;
     totalEarned: number;
@@ -455,13 +460,21 @@ export default function ProfilePage() {
   };
 
   const activateMonetization = async () => {
-    const fee = Number(selectedMonetizationPlan?.price || monetization?.monetizationFee || 499);
+    const fee = Number(
+      selectedMonetizationPlan?.payableAmount ||
+        monetization?.payableAmount ||
+        monetization?.monetizationFee ||
+        500,
+    );
     if (walletBalance < fee) {
       setShowMonetizationConfirm(false);
       setShowMonetizationTopup(true);
       return;
     }
-    if (!window.confirm(`Rs. ${fee.toLocaleString()} wallet बाट काटेर Premium Agent plan activate गर्ने?`)) return;
+    const discountText = monetization?.hasReferralDiscount
+      ? ` (Rs. ${Number(monetization.referralDiscount || 0).toLocaleString()} referral discount applied)`
+      : "";
+    if (!window.confirm(`Rs. ${fee.toLocaleString()} wallet बाट काटेर Premium Agent plan activate गर्ने?${discountText}`)) return;
     try {
       setMonetizationActivating(true);
       await walletService.activateMonetization();
@@ -1221,7 +1234,7 @@ export default function ProfilePage() {
           <div className="mb-5">
             <div className="flex items-center gap-2"><Crown className="h-5 w-5 text-amber-700" /><span className="text-xs font-black uppercase tracking-[0.18em] text-amber-700">Earn with RoomKhoj</span></div>
             <h2 className="mt-1 text-xl font-black">Account Monetize</h2>
-            <p className="mt-1 text-sm text-muted-foreground">एउटै Premium plan छ: Rs. 499 / 30 days। Premium activate भएपछि Agent mode स्वतः ON हुन्छ र room बाट earning गर्न सकिन्छ।</p>
+            <p className="mt-1 text-sm text-muted-foreground">एउटै Premium plan छ: Rs. 500 / 30 days। Referral बाट आएको user लाई Rs. 100 instant discount लाग्छ, त्यसैले उसले Rs. 400 pay गर्छ। Premium activate भएपछि Agent mode स्वतः ON हुन्छ।</p>
           </div>
 
           {!monetization?.isMonetized && !kycLoading && (
@@ -1325,12 +1338,24 @@ export default function ProfilePage() {
                   <p className="text-lg font-black">Premium Agent</p>
                 </div>
                 <p className="mt-3 text-3xl font-black">
-                  Rs. {Number(monetization?.monetizationFee || 499).toLocaleString()}
+                  Rs. {Number(monetization?.monetizationFee || 500).toLocaleString()}
                   <span className="ml-1 text-sm font-semibold text-muted-foreground">/ 30 days</span>
                 </p>
                 <p className="mt-2 text-sm text-muted-foreground">
                   Premium activate भएपछि account automatically Agent mode मा जान्छ।
                 </p>
+                {monetization?.hasReferralDiscount && !monetization?.isMonetized && (
+                  <div className="mt-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-sm">
+                    <p className="font-black text-emerald-700">Referral discount applied</p>
+                    <div className="mt-1 flex items-center justify-between gap-3 text-xs font-semibold text-emerald-800">
+                      <span>Plan Rs. {Number(monetization.monetizationFee || 500).toLocaleString()}</span>
+                      <span>- Rs. {Number(monetization.referralDiscount || 100).toLocaleString()}</span>
+                    </div>
+                    <p className="mt-2 text-base font-black text-emerald-800">
+                      Pay now: Rs. {Number(monetization.payableAmount || 400).toLocaleString()}
+                    </p>
+                  </div>
+                )}
 
                 <div className="mt-4 grid gap-2 sm:grid-cols-2">
                   {[
@@ -1365,7 +1390,13 @@ export default function ProfilePage() {
                     onClick={() =>
                       void chooseMonetizationPlan({
                         name: "Premium Agent",
-                        price: Number(monetization?.monetizationFee || 499),
+                        listPrice: Number(monetization?.monetizationFee || 500),
+                        referralDiscount: Number(monetization?.referralDiscount || 0),
+                        payableAmount: Number(
+                          monetization?.payableAmount ||
+                            monetization?.monetizationFee ||
+                            500,
+                        ),
                       })
                     }
                     disabled={monetizationActivating}
@@ -1461,15 +1492,21 @@ export default function ProfilePage() {
             <CardContent className="p-6">
               <h3 className="text-xl font-black">Confirm Premium Agent</h3>
               <p className="mt-2 text-sm text-muted-foreground">
-                {selectedMonetizationPlan.name} · Rs. {Number(selectedMonetizationPlan.price).toLocaleString()} · 30 days
+                {selectedMonetizationPlan.name} · Rs. {Number(selectedMonetizationPlan.listPrice || 500).toLocaleString()} · 30 days
               </p>
-              <div className="mt-4 rounded-xl bg-muted p-3 text-sm">
-                Wallet balance: <b>Rs. {walletBalance.toLocaleString()}</b>
+              {Number(selectedMonetizationPlan.referralDiscount || 0) > 0 && (
+                <div className="mt-3 rounded-xl bg-emerald-50 p-3 text-sm text-emerald-800">
+                  Referral discount: <b>- Rs. {Number(selectedMonetizationPlan.referralDiscount).toLocaleString()}</b>
+                </div>
+              )}
+              <div className="mt-3 rounded-xl bg-muted p-3 text-sm">
+                <div>Pay now: <b>Rs. {Number(selectedMonetizationPlan.payableAmount || 500).toLocaleString()}</b></div>
+                <div className="mt-1">Wallet balance: <b>Rs. {walletBalance.toLocaleString()}</b></div>
               </div>
               <div className="mt-5 flex gap-2">
                 <Button variant="outline" className="flex-1" onClick={() => setShowMonetizationConfirm(false)}>Cancel</Button>
                 <Button className="flex-1" disabled={monetizationActivating} onClick={() => void activateMonetization()}>
-                  {walletBalance >= Number(selectedMonetizationPlan.price) ? "Confirm & Pay" : "Load Balance"}
+                  {walletBalance >= Number(selectedMonetizationPlan.payableAmount || 500) ? "Confirm & Pay" : "Load Balance"}
                 </Button>
               </div>
             </CardContent>
