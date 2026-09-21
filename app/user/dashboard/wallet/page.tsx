@@ -54,8 +54,8 @@ export default function UserWalletPage() {
       queryClient.invalidateQueries({ queryKey: ["wallet-transactions"] });
       toast.success(
         data.alreadyActive
-          ? "Account is already monetized"
-          : "Account monetized successfully",
+          ? "Premium Agent is already active"
+          : "Premium activated — Agent mode is ON",
       );
     },
     onError: (error: any) => {
@@ -155,7 +155,7 @@ export default function UserWalletPage() {
             ) : (
               <CircleDollarSign className="h-5 w-5 text-primary" />
             )}
-            Account Monetization
+            Premium Agent
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -163,23 +163,26 @@ export default function UserWalletPage() {
             <Skeleton className="h-24 w-full" />
           ) : monetization?.isMonetized ? (
             <div className="rounded-xl border border-border bg-muted/40 p-4">
-              <p className="font-semibold text-foreground">Monetized ✓</p>
+              <p className="font-semibold text-foreground">Premium Agent active ✓</p>
               <p className="mt-1 text-sm text-muted-foreground">
-                You can earn from room service-charge payments and eligible room earnings.
+                Mode: <b>{monetization.accountMode}</b> · You can earn from eligible room service-charge payments.
               </p>
               <p className="mt-2 text-xs text-muted-foreground">
-                Activation fee paid: Rs. {Number(monetization.monetizationFeePaid || 0).toLocaleString()}
+                Paid: Rs. {Number(monetization.monetizationFeePaid || 0).toLocaleString()}
+                {monetization.monetizationExpiresAt
+                  ? ` · Valid until ${new Date(monetization.monetizationExpiresAt).toLocaleDateString()}`
+                  : ""}
               </p>
             </div>
           ) : (
             <div className="flex flex-col gap-4 rounded-xl border border-border p-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <p className="font-semibold text-foreground">Start earning from RoomKhoj</p>
+                <p className="font-semibold text-foreground">Turn on Agent mode</p>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Monetize your account once, then you can request service-charge payments from your room customers.
+                  Activate the single Premium plan for 30 days. Successful activation automatically turns Agent mode ON.
                 </p>
                 <p className="mt-2 text-sm font-semibold text-primary">
-                  One-time fee: Rs. {Number(monetization?.monetizationFee || 0).toLocaleString()}
+                  Premium: Rs. {Number(monetization?.monetizationFee || 499).toLocaleString()} / 30 days
                 </p>
               </div>
               <Button
@@ -191,7 +194,7 @@ export default function UserWalletPage() {
                 {monetizationMutation.isPending ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : null}
-                Monetize account
+                Activate Premium
               </Button>
             </div>
           )}
