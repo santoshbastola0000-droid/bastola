@@ -62,8 +62,8 @@ export default function ReferralPage() {
 
   const getShareText = () =>
     selectedReferralType === "MONETIZATION"
-      ? "💰 RoomKhoj Account Monetize Referral! मेरो link बाट account बनाउनुहोस् र Premium Agent activate गर्नुहोस्। Premium payment सफल भएपछि मलाई paid fee को 60% commission आउँछ र तपाईंलाई Rs. 100 cashback आफ्नै wallet मा आउँछ।"
-      : "🎁 RoomKhoj Invite & Win! मेरो link बाट verified account बनाउनुहोस्। हरेक verified signup मा Rs. 5 wallet reward आउँछ।";
+      ? "💰 RoomKhoj Premium Referral! मेरो एउटै link बाट account बनाउनुहोस्। OTP verify भएपछि हामी दुवैलाई Rs. 5/5 आउँछ। त्यसपछि Rs. 500 Premium Agent लिँदा referred user लाई Rs. 100 discount, referrer लाई Rs. 300 र RoomKhoj लाई Rs. 100 जान्छ।"
+      : "🎁 RoomKhoj Invite & Earn! मेरो एउटै link बाट verified account बनाउनुहोस्। OTP verify भएपछि referrer र नयाँ user दुवैलाई Rs. 5/5 wallet reward आउँछ।";
 
   const copyLink = async () => {
     if (!data?.referralLink) return;
@@ -172,7 +172,7 @@ export default function ReferralPage() {
           Invite & Earn
         </h1>
         <p className="mt-1 text-sm leading-6 text-muted-foreground">
-          आफ्नो एउटै referral link share गर्नुहोस्। Verified signup मा Rs. 5 र referral user ले Premium Agent activate गरेपछि 60% commission कमाउन सकिन्छ।
+          आफ्नो एउटै referral link share गर्नुहोस्। नयाँ user OTP verify भएपछि दुवैलाई Rs. 5/5 आउँछ। त्यही user ले Rs. 500 Premium लिएमा उसलाई Rs. 100 discount र तपाईंलाई Rs. 300 referral commission आउँछ।
         </p>
       </div>
 
@@ -200,12 +200,14 @@ export default function ReferralPage() {
                   )}
                 </div>
                 <p className="mt-2 text-sm text-muted-foreground">
-                  तपाईंको referral link बाट आएको user ले paid Premium Agent activate गरेपछि तपाईंलाई actual paid fee को 60% commission आउँछ।
+                  तपाईंको एउटै referral link बाट आएको user ले Rs. 500 Premium Agent activate गर्दा उसलाई Rs. 100 instant discount लाग्छ। बाँकी Rs. 400 payment बाट Rs. 300 तपाईंलाई र Rs. 100 RoomKhoj लाई जान्छ।
                 </p>
                 <div className="mt-3 space-y-1 text-sm font-semibold">
-                  <p>• Rs. 499 Premium → तपाईंलाई Rs. 299.40</p>
-                  <p>• Referred user → Rs. 100 cashback</p>
-                  <p>• Successful payment भएपछि मात्र commission</p>
+                  <p>• Premium price → Rs. 500</p>
+                  <p>• Referred user discount → Rs. 100</p>
+                  <p>• User pays → Rs. 400</p>
+                  <p>• Referrer receives → Rs. 300</p>
+                  <p>• RoomKhoj share → Rs. 100</p>
                 </div>
               </div>
             </div>
@@ -260,7 +262,7 @@ export default function ReferralPage() {
             {data.referralLink}
           </div>
           <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm leading-6 text-amber-950">
-            <b>ध्यान दिनुहोस्:</b> user ले यही link बाट register गर्नुपर्छ। त्यसपछि OTP verify गर्दा Rs. 5 signup reward track हुन्छ; पछि उसैले Premium Agent activate गरेमा 60% monetization commission पनि यही referral relation बाट track हुन्छ।
+            <b>ध्यान दिनुहोस्:</b> यही एउटै link बाट नयाँ user register गरेर OTP verify गरेपछि referrer र referred user दुवैको wallet मा Rs. 5/5 एकपटक मात्र credit हुन्छ। पछि त्यही user ले Premium Agent लिएमा यही referral relation बाट Rs. 100 discount र Rs. 300 referral commission लागू हुन्छ।
           </div>
           <div className="flex flex-col gap-3 sm:flex-row">
             <Button onClick={copyLink} className="cursor-pointer">
@@ -345,9 +347,9 @@ export default function ReferralPage() {
         </CardHeader>
         <CardContent className="space-y-3 text-sm text-muted-foreground">
           <p>1. माथि देखिएको आफ्नो referral link share गर्नुहोस्।</p>
-          <p>2. नयाँ user यही link बाट register गरेर OTP verify गरेपछि Rs. {data.rewardPerVerifiedReferral} wallet reward आउँछ।</p>
-          <p>3. त्यही referred user ले Premium Agent activate गरेपछि Rs. 499 को 60% = Rs. 299.40 commission आउँछ।</p>
-          <p>4. Verified signup मात्र count हुन्छ; duplicate वा self-referral मानिँदैन।</p>
+          <p>2. नयाँ user यही link बाट register गरेर OTP verify गरेपछि referrer र नयाँ user दुवैलाई Rs. {data.rewardPerVerifiedReferral}/Rs. {data.rewardPerVerifiedReferral} wallet reward आउँछ।</p>
+          <p>3. त्यही referred user ले Rs. 500 Premium Agent activate गर्दा Rs. 100 discount लाग्छ, उसले Rs. 400 pay गर्छ, तपाईंलाई Rs. 300 आउँछ र Rs. 100 RoomKhoj share हुन्छ।</p>
+          <p>4. Verified नयाँ signup मात्र count हुन्छ; duplicate, existing-account login वा self-referral मा Rs. 5/5 फेरि दिइँदैन।</p>
           <p>5. सबैभन्दा धेरै qualified referral ल्याउनेले monthly Rs. 10,000 जित्ने मौका पाउँछ।</p>
         </CardContent>
       </Card>
@@ -358,8 +360,8 @@ export default function ReferralPage() {
             <DialogTitle className="text-center text-xl">Share & Earn</DialogTitle>
             <DialogDescription className="text-center">
               {selectedReferralType === "MONETIZATION"
-                ? "Premium Agent referral share गर्नुहोस् — 60% commission + referred user लाई Rs. 100 cashback."
-                : "साथीलाई invite गर्नुहोस्। हरेक verified signup मा Rs. 5 पाउनुहोस्।"}
+                ? "Premium Agent referral share गर्नुहोस् — Rs. 500 plan मा referred user लाई Rs. 100 discount, तपाईंलाई Rs. 300 र RoomKhoj लाई Rs. 100।"
+                : "साथीलाई invite गर्नुहोस्। Verified नयाँ signup मा दुवैलाई Rs. 5/5 आउँछ।"}
             </DialogDescription>
           </DialogHeader>
 
