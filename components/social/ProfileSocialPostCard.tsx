@@ -12,6 +12,8 @@ import {
 } from "@/http/services/social.service";
 import { PostReactions } from "@/components/social/PostReactions";
 import { CommentThread } from "@/components/social/CommentThread";
+import { useUserStore } from "@/stores/user-store";
+import { UserRole } from "@/types/user.types";
 
 const backendUrl = String(
   process.env.NEXT_PUBLIC_BACKEND_URL || "https://api.roomkhoj.com",
@@ -204,9 +206,11 @@ export function ProfileSocialPostCard({
   currentUserPhotoUrl?: string | null;
   onChanged: () => void | Promise<void>;
 }) {
+  const viewer = useUserStore((state) => state.user);
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [postMenu, setPostMenu] = useState(false);
   const own = String(post.author?.id || post.userId) === String(currentUserId);
+  const isAdmin = viewer?.role === UserRole.ADMIN;
 
   const share = async () => {
     const url = `${window.location.origin}/post/${post.id}`;
@@ -297,25 +301,41 @@ export function ProfileSocialPostCard({
                 </button>
               </>
             ) : (
-              <button
-                type="button"
-                className="block w-full rounded-lg px-3 py-2 text-left text-[13px] font-semibold text-red-600 hover:bg-slate-100"
-                onClick={async () => {
-                  const reason = window.prompt(
-                    "Why are you reporting this post?",
-                  );
-                  if (!reason?.trim()) return;
-                  await socialService.report({
-                    targetType: "POST",
-                    targetId: post.id,
-                    reason: reason.trim(),
-                  });
-                  setPostMenu(false);
-                  toast.success("Report submitted");
-                }}
-              >
-                Report post
-              </button>
+              <>
+                {isAdmin && (
+                  <button
+                    type="button"
+                    className="block w-full rounded-lg px-3 py-2 text-left text-[13px] font-semibold text-red-600 hover:bg-slate-100"
+                    onClick={async () => {
+                      if (!window.confirm("Delete this post as admin?")) return;
+                      await socialService.deletePost(post.id);
+                      setPostMenu(false);
+                      await onChanged();
+                    }}
+                  >
+                    Delete post
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="block w-full rounded-lg px-3 py-2 text-left text-[13px] font-semibold text-red-600 hover:bg-slate-100"
+                  onClick={async () => {
+                    const reason = window.prompt(
+                      "Why are you reporting this post?",
+                    );
+                    if (!reason?.trim()) return;
+                    await socialService.report({
+                      targetType: "POST",
+                      targetId: post.id,
+                      reason: reason.trim(),
+                    });
+                    setPostMenu(false);
+                    toast.success("Report submitted");
+                  }}
+                >
+                  Report post
+                </button>
+              </>
             )}
           </div>
         )}
