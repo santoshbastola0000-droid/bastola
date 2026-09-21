@@ -1040,7 +1040,7 @@ function InlineFeedVideo({
       loop
       playsInline
       preload="metadata"
-      controls={false}
+      controls
       disablePictureInPicture
       onCanPlay={(event) => {
         const rect = event.currentTarget.getBoundingClientRect();
@@ -1052,7 +1052,7 @@ function InlineFeedVideo({
           void event.currentTarget.play().catch(() => undefined);
         }
       }}
-      className="pointer-events-none max-h-[70vh] w-full bg-black object-contain sm:max-h-[640px]"
+      className="max-h-[70vh] w-full bg-black object-contain sm:max-h-[640px]"
     />
   );
 }
@@ -1069,25 +1069,15 @@ function PostMedia({ post }: { post: SocialPost }) {
       <div className={post.mediaUrls.length > 1 ? "grid grid-cols-2 gap-0.5" : ""}>
         {post.mediaUrls.slice(0, 4).map((url, index) =>
           post.mediaTypes[index] === "VIDEO" ? (
-            <button
+            <div
               key={url}
-              type="button"
-              onClick={() =>
-                window.location.assign(
-                  `/reels?post=${encodeURIComponent(post.id)}&media=${index}`,
-                )
-              }
-              className="group relative block w-full cursor-pointer bg-black"
-              aria-label="Open video in Reels"
+              className="relative block w-full bg-black"
             >
               <InlineFeedVideo
                 source={media(url)}
                 poster={streamVideoPoster(url) || undefined}
               />
-              <span className="pointer-events-none absolute bottom-3 right-3 rounded-full bg-black/55 px-3 py-1.5 text-xs font-bold text-white backdrop-blur-sm">
-                Reels
-              </span>
-            </button>
+            </div>
           ) : (
             <img key={url} src={media(url)} alt="Post" loading="lazy" decoding="async" className="max-h-[760px] w-full bg-black object-contain" />
           ),
