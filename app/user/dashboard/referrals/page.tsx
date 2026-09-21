@@ -37,6 +37,7 @@ import ReferralNetworkInfo from "./ReferralNetworkInfo";
 
 type ReferralStats = {
   referralCode: string;
+  promoCode: string | null;
   referralLink: string;
   qualifiedReferrals: number;
   pendingReferrals: number;
@@ -46,6 +47,7 @@ type ReferralStats = {
 
 export default function ReferralPage() {
   const [copied, setCopied] = useState(false);
+  const [promoCopied, setPromoCopied] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [selectedReferralType, setSelectedReferralType] = useState<
     "SIGNUP" | "MONETIZATION"
@@ -74,6 +76,18 @@ export default function ReferralPage() {
       window.setTimeout(() => setCopied(false), 2000);
     } catch {
       toast.error("Could not copy link. Please copy it manually.");
+    }
+  };
+
+  const copyPromoCode = async () => {
+    if (!data?.promoCode) return;
+    try {
+      await navigator.clipboard.writeText(data.promoCode);
+      setPromoCopied(true);
+      toast.success("Promo code copied");
+      window.setTimeout(() => setPromoCopied(false), 2000);
+    } catch {
+      toast.error("Promo code copy गर्न सकिएन.");
     }
   };
 
@@ -261,6 +275,30 @@ export default function ReferralPage() {
         <CardContent className="space-y-4">
           <div className="break-all rounded-xl border bg-background p-3 font-mono text-sm">
             {data.referralLink}
+          </div>
+
+          <div className="rounded-xl border border-primary/20 bg-primary/5 p-3">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">Your Promo Code</p>
+                <p className="mt-1 font-mono text-2xl font-black tracking-[0.24em] text-primary">
+                  {data.promoCode || "-----"}
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  यो 5-character code login वा Premium payment अघि प्रयोग गर्न सकिन्छ।
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={copyPromoCode}
+                disabled={!data.promoCode}
+              >
+                {promoCopied ? <Check className="mr-1.5 h-4 w-4" /> : <Copy className="mr-1.5 h-4 w-4" />}
+                {promoCopied ? "Copied" : "Copy"}
+              </Button>
+            </div>
           </div>
           <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm leading-6 text-amber-950">
             <b>ध्यान दिनुहोस्:</b> यही एउटै link बाट नयाँ user register गरेर OTP verify गरेपछि referrer र referred user दुवैको wallet मा Rs. 5/5 एकपटक मात्र credit हुन्छ। पछि त्यही user ले Premium Agent लिएमा यही referral relation बाट Rs. 100 discount र Rs. 300 referral commission लागू हुन्छ।
