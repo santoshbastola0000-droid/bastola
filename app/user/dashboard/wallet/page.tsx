@@ -182,8 +182,13 @@ export default function UserWalletPage() {
                   Activate the single Premium plan for 30 days. Successful activation automatically turns Agent mode ON.
                 </p>
                 <p className="mt-2 text-sm font-semibold text-primary">
-                  Premium: Rs. {Number(monetization?.monetizationFee || 499).toLocaleString()} / 30 days
+                  Premium: Rs. {Number(monetization?.monetizationFee || 500).toLocaleString()} / 30 days
                 </p>
+                {monetization?.hasReferralDiscount && (
+                  <div className="mt-2 rounded-lg bg-emerald-50 p-2 text-xs font-semibold text-emerald-800">
+                    Referral discount Rs. {Number(monetization.referralDiscount || 100).toLocaleString()} · Pay Rs. {Number(monetization.payableAmount || 400).toLocaleString()}
+                  </div>
+                )}
               </div>
               <Button
                 type="button"
