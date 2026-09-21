@@ -409,15 +409,7 @@ export function PostReactions({
                     <div className="min-w-0 flex-1">
                       <div className="flex min-w-0 items-center gap-2">
                         <span className="truncate text-[15px] font-semibold">{entry.user.name}</span>
-                        {entry.user.isSynthetic && (
-                          <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-600">
-                            Bot
-                          </span>
-                        )}
                       </div>
-                      {entry.user.isSynthetic && entry.user.bio && (
-                        <div className="mt-0.5 truncate text-[11px] text-slate-500">{entry.user.bio}</div>
-                      )}
                     </div>
                     {!entry.user.isSynthetic && String(entry.user.id) !== String(currentUserId) && (
                       <button type="button" onClick={() => { window.location.href = `/messages?userId=${encodeURIComponent(entry.user.id)}`; }} className="shrink-0 rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white">
