@@ -166,12 +166,11 @@ export function NavBar() {
 
   const suggestionItems = searchSuggestions
     ? [
-        // People are intentionally first. Synthetic profiles are returned by
-        // the API in this same users array, so they render exactly like normal
-        // users with no separate bot label or treatment.
+        // People are intentionally first. Synthetic/content profiles use the
+        // same result shape, with a small Content label for recognition.
         ...searchSuggestions.users.slice(0, 4).map((item) => ({
           label: item.name,
-          sub: "User",
+          sub: item.isSynthetic ? "Content" : "User",
           href: item.href,
         })),
         ...searchSuggestions.posts.slice(0, 2).map((item) => ({
