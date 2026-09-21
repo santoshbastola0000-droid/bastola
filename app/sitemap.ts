@@ -1,26 +1,19 @@
 import type { MetadataRoute } from "next";
 
 import type { JobPosting } from "@/http/services/job-posting.service";
+import {
+  POKHARA_JOB_ROLES,
+  POKHARA_ROOM_LANDINGS,
+} from "@/lib/seo-landings";
 
 const baseUrl = "https://www.roomkhoj.com";
-
 const API_URL =
-  process.env.NEXT_PUBLIC_BACKEND_URL ||
-  "https://api.roomkhoj.com";
+  process.env.NEXT_PUBLIC_BACKEND_URL || "https://api.roomkhoj.com";
 
 type SocialSeoIndex = {
-  posts: Array<{
-    id: string;
-    updatedAt: string;
-  }>;
-  rooms?: Array<{
-    id: string;
-    updatedAt: string;
-  }>;
-  hashtags: Array<{
-    tag: string;
-    count: number;
-  }>;
+  posts: Array<{ id: string; updatedAt: string }>;
+  rooms?: Array<{ id: string; updatedAt: string }>;
+  hashtags: Array<{ tag: string; count: number }>;
 };
 
 function jobSlug(job: JobPosting) {
@@ -39,36 +32,20 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   await Promise.all([
     (async () => {
       try {
-        const response = await fetch(
-          `${API_URL}/job-posting/approved`,
-          {
-            next: {
-              revalidate: 3600,
-            },
-          },
-        );
-
-        if (response.ok) {
-          jobs = await response.json();
-        }
+        const response = await fetch(`${API_URL}/job-posting/approved`, {
+          next: { revalidate: 3600 },
+        });
+        if (response.ok) jobs = await response.json();
       } catch {
         jobs = [];
       }
     })(),
     (async () => {
       try {
-        const response = await fetch(
-          `${API_URL}/public/social/seo-index`,
-          {
-            next: {
-              revalidate: 1800,
-            },
-          },
-        );
-
-        if (response.ok) {
-          socialSeo = await response.json();
-        }
+        const response = await fetch(`${API_URL}/public/social/seo-index`, {
+          next: { revalidate: 1800 },
+        });
+        if (response.ok) socialSeo = await response.json();
       } catch {
         socialSeo = { posts: [], rooms: [], hashtags: [] };
       }
@@ -78,54 +55,26 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date();
 
   return [
-    {
-      url: baseUrl,
+    { url: baseUrl, lastModified: now, changeFrequency: "daily", priority: 1 },
+    { url: `${baseUrl}/rooms`, lastModified: now, changeFrequency: "daily", priority: 1 },
+    { url: `${baseUrl}/rooms/pokhara`, lastModified: now, changeFrequency: "daily", priority: 1 },
+    ...POKHARA_ROOM_LANDINGS.map((item) => ({
+      url: `${baseUrl}/rooms/pokhara/${item.slug}`,
       lastModified: now,
-      changeFrequency: "daily",
-      priority: 1,
-    },
-    {
-      url: `${baseUrl}/rooms`,
+      changeFrequency: "daily" as const,
+      priority: 0.85,
+    })),
+    { url: `${baseUrl}/jobs`, lastModified: now, changeFrequency: "daily", priority: 1 },
+    { url: `${baseUrl}/jobs/pokhara`, lastModified: now, changeFrequency: "daily", priority: 1 },
+    ...POKHARA_JOB_ROLES.map((role) => ({
+      url: `${baseUrl}/jobs/pokhara/${role.slug}`,
       lastModified: now,
-      changeFrequency: "daily",
-      priority: 1,
-    },
-    {
-      url: `${baseUrl}/rooms/pokhara`,
-      lastModified: now,
-      changeFrequency: "daily",
-      priority: 1,
-    },
-    {
-      url: `${baseUrl}/jobs`,
-      lastModified: now,
-      changeFrequency: "daily",
-      priority: 1,
-    },
-    {
-      url: `${baseUrl}/jobs/pokhara`,
-      lastModified: now,
-      changeFrequency: "daily",
-      priority: 1,
-    },
-    {
-      url: `${baseUrl}/about`,
-      lastModified: now,
-      changeFrequency: "monthly",
-      priority: 0.7,
-    },
-    {
-      url: `${baseUrl}/contact`,
-      lastModified: now,
-      changeFrequency: "monthly",
-      priority: 0.6,
-    },
-    {
-      url: `${baseUrl}/hashtags`,
-      lastModified: now,
-      changeFrequency: "daily",
-      priority: 0.7,
-    },
+      changeFrequency: "daily" as const,
+      priority: 0.85,
+    })),
+    { url: `${baseUrl}/about`, lastModified: now, changeFrequency: "monthly", priority: 0.7 },
+    { url: `${baseUrl}/contact`, lastModified: now, changeFrequency: "monthly", priority: 0.6 },
+    { url: `${baseUrl}/hashtags`, lastModified: now, changeFrequency: "daily", priority: 0.7 },
     ...jobs.map((job) => ({
       url: `${baseUrl}/job/${jobSlug(job)}`,
       lastModified: new Date(job.updatedAt || job.createdAt),

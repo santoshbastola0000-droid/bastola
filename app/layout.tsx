@@ -29,6 +29,37 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const siteJsonLd = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "https://www.roomkhoj.com/#organization",
+      name: "RoomKhoj",
+      url: "https://www.roomkhoj.com",
+      logo: {
+        "@type": "ImageObject",
+        url: "https://www.roomkhoj.com/roomkhoj-logo.png",
+      },
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://www.roomkhoj.com/#website",
+      name: "RoomKhoj",
+      url: "https://www.roomkhoj.com",
+      publisher: {
+        "@id": "https://www.roomkhoj.com/#organization",
+      },
+      inLanguage: ["en-NP", "ne-NP"],
+      potentialAction: {
+        "@type": "SearchAction",
+        target: "https://www.roomkhoj.com/search?q={search_term_string}",
+        "query-input": "required name=search_term_string",
+      },
+    },
+  ],
+};
+
 export const metadata: Metadata = {
   metadataBase: new URL("https://www.roomkhoj.com"),
 
@@ -108,6 +139,10 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased pb-[calc(68px+env(safe-area-inset-bottom))] md:pb-0`}
       >
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(siteJsonLd) }}
+        />
         <RoomKhojStartupSplash />
         <SecurityChallengeGate />
         <LanguageProvider>

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import {
   BriefcaseBusiness,
   CheckCircle2,
@@ -8,6 +9,7 @@ import {
 import { NavBar } from "@/components/common/navbar";
 import Footer from "@/components/common/footer";
 import ApprovedVacancies from "@/components/jobs/ApprovedVacancies";
+import { POKHARA_JOB_ROLES } from "@/lib/seo-landings";
 
 const title = "Jobs in Pokhara & Job Vacancy in Pokhara | RoomKhoj";
 
@@ -183,6 +185,23 @@ export default function PokharaJobsPage() {
                 </span>
               ))}
             </div>
+          </div>
+        </section>
+
+        <section className="mx-auto max-w-6xl px-4 pb-8">
+          <h2 className="text-2xl font-bold text-slate-900">
+            Browse Pokhara jobs by role
+          </h2>
+          <div className="mt-5 flex flex-wrap gap-3">
+            {POKHARA_JOB_ROLES.map((role) => (
+              <Link
+                key={role.slug}
+                href={`/jobs/pokhara/${role.slug}`}
+                className="rounded-full border border-red-200 bg-red-50 px-4 py-2 font-semibold text-red-700 hover:bg-red-100"
+              >
+                {role.title} jobs
+              </Link>
+            ))}
           </div>
         </section>
 

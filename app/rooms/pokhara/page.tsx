@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { NavBar } from "@/components/common/navbar";
 import Footer from "@/components/common/footer";
+import { POKHARA_ROOM_LANDINGS } from "@/lib/seo-landings";
 
 const title = "Room for Rent in Pokhara | RoomKhoj";
 
@@ -184,12 +185,29 @@ export default function PokharaRoomsPage() {
               {pokharaAreas.map((area) => (
                 <Link
                   key={area}
-                  href={`/rooms?q=${encodeURIComponent(`${area} Pokhara`)}`}
+                  href={`/rooms/pokhara/${area.toLowerCase().replace(/\s+/g, "-")}`}
                   className="rounded-full border border-red-200 bg-red-50 px-4 py-2 font-medium text-red-700 transition hover:bg-red-100"
                 >
                   Room in {area}
                 </Link>
               ))}
+            </div>
+
+            <h3 className="mt-10 text-xl font-bold text-slate-900">
+              Browse Pokhara rooms by budget
+            </h3>
+            <div className="mt-4 flex flex-wrap gap-3">
+              {POKHARA_ROOM_LANDINGS.filter((item) => item.kind === "budget").map(
+                (item) => (
+                  <Link
+                    key={item.slug}
+                    href={`/rooms/pokhara/${item.slug}`}
+                    className="rounded-full border border-slate-200 bg-slate-50 px-4 py-2 font-semibold text-slate-700 hover:border-red-300"
+                  >
+                    {item.label}
+                  </Link>
+                ),
+              )}
             </div>
           </div>
         </section>
