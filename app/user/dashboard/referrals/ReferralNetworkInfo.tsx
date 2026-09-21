@@ -60,8 +60,8 @@ export default function ReferralNetworkInfo({
                 {referralLink}
               </div>
               <div className="mt-3 space-y-2 text-sm text-emerald-950">
-                <p><b>Verified Signup:</b> यही link बाट account बनाएर OTP verify गरेपछि तपाईंलाई Rs. 5 wallet reward आउँछ।</p>
-                <p><b>Account Monetize:</b> यही link बाट आएको user ले Rs. 499 Starter monetization activate गरेपछि तपाईंलाई 50% = Rs. 249.50 commission आउँछ, र referred user लाई Rs. 100 cashback आउँछ।</p>
+                <p><b>Verified Signup:</b> यही link बाट नयाँ account बनाएर OTP verify गरेपछि तपाईं र नयाँ user दुवैलाई Rs. 5/5 wallet reward आउँछ।</p>
+                <p><b>Premium Agent:</b> यही link बाट आएको user ले Rs. 500 Premium activate गर्दा Rs. 100 discount पाउँछ, Rs. 400 pay गर्छ, तपाईंलाई Rs. 300 commission आउँछ र Rs. 100 RoomKhoj share हुन्छ।</p>
               </div>
             </div>
           </div>
@@ -70,7 +70,7 @@ export default function ReferralNetworkInfo({
         <div className="rounded-2xl border border-violet-200 bg-violet-50/70 p-4">
           <p className="font-black text-violet-950">सजिलो उदाहरण</p>
           <div className="mt-3 space-y-3 text-sm leading-6 text-violet-950">
-            <p><b>तपाईं → B:</b> B ले तपाईंको referral link बाट account बनायो र verify गर्‍यो भने B तपाईंको Level 1 direct referral हुन्छ। Signup reward Rs. 5 आउँछ। B ले Starter monetize गरेमा थप Rs. 249.50 commission आउँछ।</p>
+            <p><b>तपाईं → B:</b> B ले तपाईंको referral link बाट नयाँ account बनायो र verify गर्‍यो भने B तपाईंको Level 1 direct referral हुन्छ। तपाईं र B दुवैलाई Rs. 5/5 आउँछ। B ले Rs. 500 Premium activate गर्दा B ले Rs. 100 discount पाउँछ र तपाईंलाई थप Rs. 300 commission आउँछ।</p>
             <p><b>B → C:</b> पछि B ले आफ्नो referral link C लाई पठायो भने C, B को direct referral हुन्छ र तपाईंको network tree मा Level 2 मा देखिन्छ।</p>
             <p><b>C → D:</b> C ले D लाई जोड्यो भने D Level 3 मा देखिन्छ। यसरी relation backend मा 10 level सम्म track हुन्छ।</p>
           </div>
@@ -82,10 +82,10 @@ export default function ReferralNetworkInfo({
             <div>
               <p className="font-black">कमाइ कति हुन सक्छ? — direct referral उदाहरण</p>
               <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                <div className="rounded-xl bg-muted/50 p-3 text-sm"><b>5 जना</b> Starter monetize → 5 × Rs. 249.50 = <b>Rs. 1,247.50</b></div>
-                <div className="rounded-xl bg-muted/50 p-3 text-sm"><b>10 जना</b> Starter monetize → 10 × Rs. 249.50 = <b>Rs. 2,495</b></div>
-                <div className="rounded-xl bg-muted/50 p-3 text-sm"><b>25 जना</b> Starter monetize → 25 × Rs. 249.50 = <b>Rs. 6,237.50</b></div>
-                <div className="rounded-xl bg-muted/50 p-3 text-sm"><b>100 जना</b> Starter monetize → 100 × Rs. 249.50 = <b>Rs. 24,950</b></div>
+                <div className="rounded-xl bg-muted/50 p-3 text-sm"><b>5 जना</b> Premium → 5 × Rs. 300 = <b>Rs. 1,500</b></div>
+                <div className="rounded-xl bg-muted/50 p-3 text-sm"><b>10 जना</b> Premium → 10 × Rs. 300 = <b>Rs. 3,000</b></div>
+                <div className="rounded-xl bg-muted/50 p-3 text-sm"><b>25 जना</b> Premium → 25 × Rs. 300 = <b>Rs. 7,500</b></div>
+                <div className="rounded-xl bg-muted/50 p-3 text-sm"><b>100 जना</b> Premium → 100 × Rs. 300 = <b>Rs. 30,000</b></div>
               </div>
               <p className="mt-3 text-xs leading-5 text-muted-foreground">
                 यी उदाहरणहरू direct paid referrals का हुन्। Network tree मा Level 2–10 relation track हुन्छ, तर indirect level बाट payout छुट्टै rule enable नभएसम्म automatic commission देखाइएको छैन।
