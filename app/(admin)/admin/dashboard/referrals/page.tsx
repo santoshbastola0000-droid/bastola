@@ -203,6 +203,7 @@ function ReferralTreeNode({
 }
 
 export default function AdminReferralPage() {
+  const [userIdInput, setUserIdInput] = useState("");
   const [userId, setUserId] = useState("");
   const [savingContent, setSavingContent] = useState(false);
   const [contentForm, setContentForm] = useState<ReferralContentSettings>({
@@ -215,7 +216,10 @@ export default function AdminReferralPage() {
 
   useEffect(() => {
     const selected = new URLSearchParams(window.location.search).get("userId");
-    if (selected) setUserId(selected);
+    if (selected) {
+      setUserIdInput(selected);
+      setUserId(selected);
+    }
   }, []);
 
   const { data: referralContent } = useQuery({
@@ -470,14 +474,14 @@ export default function AdminReferralPage() {
         </CardHeader>
         <CardContent className="flex flex-col gap-3 sm:flex-row">
           <Input
-            value={userId}
-            onChange={(event) => setUserId(event.target.value.trim())}
+            value={userIdInput}
+            onChange={(event) => setUserIdInput(event.target.value.trim())}
             placeholder="Paste user ID, or open Chain from Users page"
           />
           <Button
             type="button"
-            onClick={() => setUserId((value) => value)}
-            disabled={!userId}
+            onClick={() => setUserId(userIdInput.trim())}
+            disabled={!userIdInput.trim()}
             className="cursor-pointer"
           >
             View Chain
