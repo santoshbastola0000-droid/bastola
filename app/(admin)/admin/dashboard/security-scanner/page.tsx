@@ -144,12 +144,6 @@ export default function SecurityScannerPage() {
           e?.message ||
           "Scan चलाउन सकिएन। Backend log पनि जाँच गर्नुहोस्.",
       );
-    } catch (e: any) {
-      setError(
-        e?.response?.data?.message ||
-          e?.message ||
-          "Scan चलाउन सकिएन। Backend log पनि जाँच गर्नुहोस्.",
-      );
       setLoading(false);
     }
   };
