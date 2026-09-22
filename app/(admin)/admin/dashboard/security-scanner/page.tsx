@@ -81,6 +81,12 @@ export default function SecurityScannerPage() {
   const [loading, setLoading] = useState(false);
   const [report, setReport] = useState<ScanReport | null>(null);
   const [error, setError] = useState("");
+  const [advancedResult, setAdvancedResult] = useState<any>(null);
+  const [tokenA, setTokenA] = useState("");
+  const [tokenB, setTokenB] = useState("");
+  const [paths, setPaths] = useState("/api/user/profile\n/api/messages");
+  const [wsUrl, setWsUrl] = useState("");
+  const [artifactText, setArtifactText] = useState("");
   const [progress, setProgress] = useState<{ scannedPages: number; discoveredPages: number; remainingPages: number; scannedApis: number; currentUrl?: string; message?: string } | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -240,6 +246,108 @@ export default function SecurityScannerPage() {
             <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
               {error}
             </div>
+          )}
+        </CardContent>
+      </Card>
+
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Advanced Defensive Audit</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="rounded-lg border bg-muted/40 p-3 text-xs text-muted-foreground">
+            यी checks आफ्नो RoomKhoj वा स्पष्ट अनुमति भएको system मा मात्र चलाउनुहोस्। Production मा destructive exploit वा brute-force चल्दैन।
+          </div>
+
+          <div className="space-y-2">
+            <p className="font-medium">Two-account IDOR/BOLA check</p>
+            <div className="grid gap-2 md:grid-cols-2">
+              <Input value={tokenA} onChange={(e) => setTokenA(e.target.value)} placeholder="Test account A bearer token" type="password" />
+              <Input value={tokenB} onChange={(e) => setTokenB(e.target.value)} placeholder="Test account B bearer token" type="password" />
+            </div>
+            <textarea
+              className="min-h-24 w-full rounded-md border bg-background p-3 text-sm"
+              value={paths}
+              onChange={(e) => setPaths(e.target.value)}
+              placeholder="/api/user/profile"
+            />
+            <Button
+              variant="outline"
+              onClick={async () => {
+                try {
+                  setError("");
+                  const r = await privateApi.post("/admin/security-scanner/authorized-access", {
+                    baseUrl: url.trim(),
+                    tokenA,
+                    tokenB,
+                    paths: paths.split("\n").map((x) => x.trim()).filter(Boolean),
+                  });
+                  setAdvancedResult(r.data.data);
+                } catch (e: any) {
+                  setError(e?.response?.data?.message || e?.message || "Authorized audit असफल भयो।");
+                }
+              }}
+              disabled={!url.trim() || !tokenA || !tokenB}
+            >
+              IDOR/BOLA सुरक्षित जाँच
+            </Button>
+          </div>
+
+          <div className="space-y-2">
+            <p className="font-medium">WebSocket / Socket endpoint audit</p>
+            <div className="flex gap-2">
+              <Input value={wsUrl} onChange={(e) => setWsUrl(e.target.value)} placeholder="wss://example.com/socket.io/" />
+              <Button
+                variant="outline"
+                onClick={async () => {
+                  try {
+                    setError("");
+                    const r = await privateApi.post("/admin/security-scanner/websocket", { url: wsUrl });
+                    setAdvancedResult(r.data.data);
+                  } catch (e: any) {
+                    setError(e?.response?.data?.message || e?.message || "WebSocket audit असफल भयो।");
+                  }
+                }}
+                disabled={!wsUrl.trim()}
+              >
+                WebSocket जाँच
+              </Button>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <p className="font-medium">Source / OpenAPI / Mobile traffic / VPS config audit</p>
+            <textarea
+              className="min-h-40 w-full rounded-md border bg-background p-3 text-sm"
+              value={artifactText}
+              onChange={(e) => setArtifactText(e.target.value)}
+              placeholder="यहाँ source snippet, package.json/lockfile, OpenAPI/Har text, वा Nginx/Redis/PostgreSQL config paste गर्नुहोस्"
+            />
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" onClick={async () => {
+                const r = await privateApi.post("/admin/security-scanner/artifacts", { sourceText: artifactText });
+                setAdvancedResult(r.data.data);
+              }} disabled={!artifactText.trim()}>Source audit</Button>
+              <Button variant="outline" onClick={async () => {
+                const r = await privateApi.post("/admin/security-scanner/artifacts", { manifestText: artifactText, lockText: artifactText });
+                setAdvancedResult(r.data.data);
+              }} disabled={!artifactText.trim()}>Dependency/CVE hints</Button>
+              <Button variant="outline" onClick={async () => {
+                const r = await privateApi.post("/admin/security-scanner/artifacts", { openApiText: artifactText, mobileTrafficText: artifactText });
+                setAdvancedResult(r.data.data);
+              }} disabled={!artifactText.trim()}>OpenAPI/Mobile audit</Button>
+              <Button variant="outline" onClick={async () => {
+                const r = await privateApi.post("/admin/security-scanner/artifacts", { infraText: artifactText });
+                setAdvancedResult(r.data.data);
+              }} disabled={!artifactText.trim()}>VPS/Nginx/DB config audit</Button>
+            </div>
+          </div>
+
+          {advancedResult && (
+            <pre className="max-h-[420px] overflow-auto rounded-lg border bg-muted/40 p-3 text-xs">
+              {JSON.stringify(advancedResult, null, 2)}
+            </pre>
           )}
         </CardContent>
       </Card>
