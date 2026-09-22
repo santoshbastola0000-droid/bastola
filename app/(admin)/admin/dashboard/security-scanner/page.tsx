@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { privateApi } from "@/http/api/privateApi";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,7 +16,9 @@ type ScanReport = {
   readOnly: boolean;
   maxPages: number;
   summary: {
+    pagesDiscovered: number;
     pagesScanned: number;
+    pagesRemaining: number;
     apisObserved: number;
     findings: number;
     critical: number;
@@ -24,6 +26,7 @@ type ScanReport = {
     medium: number;
     low: number;
     riskScore: number;
+    userDataTheftFindings: number;
   };
   slowestPages: Array<{
     url: string;
@@ -46,6 +49,12 @@ type ScanReport = {
     url: string;
     detail: string;
     recommendation: string;
+    category?: "USER_DATA_THEFT" | "SECURITY" | "PERFORMANCE";
+    sampleEvidence?: {
+      fields: string[];
+      sample: Record<string, string>;
+      authContext: "public" | "user" | "admin" | "unknown";
+    };
   }>;
 };
 
@@ -66,11 +75,16 @@ function formatBytes(value: number) {
 
 export default function SecurityScannerPage() {
   const [url, setUrl] = useState("");
-  const [maxPages, setMaxPages] = useState(20);
+  const [maxPages, setMaxPages] = useState(2000);
+  const [scanAll, setScanAll] = useState(true);
   const [confirmed, setConfirmed] = useState(false);
   const [loading, setLoading] = useState(false);
   const [report, setReport] = useState<ScanReport | null>(null);
   const [error, setError] = useState("");
+  const [progress, setProgress] = useState<{ scannedPages: number; discoveredPages: number; remainingPages: number; scannedApis: number; currentUrl?: string; message?: string } | null>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => () => { if (pollRef.current) clearInterval(pollRef.current); }, []);
 
   const runScan = async () => {
     setError("");
@@ -86,19 +100,50 @@ export default function SecurityScannerPage() {
 
     try {
       setLoading(true);
-      const response = await privateApi.post("/admin/security-scanner/scan", {
+      const response = await privateApi.post("/admin/security-scanner/start", {
         url: url.trim(),
         confirmOwnership: true,
+        scanAll,
         maxPages,
       });
-      setReport(response.data.data);
+      const jobId = response.data.data.jobId;
+      setProgress({ scannedPages: 0, discoveredPages: 1, remainingPages: 1, scannedApis: 0, message: "स्क्यान सुरु भयो।" });
+      if (pollRef.current) clearInterval(pollRef.current);
+      pollRef.current = setInterval(async () => {
+        try {
+          const statusResponse = await privateApi.get(`/admin/security-scanner/status/${jobId}`);
+          const status = statusResponse.data.data;
+          setProgress({ scannedPages: status.scannedPages, discoveredPages: status.discoveredPages, remainingPages: status.remainingPages, scannedApis: status.scannedApis, currentUrl: status.currentUrl, message: status.message });
+          if (status.state === "COMPLETED") {
+            if (pollRef.current) clearInterval(pollRef.current);
+            pollRef.current = null;
+            setReport(status.result);
+            setLoading(false);
+          } else if (status.state === "FAILED") {
+            if (pollRef.current) clearInterval(pollRef.current);
+            pollRef.current = null;
+            setError(status.error || "स्क्यान असफल भयो।");
+            setLoading(false);
+          }
+        } catch (pollError: any) {
+          if (pollRef.current) clearInterval(pollRef.current);
+          pollRef.current = null;
+          setError(pollError?.response?.data?.message || "स्क्यान स्थिति लिन सकिएन।");
+          setLoading(false);
+        }
+      }, 1500);
     } catch (e: any) {
       setError(
         e?.response?.data?.message ||
           e?.message ||
           "Scan चलाउन सकिएन। Backend log पनि जाँच गर्नुहोस्.",
       );
-    } finally {
+    } catch (e: any) {
+      setError(
+        e?.response?.data?.message ||
+          e?.message ||
+          "Scan चलाउन सकिएन। Backend log पनि जाँच गर्नुहोस्.",
+      );
       setLoading(false);
     }
   };
@@ -108,19 +153,19 @@ export default function SecurityScannerPage() {
       <div>
         <div className="flex items-center gap-2">
           <ScanSearch className="h-6 w-6" />
-          <h1 className="text-2xl font-bold">Security Scanner</h1>
+          <h1 className="text-2xl font-bold">सुरक्षा स्क्यानर</h1>
         </div>
         <p className="mt-1 text-sm text-muted-foreground">
-          आफ्नो वा अनुमति भएको website को read-only page/API exposure र performance audit।
+          आफ्नो वा स्पष्ट अनुमति भएको website का page, API, data leak risk र performance को read-only audit।
         </p>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Website Scan</CardTitle>
+          <CardTitle>Website स्क्यान</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid gap-3 md:grid-cols-[1fr_140px_auto]">
+          <div className="grid gap-3 md:grid-cols-[1fr_170px_auto]">
             <Input
               value={url}
               onChange={(e) => setUrl(e.target.value)}
@@ -130,25 +175,36 @@ export default function SecurityScannerPage() {
             <Input
               type="number"
               min={1}
-              max={50}
+              max={2000}
               value={maxPages}
-              onChange={(e) => setMaxPages(Math.max(1, Math.min(50, Number(e.target.value) || 1)))}
+              onChange={(e) => setMaxPages(Math.max(1, Math.min(2000, Number(e.target.value) || 1)))}
               disabled={loading}
             />
             <Button onClick={runScan} disabled={loading || !confirmed}>
               {loading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Scanning
+                  स्क्यान हुँदैछ
                 </>
               ) : (
                 <>
                   <ScanSearch className="mr-2 h-4 w-4" />
-                  Scan
+                  स्क्यान सुरु गर्नुहोस्
                 </>
               )}
             </Button>
           </div>
+
+          <label className="flex items-start gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={scanAll}
+              onChange={(e) => setScanAll(e.target.checked)}
+              className="mt-1"
+              disabled={loading}
+            />
+            <span>भेटिएका सबै page scan गर्नुहोस् (सुरक्षा cap: 2000 pages)</span>
+          </label>
 
           <label className="flex items-start gap-2 text-sm">
             <input
@@ -167,6 +223,19 @@ export default function SecurityScannerPage() {
             Password guessing, destructive payload, brute force वा exploit execution गर्दैन।
           </div>
 
+          {loading && progress && (
+            <div className="space-y-3 rounded-lg border bg-muted/30 p-4">
+              <div className="grid gap-3 sm:grid-cols-4">
+                <SummaryCard title="कुल भेटिएका page" value={progress.discoveredPages} />
+                <SummaryCard title="स्क्यान भएका" value={progress.scannedPages} />
+                <SummaryCard title="बाँकी" value={progress.remainingPages} />
+                <SummaryCard title="API भेटिएका" value={progress.scannedApis} />
+              </div>
+              <p className="text-sm font-medium">{progress.message || "स्क्यान हुँदैछ..."}</p>
+              {progress.currentUrl && <p className="break-all text-xs text-muted-foreground">{progress.currentUrl}</p>}
+            </div>
+          )}
+
           {error && (
             <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
               {error}
@@ -177,13 +246,15 @@ export default function SecurityScannerPage() {
 
       {report && (
         <>
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
-            <SummaryCard title="Risk Score" value={report.summary.riskScore} suffix="/100" />
-            <SummaryCard title="Pages" value={report.summary.pagesScanned} />
-            <SummaryCard title="APIs" value={report.summary.apisObserved} />
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-8">
+            <SummaryCard title="जोखिम स्कोर" value={report.summary.riskScore} suffix="/100" />
+            <SummaryCard title="कुल भेटिएका page" value={report.summary.pagesDiscovered} />
+            <SummaryCard title="स्क्यान भएका page" value={report.summary.pagesScanned} />
+            <SummaryCard title="बाँकी page" value={report.summary.pagesRemaining} />
+            <SummaryCard title="API" value={report.summary.apisObserved} />
             <SummaryCard title="Critical" value={report.summary.critical} />
             <SummaryCard title="High" value={report.summary.high} />
-            <SummaryCard title="Findings" value={report.summary.findings} />
+            <SummaryCard title="Data Theft Risk" value={report.summary.userDataTheftFindings} />
           </div>
 
           <Card>
@@ -194,7 +265,7 @@ export default function SecurityScannerPage() {
                 ) : (
                   <CheckCircle2 className="h-5 w-5 text-green-600" />
                 )}
-                Important Risks
+                महत्वपूर्ण जोखिमहरू
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -210,11 +281,20 @@ export default function SecurityScannerPage() {
                         {finding.severity}
                       </Badge>
                       <span className="font-semibold">{finding.title}</span>
+                      {finding.category === "USER_DATA_THEFT" && <Badge variant="outline">User Data Theft Risk</Badge>}
                     </div>
                     <p className="mt-2 break-all text-xs text-muted-foreground">{finding.url}</p>
                     <p className="mt-2 text-sm">{finding.detail}</p>
+                    {finding.sampleEvidence && (
+                      <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm">
+                        <strong>Sample Evidence:</strong>
+                        <div className="mt-2">Fields: {finding.sampleEvidence.fields.join(", ")}</div>
+                        <pre className="mt-2 overflow-x-auto whitespace-pre-wrap text-xs">{JSON.stringify(finding.sampleEvidence.sample, null, 2)}</pre>
+                        <div className="mt-1 text-xs text-muted-foreground">Access: {finding.sampleEvidence.authContext}</div>
+                      </div>
+                    )}
                     <div className="mt-3 rounded-md bg-muted p-3 text-sm">
-                      <strong>Fix:</strong> {finding.recommendation}
+                      <strong>समाधान:</strong> {finding.recommendation}
                     </div>
                   </div>
                 ))
@@ -223,12 +303,12 @@ export default function SecurityScannerPage() {
           </Card>
 
           <TimingTable
-            title="Slow Pages"
+            title="ढिला Pages"
             rows={report.slowestPages}
           />
 
           <TimingTable
-            title="Observed API Endpoints"
+            title="भेटिएका API Endpoints"
             rows={report.slowestApis}
             showMethod
           />
