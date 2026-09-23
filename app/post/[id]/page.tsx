@@ -146,7 +146,7 @@ export default async function SocialPostPage({
       "@type": "Person",
       name: post.author?.name || "RoomKhoj User",
       ...(post.author?.id
-        ? { url: `${baseUrl}/profile/${post.author.id}` }
+        ? { url: `${baseUrl}/people/${post.author.id}` }
         : {}),
     },
     ...(post.mediaUrls?.length
