@@ -329,11 +329,9 @@ function CommentRow({
         </Link>
         <div className="mt-0.5 flex items-center gap-3 pl-2 text-[11px] font-medium text-slate-500">
           <span>{ago(comment.createdAt)}</span>
-          {!comment.author.isSynthetic && (
-            <button type="button" onClick={onReply} className="font-semibold text-slate-600 hover:underline">
-              Reply
-            </button>
-          )}
+          <button type="button" onClick={onReply} className="font-semibold text-slate-600 hover:underline">
+            Reply
+          </button>
           {mine && (
             <button type="button" onClick={onEdit} className="hover:underline">Edit</button>
           )}
