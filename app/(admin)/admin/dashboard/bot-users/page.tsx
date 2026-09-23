@@ -579,7 +579,7 @@ export default function BotUsersPage() {
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   {item.botId ? (
                     <Link
-                      href={`/profile/${encodeURIComponent(item.botId)}`}
+                      href={`/people/${encodeURIComponent(item.botId)}`}
                       className="font-semibold hover:underline"
                     >
                       {item.botName || "Content user"}
@@ -780,7 +780,7 @@ export default function BotUsersPage() {
                     </TableCell>
                     <TableCell>
                       <Link
-                        href={`/profile/${encodeURIComponent(bot.id)}`}
+                        href={`/people/${encodeURIComponent(bot.id)}`}
                         className="inline-flex rounded-full focus:outline-none focus:ring-2 focus:ring-primary/40"
                         aria-label={`Open ${bot.displayName} profile`}
                       >
@@ -805,7 +805,7 @@ export default function BotUsersPage() {
                     </TableCell>
                     <TableCell className="font-medium">
                       <Link
-                        href={`/profile/${encodeURIComponent(bot.id)}`}
+                        href={`/people/${encodeURIComponent(bot.id)}`}
                         className="hover:underline"
                       >
                         {bot.displayName}
