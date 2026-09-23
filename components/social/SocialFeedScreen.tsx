@@ -677,7 +677,7 @@ function NewUserFriendOnboarding({
               <Avatar user={person} size="lg" />
             </div>
             <Link
-              href={`/profile/${person.id}`}
+              href={`/people/${person.id}`}
               className="mt-2 block truncate text-sm font-bold"
             >
               {person.name}
@@ -797,7 +797,7 @@ function Composer({
   return (
     <section id="feed-composer" className="scroll-mt-20 border-y bg-white p-3 shadow-sm sm:rounded-xl sm:border">
       <div className="flex items-center gap-2.5">
-        <Link href={`/profile/${userId}`} className="relative shrink-0" aria-label="Open my profile">
+        <Link href={`/people/${userId}`} className="relative shrink-0" aria-label="Open my profile">
           <Avatar user={{ id: userId, name: userName }} src={myPhoto} />
         </Link>
         <MentionInput
@@ -903,14 +903,14 @@ function PostCard({
     <article className="overflow-hidden border-y bg-white font-sans text-slate-950 shadow-sm sm:rounded-xl sm:border">
       <header className="relative flex items-center gap-2.5 px-3 pb-2 pt-3">
         <Link
-          href={`/profile/${post.author.id}`}
+          href={`/people/${post.author.id}`}
           className="relative shrink-0"
           aria-label={`Open ${post.author.name} profile`}
         >
           <Avatar user={post.author} />
         </Link>
         <div className="min-w-0 flex-1">
-          <Link href={`/profile/${post.author.id}`} className="block truncate text-[15px] font-semibold leading-tight">
+          <Link href={`/people/${post.author.id}`} className="block truncate text-[15px] font-semibold leading-tight">
             {post.author.name}
           </Link>
           <div className="mt-0.5 text-[12px] font-medium leading-tight text-slate-500">
@@ -1146,11 +1146,11 @@ function PeopleStrip({
               key={person.id}
               role="link"
               tabIndex={0}
-              onClick={() => router.push(`/profile/${person.id}`)}
+              onClick={() => router.push(`/people/${person.id}`)}
               onKeyDown={(event) => {
                 if (event.key === "Enter" || event.key === " ") {
                   event.preventDefault();
-                  router.push(`/profile/${person.id}`);
+                  router.push(`/people/${person.id}`);
                 }
               }}
               className="w-[155px] shrink-0 cursor-pointer rounded-xl border p-3 text-center transition hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2"
@@ -1627,7 +1627,7 @@ function StoryViewer({
                         return (
                           <Link
                             key={viewer.user.id}
-                            href={`/profile/${viewer.user.id}`}
+                            href={`/people/${viewer.user.id}`}
                             className="flex items-center gap-3 rounded-xl px-2 py-2 hover:bg-slate-50"
                           >
                             <Avatar user={viewer.user} />
