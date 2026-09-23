@@ -400,7 +400,7 @@ export default function PeoplePage() {
                         >
                           <button
                             type="button"
-                            onClick={() => router.push(`/profile/${person.id}`)}
+                            onClick={() => router.push(`/people/${person.id}`)}
                             className="shrink-0"
                             aria-label={`Open ${person.name} profile`}
                           >
@@ -414,7 +414,7 @@ export default function PeoplePage() {
 
                           <button
                             type="button"
-                            onClick={() => router.push(`/profile/${person.id}`)}
+                            onClick={() => router.push(`/people/${person.id}`)}
                             className="min-w-0 flex-1 text-left"
                           >
                             <p className="flex items-center gap-2 truncate text-[16px] font-black">
@@ -574,7 +574,7 @@ export default function PeoplePage() {
                               type="button"
                               onClick={() =>
                                 router.push(
-                                  `/profile/${person.id}`,
+                                  `/people/${person.id}`,
                                 )
                               }
                               className="shrink-0"
@@ -591,7 +591,7 @@ export default function PeoplePage() {
                               type="button"
                               onClick={() =>
                                 router.push(
-                                  `/profile/${person.id}`,
+                                  `/people/${person.id}`,
                                 )
                               }
                               className="min-w-0 flex-1 text-left"
@@ -637,7 +637,7 @@ export default function PeoplePage() {
                                     type="button"
                                     onClick={() =>
                                       router.push(
-                                        `/profile/${person.id}`,
+                                        `/people/${person.id}`,
                                       )
                                     }
                                     className="relative aspect-square overflow-hidden border-r border-white/70 last:border-r-0"
