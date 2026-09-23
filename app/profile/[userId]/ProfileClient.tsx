@@ -350,7 +350,7 @@ export default function PublicProfilePage() {
       router.push(
         `/messages?conversation=${encodeURIComponent(
           conversationId,
-        )}&returnTo=${encodeURIComponent(`/profile/${userId}`)}`,
+        )}&returnTo=${encodeURIComponent(`/people/${userId}`)}`,
       );
     } catch (error: any) {
       toast.error(
@@ -661,7 +661,7 @@ export default function PublicProfilePage() {
                         }
                         onClick={() =>
                           router.push(
-                            `/profile/${friend.id}`,
+                            `/people/${friend.id}`,
                           )
                         }
                         className="min-w-0 text-left"
@@ -822,7 +822,7 @@ export default function PublicProfilePage() {
                         }
                         onClick={() =>
                           router.push(
-                            `/profile/${friend.id}`,
+                            `/people/${friend.id}`,
                           )
                         }
                         className="flex items-center gap-3 rounded-xl border p-3 text-left hover:bg-muted/50"
