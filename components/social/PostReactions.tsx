@@ -403,7 +403,7 @@ export function PostReactions({
                 return (
                   <div key={`${entry.user.id}-${entry.createdAt}`} className="flex items-center gap-3 rounded-2xl px-2 py-2.5">
                     <a
-                      href={`/profile/${encodeURIComponent(entry.user.id)}`}
+                      href={`/people/${encodeURIComponent(entry.user.id)}`}
                       className="relative shrink-0"
                       aria-label={`Open ${entry.user.name} profile`}
                     >
@@ -413,7 +413,7 @@ export function PostReactions({
                     <div className="min-w-0 flex-1">
                       <div className="flex min-w-0 items-center gap-2">
                         <a
-                          href={`/profile/${encodeURIComponent(entry.user.id)}`}
+                          href={`/people/${encodeURIComponent(entry.user.id)}`}
                           className="truncate text-[15px] font-semibold hover:underline"
                         >
                           {entry.user.name}
