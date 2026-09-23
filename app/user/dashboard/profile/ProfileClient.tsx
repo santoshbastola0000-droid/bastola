@@ -1231,7 +1231,7 @@ export default function ProfilePage() {
                     <button
                       key={friend.id}
                       type="button"
-                      onClick={() => router.push(`/profile/${friend.id}`)}
+                      onClick={() => router.push(`/people/${friend.id}`)}
                       className="min-w-0 text-left"
                     >
                       <div className="aspect-square overflow-hidden rounded-full bg-muted">
@@ -1508,7 +1508,7 @@ export default function ProfilePage() {
                           <button
                             key={viewer.id}
                             type="button"
-                            onClick={() => router.push(`/profile/${viewer.id}`)}
+                            onClick={() => router.push(`/people/${viewer.id}`)}
                             className="flex w-full items-center gap-3 rounded-2xl p-2 text-left transition hover:bg-muted"
                           >
                             <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted">
@@ -1627,7 +1627,7 @@ export default function ProfilePage() {
                       type="button"
                       onClick={() => {
                         setShowProfileViewers(false);
-                        router.push(`/profile/${viewer.id}`);
+                        router.push(`/people/${viewer.id}`);
                       }}
                       className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left transition hover:bg-muted"
                     >
