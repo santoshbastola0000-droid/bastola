@@ -354,7 +354,7 @@ export function PropertyCard({
             onClick={(event) => {
               event.stopPropagation();
               if (room.user?.id) {
-                router.push(`/profile/${room.user.id}`);
+                router.push(`/people/${room.user.id}`);
               }
             }}
             className="flex min-w-0 items-center gap-2 text-left"
