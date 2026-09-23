@@ -293,7 +293,7 @@ function CommentRow({
   return (
     <div className="flex items-start gap-2">
       <Link
-        href={`/profile/${encodeURIComponent(comment.author.id)}`}
+        href={`/people/${encodeURIComponent(comment.author.id)}`}
         className="shrink-0"
         aria-label={`Open ${comment.author.name} profile`}
       >
@@ -311,7 +311,7 @@ function CommentRow({
       </Link>
       <div className="min-w-0 flex-1">
         <Link
-          href={`/profile/${encodeURIComponent(comment.author.id)}`}
+          href={`/people/${encodeURIComponent(comment.author.id)}`}
           className="inline-block max-w-full rounded-2xl bg-slate-100 px-3 py-2 align-top transition hover:bg-slate-200/80"
           aria-label={`Open ${comment.author.name} profile`}
         >
