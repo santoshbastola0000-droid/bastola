@@ -2043,7 +2043,7 @@ const user = useUserStore(
                     type="button"
                     onClick={() =>
                       router.push(
-                        `/profile/${result.id}`,
+                        `/people/${result.id}`,
                       )
                     }
                     className="flex w-full items-center gap-3 rounded-2xl border border-border bg-card p-3 text-left transition hover:bg-muted"
@@ -2355,7 +2355,7 @@ const user = useUserStore(
                             type="button"
                             onClick={() =>
                               router.push(
-                                `/profile/${person.id}`,
+                                `/people/${person.id}`,
                               )
                             }
                             className="h-11 w-11 shrink-0 overflow-hidden rounded-full bg-muted"
@@ -2380,7 +2380,7 @@ const user = useUserStore(
                             type="button"
                             onClick={() =>
                               router.push(
-                                `/profile/${person.id}`,
+                                `/people/${person.id}`,
                               )
                             }
                             className="min-w-0 flex-1 text-left"
@@ -2493,7 +2493,7 @@ const user = useUserStore(
 
                 <button
                   type="button"
-                  onClick={() => otherUserId && router.push(`/profile/${otherUserId}`)}
+                  onClick={() => otherUserId && router.push(`/people/${otherUserId}`)}
                   className="relative shrink-0"
                   aria-label="Open profile"
                 >
