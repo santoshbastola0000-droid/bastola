@@ -822,7 +822,7 @@ export default function ReelsPage() {
 
                   <div className="absolute bottom-[calc(6.7rem+env(safe-area-inset-bottom))] left-4 right-[5.4rem] z-20">
                     <Link
-                      href={`/profile/${reel.post.author.id}`}
+                      href={`/people/${reel.post.author.id}`}
                       className="inline-flex max-w-full items-center gap-2.5"
                     >
                       <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/70 bg-white/15 text-sm font-black">
@@ -970,7 +970,7 @@ export default function ReelsPage() {
                     return (
                       <div key={comment.id} className="flex gap-3">
                         <Link
-                          href={`/profile/${encodeURIComponent(comment.author.id)}`}
+                          href={`/people/${encodeURIComponent(comment.author.id)}`}
                           className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-slate-200 text-xs font-black"
                           aria-label={`Open ${comment.author.name} profile`}
                         >
@@ -987,7 +987,7 @@ export default function ReelsPage() {
                         <div className="min-w-0">
                           <div className="flex items-center gap-2 text-xs font-black">
                             <Link
-                              href={`/profile/${encodeURIComponent(comment.author.id)}`}
+                              href={`/people/${encodeURIComponent(comment.author.id)}`}
                               className="hover:underline"
                             >
                               {comment.author.name}
