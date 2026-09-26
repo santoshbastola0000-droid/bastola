@@ -426,6 +426,7 @@ export default function BotUsersPage() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
+        <Card className="md:col-span-3"><CardContent className="flex flex-wrap items-center justify-between gap-3 pt-6"><div><h2 className="font-semibold">Bot Messages</h2><p className="text-sm text-muted-foreground">सबै bot लाई आएका messages हेर्नुहोस् र reply गर्नुहोस्।</p></div><Button asChild><Link href="/admin/dashboard/bot-users/messages">Open messages inbox</Link></Button></CardContent></Card>
         <Card><CardHeader className="pb-2"><CardTitle className="text-sm">Total Bot Users</CardTitle></CardHeader><CardContent><div className="text-3xl font-bold">{total.toLocaleString()}</div></CardContent></Card>
         <Card><CardHeader className="pb-2"><CardTitle className="text-sm">Enabled</CardTitle></CardHeader><CardContent><div className="text-3xl font-bold">{Number(statsQuery.data?.enabled ?? 0).toLocaleString()}</div></CardContent></Card>
         <Card><CardHeader className="pb-2"><CardTitle className="text-sm">Storage</CardTitle></CardHeader><CardContent><Badge variant="secondary">Separate synthetic table</Badge></CardContent></Card>
