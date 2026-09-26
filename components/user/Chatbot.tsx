@@ -216,6 +216,15 @@ const { data: walletBalanceData } = useQuery({
 
 const balance = Number(walletBalanceData?.balance ?? 0);
   const [isTyping, setIsTyping] = useState(false);
+  const sendingRef = useRef(false);
+  const chatRequestRef = useRef<AbortController | null>(null);
+  const cancelChatRequest = useCallback(() => {
+    chatRequestRef.current?.abort();
+    chatRequestRef.current = null;
+    sendingRef.current = false;
+    setIsTyping(false);
+  }, []);
+  useEffect(() => () => { chatRequestRef.current?.abort(); }, []);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [isRecording, setIsRecording] = useState(false);
@@ -269,16 +278,17 @@ useEffect(() => {
       {
         id: "1",
         role: "bot" as const,
-        text: "Namaste! 🙏 How can I help you find your room today on RoomKhoj?",
+        text: "नमस्ते! RoomKhoj मा room, job, wallet, referral वा अरू कुन सेवामा सहयोग चाहिएको छ?",
         timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
       },
     ];
   }, []);
 
   useEffect(() => {
+    cancelChatRequest();
     setCurrentSessionId(createConversationId());
     setMessages(initDefaultMessages());
-  }, [loggedInUserId, initDefaultMessages]);
+  }, [loggedInUserId, initDefaultMessages, cancelChatRequest]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -394,6 +404,7 @@ useEffect(() => {
   );
 
   const startNewChat = () => {
+    cancelChatRequest();
     setCurrentSessionId(createConversationId());
     setMessages(initDefaultMessages());
     setShowHistorySidebar(false);
@@ -1000,44 +1011,8 @@ useEffect(() => {
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (selectedFile?.url) {
-      URL.revokeObjectURL(selectedFile.url);
-    }
-
-    const fileUrl = URL.createObjectURL(file);
-    const type: "image" | "video" | "file" = file.type.startsWith("image/")
-      ? "image"
-      : file.type.startsWith("video/")
-      ? "video"
-      : "file";
-
-    setSelectedFile({ url: fileUrl, type, rawFile: file });
-
-    if (type === "file") {
-      setDocumentScanProgress(8);
-      setDocumentScanStep("Preparing document...");
-
-      const stages = [
-        { progress: 24, text: "Scanning CV..." },
-        { progress: 43, text: "Reading basic information..." },
-        { progress: 61, text: "Reading education..." },
-        { progress: 78, text: "Reading experience..." },
-        { progress: 91, text: "Reading skills..." },
-      ];
-
-      stages.forEach((stage, index) => {
-        window.setTimeout(() => {
-          setDocumentScanProgress(stage.progress);
-          setDocumentScanStep(stage.text);
-        }, 450 * (index + 1));
-      });
-    } else {
-      setDocumentScanProgress(0);
-      setDocumentScanStep("");
-    }
+    e.target.value = "";
+    alert("Chat मा file पढ्ने सुविधा अहिले जोडिएको छैन। चाहिएको विवरण text मा लेख्नुहोस्।");
   };
 
   const removeSelectedFile = () => {
@@ -1064,15 +1039,13 @@ useEffect(() => {
 
   const sendMessage = async (customText?: string) => {
     const textToSend = customText || input;
-    if ((!textToSend.trim() && !selectedFile) || isTyping) return;
+    if (!textToSend.trim() || sendingRef.current) return;
+    if (textToSend.length > 2000) { alert("एकपटकमा 2000 अक्षरसम्म पठाउनुहोस्।"); return; }
 
-    if (
-      loggedInUserId &&
-      balance < 1
-    ) {
-      alert("AI चलाउन wallet balance आवश्यक छ। कृपया wallet top-up गर्नुहोस्।");
-      return;
-    }
+    sendingRef.current = true;
+    const request = new AbortController();
+    chatRequestRef.current = request;
+    const requestTimer = window.setTimeout(() => request.abort(), 60000);
 
     const conversationId = currentSessionId || createConversationId();
     if (!currentSessionId) {
@@ -1104,6 +1077,7 @@ useEffect(() => {
       }
 
       const res = await fetch("https://api.roomkhoj.com/ai-v3/chat", {
+        signal: request.signal,
         method: "POST",
         headers,
         body: JSON.stringify({
@@ -1128,6 +1102,7 @@ useEffect(() => {
         data = { reply: rawText };
       }
 
+      if (chatRequestRef.current !== request) return;
       if (!res.ok) {
         throw new Error(data?.message || data?.error || `API Error status: ${res.status}`);
       }
@@ -1249,11 +1224,12 @@ useEffect(() => {
         void speakBotReply(botReplyText);
       }
     } catch (error: any) {
+      if (chatRequestRef.current !== request) return;
       console.error("API Error details:", error);
       const fallbackReply: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: "bot",
-        text: `Error: Server connection problem. Please try again.`,
+        text: request.signal.aborted ? "जवाफ आउन समय लाग्यो। तुरुन्त फेरि पठाउनुअघि history वा सम्बन्धित listing जाँच्नुहोस्।" : (error instanceof Error ? error.message : "Connection problem. फेरि प्रयास गर्नुहोस्।"),
         timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
       };
       setMessages([...updatedMessages, fallbackReply]);
@@ -1261,7 +1237,12 @@ useEffect(() => {
         void speakBotReply(fallbackReply.text);
       }
     } finally {
-      setIsTyping(false);
+      clearTimeout(requestTimer);
+      if (chatRequestRef.current === request) {
+        chatRequestRef.current = null;
+        sendingRef.current = false;
+        setIsTyping(false);
+      }
     }
   };
 
@@ -1433,6 +1414,7 @@ useEffect(() => {
                         key={sess.id}
                         type="button"
                         onClick={() => {
+                          cancelChatRequest();
                           setCurrentSessionId(sess.id);
                           setMessages(sess.messages);
                           setShowHistorySidebar(false);
@@ -2170,7 +2152,7 @@ useEffect(() => {
 
                       <button
                         type="button"
-                        onClick={() => void toggleVoiceRecording()}
+                        onClick={() => { stopVoiceConversation(); window.location.assign(`/ai/voice?conversationId=${encodeURIComponent(currentSessionId || createConversationId())}`); }}
                         className={cn(
                           "flex h-11 w-11 items-center justify-center rounded-full transition",
                           isRecording

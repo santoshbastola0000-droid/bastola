@@ -1,410 +1,233 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Mic, MicOff, PhoneOff, Sparkles, Volume2 } from "lucide-react";
 import useTokenStore from "@/store";
+import { recordingExtension, speechChunks, VoiceSession } from "@/lib/voice/voice-utils";
 
 const API = "https://api.roomkhoj.com";
-const BACKCHANNELS = ["हजुर", "अँ", "उम्", "अहा"];
-
-type VoicePhase = "idle" | "listening" | "thinking" | "speaking" | "interrupted" | "error";
-
-function makeId() {
-  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
-    return crypto.randomUUID();
-  }
-  return `${Date.now()}_${Math.random().toString(36).slice(2)}`;
-}
-
-function guestId() {
-  if (typeof window === "undefined") return "";
-  const key = "roomkhoj_guest_session_id";
-  const existing = localStorage.getItem(key);
-  if (existing) return existing;
-  const value = makeId();
-  localStorage.setItem(key, value);
-  return value;
-}
+type VoicePhase = "idle" | "listening" | "thinking" | "speaking" | "error";
+type Turn = ReturnType<VoiceSession['next']>;
 
 export default function LiveVoicePage() {
   const router = useRouter();
   const token = useTokenStore((state) => state.token);
-  const conversationId = useMemo(() => makeId(), []);
-  const [guestSessionId] = useState(() => guestId());
   const [phase, setPhase] = useState<VoicePhase>("idle");
   const [status, setStatus] = useState("Tap the mic to start");
   const [lastHeard, setLastHeard] = useState("");
   const [lastReply, setLastReply] = useState("");
   const [active, setActive] = useState(false);
-
+  const activeRef = useRef(false);
+  const session = useRef(new VoiceSession());
+  const conversationId = useRef("");
   const recorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const contextRef = useRef<AudioContext | null>(null);
-  const analyserRef = useRef<AnalyserNode | null>(null);
-  const vadFrameRef = useRef<number | null>(null);
-  const chunksRef = useRef<BlobPart[]>([]);
+  const frameRef = useRef<number | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const bargeStreamRef = useRef<MediaStream | null>(null);
-  const bargeContextRef = useRef<AudioContext | null>(null);
-  const bargeFrameRef = useRef<number | null>(null);
-  const activeRef = useRef(false);
-  const processingRef = useRef(false);
-  const backchannelAtRef = useRef(0);
+  const playerRef = useRef<HTMLAudioElement | null>(null);
+  const audioUrlRef = useRef<string | null>(null);
+  const manualSendRef = useRef(false);
 
-  const stopTracks = (stream: MediaStream | null) => {
-    stream?.getTracks().forEach((track) => track.stop());
-  };
-
-  const stopVad = useCallback(() => {
-    if (vadFrameRef.current !== null) cancelAnimationFrame(vadFrameRef.current);
-    vadFrameRef.current = null;
-    if (contextRef.current) void contextRef.current.close().catch(() => undefined);
-    contextRef.current = null;
-    analyserRef.current = null;
-    stopTracks(streamRef.current);
-    streamRef.current = null;
-  }, []);
-
-  const stopBargeMonitor = useCallback(() => {
-    if (bargeFrameRef.current !== null) cancelAnimationFrame(bargeFrameRef.current);
-    bargeFrameRef.current = null;
-    stopTracks(bargeStreamRef.current);
-    bargeStreamRef.current = null;
-    if (bargeContextRef.current) void bargeContextRef.current.close().catch(() => undefined);
-    bargeContextRef.current = null;
-  }, []);
-
-  const fadeStopAssistant = useCallback(async () => {
-    stopBargeMonitor();
+  const stopPlayback = useCallback(() => {
     const audio = audioRef.current;
-    if (audio) {
-      const startVolume = audio.volume;
-      const started = performance.now();
-      await new Promise<void>((resolve) => {
-        const fade = () => {
-          const p = Math.min(1, (performance.now() - started) / 220);
-          audio.volume = Math.max(0, startVolume * (1 - p));
-          if (p < 1 && !audio.paused) requestAnimationFrame(fade);
-          else resolve();
-        };
-        requestAnimationFrame(fade);
-      });
-      audio.pause();
-      audio.src = "";
-      audioRef.current = null;
-    }
-    if (typeof window !== "undefined" && "speechSynthesis" in window) {
-      window.speechSynthesis.cancel();
-    }
-    setPhase("interrupted");
-    setStatus("सुन्दैछु…");
-  }, [stopBargeMonitor]);
-
-  const speakBackchannel = useCallback(() => {
-    if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
-    const now = performance.now();
-    if (now - backchannelAtRef.current < 2600) return;
-    backchannelAtRef.current = now;
-    const word = BACKCHANNELS[Math.floor(Math.random() * BACKCHANNELS.length)];
-    const utter = new SpeechSynthesisUtterance(word);
-    const voices = window.speechSynthesis.getVoices();
-    utter.voice = voices.find((v) => v.lang.toLowerCase().startsWith("ne")) ||
-      voices.find((v) => v.lang.toLowerCase().startsWith("hi")) || voices[0] || null;
-    utter.lang = utter.voice?.lang || "ne-NP";
-    utter.rate = 0.86;
-    utter.pitch = 0.96;
-    utter.volume = 0.38;
-    window.speechSynthesis.speak(utter);
+    if (audio) { audio.pause(); audio.removeAttribute('src'); audio.load(); }
+    audioRef.current = null;
+    if (audioUrlRef.current) URL.revokeObjectURL(audioUrlRef.current);
+    audioUrlRef.current = null;
+    window.speechSynthesis?.cancel();
   }, []);
 
-  const startBargeMonitor = useCallback(async () => {
-    if (!activeRef.current || !navigator.mediaDevices?.getUserMedia) return;
-    stopBargeMonitor();
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
-      });
-      bargeStreamRef.current = stream;
-      const AC = window.AudioContext || (window as any).webkitAudioContext;
-      const ctx = new AC();
-      bargeContextRef.current = ctx;
-      const analyser = ctx.createAnalyser();
-      analyser.fftSize = 1024;
-      ctx.createMediaStreamSource(stream).connect(analyser);
-      const buf = new Uint8Array(analyser.fftSize);
-      let loudSince = 0;
-      const loop = () => {
-        if (!activeRef.current || (!audioRef.current && !("speechSynthesis" in window && window.speechSynthesis.speaking))) {
-          stopBargeMonitor();
-          return;
-        }
-        analyser.getByteTimeDomainData(buf);
-        let sum = 0;
-        for (const value of buf) {
-          const n = (value - 128) / 128;
-          sum += n * n;
-        }
-        const rms = Math.sqrt(sum / buf.length);
-        const now = performance.now();
-        if (rms > 0.06) {
-          if (!loudSince) loudSince = now;
-          if (now - loudSince > 170) {
-            void fadeStopAssistant().then(() => startListening());
-            return;
-          }
-        } else {
-          loudSince = 0;
-        }
-        bargeFrameRef.current = requestAnimationFrame(loop);
-      };
-      bargeFrameRef.current = requestAnimationFrame(loop);
-    } catch {
-      stopBargeMonitor();
-    }
-  }, [fadeStopAssistant, stopBargeMonitor]);
-
-  const speakBrowser = useCallback((text: string) => {
-    if (!("speechSynthesis" in window)) {
-      setPhase("error");
-      setStatus("Voice playback यो browser मा उपलब्ध छैन");
-      return;
-    }
-    window.speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(text.slice(0, 1400));
-    const voices = window.speechSynthesis.getVoices();
-    u.voice = voices.find((v) => v.lang.toLowerCase().startsWith("ne")) ||
-      voices.find((v) => v.lang.toLowerCase().startsWith("hi")) || voices[0] || null;
-    u.lang = u.voice?.lang || "ne-NP";
-    u.rate = 0.94;
-    u.onstart = () => { setPhase("speaking"); setStatus("RoomKhoj AI बोल्दैछ…"); void startBargeMonitor(); };
-    u.onend = () => { stopBargeMonitor(); if (activeRef.current) void startListening(); };
-    u.onerror = () => { stopBargeMonitor(); if (activeRef.current) void startListening(); };
-    window.speechSynthesis.speak(u);
-  }, [startBargeMonitor, stopBargeMonitor]);
-
-  const speakReply = useCallback(async (text: string) => {
-    if (!activeRef.current || !text.trim()) return;
-    setLastReply(text);
-    if (!token) {
-      speakBrowser(text);
-      return;
-    }
-    try {
-      setPhase("thinking");
-      setStatus("आवाज तयार हुँदैछ…");
-      const res = await fetch(`${API}/ai-call/speak`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ text: text.slice(0, 1400) }),
-      });
-      if (!res.ok) throw new Error("tts");
-      const url = URL.createObjectURL(await res.blob());
-      const audio = new Audio(url);
-      audio.volume = 1;
-      audioRef.current = audio;
-      audio.onplay = () => { setPhase("speaking"); setStatus("RoomKhoj AI बोल्दैछ…"); void startBargeMonitor(); };
-      audio.onended = () => {
-        stopBargeMonitor();
-        URL.revokeObjectURL(url);
-        if (audioRef.current === audio) audioRef.current = null;
-        if (activeRef.current) void startListening();
-      };
-      audio.onerror = () => {
-        stopBargeMonitor();
-        URL.revokeObjectURL(url);
-        if (audioRef.current === audio) audioRef.current = null;
-        speakBrowser(text);
-      };
-      await audio.play();
-    } catch {
-      speakBrowser(text);
-    }
-  }, [speakBrowser, startBargeMonitor, stopBargeMonitor, token]);
-
-  const askAI = useCallback(async (transcript: string) => {
-    processingRef.current = true;
-    setLastHeard(transcript);
-    setPhase("thinking");
-    setStatus("बुझ्दैछु…");
-    try {
-      const headers: Record<string, string> = { "Content-Type": "application/json" };
-      if (token) headers.Authorization = `Bearer ${token}`;
-      const res = await fetch(`${API}/ai-v3/chat`, {
-        method: "POST",
-        headers,
-        body: JSON.stringify({
-          message: transcript.slice(0, 2000),
-          conversationId,
-          guestSessionId: token ? undefined : guestSessionId,
-          source: "LIVE_VOICE",
-        }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data?.message || "Voice assistant error");
-      const reply = String(data?.reply?.reply || data?.reply || data?.response?.reply || data?.message || "").trim();
-      await speakReply(reply || "हजुर, फेरि एकपटक भन्नुहोस्।");
-    } catch (error) {
-      setPhase("error");
-      setStatus(error instanceof Error ? error.message : "Connection problem");
-      if (activeRef.current) window.setTimeout(() => void startListening(), 800);
-    } finally {
-      processingRef.current = false;
-    }
-  }, [conversationId, guestSessionId, speakReply, token]);
-
-  const transcribeBlob = useCallback(async (blob: Blob) => {
-    if (!token) throw new Error("Login गरेर Live Voice प्रयोग गर्नुहोस्।");
-    const form = new FormData();
-    form.append("audio", blob, "roomkhoj-live.webm");
-    const res = await fetch(`${API}/ai-call/transcribe`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${token}` },
-      body: form,
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data?.message || "आवाज बुझ्न सकिएन");
-    return String(data?.data?.text || data?.text || "").trim();
-  }, [token]);
-
-  const startListening = useCallback(async () => {
-    if (!activeRef.current || processingRef.current || recorderRef.current?.state === "recording") return;
-    if (!navigator.mediaDevices?.getUserMedia) {
-      setPhase("error");
-      setStatus("Microphone उपलब्ध छैन");
-      return;
-    }
-    if (!token) {
-      setPhase("error");
-      setStatus("Live Voice का लागि login आवश्यक छ");
-      return;
-    }
-    try {
-      stopVad();
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 },
-      });
-      streamRef.current = stream;
-      const AC = window.AudioContext || (window as any).webkitAudioContext;
-      const ctx = new AC();
-      contextRef.current = ctx;
-      const analyser = ctx.createAnalyser();
-      analyser.fftSize = 2048;
-      analyser.smoothingTimeConstant = 0.62;
-      ctx.createMediaStreamSource(stream).connect(analyser);
-      analyserRef.current = analyser;
-
-      const types = ["audio/webm;codecs=opus", "audio/webm", "audio/ogg;codecs=opus"];
-      const mime = types.find((t) => MediaRecorder.isTypeSupported(t)) || "";
-      const recorder = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream);
-      recorderRef.current = recorder;
-      chunksRef.current = [];
-      let speechStarted = false;
-      let speechStartAt = 0;
-      let lastSpeechAt = performance.now();
-      let pauseBackchannelPlayed = false;
-
-      recorder.ondataavailable = (e) => { if (e.data.size) chunksRef.current.push(e.data); };
-      recorder.onstop = async () => {
-        stopVad();
-        recorderRef.current = null;
-        if (!activeRef.current || !speechStarted) return;
-        try {
-          setPhase("thinking");
-          setStatus("आवाज बुझ्दैछु…");
-          const blob = new Blob(chunksRef.current, { type: recorder.mimeType || "audio/webm" });
-          chunksRef.current = [];
-          const text = await transcribeBlob(blob);
-          if (text) await askAI(text);
-          else if (activeRef.current) void startListening();
-        } catch (error) {
-          setPhase("error");
-          setStatus(error instanceof Error ? error.message : "आवाज बुझ्न सकिएन");
-          if (activeRef.current) window.setTimeout(() => void startListening(), 700);
-        }
-      };
-
-      recorder.start(250);
-      setPhase("listening");
-      setStatus("सुन्दैछु… बोल्नुहोस्");
-      const buf = new Uint8Array(analyser.fftSize);
-      const listenStart = performance.now();
-      const loop = () => {
-        if (!activeRef.current || recorder.state !== "recording") return;
-        analyser.getByteTimeDomainData(buf);
-        let sum = 0;
-        for (const value of buf) {
-          const n = (value - 128) / 128;
-          sum += n * n;
-        }
-        const rms = Math.sqrt(sum / buf.length);
-        const now = performance.now();
-        if (rms >= 0.022) {
-          if (!speechStarted) { speechStarted = true; speechStartAt = now; }
-          lastSpeechAt = now;
-          pauseBackchannelPlayed = false;
-          if ("speechSynthesis" in window && window.speechSynthesis.speaking) window.speechSynthesis.cancel();
-          setStatus("सुन्दैछु… बोलिरहनुहोस्");
-        } else if (speechStarted) {
-          const pause = now - lastSpeechAt;
-          if (pause > 520 && pause < 1050 && !pauseBackchannelPlayed && now - speechStartAt > 900) {
-            pauseBackchannelPlayed = true;
-            speakBackchannel();
-          }
-          if (pause >= 1250 && now - speechStartAt > 350) {
-            recorder.stop();
-            return;
-          }
-        }
-        if (!speechStarted && now - listenStart > 10000) {
-          recorder.stop();
-          if (activeRef.current) window.setTimeout(() => void startListening(), 250);
-          return;
-        }
-        if (speechStarted && now - speechStartAt > 25000) {
-          recorder.stop();
-          return;
-        }
-        vadFrameRef.current = requestAnimationFrame(loop);
-      };
-      vadFrameRef.current = requestAnimationFrame(loop);
-    } catch {
-      setPhase("error");
-      setStatus("Microphone permission चाहिन्छ");
-      stopVad();
-    }
-  }, [askAI, speakBackchannel, stopVad, token, transcribeBlob]);
-
-  const startConversation = useCallback(async () => {
-    activeRef.current = true;
-    setActive(true);
-    setStatus("Live Voice सुरु हुँदैछ…");
-    await speakReply("नमस्कार। म RoomKhoj AI हुँ। तपाईंको कुरा पहिले सुन्छु। भन्नुहोस्, के सहयोग चाहिएको हो?");
-  }, [speakReply]);
+  const cleanup = useCallback(() => {
+    activeRef.current = false;
+    session.current.stop();
+    if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
+    frameRef.current = null;
+    const recorder = recorderRef.current;
+    recorderRef.current = null;
+    if (recorder && recorder.state !== 'inactive') recorder.stop();
+    streamRef.current?.getTracks().forEach(track => track.stop());
+    streamRef.current = null;
+    void contextRef.current?.close().catch(() => undefined);
+    contextRef.current = null;
+    stopPlayback();
+  }, [stopPlayback]);
 
   const stopConversation = useCallback(() => {
-    activeRef.current = false;
-    setActive(false);
-    processingRef.current = false;
-    if (recorderRef.current?.state === "recording") {
-      try { recorderRef.current.stop(); } catch {}
+    cleanup(); setActive(false); setPhase('idle'); setStatus('Voice session ended');
+  }, [cleanup]);
+  // A sign-out/account change must also end all microphone and network work.
+  useEffect(() => { stopConversation(); return cleanup; }, [token, cleanup, stopConversation]);
+
+  function fail(error: unknown, turn: Turn) {
+    if (!turn.current()) return;
+    cleanup(); setActive(false); setPhase('error');
+    setStatus(error instanceof Error ? error.message : 'Voice connection problem. फेरि Start थिच्नुहोस्।');
+  }
+
+  async function request(path: string, init: RequestInit, turn: Turn) {
+    if (!turn.current()) throw new DOMException('Stopped', 'AbortError');
+    const controller = new AbortController();
+    const abort = () => controller.abort();
+    turn.signal.addEventListener('abort', abort, { once: true });
+    const timeout = window.setTimeout(abort, 45000);
+    try {
+      const res = await fetch(`${API}${path}`, { ...init, signal: controller.signal,
+        headers: { ...init.headers, Authorization: `Bearer ${token}` } });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(typeof data.message === 'string' ? data.message : `Voice request failed (${res.status}). फेरि प्रयास गर्नुहोस्।`);
+      }
+      // Consume the body within the timeout and cancellation window.
+      return path.endsWith('/speak') ? await res.blob() : await res.json();
+    } catch (error) {
+      if (turn.current() && controller.signal.aborted) throw new Error('Request समयमै पूरा भएन। फेरि Start थिच्नुहोस्।');
+      throw error;
+    } finally {
+      clearTimeout(timeout); turn.signal.removeEventListener('abort', abort);
     }
-    recorderRef.current = null;
-    stopVad();
-    stopBargeMonitor();
-    const audio = audioRef.current;
-    if (audio) { audio.pause(); audio.src = ""; audioRef.current = null; }
-    if (typeof window !== "undefined" && "speechSynthesis" in window) window.speechSynthesis.cancel();
-    setPhase("idle");
-    setStatus("Voice session ended");
-  }, [stopBargeMonitor, stopVad]);
+  }
 
-  useEffect(() => () => stopConversation(), [stopConversation]);
+  function play(blob: Blob, turn: Turn) {
+    return new Promise<void>((resolve, reject) => {
+      if (!turn.current()) { reject(new DOMException('Stopped', 'AbortError')); return; }
+      const audio = playerRef.current || new Audio();
+      audioRef.current = audio;
+      const url = URL.createObjectURL(blob);
+      audioUrlRef.current = url;
+      let settled = false;
+      const finish = (error?: Error) => {
+        if (settled) return;
+        settled = true; clearTimeout(timer); turn.signal.removeEventListener('abort', aborted);
+        audio.onended = null; audio.onerror = null;
+        audio.pause(); audio.removeAttribute('src');
+        URL.revokeObjectURL(url);
+        if (audioRef.current === audio) audioRef.current = null;
+        if (audioUrlRef.current === url) audioUrlRef.current = null;
+        if (error) reject(error); else resolve();
+      };
+      const aborted = () => finish(new DOMException('Stopped', 'AbortError'));
+      const timer = window.setTimeout(() => finish(new Error('Audio playback timed out')), 120000);
+      turn.signal.addEventListener('abort', aborted, { once: true });
+      audio.onended = () => finish();
+      audio.onerror = () => finish(new Error('Audio playback failed'));
+      audio.src = url;
+      void audio.play().catch(() => finish(new Error('Audio चल्न सकेन। जवाफ तल पढ्न सक्नुहुन्छ; फेरि Start थिच्नुहोस्।')));
+    });
+  }
 
+  async function processRecording(blob: Blob, turn: Turn) {
+    try {
+      if (!turn.current()) return;
+      setPhase('thinking'); setStatus('आवाज बुझ्दैछु…');
+      const form = new FormData();
+      form.append('audio', blob, `roomkhoj-live.${recordingExtension(blob.type)}`);
+      const transcript = await request('/ai-call/transcribe', { method: 'POST', body: form }, turn);
+      if (!turn.current()) return;
+      const text = String(transcript?.data?.text || transcript?.text || '').trim();
+      if (!text) { listen(turn); return; }
+      setLastHeard(text); setStatus('जवाफ तयार हुँदैछ…');
+      const data = await request('/ai-v3/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: text.slice(0, 2000), conversationId: conversationId.current, source: 'LIVE_VOICE' }) }, turn);
+      if (!turn.current()) return;
+      const result = data?.reply?.reply ?? data?.reply ?? data?.response?.reply ?? data?.message;
+      const reply = typeof result === 'string' ? result.trim() : '';
+      if (!reply) throw new Error('जवाफ प्राप्त भएन। फेरि प्रयास गर्नुहोस्।');
+      setLastReply(reply);
+      for (const chunk of speechChunks(reply)) {
+        if (!turn.current()) return;
+        setPhase('thinking'); setStatus('आवाज तयार हुँदैछ…');
+        const audio = await request('/ai-call/speak', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: chunk }) }, turn);
+        if (!turn.current()) return;
+        setPhase('speaking'); setStatus('RoomKhoj AI बोल्दैछ…');
+        await play(audio, turn);
+      }
+      if (turn.current()) listen(turn);
+    } catch (error) { fail(error, turn); }
+  }
+
+  function listen(turn: Turn) {
+    if (!turn.current() || !activeRef.current || !streamRef.current || !contextRef.current) return;
+    try {
+      const stream = streamRef.current;
+      stream.getAudioTracks().forEach(track => { track.enabled = true; });
+      const ctx = contextRef.current;
+      const analyser = ctx.createAnalyser(); analyser.fftSize = 2048;
+      const source = ctx.createMediaStreamSource(stream); source.connect(analyser);
+      const mime = ['audio/webm;codecs=opus', 'audio/mp4', 'audio/ogg;codecs=opus', 'audio/webm'].find(type => MediaRecorder.isTypeSupported(type));
+      const recorder = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
+      recorderRef.current = recorder; manualSendRef.current = false;
+      const chunks: BlobPart[] = [];
+      let voicedMs = 0, lastVoice = 0, previous = performance.now();
+      const started = previous;
+      recorder.ondataavailable = event => { if (event.data.size) chunks.push(event.data); };
+      recorder.onerror = () => fail(new Error('Microphone recording failed. फेरि Start थिच्नुहोस्।'), turn);
+      recorder.onstop = () => {
+        source.disconnect(); analyser.disconnect();
+        if (!turn.current()) return;
+        if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
+        frameRef.current = null; recorderRef.current = null;
+        stream.getAudioTracks().forEach(track => { track.enabled = false; });
+        if (voicedMs < 200 && !manualSendRef.current) {
+          cleanup(); setActive(false); setPhase('idle'); setStatus('आवाज सुनिएन। फेरि Start थिच्नुहोस्।'); return;
+        }
+        void processRecording(new Blob(chunks, { type: recorder.mimeType || mime || 'audio/webm' }), turn);
+      };
+      recorder.start(250); setPhase('listening'); setStatus('सुन्दैछु… बोल्नुहोस्');
+      const buffer = new Uint8Array(analyser.fftSize);
+      const monitor = () => {
+        if (!turn.current() || recorder.state !== 'recording') return;
+        analyser.getByteTimeDomainData(buffer);
+        const now = performance.now();
+        let power = 0;
+        for (const value of buffer) power += ((value - 128) / 128) ** 2;
+        if (Math.sqrt(power / buffer.length) > 0.018) { voicedMs += Math.min(now - previous, 100); lastVoice = now; }
+        previous = now;
+        if ((voicedMs >= 200 && now - lastVoice > 1400) || now - started > 25000 || (!lastVoice && now - started > 15000)) { recorder.stop(); return; }
+        frameRef.current = requestAnimationFrame(monitor);
+      };
+      frameRef.current = requestAnimationFrame(monitor);
+    } catch (error) { fail(error, turn); }
+  }
+
+  async function startConversation() {
+    if (activeRef.current) return;
+    if (!token) { setPhase('error'); setStatus('Live Voice का लागि login आवश्यक छ'); return; }
+    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') { setPhase('error'); setStatus('यो browser मा microphone recording उपलब्ध छैन। अर्को browser प्रयोग गर्नुहोस्।'); return; }
+    // Prime the same media element during the Start gesture for mobile playback.
+    const player = playerRef.current;
+    if (player) {
+      player.src = 'data:audio/wav;base64,UklGRsQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YaAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
+      void player.play().then(() => player.pause()).catch(() => undefined);
+    }
+    const turn = session.current.next();
+    activeRef.current = true; setActive(true); setPhase('thinking'); setStatus('Microphone खोल्दैछु…');
+    try {
+      if (!conversationId.current) {
+        const fromChat = new URLSearchParams(window.location.search).get('conversationId');
+        conversationId.current = fromChat && /^[A-Za-z0-9_-]{8,128}$/.test(fromChat) ? fromChat : crypto.randomUUID();
+      }
+      const AC = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      const ctx = new AC(); contextRef.current = ctx;
+      await ctx.resume();
+      if (!turn.current()) return;
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 } });
+      if (!turn.current()) { stream.getTracks().forEach(track => track.stop()); return; }
+      streamRef.current = stream;
+      listen(turn);
+    } catch (error) {
+      fail(error instanceof DOMException && error.name === 'NotAllowedError' ? new Error('Microphone permission दिनुहोस् र फेरि Start थिच्नुहोस्।') : error, turn);
+    }
+  }
+
+  function interrupt() {
+    const turn = session.current.next(); stopPlayback(); listen(turn);
+  }
   const orbScale = phase === "listening" ? "scale-110" : phase === "speaking" ? "scale-105" : "scale-100";
 
   return (
     <main className="min-h-[100dvh] overflow-hidden bg-[#0b0b0d] text-white">
+      <audio ref={playerRef} preload="auto" className="hidden" />
       <div className="mx-auto flex min-h-[100dvh] max-w-3xl flex-col px-5 pb-[max(24px,env(safe-area-inset-bottom))] pt-5 sm:px-8">
         <header className="flex items-center justify-between">
           <button onClick={() => { stopConversation(); router.back(); }} className="flex h-11 w-11 items-center justify-center rounded-full bg-white/10 hover:bg-white/15" aria-label="Back">
@@ -412,7 +235,7 @@ export default function LiveVoicePage() {
           </button>
           <div className="text-center">
             <p className="text-sm font-semibold">RoomKhoj Live Voice</p>
-            <p className="text-[11px] text-white/45">Rooms • Jobs • Career</p>
+            <p className="text-[11px] text-white/45">Rooms • Jobs • RoomKhoj help</p>
           </div>
           <button onClick={stopConversation} className="flex h-11 w-11 items-center justify-center rounded-full bg-white/10 hover:bg-white/15" aria-label="End voice">
             <PhoneOff className="h-5 w-5" />
@@ -428,20 +251,23 @@ export default function LiveVoicePage() {
             </div>
           </div>
 
-          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{status}</h1>
+          <h1 role="status" aria-live="polite" className="text-2xl font-semibold tracking-tight sm:text-3xl">{status}</h1>
           <p className="mt-3 max-w-lg text-sm leading-6 text-white/50">
-            तपाईं बोल्दा AI चुप लागेर सुन्छ। बीचमा सानो pause हुँदा मात्र हल्का “हजुर/उम्” backchannel दिन सक्छ। तपाईं AI बोलिरहँदा बोल्न थाल्नुभयो भने AI आवाज fade भएर रोकिन्छ र फेरि तपाईंलाई सुन्छ।
+            बोलिसकेपछि छोटो pause दिनुहोस् वा “पठाउनुहोस्” थिच्नुहोस्। AI बोलिरहेको बेला “रोक्नुहोस्, म बोल्छु” थिचेर आफ्नो कुरा भन्न सक्नुहुन्छ। End गर्दा microphone बन्द हुन्छ।
           </p>
 
           {(lastHeard || lastReply) && (
             <div className="mt-8 w-full max-w-xl rounded-3xl border border-white/10 bg-white/[0.04] p-4 text-left backdrop-blur-xl">
               {lastHeard && <p className="text-xs leading-5 text-white/55"><span className="font-semibold text-white/80">You:</span> {lastHeard}</p>}
-              {lastReply && <p className="mt-2 line-clamp-3 text-xs leading-5 text-white/45"><span className="font-semibold text-white/70">AI:</span> {lastReply}</p>}
+              {lastReply && <p className="mt-2 whitespace-pre-wrap text-xs leading-5 text-white/45"><span className="font-semibold text-white/70">AI:</span> {lastReply}</p>}
             </div>
           )}
         </section>
 
-        <footer className="flex items-center justify-center gap-5">
+        <footer className="flex flex-wrap items-center justify-center gap-5">
+          {active && phase === "listening" && <button onClick={() => { manualSendRef.current = true; recorderRef.current?.stop(); }} className="rounded-full bg-white/15 px-5 py-3">पठाउनुहोस्</button>}
+          {active && phase === "speaking" && <button onClick={interrupt} className="rounded-full bg-white/15 px-5 py-3">रोक्नुहोस्, म बोल्छु</button>}
+          {!token && <button onClick={() => router.push('/auth/login')} className="rounded-full bg-white/15 px-5 py-3">Login for Live Voice</button>}
           <button
             type="button"
             onClick={active ? stopConversation : () => void startConversation()}
