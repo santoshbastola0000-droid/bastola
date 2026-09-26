@@ -482,11 +482,6 @@ export default function PublicProfilePage() {
                 {verifiedBadgeEnabled && profile.user.isVerified && (
                   <BadgeCheck className="h-6 w-6 shrink-0 text-primary" />
                 )}
-                {profile.user.isSynthetic && (
-                  <span className="shrink-0 rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-slate-600">
-                    Bot
-                  </span>
-                )}
               </div>
 
               <p className="mt-1 text-sm font-bold text-muted-foreground sm:text-base">
@@ -525,7 +520,9 @@ export default function PublicProfilePage() {
               </div>
 
               {friendStatus !== "SELF" && !isOwnProfile && (
-                <div className="mt-5 grid w-full max-w-xl grid-cols-2 gap-2">
+                <div
+                  className={`mt-5 grid w-full max-w-xl ${profile.user.isSynthetic ? "grid-cols-1" : "grid-cols-2"} gap-2`}
+                >
                   {!profile.user.isSynthetic && <Button
                     onClick={handleFriend}
                     disabled={
@@ -544,8 +541,6 @@ export default function PublicProfilePage() {
                     )}
                     {friendLabel}
                   </Button>}
-                  {profile.user.isSynthetic && <p className="self-center text-xs text-muted-foreground">यो bot account हो। RoomKhoj Admin ले reply गर्नुहुन्छ।</p>}
-
                   <Button
                     variant="secondary"
                     className="h-11 rounded-xl font-bold"
