@@ -86,6 +86,7 @@ const navItems: NavItem[] = [
   { title: "AI Profiles", href: "/admin/dashboard/ai-profiles", icon: Bot },
   { title: "AI Learning", href: "/admin/dashboard/ai-learning", icon: Bot },
   { title: "AI Developer", href: "/admin/dashboard/ai-developer", icon: Bot },
+  // Production AI conversation health dashboard.
   { title: "AI Flow Monitor", href: "/admin/dashboard/ai-flow-monitor", icon: BrainCircuit },
 ];
 
