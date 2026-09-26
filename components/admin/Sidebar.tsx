@@ -24,6 +24,7 @@ import {
   ShieldCheck,
   Megaphone,
   ScanSearch,
+  BrainCircuit,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -85,6 +86,7 @@ const navItems: NavItem[] = [
   { title: "AI Profiles", href: "/admin/dashboard/ai-profiles", icon: Bot },
   { title: "AI Learning", href: "/admin/dashboard/ai-learning", icon: Bot },
   { title: "AI Developer", href: "/admin/dashboard/ai-developer", icon: Bot },
+  { title: "AI Flow Monitor", href: "/admin/dashboard/ai-flow-monitor", icon: BrainCircuit },
 ];
 
 export function AdminSidebar({
