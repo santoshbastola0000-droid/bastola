@@ -3,7 +3,8 @@ import type { MetadataRoute } from "next";
 import type { JobPosting } from "@/http/services/job-posting.service";
 import {
   POKHARA_JOB_ROLES,
-  POKHARA_ROOM_LANDINGS,\n  NEPAL_CITIES,
+  POKHARA_ROOM_LANDINGS,
+  NEPAL_CITIES,
 } from "@/lib/seo-landings";
 
 const baseUrl = "https://www.roomkhoj.com";
