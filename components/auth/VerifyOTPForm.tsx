@@ -69,7 +69,7 @@ const VerifyOTPForm = () => {
 
   const handleVerify = (value: string) => {
     setOtp(value);
-    if (value.length === 5) {
+    if (value.length === 6) {
       setHasAttempted(true);
       verify({ email: email!, otp: value });
     }
@@ -94,14 +94,14 @@ const VerifyOTPForm = () => {
 
   if (!email) return null;
 
-  const isError = hasAttempted && !isVerifying && otp.length !== 5;
+  const isError = hasAttempted && !isVerifying && otp.length !== 6;
 
   return (
     <div className="space-y-8">
       <div className="text-center">
         <h2 className="text-2xl font-bold text-gray-900">Verify your email</h2>
         <p className="mt-2 text-sm text-gray-600">
-          We've sent a 5-digit code to{" "}
+          We've sent a 6-digit code to{" "}
           <span className="font-medium text-primary">{email}</span>
         </p>
       </div>
@@ -118,14 +118,14 @@ const VerifyOTPForm = () => {
 
       <div className="flex justify-center">
         <InputOTP
-          maxLength={5}
+          maxLength={6}
           value={otp}
           onChange={handleVerify}
           disabled={isVerifying}
           autoFocus
         >
           <InputOTPGroup>
-            {[0, 1, 2, 3, 4].map((index) => (
+            {[0, 1, 2, 3, 4, 5].map((index) => (
               <InputOTPSlot
                 key={index}
                 index={index}
