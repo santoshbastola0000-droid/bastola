@@ -47,6 +47,7 @@ import {
   InfiniteScrollLoader,
 } from "@/components/common/elegant-loader";
 import { PAGE_SIZE } from "@/lib/constants/app.constants";
+import { NEPAL_CITIES } from "@/lib/seo-landings";
 
 interface CatConfig {
   label: string;
@@ -1423,6 +1424,20 @@ function RoomsContent() {
               />
             </div>
           </div>
+
+              <section className="mt-16 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
+                <h2 className="text-2xl font-bold text-slate-900">Rooms for rent across Nepal</h2>
+                <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
+                  Browse RoomKhoj city pages to search current rental rooms, flats and houses by location and budget.
+                </p>
+                <div className="mt-5 flex flex-wrap gap-2">
+                  {NEPAL_CITIES.map((city) => (
+                    <a key={city.slug} href={`/rooms/${city.slug}`} className="rounded-full border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-100">
+                      Rooms in {city.name}
+                    </a>
+                  ))}
+                </div>
+              </section>
         </main>
       </div>
       <Footer />

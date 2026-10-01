@@ -4,6 +4,7 @@ import type { JobPosting } from "@/http/services/job-posting.service";
 import {
   POKHARA_JOB_ROLES,
   POKHARA_ROOM_LANDINGS,
+  NEPAL_CITIES,
 } from "@/lib/seo-landings";
 
 const baseUrl = "https://www.roomkhoj.com";
@@ -58,6 +59,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: baseUrl, lastModified: now, changeFrequency: "daily", priority: 1 },
     { url: `${baseUrl}/rooms`, lastModified: now, changeFrequency: "daily", priority: 1 },
     { url: `${baseUrl}/rooms/pokhara`, lastModified: now, changeFrequency: "daily", priority: 1 },
+    ...NEPAL_CITIES.filter((city) => city.slug !== "pokhara").map((city) => ({
+      url: `${baseUrl}/rooms/${city.slug}`,
+      lastModified: now,
+      changeFrequency: "daily" as const,
+      priority: 0.9,
+    })),
     ...POKHARA_ROOM_LANDINGS.map((item) => ({
       url: `${baseUrl}/rooms/pokhara/${item.slug}`,
       lastModified: now,
@@ -66,6 +73,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     })),
     { url: `${baseUrl}/jobs`, lastModified: now, changeFrequency: "daily", priority: 1 },
     { url: `${baseUrl}/jobs/pokhara`, lastModified: now, changeFrequency: "daily", priority: 1 },
+    ...NEPAL_CITIES.filter((city) => city.slug !== "pokhara").map((city) => ({
+      url: `${baseUrl}/jobs/${city.slug}`,
+      lastModified: now,
+      changeFrequency: "daily" as const,
+      priority: 0.9,
+    })),
     ...POKHARA_JOB_ROLES.map((role) => ({
       url: `${baseUrl}/jobs/pokhara/${role.slug}`,
       lastModified: now,

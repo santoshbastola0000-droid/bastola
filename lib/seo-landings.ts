@@ -14,6 +14,43 @@ export type JobSeoLanding = {
   searchTerm: string;
 };
 
+
+export type CitySeoLanding = {
+  slug: string;
+  name: string;
+  province: string;
+  roomDescription: string;
+  jobDescription: string;
+  roomSearchHref: string;
+  jobSearchHref: string;
+};
+
+export const NEPAL_CITIES: CitySeoLanding[] = [
+  { slug: "kathmandu", name: "Kathmandu", province: "Bagmati Province", roomDescription: "Search rooms, flats, apartments and houses for rent in Kathmandu by location, property type and monthly budget.", jobDescription: "Search current job vacancies in Kathmandu across hospitality, retail, office, sales, driving and other roles.", roomSearchHref: "/rooms?q=Kathmandu", jobSearchHref: "/jobs?location=Kathmandu" },
+  { slug: "lalitpur", name: "Lalitpur", province: "Bagmati Province", roomDescription: "Find rental rooms, flats and houses in Lalitpur and compare options by area, property type and budget.", jobDescription: "Find job vacancies in Lalitpur across hospitality, retail, office, sales and other categories.", roomSearchHref: "/rooms?q=Lalitpur", jobSearchHref: "/jobs?location=Lalitpur" },
+  { slug: "bhaktapur", name: "Bhaktapur", province: "Bagmati Province", roomDescription: "Browse rental rooms, flats and houses in Bhaktapur with RoomKhoj search and filters.", jobDescription: "Browse job vacancies in Bhaktapur and search by role and current availability.", roomSearchHref: "/rooms?q=Bhaktapur", jobSearchHref: "/jobs?location=Bhaktapur" },
+  { slug: "pokhara", name: "Pokhara", province: "Gandaki Province", roomDescription: "Find rooms, flats, apartments and houses for rent in Pokhara by area, monthly rent and property type.", jobDescription: "Search job vacancies in Pokhara for hospitality, restaurants, retail, office, driving and other roles.", roomSearchHref: "/rooms?q=Pokhara", jobSearchHref: "/jobs?location=Pokhara" },
+  { slug: "bharatpur", name: "Bharatpur", province: "Bagmati Province", roomDescription: "Search rental rooms, flats and houses in Bharatpur and compare available options by budget and property type.", jobDescription: "Search job vacancies in Bharatpur across hospitality, retail, office, sales, healthcare support and other roles.", roomSearchHref: "/rooms?q=Bharatpur", jobSearchHref: "/jobs?location=Bharatpur" },
+  { slug: "biratnagar", name: "Biratnagar", province: "Koshi Province", roomDescription: "Browse rooms, flats and houses for rent in Biratnagar using location and budget-based search.", jobDescription: "Find job vacancies in Biratnagar across industry, retail, office, sales, hospitality and other sectors.", roomSearchHref: "/rooms?q=Biratnagar", jobSearchHref: "/jobs?location=Biratnagar" },
+  { slug: "birgunj", name: "Birgunj", province: "Madhesh Province", roomDescription: "Find rental rooms, flats and houses in Birgunj with RoomKhoj.", jobDescription: "Search current job vacancies in Birgunj by role and location.", roomSearchHref: "/rooms?q=Birgunj", jobSearchHref: "/jobs?location=Birgunj" },
+  { slug: "dharan", name: "Dharan", province: "Koshi Province", roomDescription: "Search rooms, flats and houses for rent in Dharan by location, type and budget.", jobDescription: "Search job vacancies in Dharan across hospitality, retail, office, sales and other roles.", roomSearchHref: "/rooms?q=Dharan", jobSearchHref: "/jobs?location=Dharan" },
+  { slug: "itahari", name: "Itahari", province: "Koshi Province", roomDescription: "Browse rental rooms and flats in Itahari and search by monthly budget and property type.", jobDescription: "Browse job vacancies in Itahari and search by role and location.", roomSearchHref: "/rooms?q=Itahari", jobSearchHref: "/jobs?location=Itahari" },
+  { slug: "hetauda", name: "Hetauda", province: "Bagmati Province", roomDescription: "Find rooms, flats and houses for rent in Hetauda with RoomKhoj.", jobDescription: "Find job vacancies in Hetauda across office, retail, hospitality, sales and other categories.", roomSearchHref: "/rooms?q=Hetauda", jobSearchHref: "/jobs?location=Hetauda" },
+  { slug: "butwal", name: "Butwal", province: "Lumbini Province", roomDescription: "Search rental rooms, flats and houses in Butwal by area, property type and monthly budget.", jobDescription: "Search job vacancies in Butwal across hospitality, retail, office, sales, driving and other roles.", roomSearchHref: "/rooms?q=Butwal", jobSearchHref: "/jobs?location=Butwal" },
+  { slug: "nepalgunj", name: "Nepalgunj", province: "Lumbini Province", roomDescription: "Browse rooms, flats and houses for rent in Nepalgunj using RoomKhoj.", jobDescription: "Browse job vacancies in Nepalgunj and search by role and location.", roomSearchHref: "/rooms?q=Nepalgunj", jobSearchHref: "/jobs?location=Nepalgunj" },
+  { slug: "tulsipur", name: "Tulsipur", province: "Lumbini Province", roomDescription: "Find rental rooms, flats and houses in Tulsipur by budget and property type.", jobDescription: "Search job vacancies in Tulsipur across retail, office, hospitality and other roles.", roomSearchHref: "/rooms?q=Tulsipur", jobSearchHref: "/jobs?location=Tulsipur" },
+  { slug: "ghorahi", name: "Ghorahi", province: "Lumbini Province", roomDescription: "Search rooms, flats and houses for rent in Ghorahi with RoomKhoj.", jobDescription: "Search job vacancies in Ghorahi by role and location.", roomSearchHref: "/rooms?q=Ghorahi", jobSearchHref: "/jobs?location=Ghorahi" },
+  { slug: "dhangadhi", name: "Dhangadhi", province: "Sudurpashchim Province", roomDescription: "Browse rental rooms, flats and houses in Dhangadhi by location and monthly budget.", jobDescription: "Find job vacancies in Dhangadhi across retail, office, hospitality, sales and other roles.", roomSearchHref: "/rooms?q=Dhangadhi", jobSearchHref: "/jobs?location=Dhangadhi" },
+  { slug: "janakpur", name: "Janakpur", province: "Madhesh Province", roomDescription: "Find rooms, flats and houses for rent in Janakpur with RoomKhoj.", jobDescription: "Search job vacancies in Janakpur by role and location.", roomSearchHref: "/rooms?q=Janakpur", jobSearchHref: "/jobs?location=Janakpur" },
+  { slug: "damak", name: "Damak", province: "Koshi Province", roomDescription: "Search rental rooms, flats and houses in Damak by property type and budget.", jobDescription: "Browse job vacancies in Damak by role and location.", roomSearchHref: "/rooms?q=Damak", jobSearchHref: "/jobs?location=Damak" },
+  { slug: "birtamod", name: "Birtamod", province: "Koshi Province", roomDescription: "Find rental rooms, flats and houses in Birtamod with RoomKhoj.", jobDescription: "Search job vacancies in Birtamod by role and location.", roomSearchHref: "/rooms?q=Birtamod", jobSearchHref: "/jobs?location=Birtamod" },
+];
+
+export function getNepalCity(slug: string) {
+  return NEPAL_CITIES.find((city) => city.slug === slug) || null;
+}
+
+
 export const POKHARA_ROOM_LANDINGS: RoomSeoLanding[] = [
   {
     slug: "lakeside",
