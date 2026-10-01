@@ -69,7 +69,7 @@ export const metadata: Metadata = {
   },
 
   description:
-    "Find rooms, flats, apartments and houses for rent in Nepal. Search room rentals and job opportunities in Pokhara with RoomKhoj.",
+    "Find rooms, flats, apartments and houses for rent across Nepal. Search rental rooms and current job vacancies in Kathmandu, Pokhara and cities across Nepal with RoomKhoj.",
 
   applicationName: "RoomKhoj",
   creator: "RoomKhoj",
