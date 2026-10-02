@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { Bell, Menu, Plus, Search } from "lucide-react";
 import { FeedNetworkOptimizer } from "@/components/social/FeedNetworkOptimizer";
+import { PublicSocialFeedScreen } from "@/components/social/PublicSocialFeedScreen";
 import { SocialFeedScreen } from "@/components/social/SocialFeedScreen";
 import { notificationService } from "@/http/services/notification.service";
 import { socialService } from "@/http/services/social.service";
@@ -75,6 +76,8 @@ export function FeedChrome() {
   );
 
   useEffect(() => {
+    if (!user) return;
+
     let active = true;
     let interval: number | undefined;
 
@@ -83,7 +86,7 @@ export function FeedChrome() {
       if (active) setUnreadCount(count);
     };
 
-    // Keep notification loading secondary to the feed, exactly as before.
+    // Notifications are a logged-in-only secondary feature.
     const initialDelay = window.setTimeout(() => {
       if (!active) return;
       void refresh();
@@ -102,9 +105,11 @@ export function FeedChrome() {
       if (interval !== undefined) window.clearInterval(interval);
       window.removeEventListener("focus", onFocus);
     };
-  }, [networkProfile.liteMode]);
+  }, [networkProfile.liteMode, user]);
 
   useEffect(() => {
+    if (!user) return;
+
     let active = true;
 
     const checkFeed = async () => {
@@ -137,8 +142,8 @@ export function FeedChrome() {
       }
     };
 
-    // Do not duplicate the initial feed request. Start background checks only
-    // after the first interval; weak connections get a much wider interval.
+    // Logged-out visitors use the anonymous public feed and do not poll the
+    // authenticated endpoint.
     const timer = window.setInterval(
       () => void checkFeed(),
       networkProfile.pollIntervalMs,
@@ -157,7 +162,7 @@ export function FeedChrome() {
       window.removeEventListener("focus", onFocus);
       document.removeEventListener("visibilitychange", onVisibilityChange);
     };
-  }, [networkProfile.pollIntervalMs]);
+  }, [networkProfile.pollIntervalMs, user]);
 
   useEffect(() => {
     const y = restoreScrollRef.current;
@@ -174,8 +179,6 @@ export function FeedChrome() {
     return () => window.cancelAnimationFrame(first);
   }, [feedVersion]);
 
-
-
   useEffect(() => {
     const onScroll = () => {
       const current = Math.max(0, window.scrollY);
@@ -184,10 +187,8 @@ export function FeedChrome() {
       if (current < 20) {
         setHeaderVisible(true);
       } else if (delta > 7) {
-        // Finger swipes up / page moves down: header scrolls away.
         setHeaderVisible(false);
       } else if (delta < -7) {
-        // Finger swipes down / page moves up: bring create/search/bell back.
         setHeaderVisible(true);
       }
 
@@ -231,6 +232,10 @@ export function FeedChrome() {
             type="button"
             aria-label="Create post"
             onClick={() => {
+              if (!user) {
+                window.dispatchEvent(new Event("roomkhoj:open-login"));
+                return;
+              }
               const composer = document.getElementById("feed-composer");
               composer?.scrollIntoView({
                 behavior: "smooth",
@@ -261,9 +266,15 @@ export function FeedChrome() {
             href="/notifications"
             aria-label={`Notifications${unreadCount ? `, ${unreadCount} unread` : ""}`}
             className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-950 transition active:scale-95"
+            onClick={(event) => {
+              if (!user) {
+                event.preventDefault();
+                window.dispatchEvent(new Event("roomkhoj:open-login"));
+              }
+            }}
           >
             <Bell className="h-6 w-6" strokeWidth={2.1} />
-            {unreadCount > 0 && (
+            {user && unreadCount > 0 && (
               <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-extrabold leading-none text-white ring-2 ring-white">
                 {unreadCount > 99 ? "99+" : unreadCount}
               </span>
@@ -281,7 +292,11 @@ export function FeedChrome() {
       )}
 
       <div className="[&>div>header]:hidden">
-        <SocialFeedScreen key={feedVersion} />
+        {user ? (
+          <SocialFeedScreen key={feedVersion} />
+        ) : (
+          <PublicSocialFeedScreen />
+        )}
       </div>
     </div>
   );
