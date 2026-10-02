@@ -164,11 +164,6 @@ export function SocialFeedScreen() {
   const profileInput = useRef<HTMLInputElement>(null);
   const sentinel = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (isLoaded && !user) {
-      router.replace("/auth/login?redirect=%2Ffeed");
-    }
-  }, [isLoaded, router, user]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -185,7 +180,6 @@ export function SocialFeedScreen() {
   }, []);
 
   const load = useCallback(async () => {
-    if (!user) return;
     setLoading(true);
     try {
       const [feed, storyRows, friendRows, groupRows, socialPhoto, profile, prefs] = await Promise.all([
@@ -213,7 +207,7 @@ export function SocialFeedScreen() {
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, []);
 
   useEffect(() => {
     void load();
@@ -279,7 +273,7 @@ export function SocialFeedScreen() {
     }
   };
 
-  if (!isLoaded || !user || loading) {
+  if (!isLoaded || loading) {
     return (
       <div className="min-h-screen bg-[#f0f2f5]">
         <SocialHeader visible={headerVisible} onMenu={() => setMenuOpen(true)} />
@@ -290,9 +284,9 @@ export function SocialFeedScreen() {
     );
   }
 
-  const people = [...requests, ...suggestions].filter(
+  const people = user ? [...requests, ...suggestions].filter(
     (person, index, list) => list.findIndex((candidate) => candidate.id === person.id) === index,
-  );
+  ) : [];
 
   return (
     <div className="min-h-screen bg-[#f0f2f5] font-sans text-slate-950 antialiased">
@@ -306,7 +300,7 @@ export function SocialFeedScreen() {
       <main className="mx-auto max-w-[720px] space-y-2 pb-24 sm:px-3">
         <StoryCarousel
           stories={stories}
-          userName={user.name}
+          userName={user?.name || "RoomKhoj"}
           myPhoto={myPhoto}
           storyInput={storyInput}
           onOpen={async (story) => {
@@ -376,7 +370,7 @@ export function SocialFeedScreen() {
             <PostCard
               key={`post-${post.id}`}
               post={post}
-              currentUserId={user.id}
+              currentUserId={String(user?.id || "")}
               commentsOpen={Boolean(openComments[post.id])}
               onToggleComments={() =>
                 setOpenComments((current) => ({ ...current, [post.id]: !current[post.id] }))
@@ -404,7 +398,7 @@ export function SocialFeedScreen() {
       {activeStory && (
         <StoryViewer
           story={activeStory}
-          own={activeStory.author.id === user.id}
+          own={Boolean(user && activeStory.author.id === user.id)}
           onClose={() => setActiveStory(null)}
           onDelete={async () => {
             await socialService.deleteStory(activeStory.id);
