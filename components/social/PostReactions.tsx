@@ -170,10 +170,12 @@ export function PostReactions({
   };
 
   const tapLike = async () => {
+    if (!currentUserId) return window.dispatchEvent(new Event('roomkhoj:open-login'));
     if (longPressed.current) {
       longPressed.current = false;
       return;
     }
+    if (!currentUserId) return window.dispatchEvent(new Event('roomkhoj:open-login'));
     if (submittingRef.current) return;
 
     const previousLiked = liked;
