@@ -19,9 +19,10 @@ export function GuestLoginPopup() {
   const showCountRef = useRef(0);
 
   const isAuthPage = pathname.startsWith("/auth");
+  const isFeedPage = pathname === "/feed" || pathname.startsWith("/feed/");
 
   useEffect(() => {
-    if (token || isAuthPage || open) return;
+    if (token || isAuthPage || isFeedPage || open) return;
 
     const delay =
       POPUP_DELAYS_MS[
@@ -34,7 +35,7 @@ export function GuestLoginPopup() {
     }, delay);
 
     return () => window.clearTimeout(timer);
-  }, [token, isAuthPage, open]);
+  }, [token, isAuthPage, isFeedPage, open]);
 
   if (!open || token || isAuthPage) return null;
 
