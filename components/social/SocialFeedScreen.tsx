@@ -376,6 +376,10 @@ export function SocialFeedScreen() {
                 setOpenComments((current) => ({ ...current, [post.id]: !current[post.id] }))
               }
               onShare={async () => {
+                if (!user) {
+                  window.dispatchEvent(new Event("roomkhoj:open-login"));
+                  return;
+                }
                 const url = `${window.location.origin}/feed?post=${post.id}`;
                 const native = typeof navigator.share === "function";
                 if (native) await navigator.share({ title: "RoomKhoj post", url });
