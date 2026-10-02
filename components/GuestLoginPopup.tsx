@@ -13,7 +13,6 @@ const POPUP_DELAYS_MS = [5_000, 30_000, 60_000];
 // stay on the page they are browsing and get the login popup immediately,
 // instead of navigating into a protected screen and seeing a loader/redirect.
 const PROTECTED_PATH_PREFIXES = [
-  "/feed",
   "/messages",
   "/notifications",
   "/user/dashboard",
@@ -39,6 +38,7 @@ export function GuestLoginPopup() {
   const showCountRef = useRef(0);
 
   const isAuthPage = pathname.startsWith("/auth");
+  const isFeedPage = pathname === "/feed" || pathname.startsWith("/feed/");
 
   useEffect(() => {
     if (token || isAuthPage) return;
@@ -89,7 +89,7 @@ export function GuestLoginPopup() {
   }, [token, isAuthPage]);
 
   useEffect(() => {
-    if (token || isAuthPage || open) return;
+    if (token || isAuthPage || isFeedPage || open) return;
 
     const delay =
       POPUP_DELAYS_MS[
@@ -102,7 +102,7 @@ export function GuestLoginPopup() {
     }, delay);
 
     return () => window.clearTimeout(timer);
-  }, [token, isAuthPage, open]);
+  }, [token, isAuthPage, isFeedPage, open]);
 
   if (!open || token || isAuthPage) return null;
 

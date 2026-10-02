@@ -193,11 +193,6 @@ export function SocialFeedScreen() {
   const postInput = useRef<HTMLInputElement>(null);
   const sentinel = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (isLoaded && !user) {
-      router.replace("/auth/login?redirect=%2Ffeed");
-    }
-  }, [isLoaded, router, user]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -214,7 +209,6 @@ export function SocialFeedScreen() {
   }, []);
 
   const load = useCallback(async () => {
-    if (!user) return;
     setLoading(true);
     try {
       // Critical path: only wait for the actual feed. Stories, groups, profile
@@ -234,7 +228,7 @@ export function SocialFeedScreen() {
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, []);
 
   const loadSecondary = useCallback(async () => {
     if (!user) return;
@@ -277,7 +271,7 @@ export function SocialFeedScreen() {
 
     const boot = async () => {
       await load();
-      if (active) void loadSecondary();
+      if (active && user) void loadSecondary();
     };
 
     void boot();
@@ -354,7 +348,7 @@ export function SocialFeedScreen() {
     }
   };
 
-  if (!isLoaded || !user || loading) {
+  if (!isLoaded || loading) {
     return (
       <div className="min-h-screen bg-red-50/30">
         <SocialHeader visible={headerVisible} onMenu={() => setMenuOpen(true)} />
@@ -365,9 +359,9 @@ export function SocialFeedScreen() {
     );
   }
 
-  const people = [...requests, ...suggestions].filter(
+  const people = user ? [...requests, ...suggestions].filter(
     (person, index, list) => list.findIndex((candidate) => candidate.id === person.id) === index,
-  );
+  ) : [];
 
   return (
     <div className="min-h-screen bg-red-50/30 font-sans text-slate-950 antialiased">
@@ -379,7 +373,7 @@ export function SocialFeedScreen() {
       />
 
       <main className="mx-auto max-w-[760px] space-y-[6px] pb-24 sm:px-3">
-        {friendOnboarding?.isNewUser &&
+        {user && friendOnboarding?.isNewUser &&
           !friendOnboarding.complete &&
           friendOnboarding.remaining > 0 && (
             <NewUserFriendOnboarding
@@ -439,9 +433,9 @@ export function SocialFeedScreen() {
             />
           )}
 
-        <Composer
+        {user && <Composer
           userId={String(user.id)}
-          userName={user.name}
+          userName={user?.name || "RoomKhoj"}
           myPhoto={myPhoto}
           text={text}
           setText={setText}
@@ -457,7 +451,7 @@ export function SocialFeedScreen() {
           posting={posting}
           onPublish={publish}
           postInput={postInput}
-        />
+        />}
 
         <Link
           href="/rooms"
@@ -485,6 +479,10 @@ export function SocialFeedScreen() {
             musicTrackId,
             musicAutoSelected,
           }) => {
+            if (!user) {
+              window.dispatchEvent(new Event("roomkhoj:open-login"));
+              return;
+            }
             const created = await socialService.createStory({
               file,
               caption,
@@ -580,14 +578,18 @@ export function SocialFeedScreen() {
             <PostCard
               key={`post-${item.id}`}
               post={post}
-              currentUserId={user.id}
+              currentUserId={String(user?.id || "")}
               currentUserPhotoUrl={myPhoto}
-              isAdmin={user.role === UserRole.ADMIN}
+              isAdmin={user?.role === UserRole.ADMIN}
               commentsOpen={Boolean(openComments[post.id])}
               onToggleComments={() =>
                 setOpenComments((current) => ({ ...current, [post.id]: !current[post.id] }))
               }
               onShare={async () => {
+                if (!user) {
+                  window.dispatchEvent(new Event("roomkhoj:open-login"));
+                  return;
+                }
                 const url = `${window.location.origin}/feed?post=${post.id}`;
                 const native = typeof navigator.share === "function";
                 if (native) await navigator.share({ title: "RoomKhoj post", url });
@@ -610,7 +612,7 @@ export function SocialFeedScreen() {
       {activeStory && (
         <StoryViewer
           story={activeStory}
-          own={activeStory.author.id === user.id}
+          own={Boolean(user && activeStory.author.id === user.id)}
           onClose={() => setActiveStory(null)}
           onDelete={async () => {
             await socialService.deleteStory(activeStory.id);
@@ -1363,6 +1365,10 @@ function StoryViewer({
   };
 
   const toggleReaction = async (next: StoryReactionType) => {
+    if (!user) {
+      window.dispatchEvent(new Event("roomkhoj:open-login"));
+      return;
+    }
     if (own) return;
 
     const previous = reaction;
@@ -1392,6 +1398,10 @@ function StoryViewer({
   };
 
   const sendReply = async () => {
+    if (!user) {
+      window.dispatchEvent(new Event("roomkhoj:open-login"));
+      return;
+    }
     const value = replyText.trim();
     if (!value || replying || own) return;
 
