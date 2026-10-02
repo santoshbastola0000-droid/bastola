@@ -69,6 +69,10 @@ export function CommentThread({
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
+    if (!currentUserId) {
+      window.dispatchEvent(new Event("roomkhoj:open-login"));
+      return;
+    }
     const content = draft.trim();
     if (!content || sending) return;
     setSending(true);
