@@ -159,7 +159,7 @@ export default function FriendCheckPage() {
         <Badge>FRIENDCHECK</Badge>
         <h1 className="mt-4 text-5xl font-black tracking-tight text-slate-950 sm:text-7xl">How well do your friends <span className="text-violet-600">REALLY</span> know you? 👀</h1>
         <p className="mx-auto mt-5 max-w-2xl text-base leading-7 text-slate-600 sm:text-lg">Answer a few questions, send your challenge to a friend, and see how well they actually know you.</p>
-        <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
+        <div className="mx-auto mt-8 grid max-w-2xl gap-2 sm:grid-cols-5">{modes.map(([id,emoji,title]) => <button key={id} onClick={() => setMode(id)} className={`rounded-2xl border p-3 text-left transition ${mode === id ? "border-violet-400 bg-violet-50" : "border-slate-200 bg-white"}`}><div className="text-xl">{emoji}</div><div className="mt-1 text-xs font-black text-slate-900">{title}</div></button>)}</div>\n        <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
           <button onClick={() => loadQuestions()} className="btn-primary"><Sparkles className="h-5 w-5" /> Create My FriendCheck</button>
           <button onClick={() => setScreen("challenge")} className="btn-secondary"><Users className="h-5 w-5" /> I received a FriendCheck</button>
         </div>
