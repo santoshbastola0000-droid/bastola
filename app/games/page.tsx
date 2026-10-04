@@ -60,7 +60,7 @@ export default function FriendCheckPage() {
 
   const progress = questions.length ? Math.round(((current + 1) / questions.length) * 100) : 0;
   const challengeUrl = useMemo(
-    () => token ? `${window.location.origin}/games?challenge=${encodeURIComponent(token)}` : "",
+    () => token ? `${typeof window !== "undefined" ? window.location.origin : ""}/games?challenge=${encodeURIComponent(token)}` : "",
     [token],
   );
 
@@ -249,7 +249,7 @@ function Shell({ children }: { children: ReactNode }) {
   `}</style></main>;
 }
 
-function Badge({ children }: { children: React.ReactNode }) {
+function Badge({ children }: { children: ReactNode }) {
   return <p className="mt-4 text-xs font-black uppercase tracking-[.2em] text-rose-500">{children}</p>;
 }
 
