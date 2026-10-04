@@ -11,6 +11,7 @@ import {
   BriefcaseBusiness,
   UsersRound,
   Gift,
+  Gamepad2,
 } from "lucide-react";
 import { useLanguage } from "@/components/providers/LanguageProvider";
 import { privateApi } from "@/http/api/privateApi";
@@ -40,6 +41,7 @@ export function NavLinks({
           feed: "फिड",
           rooms: "कोठा खोज्नुहोस्",
           jobs: "जागिर खोज्नुहोस्",
+          game: "गेम",
           about: "हाम्रो बारेमा",
           contact: "सम्पर्क",
           adminDashboard: "एडमिन ड्यासबोर्ड",
@@ -52,6 +54,7 @@ export function NavLinks({
           feed: "Feed",
           rooms: "Browse Rooms",
           jobs: "Find Jobs",
+          game: "Game",
           about: "About",
           contact: "Contact",
           adminDashboard: "Admin Dashboard",
@@ -79,6 +82,7 @@ export function NavLinks({
     { href: "/", label: labels.home, icon: Home },
     { href: "/rooms", label: labels.rooms, icon: Compass },
     { href: "/jobs", label: labels.jobs, icon: BriefcaseBusiness },
+    { href: "/games", label: labels.game, icon: Gamepad2 },
     { href: "/about", label: labels.about, icon: Sparkles },
     { href: "/contact", label: labels.contact, icon: Hotel },
   ];
@@ -88,6 +92,7 @@ export function NavLinks({
         { href: "/feed", label: labels.feed, icon: UsersRound },
         { href: "/rooms", label: labels.rooms, icon: Compass },
         { href: "/jobs", label: labels.jobs, icon: BriefcaseBusiness },
+        { href: "/games", label: labels.game, icon: Gamepad2 },
         {
           href: getDashboardLink(),
           label: getDashboardLabel(),
