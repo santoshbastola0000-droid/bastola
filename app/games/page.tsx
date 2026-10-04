@@ -127,8 +127,8 @@ export default function FriendCheckPage() {
     finally { setLoading(false); }
   }
 
-  async function share(url = challengeUrl) {
-    const text = "👀 I made a FriendCheck. Let's see how well you actually know me 😂";
+  async function share(url = challengeUrl, message = "👀 I made a FriendCheck. Let's see how well you actually know me 😂") {
+    const text = message;
     try {
       if (navigator.share) await navigator.share({ title: "FriendCheck", text, url });
       else {
@@ -160,6 +160,10 @@ export default function FriendCheckPage() {
         <h1 className="mt-4 text-5xl font-black tracking-tight text-slate-950 sm:text-7xl">How well do your friends <span className="text-violet-600">REALLY</span> know you? 👀</h1>
         <p className="mx-auto mt-5 max-w-2xl text-base leading-7 text-slate-600 sm:text-lg">Answer a few questions, send your challenge to a friend, and see how well they actually know you.</p>
         <div className="mx-auto mt-8 grid max-w-2xl gap-2 sm:grid-cols-5">{modes.map(([id,emoji,title]) => <button key={id} onClick={() => setMode(id)} className={`rounded-2xl border p-3 text-left transition ${mode === id ? "border-violet-400 bg-violet-50" : "border-slate-200 bg-white"}`}><div className="text-xl">{emoji}</div><div className="mt-1 text-xs font-black text-slate-900">{title}</div></button>)}</div>
+        <div className="mx-auto mt-6 max-w-xl rounded-3xl border border-violet-100 bg-white/80 p-4 text-left shadow-sm">
+          <p className="text-sm font-black text-slate-900">🔥 The viral loop</p>
+          <p className="mt-1 text-sm leading-6 text-slate-500">You answer → share one link → your friend guesses → the result gives them a one-tap way to challenge their next friend.</p>
+        </div>
         <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
           <button onClick={() => loadQuestions()} className="btn-primary"><Sparkles className="h-5 w-5" /> Create My FriendCheck</button>
           <button onClick={() => setScreen("challenge")} className="btn-secondary"><Users className="h-5 w-5" /> I received a FriendCheck</button>
@@ -233,7 +237,11 @@ export default function FriendCheckPage() {
         <div className="mt-8 grid gap-3 sm:grid-cols-3">{[["🧠", "Know them", result.knowledgeScore],["❤️","Vibe match",result.vibeScore],["😂","Fun match",result.funScore]].map(([emoji,title,score])=><div key={title as string} className="rounded-3xl border bg-white p-5 text-center shadow-sm"><div className="text-2xl">{emoji}</div><p className="mt-2 text-xs font-black uppercase text-slate-400">{title}</p><p className="mt-1 text-3xl font-black">{score}%</p></div>)}</div>
         <section className="mt-4 rounded-[2rem] border bg-white p-6 shadow-xl"><h2 className="text-xl font-black">You both matched on ❤️</h2><div className="mt-4 grid gap-3">{result.matched.length ? result.matched.map((m,i)=><div key={i} className="rounded-2xl bg-emerald-50 p-4"><p className="text-sm font-bold text-slate-700">{m.question}</p><p className="mt-1 font-black text-emerald-700">{m.answer}</p></div>) : <p className="text-sm text-slate-500">No exact matches this time — try another friend!</p>}</div></section>
         {result.missed.length > 0 && <section className="mt-4 rounded-[2rem] border bg-white p-6 shadow-xl"><h2 className="text-xl font-black">😳 You completely missed</h2><div className="mt-4 grid gap-3">{result.missed.map((m,i)=><div key={i} className="rounded-2xl bg-slate-50 p-4"><p className="text-sm font-bold">{m.question}</p><p className="mt-2 text-sm text-slate-500">You guessed: <b>{m.guessed}</b></p><p className="text-sm text-violet-600">They chose: <b>{m.actual}</b></p></div>)}</div></section>}
-        <button onClick={() => { setScreen("home"); window.history.replaceState({}, "", "/games"); }} className="btn-primary mt-6 w-full"><Trophy className="h-5 w-5" /> 🔥 Now test YOUR friends</button>
+        <div className="mt-6 grid gap-3 sm:grid-cols-2">
+          <button onClick={() => share(`${typeof window !== "undefined" ? window.location.origin : ""}/games?challenge=${encodeURIComponent(result.challengeToken)}`, `🔥 I scored ${result.overallScore}% on FriendCheck! Think you can beat me? 👀`)} className="btn-primary w-full"><Share2 className="h-5 w-5" /> Share Result</button>
+          <button onClick={() => { setScreen("home"); setToken(""); setResult(null); window.history.replaceState({}, "", "/games"); }} className="btn-secondary w-full"><Trophy className="h-5 w-5" /> 🔥 Test Your Friends</button>
+        </div>
+        <p className="mt-4 text-center text-xs font-bold text-slate-400">Challenge → result → share → your friend creates their own. 🔁</p>
       </div>
     </Shell>
   );
