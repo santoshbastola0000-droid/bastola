@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { ArrowLeft, ArrowRight, Check, Copy, Heart, Loader2, Share2, Sparkles, Trophy, Users, Zap } from "lucide-react";
 import { api } from "@/http/api/api";
 
@@ -159,7 +159,8 @@ export default function FriendCheckPage() {
         <Badge>FRIENDCHECK</Badge>
         <h1 className="mt-4 text-5xl font-black tracking-tight text-slate-950 sm:text-7xl">How well do your friends <span className="text-violet-600">REALLY</span> know you? 👀</h1>
         <p className="mx-auto mt-5 max-w-2xl text-base leading-7 text-slate-600 sm:text-lg">Answer a few questions, send your challenge to a friend, and see how well they actually know you.</p>
-        <div className="mx-auto mt-8 grid max-w-2xl gap-2 sm:grid-cols-5">{modes.map(([id,emoji,title]) => <button key={id} onClick={() => setMode(id)} className={`rounded-2xl border p-3 text-left transition ${mode === id ? "border-violet-400 bg-violet-50" : "border-slate-200 bg-white"}`}><div className="text-xl">{emoji}</div><div className="mt-1 text-xs font-black text-slate-900">{title}</div></button>)}</div>\n        <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
+        <div className="mx-auto mt-8 grid max-w-2xl gap-2 sm:grid-cols-5">{modes.map(([id,emoji,title]) => <button key={id} onClick={() => setMode(id)} className={`rounded-2xl border p-3 text-left transition ${mode === id ? "border-violet-400 bg-violet-50" : "border-slate-200 bg-white"}`}><div className="text-xl">{emoji}</div><div className="mt-1 text-xs font-black text-slate-900">{title}</div></button>)}</div>
+        <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
           <button onClick={() => loadQuestions()} className="btn-primary"><Sparkles className="h-5 w-5" /> Create My FriendCheck</button>
           <button onClick={() => setScreen("challenge")} className="btn-secondary"><Users className="h-5 w-5" /> I received a FriendCheck</button>
         </div>
@@ -240,7 +241,7 @@ export default function FriendCheckPage() {
   return <Shell><ErrorBox text={error || "Result not found."} /><button onClick={()=>setScreen("home")} className="btn-secondary mx-auto">Back to FriendCheck</button></Shell>;
 }
 
-function Shell({ children }: { children: React.ReactNode }) {
+function Shell({ children }: { children: ReactNode }) {
   return <main className="min-h-[calc(100vh-5rem)] bg-gradient-to-b from-rose-50 via-white to-violet-50 px-4 py-8 sm:py-12">{children}<style jsx>{`
     .btn-primary{display:inline-flex;align-items:center;justify-content:center;gap:.55rem;border-radius:1rem;background:linear-gradient(90deg,#f43f5e,#7c3aed);padding:.9rem 1.3rem;font-weight:900;color:white;box-shadow:0 12px 30px rgba(124,58,237,.16);transition:.18s}.btn-primary:hover{transform:translateY(-1px)}.btn-primary:disabled{opacity:.5;cursor:not-allowed;transform:none}
     .btn-secondary{display:inline-flex;align-items:center;justify-content:center;gap:.55rem;border-radius:1rem;border:1px solid #e2e8f0;background:white;padding:.9rem 1.3rem;font-weight:900;color:#334155}.back{display:inline-flex;align-items:center;gap:.4rem;margin-bottom:1.2rem;font-size:.875rem;font-weight:800;color:#64748b}.input{width:100%;border:1px solid #e2e8f0;border-radius:1rem;background:white;padding:.95rem 1rem;font-weight:700;outline:none}.input:focus{border-color:#8b5cf6;box-shadow:0 0 0 3px rgba(139,92,246,.12)}
