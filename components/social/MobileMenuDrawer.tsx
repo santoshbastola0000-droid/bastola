@@ -4,6 +4,11 @@ import Link from "next/link";
 import {
   Bell,
   BriefcaseBusiness,
+  Compass,
+  Gamepad2,
+  Info,
+  House,
+  UsersRound,
   Building2,
   ChevronRight,
   ClipboardList,
@@ -30,6 +35,16 @@ export function MobileMenuDrawer({
   userName?: string | null;
 }) {
   if (!open) return null;
+
+  const mainLinks = [
+    { label: "Home", href: "/", icon: House },
+    { label: "Feed", href: "/feed", icon: UsersRound },
+    { label: "Browse Rooms", href: "/rooms", icon: Compass },
+    { label: "Find Jobs", href: "/jobs", icon: BriefcaseBusiness },
+    { label: "Game", href: "/games", icon: Gamepad2 },
+    { label: "About", href: "/about", icon: Info },
+    { label: "Contact", href: "/contact", icon: MessageCircle },
+  ];
 
   const services = [
     { label: "Rooms", href: "/rooms", icon: Home },
@@ -102,6 +117,21 @@ export function MobileMenuDrawer({
             </div>
             <ChevronRight className="h-6 w-6 shrink-0 text-red-600" />
           </Link>
+
+          <div className="mt-6 text-[20px] font-black text-slate-950">Main menu</div>
+          <div className="mt-3 grid grid-cols-2 gap-3">
+            {mainLinks.map((item) => {
+              const Icon = item.icon;
+              return (
+                <Link key={item.label} href={item.href} onClick={onClose}>
+                  <div className="flex min-h-[96px] flex-col justify-between rounded-2xl border border-slate-200 bg-white p-4 text-slate-950 shadow-sm transition hover:bg-slate-50">
+                    <Icon className="h-7 w-7" />
+                    <div className="text-[16px] font-black leading-tight">{item.label}</div>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
 
           <div className="mt-6 text-[20px] font-black text-slate-950">Your services</div>
           <div className="mt-3 grid grid-cols-2 gap-3">
