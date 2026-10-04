@@ -58,17 +58,23 @@ function feedSignature(items: any[]) {
   }
 }
 
-// Guest public feed deployment marker: keep /feed accessible before login.\nexport function FeedChrome() {
+// Guest public feed deployment marker: keep /feed accessible before login.
+export function FeedChrome() {
   const user = useUserStore((state) => state.user);
   const [menuOpen, setMenuOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [headerVisible, setHeaderVisible] = useState(true);
   const [feedVersion, setFeedVersion] = useState(0);
   const [networkProfile, setNetworkProfile] = useState(() => getNetworkProfile());
+  const [pullDistance, setPullDistance] = useState(0);
+  const [pullingToRefresh, setPullingToRefresh] = useState(false);
   const lastScrollY = useRef(0);
   const feedSnapshotRef = useRef<string | null>(null);
   const feedPollBusyRef = useRef(false);
   const restoreScrollRef = useRef<number | null>(null);
+  const pullStartYRef = useRef<number | null>(null);
+  const pullActiveRef = useRef(false);
+  const pullDistanceRef = useRef(0);
 
   useEffect(
     () => onNetworkProfileChange(() => setNetworkProfile(getNetworkProfile())),
@@ -200,13 +206,91 @@ function feedSignature(items: any[]) {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
+  useEffect(() => {
+    // Mobile pull-to-refresh: only activate when the page is already at the
+    // very top, so normal feed scrolling is never interrupted.
+    const onTouchStart = (event: TouchEvent) => {
+      if (window.scrollY > 0 || event.touches.length !== 1) {
+        pullStartYRef.current = null;
+        pullActiveRef.current = false;
+        return;
+      }
+
+      pullStartYRef.current = event.touches[0].clientY;
+      pullActiveRef.current = true;
+    };
+
+    const onTouchMove = (event: TouchEvent) => {
+      if (!pullActiveRef.current || pullStartYRef.current === null) return;
+
+      const currentY = event.touches[0].clientY;
+      const delta = currentY - pullStartYRef.current;
+      if (delta <= 0) {
+        pullDistanceRef.current = 0;
+        setPullDistance(0);
+        setPullingToRefresh(false);
+        return;
+      }
+
+      // Resistance makes the gesture feel natural instead of moving 1:1.
+      const distance = Math.min(110, delta * 0.5);
+      pullDistanceRef.current = distance;
+      setPullDistance(distance);
+      setPullingToRefresh(distance >= 58);
+
+      if (distance > 0) event.preventDefault();
+    };
+
+    const onTouchEnd = () => {
+      if (!pullActiveRef.current) return;
+
+      const shouldRefresh = pullDistanceRef.current >= 58;
+      pullActiveRef.current = false;
+      pullStartYRef.current = null;
+      pullDistanceRef.current = 0;
+      setPullDistance(0);
+      setPullingToRefresh(false);
+
+      if (shouldRefresh) {
+        window.location.reload();
+      }
+    };
+
+    document.addEventListener("touchstart", onTouchStart, { passive: true });
+    document.addEventListener("touchmove", onTouchMove, { passive: false });
+    document.addEventListener("touchend", onTouchEnd, { passive: true });
+    document.addEventListener("touchcancel", onTouchEnd, { passive: true });
+
+    return () => {
+      document.removeEventListener("touchstart", onTouchStart);
+      document.removeEventListener("touchmove", onTouchMove);
+      document.removeEventListener("touchend", onTouchEnd);
+      document.removeEventListener("touchcancel", onTouchEnd);
+    };
+  }, []);
+
   return (
     <div
       data-roomkhoj-feed-root="true"
       data-lite-mode={networkProfile.liteMode ? "true" : "false"}
-      className={`${styles.primaryTheme} min-h-screen bg-red-50/30`}
+      className={`${styles.primaryTheme} min-h-screen bg-red-50/30 overscroll-y-contain`}
     >
       <FeedNetworkOptimizer />
+
+      {pullDistance > 0 && (
+        <div
+          aria-live="polite"
+          className="pointer-events-none fixed left-1/2 top-[68px] z-[200] flex -translate-x-1/2 items-center gap-2 rounded-full border border-slate-200 bg-white/95 px-4 py-2 text-xs font-bold text-slate-700 shadow-lg backdrop-blur"
+          style={{ transform: `translate(-50%, ${Math.min(pullDistance, 24)}px)` }}
+        >
+          <span
+            className={`inline-flex h-5 w-5 items-center justify-center rounded-full border-2 border-red-200 text-red-600 transition-transform duration-150 ${pullingToRefresh ? "rotate-180" : ""}`}
+          >
+            ↓
+          </span>
+          {pullingToRefresh ? "Release to refresh" : "Pull to refresh"}
+        </div>
+      )}
 
       <header className={`sticky top-0 z-[120] border-b border-slate-200 bg-white shadow-[0_1px_0_rgba(15,23,42,0.05)] transition-transform duration-200 ${headerVisible ? "translate-y-0" : "-translate-y-full"}`}>
         <div className="mx-auto flex h-[64px] max-w-[760px] items-center gap-2 px-3">
