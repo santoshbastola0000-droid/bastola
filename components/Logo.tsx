@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 
 interface LogoProps {
@@ -5,32 +6,22 @@ interface LogoProps {
   scrolled?: boolean;
 }
 
-export function Logo({
-  variant = "dark",
-  scrolled = false,
-}: LogoProps) {
-  const isLight = variant === "light" && !scrolled;
-
+export function Logo({ variant: _variant = "dark", scrolled: _scrolled = false }: LogoProps) {
   return (
     <Link
       href="/rooms"
       aria-label="RoomKhoj"
       className="group inline-flex items-center"
     >
-      <span
-        className={`relative inline-flex items-baseline text-[22px] font-black tracking-[-0.045em] transition-transform duration-300 group-hover:scale-[1.02] sm:text-[26px] ${
-          isLight ? "text-white" : "text-slate-950"
-        }`}
-      >
-        <span>Room</span>
-        <span className="text-red-600">Khoj</span>
-        <span
-          className={`absolute -bottom-1 left-0 h-[3px] w-8 rounded-full ${
-            isLight ? "bg-white/90" : "bg-red-600"
-          }`}
-          aria-hidden
-        />
-      </span>
+      <Image
+        src="/roomkhoj-logo.png"
+        alt="RoomKhoj"
+        width={40}
+        height={40}
+        priority
+        className="h-9 w-9 rounded-lg object-contain transition-transform duration-300 group-hover:scale-[1.04] sm:h-10 sm:w-10"
+      />
+      <span className="sr-only">RoomKhoj</span>
     </Link>
   );
 }
