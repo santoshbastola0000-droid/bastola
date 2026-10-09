@@ -14,6 +14,11 @@ export interface OfficeHistory extends OfficeRoom {
   createdAt: string;
 }
 export interface OfficeForm { id: string; name: string; customerNumber: string; status: string; customerDestination?: string; }
+export interface OfficeOwnerSummary {
+  ownerKey: string; ownerPhone: string; ownerNames: string[]; locations: string[];
+  totalRooms: number; availableRooms: number; rentedRooms: number;
+  totalClients: number; sentClients: number; visitedClients: number; movedInClients: number;
+}
 export interface OfficeStaff { id: string; name: string; email: string; phoneNumber: string; officeAccess: boolean; }
 export interface OfficeRequest { id: string; roomId: string; clientName: string; clientPhone: string; message: string; status: string; code: string; title: string; location: string; createdAt: string; }
 export interface ClientInput { clientName: string; clientPhone: string; recordId?: string; notes: string; }
@@ -33,7 +38,7 @@ export const officeService = {
   myRooms: async () => unwrap<OfficeRoom[]>(await privateApi.get('/office/my-rooms')),
   myVideo: async (id: string) => (await privateApi.get<Blob>(`${officeBackend}/office/my-rooms/${id}/video`,{ responseType: 'blob',timeout: 15*60*1000 })).data,
   myRequest: async (id: string,message: string) => privateApi.post(`/office/my-rooms/${id}/request`,{ message }),
-  rooms: async (q: string,status: string,page = 0) => unwrap<{ rooms: OfficeRoom[]; total: number; counts: { status: string; total: number }[] }>(await privateApi.get('/office/rooms',{ params: { q,status,page } })),
+  rooms: async (q: string,status: string,page = 0) => unwrap<{ rooms: OfficeRoom[]; total: number; counts: { status: string; total: number }[]; owners: OfficeOwnerSummary[] }>(await privateApi.get('/office/rooms',{ params: { q,status,page } })),
   room: async (id: string) => unwrap<OfficeRoom>(await privateApi.get(`/office/rooms/${id}`)),
   create: async (data: FormData,onProgress: (percent: number) => void) => unwrap<OfficeRoom>(await privateApi.post(`${officeBackend}/office/rooms`,data,{
     // Send large videos straight to the API; do not route through Vercel's request-body limit.
@@ -60,3 +65,4 @@ export function officeError(error: unknown): string {
   const message = e.response?.data?.message;
   return Array.isArray(message) ? message.join(', ') : message || e.message || 'Could not complete this action. Please try again.';
 }
+
