@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { Suspense, useState, useEffect } from "react";
+import { useSearchParams } from 'next/navigation';
 import Link from "next/link";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -94,10 +95,14 @@ import {
 import { UsersListSkeleton } from "@/components/user/UsersListSkeleton";
 import { formatPriceNPR, timeAgo } from "@/lib/utils";
 
-export default function UsersList() {
+export default function UsersPage() { return <Suspense fallback={<p>Loading users…</p>}><UsersList /></Suspense>; }
+
+function UsersList() {
+  const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  useEffect(() => { setSearchTerm(searchParams.get('search') || ''); }, [searchParams]);
   const [roleFilter, setRoleFilter] = useState<UserRole | "all">("all");
   const [purposeFilter, setPurposeFilter] = useState<
     "all" | "FIND_ROOM" | "POST_ROOM" | "FIND_JOB" | "POST_JOB"
@@ -1492,3 +1497,4 @@ export default function UsersList() {
     </div>
   );
 }
+

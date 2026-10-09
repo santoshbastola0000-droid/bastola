@@ -87,7 +87,7 @@ export const useUserRole = () => {
   const clearUser = useUserStore((state) => state.clearUser);
   const isLoaded = useUserStore((state) => state.isLoaded);
 
-  const isAdmin = user?.role === UserRole.ADMIN;
+  const isAdmin = user?.role === UserRole.ADMIN || String(user?.role).toLowerCase() === 'superadmin';
   const isUser = user?.role === UserRole.USER;
 
   return {
@@ -100,3 +100,4 @@ export const useUserRole = () => {
     isLoaded,
   };
 };
+

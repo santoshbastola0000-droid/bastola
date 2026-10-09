@@ -58,7 +58,8 @@ function feedSignature(items: any[]) {
   }
 }
 
-// Guest public feed deployment marker: keep /feed accessible before login.\nexport function FeedChrome() {
+// Guest public feed deployment marker: keep /feed accessible before login.
+export function FeedChrome() {
   const user = useUserStore((state) => state.user);
   const [menuOpen, setMenuOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -301,3 +302,4 @@ function feedSignature(items: any[]) {
     </div>
   );
 }
+

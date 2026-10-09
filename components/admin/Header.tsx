@@ -24,6 +24,7 @@ import { useUserStore } from "@/stores/user-store";
 import { useLogout } from "@/hooks/useLogout";
 import { LogoutConfirmDialog } from "@/components/LogoutConfirmDialog";
 import { useTheme } from "next-themes";
+import { GlobalSearch } from './GlobalSearch';
 
 interface AdminHeaderProps {
   isSidebarCollapsed?: boolean;
@@ -106,6 +107,7 @@ export function AdminHeader({ isSidebarCollapsed = false }: AdminHeaderProps) {
           </div>
 
           {/* ── Right: Actions ── */}
+          <div className="mx-3 flex-1 max-w-md"><GlobalSearch /></div>
           <div className="flex items-center gap-1 md:gap-2">
             <TooltipProvider>
               <Tooltip>
@@ -229,3 +231,4 @@ export function AdminHeader({ isSidebarCollapsed = false }: AdminHeaderProps) {
     </>
   );
 }
+
