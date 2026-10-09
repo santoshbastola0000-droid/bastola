@@ -23,6 +23,7 @@ import {
   ShieldAlert,
   Gift,
   MapPin,
+  Armchair,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -37,6 +38,7 @@ import { LogoutConfirmDialog } from "@/components/LogoutConfirmDialog";
 import { staffTrackingService } from "@/http/services/staff-tracking.service";
 
 const navItems = [
+  { title: "Office", href: "/user/dashboard/office", icon: Armchair },
   { title: "Dashboard", href: "/user/dashboard", icon: Home },
   { title: "Profile", href: "/user/dashboard/profile", icon: UserCircle },
   { title: "Friends", href: "/user/dashboard/people", icon: Users },
@@ -387,3 +389,4 @@ export function UserSidebar({
     </div>
   );
 }
+

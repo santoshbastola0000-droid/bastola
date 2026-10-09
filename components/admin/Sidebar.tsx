@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { LayoutDashboard, Building2, Users, LogOut, ChevronLeft, ChevronRight, Menu, Home, Wallet, Percent, BarChart, Bot, BriefcaseBusiness, GitFork, Bell, PhoneCall, MessageSquare, ShieldCheck, Megaphone, ScanSearch, BrainCircuit, CalendarClock } from "lucide-react";
+import { Armchair, LayoutDashboard, Building2, Users, LogOut, ChevronLeft, ChevronRight, Menu, Home, Wallet, Percent, BarChart, Bot, BriefcaseBusiness, GitFork, Bell, PhoneCall, MessageSquare, ShieldCheck, Megaphone, ScanSearch, BrainCircuit, CalendarClock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -18,6 +18,7 @@ interface SidebarProps { isCollapsed: boolean; setIsCollapsed: (collapsed: boole
 interface NavItem { title: string; href: string; icon: React.ElementType; badge?: number; roles?: string[]; }
 
 const navItems: NavItem[] = [
+  { title: "Office / Reception", href: "/admin/dashboard/office", icon: Armchair },
   { title: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
   { title: "Traffic Tracker", href: "/admin/dashboard/traffic", icon: BarChart },
   { title: "Security Scanner", href: "/admin/dashboard/security-scanner", icon: ScanSearch },
@@ -64,3 +65,4 @@ export function AdminSidebar({ isCollapsed, setIsCollapsed, isMobile = false }: 
   const DesktopSidebar = () => <aside className={cn("hidden md:flex flex-col h-screen sticky top-0 bg-gradient-to-b from-gray-900 to-gray-800 text-white transition-all duration-300", isCollapsed ? "w-20" : "w-64")}><div className="flex items-center justify-between p-6 border-b border-gray-700"><div className="flex items-center gap-3"><div className="h-10 w-10 rounded-xl bg-primary flex items-center justify-center"><Home className="h-5 w-5 text-white" /></div>{!isCollapsed && <div><h2 className="font-bold text-lg">RoomKhoj</h2><p className="text-xs text-gray-400">Admin Panel</p></div>}</div><Button variant="ghost" size="icon" onClick={() => setIsCollapsed(!isCollapsed)} className="text-gray-400 hover:text-white"><>{isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}</></Button></div><div className={cn("p-4 border-b border-gray-700", isCollapsed && "text-center")}><Avatar className="h-10 w-10 ring-2 ring-primary/50"><AvatarImage src={user?.profilePhotoUrl || undefined} /><AvatarFallback className="bg-primary/20 text-primary">{getInitials()}</AvatarFallback></Avatar>{!isCollapsed && <p className="mt-2 text-sm font-medium truncate">{user?.name || "Admin User"}</p>}</div><nav className="flex-1 overflow-y-auto p-4 space-y-1"><TooltipProvider delayDuration={0}>{renderItems(false).map((item: any) => isCollapsed ? <Tooltip key={item.key || item.props?.href}><TooltipTrigger asChild>{item}</TooltipTrigger>{mounted && <TooltipContent side="right">{item.props?.children?.[1]?.props?.children || "Admin"}</TooltipContent>}</Tooltip> : item)}</TooltipProvider></nav><div className="p-4 border-t border-gray-700"><Button variant="ghost" className={cn("w-full text-red-400", isCollapsed ? "justify-center" : "justify-start")} onClick={() => setShowLogoutDialog(true)}><LogOut className={cn("h-4 w-4", !isCollapsed && "mr-3")} />{!isCollapsed && "Logout"}</Button></div></aside>;
   return <><MobileSidebar />{isMobile ? null : <DesktopSidebar />}<LogoutConfirmDialog open={showLogoutDialog} onOpenChange={setShowLogoutDialog} onConfirm={handleLogout} /></>;
 }
+
