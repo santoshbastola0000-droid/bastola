@@ -23,11 +23,11 @@ export function AdminWorkspace({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const home = pathname === "/admin/dashboard";
   const [query, setQuery] = useState("");
-  const [category, setCategory] = useState<NavGroup | "All">("Office");
+  const [category, setCategory] = useState<NavGroup | "All">("All");
   const [browse, setBrowse] = useState(false);
   const search = query.trim().toLowerCase();
   const services = navItems.filter(item => item.href !== "/admin/dashboard");
-  const matches = services.filter(item => (category === "All" || getGroup(item) === category) && (!search || `${item.title} ${getGroup(item)} ${item.href}`.toLowerCase().includes(search)));
+  const matches = services.filter(item => (!!search || category === "All" || getGroup(item) === category) && (!search || `${item.title} ${getGroup(item)} ${item.href}`.toLowerCase().includes(search)));
   const current = [...services].sort((a,b) => b.href.length-a.href.length).find(item => !item.href.includes("#") && (pathname === item.href || pathname.startsWith(item.href+"/")));
   const showServices = home || browse;
   const navigate = () => { setBrowse(false); setQuery(""); };
