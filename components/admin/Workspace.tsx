@@ -23,7 +23,7 @@ export function AdminWorkspace({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const home = pathname === "/admin/dashboard";
   const [query, setQuery] = useState("");
-  const [category, setCategory] = useState<NavGroup | "All">("All");
+  const [category, setCategory] = useState<NavGroup | "All">("Office");
   const [browse, setBrowse] = useState(false);
   const search = query.trim().toLowerCase();
   const services = navItems.filter(item => item.href !== "/admin/dashboard");
