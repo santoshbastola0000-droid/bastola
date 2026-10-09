@@ -27,6 +27,8 @@ export function OfficeDashboard() {
   const params = useSearchParams();
   const [access,setAccess] = useState<{ allowed: boolean; isAdmin: boolean } | null>(null);
   const [accessFailed,setAccessFailed] = useState(false);
+  const [accessAttempt,setAccessAttempt] = useState(0);
+  const [serviceUnavailable,setServiceUnavailable] = useState(false);
   const [tab,setTab] = useState('rooms');
   const [folder,setFolder] = useState<'AVAILABLE'|'RENTED'>('AVAILABLE');
   const [query,setQuery] = useState(params.get('q') || '');
@@ -59,7 +61,7 @@ export function OfficeDashboard() {
   const [error,setError] = useState('');
   const [notice,setNotice] = useState('');
 
-  useEffect(() => { let alive=true; officeService.access().then(a => { if (alive) setAccess(a); }).catch(e => { if (alive) { setError(officeError(e)); setAccessFailed(true); } }); return () => { alive=false; }; },[]);
+  useEffect(() => { let alive=true; setAccessFailed(false); setServiceUnavailable(false); officeService.access().then(a => { if (alive) setAccess(a); }).catch(e => { if (alive) { setError(officeError(e)); setServiceUnavailable(e?.response?.status===404 || e?.response?.status>=500 || !e?.response); setAccessFailed(true); } }); return () => { alive=false; }; },[accessAttempt]);
   useEffect(() => { const q=params.get('q') || ''; setQuery(q); setSearch(q); setPage(0); setHistoryPage(0); setHistoryRoom(undefined); setTab(['history','requests'].includes(params.get('tab') || '') ? params.get('tab')! : 'rooms'); },[params]);
 
   const reloadRooms = useCallback(async () => {
@@ -111,7 +113,7 @@ export function OfficeDashboard() {
     });
   }
   function historyFor(room: OfficeRoom) { setHistoryRoom(room.id); setSearch(''); setQuery(''); setHistoryPage(0); setTab('history'); }
-  if (!access) return <div className="p-8">{accessFailed ? <p role="alert">{error} <Link href="/auth/login" className="underline">Log in</Link></p> : 'Checking Office access…'}</div>;
+  if (!access) return <div className="rounded-2xl border bg-white p-8"><Armchair className="mb-4 h-10 w-10 text-emerald-600"/><h1 className="mb-3 text-2xl font-bold">Office / Reception</h1>{accessFailed ? <div role="alert" className="space-y-4"><p>{serviceUnavailable ? 'Reception is temporarily unavailable. Please try again in a moment.' : error}</p><button className={button} onClick={()=>setAccessAttempt(value=>value+1)}>Try again</button>{!serviceUnavailable && <Link href="/auth/login" className="ml-4 underline">Log in</Link>}</div> : <p>Checking Office access…</p>}</div>;
   if (!access.allowed) return <div className="rounded-xl border bg-white p-8"><h1 className="text-2xl font-bold">Office / Reception</h1><p className="mt-3">Ask an admin to grant your account Office access. To view a room, open the link reception shared with you.</p><Link className="mt-4 inline-block underline" href="/user/dashboard/office">View my shared rooms</Link></div>;
 
   return <div className="space-y-5 text-slate-900">

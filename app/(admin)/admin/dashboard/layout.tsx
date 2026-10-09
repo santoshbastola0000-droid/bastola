@@ -1,9 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter, usePathname } from "next/navigation";
-import { AdminSidebar } from "@/components/admin/Sidebar";
-import { AdminHeader } from "@/components/admin/Header";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { AdminWorkspace } from "@/components/admin/Workspace";
 import { useUserRole } from "@/stores/user-store";
 import { Loader2 } from "lucide-react";
 import useTokenStore from "@/store";
@@ -17,7 +16,6 @@ export default function AdminLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   const router = useRouter();
   const { isAdmin, isLoaded, user, clearUser } = useUserRole();
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const token = useTokenStore((state) => state.token);
 
   useEffect(() => {
@@ -80,30 +78,7 @@ export default function AdminLayout({
 
   return (
     <ThemeProvider>
-      <div className="min-h-screen bg-background">
-        <AdminSidebar
-          isCollapsed={false}
-          setIsCollapsed={() => {}}
-          isMobile={true}
-        />
-
-        <div className="flex">
-          {/* Desktop sidebar */}
-          <AdminSidebar
-            isCollapsed={isSidebarCollapsed}
-            setIsCollapsed={setIsSidebarCollapsed}
-            isMobile={false}
-          />
-
-          {/* Main content */}
-          <div className="flex-1 flex flex-col min-w-0">
-            <AdminHeader isSidebarCollapsed={isSidebarCollapsed} />
-            <main className="flex-1 p-4 md:p-6 lg:p-8 bg-gradient-to-br from-gray-50 to-white">
-              <div className="max-w-7xl mx-auto">{children}</div>
-            </main>
-          </div>
-        </div>
-      </div>
+      <AdminWorkspace>{children}</AdminWorkspace>
     </ThemeProvider>
   );
 }

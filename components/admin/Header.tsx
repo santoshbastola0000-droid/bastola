@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Search, ChevronDown, LogOut, Moon, Sun } from "lucide-react";
+import { Search, ChevronDown, LogOut, Moon, Sun, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -24,6 +24,7 @@ import { useUserStore } from "@/stores/user-store";
 import { useLogout } from "@/hooks/useLogout";
 import { LogoutConfirmDialog } from "@/components/LogoutConfirmDialog";
 import { useTheme } from "next-themes";
+import Link from "next/link";
 import { GlobalSearch } from './GlobalSearch';
 
 interface AdminHeaderProps {
@@ -90,21 +91,10 @@ export function AdminHeader({ isSidebarCollapsed = false }: AdminHeaderProps) {
       <header className="sticky top-0 z-30 h-16 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-border/50">
         <div className="flex items-center justify-between h-full px-4 md:px-6">
           {/* ── Left: Page title ── */}
-          <div className="flex items-center gap-4">
-            <div className="hidden sm:block">
-              <h1 className="text-lg md:text-xl lg:text-2xl font-bold text-foreground">
-                {getPageTitle()}
-              </h1>
-              <p className="text-xs text-muted-foreground hidden lg:block">
-                {new Date().toLocaleDateString("en-US", {
-                  weekday: "long",
-                  year: "numeric",
-                  month: "long",
-                  day: "numeric",
-                })}
-              </p>
-            </div>
-          </div>
+          <Link href="/admin/dashboard" className="flex shrink-0 items-center gap-2" aria-label="RoomKhoj admin home">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-600 text-white"><Building2 className="h-5 w-5" /></span>
+            <span className="hidden sm:block"><span className="block text-base font-bold">RoomKhoj</span><span className="block text-xs text-muted-foreground">Admin workspace</span></span>
+          </Link>
 
           {/* ── Right: Actions ── */}
           <div className="mx-3 flex-1 max-w-md"><GlobalSearch /></div>

@@ -3,14 +3,10 @@ import { FormEvent, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { Search } from 'lucide-react';
+import { navItems } from './navigation';
 import { officeService, officeError } from '@/http/services/office.service';
 
-const pages = [
-  ['Office / Reception','/admin/dashboard/office'],['Users','/admin/dashboard/users'],
-  ['Rooms','/admin/dashboard/rooms'],['Records / Client forms','/admin/dashboard/records'],
-  ['Wallet','/admin/dashboard/wallet'],['Staff Tracking','/admin/dashboard/staff-tracking'],
-  ['Messages','/admin/dashboard/messages'],['Room requests','/admin/dashboard/office?tab=requests'],
-];
+const pages = navItems.map(item => [item.title, item.href]);
 type Result = { title: string; subtitle: string; href: string };
 export function GlobalSearch() {
   const [query,setQuery]=useState('');
@@ -25,6 +21,8 @@ export function GlobalSearch() {
   useEffect(()=>{const close=(event: KeyboardEvent)=>{if(event.key==='Escape')setOpen(false);};window.addEventListener('keydown',close);return()=>window.removeEventListener('keydown',close);},[]);
   async function search(e: FormEvent) {
     e.preventDefault();const q=query.trim();if(!q)return;
+    const pageMatches: Result[] = pages.filter(([name])=>name.toLowerCase().includes(q.toLowerCase())).map(([title,href])=>({title,subtitle:'Admin page',href}));
+    if (pageMatches.length) { setResults(pageMatches); setOpen(true); setError(''); setLoading(false); return; }
     const ticket=++generation.current;setLoading(true);setOpen(true);setError('');setResults([]);
     try {
       const data=await officeService.search(q);if(ticket!==generation.current)return;
