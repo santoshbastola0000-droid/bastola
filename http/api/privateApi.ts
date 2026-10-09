@@ -186,7 +186,7 @@ privateApi.interceptors.request.use(async (config) => {
     // Government ID documents used in a ban appeal must be uploaded exactly
     // as selected by the user. Do not run image optimization/compression on
     // identity documents.
-    if (requestUrl !== "/user/me/ban-appeal") {
+    if (requestUrl !== "/user/me/ban-appeal" && !/\/office\/tenant-documents$/.test(requestUrl)) {
       config.data = await optimizeFormDataImages(config.data);
     }
     delete config.headers["Content-Type"];
@@ -384,3 +384,4 @@ privateApi.interceptors.response.use(
     return Promise.reject(error);
   },
 );
+
