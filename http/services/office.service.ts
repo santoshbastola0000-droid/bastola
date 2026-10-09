@@ -8,6 +8,7 @@ export interface OfficeRoom {
 }
 export interface OfficeHistory extends OfficeRoom {
   roomId: string; clientId: string; clientName: string; clientPhone: string;
+  occupancyStatus?: 'MOVED_IN' | 'NOT_MOVED_IN' | null;
   action: string; notes: string; staffName?: string; recordId?: string; shareId?: string;
   formName?: string; formPhone?: string; formStatus?: string; formDestination?: string;
   createdAt: string;
