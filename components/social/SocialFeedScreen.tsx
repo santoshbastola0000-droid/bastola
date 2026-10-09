@@ -369,7 +369,7 @@ export function SocialFeedScreen() {
       <MobileMenuDrawer
         open={menuOpen}
         onClose={() => setMenuOpen(false)}
-        userName={user.name}
+        userName={user?.name}
       />
 
       <main className="mx-auto max-w-[760px] space-y-[6px] pb-24 sm:px-3">
@@ -467,7 +467,7 @@ export function SocialFeedScreen() {
 
         <StoryCarousel
           stories={stories}
-          userName={user.name}
+          userName={user?.name}
           myPhoto={myPhoto}
           onOpen={async (story) => {
             setActiveStory(story);
@@ -1011,6 +1011,7 @@ function InlineFeedVideo({
   source: string;
   poster?: string;
 }) {
+  const user = useUserStore((state) => state.user);
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
   useEffect(() => {
@@ -1301,6 +1302,7 @@ function StoryViewer({
   onClose: () => void;
   onDelete: () => void | Promise<void>;
 }) {
+  const user = useUserStore((state) => state.user);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [reaction, setReaction] = useState<StoryReactionType | null>(
