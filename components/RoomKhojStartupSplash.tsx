@@ -13,11 +13,11 @@ export function RoomKhojStartupSplash() {
 
     const hide = () => {
       const elapsed = Date.now() - startedAt;
-      const remaining = Math.max(0, 450 - elapsed);
+      const remaining = Math.max(0, 120 - elapsed);
 
       hideTimer = window.setTimeout(() => {
         setLeaving(true);
-        removeTimer = window.setTimeout(() => setVisible(false), 260);
+        removeTimer = window.setTimeout(() => setVisible(false), 120);
       }, remaining);
     };
 
@@ -26,7 +26,7 @@ export function RoomKhojStartupSplash() {
     } else {
       window.addEventListener("load", hide, { once: true });
       // Never leave the splash stuck if a third-party resource hangs.
-      hideTimer = window.setTimeout(hide, 1800);
+      hideTimer = window.setTimeout(hide, 700);
     }
 
     return () => {
@@ -40,7 +40,7 @@ export function RoomKhojStartupSplash() {
 
   return (
     <div
-      className={`fixed inset-0 z-[9999] flex items-center justify-center bg-white transition-opacity duration-300 ${
+      className={`fixed inset-0 z-[9999] flex items-center justify-center bg-white transition-opacity duration-150 ${
         leaving ? "pointer-events-none opacity-0" : "opacity-100"
       }`}
       aria-label="RoomKhoj loading"
