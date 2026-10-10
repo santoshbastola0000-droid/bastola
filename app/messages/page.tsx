@@ -37,6 +37,7 @@ import {
   UserPlus,
   Heart,
 } from "lucide-react";
+import { AdminAiCallButton } from "@/components/messages/AdminAiCallButton";
 import { toast } from "sonner";
 import { io, Socket } from "socket.io-client";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -2521,7 +2522,7 @@ const user = useUserStore(
                 </div>
                 <div className="ml-auto flex items-center gap-0.5 rounded-full border border-border bg-muted/80 p-1 shadow-sm">
                   <Button type="button" size="icon" variant="ghost" className="h-10 w-10 rounded-full text-foreground hover:bg-primary/10 hover:text-primary" onClick={() => startCall("video")} aria-label="Video call"><Video className="h-5 w-5" /></Button>
-                  <Button type="button" size="icon" variant="ghost" className="h-10 w-10 rounded-full text-foreground hover:bg-primary/10 hover:text-primary" onClick={() => startCall("audio")} aria-label="Voice call"><Phone className="h-5 w-5" /></Button>
+                  {["Admin","SuperAdmin"].includes(String(user?.role)) ? <AdminAiCallButton targetUserId={otherUserId} targetName={selected?.otherUser?.name}/> : <Button type="button" size="icon" variant="ghost" className="h-10 w-10 rounded-full text-foreground hover:bg-primary/10 hover:text-primary" onClick={() => startCall("audio")} aria-label="Voice call"><Phone className="h-5 w-5" /></Button>}
                 </div>
               </header>
               <audio ref={remoteAudioRef} autoPlay playsInline />
