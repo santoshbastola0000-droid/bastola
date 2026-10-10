@@ -7,7 +7,7 @@ import { PhoneReveal } from './PhoneReveal';
 
 export function MatchingClients({ room, revision, onSend, onEdit }: {
   room: OfficeRoom; revision: number;
-  onSend: (room: OfficeRoom, client: ClientInput) => void; onEdit: () => void;
+  onSend?: (room: OfficeRoom, client: ClientInput) => void; onEdit: () => void;
 }) {
   const [clients,setClients]=useState<ReceptionClient[]>([]); const [total,setTotal]=useState(0);
   const [page,setPage]=useState(0); const [loading,setLoading]=useState(true);
@@ -34,7 +34,7 @@ export function MatchingClients({ room, revision, onSend, onEdit }: {
     {(expanded?clients:clients.slice(0,2)).map((client,index)=><article key={client.id} className="rounded-xl border bg-white p-3 text-sm"><details><summary className="cursor-pointer"><span className="mr-2 inline-flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-50 font-bold text-emerald-800">{index+1}</span><span className="font-semibold">{client.name}</span><span className="ml-2 text-xs text-emerald-800">{client.reasons?.map(reason=>reason.split(':')[0]).join(' · ')}</span></summary><div className="mt-2 space-y-2"><PhoneReveal phone={client.phone} label="Client phone"/>
       <ul className="list-disc space-y-1 pl-5 text-xs text-slate-600">{client.reasons?.map(reason=><li key={reason}>{reason}</li>)}</ul>
       {client.mismatches?.map(reason=><p key={reason} className="text-xs text-amber-800">{reason}</p>)}
-      <button type="button" className="rounded-lg bg-emerald-700 px-3 py-2 text-white" onClick={()=>onSend(room,{clientId:client.id,clientName:client.name,clientPhone:client.phone,notes:client.notes||''})}>Send this matching room</button>
+
     </div></details></article>)}
     {loading&&<p role="status" className="text-sm">Checking client requirements…</p>}
     {!loading&&!error&&!needsDetails&&clients.length===0&&<p className="text-sm text-slate-500">{room.status==='RENTED'?'Rented room · matching paused.':'No suitable matching clients yet.'}</p>}
