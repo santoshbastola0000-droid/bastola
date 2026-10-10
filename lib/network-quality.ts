@@ -40,7 +40,7 @@ export function getNetworkProfile(): NetworkProfile {
     liteMode,
     verySlow,
     feedLimit: verySlow ? 6 : liteMode ? 8 : 12,
-    pollIntervalMs: verySlow ? 60_000 : liteMode ? 30_000 : 15_000,
+    pollIntervalMs: verySlow ? 90_000 : liteMode ? 60_000 : 30_000,
     prefetchDistancePx: verySlow ? 180 : liteMode ? 350 : 700,
   };
 }
