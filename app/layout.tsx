@@ -5,6 +5,7 @@ import { QueryClientProviderWrapper } from "@/app/providers";
 import { Toaster } from "sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { SessionChecker } from "@/components/SessionChecker";
+import { IntentVideoWarmup } from "@/components/IntentVideoWarmup";
 import { GlobalChatbot } from "@/components/GlobalChatbot";
 import { MobileBottomNav } from "@/components/MobileBottomNav";
 import { RoomKhojAIFloatingButton } from "@/components/RoomKhojAIFloatingButton";
@@ -155,6 +156,7 @@ export default function RootLayout({
         <EngagementTracker />
         <QueryClientProviderWrapper>
           <TooltipProvider>
+            <IntentVideoWarmup />
             <OutsideQuietGame><GuestLoginPopup /></OutsideQuietGame>
             <OutsideQuietGame><GlobalIncomingCall /></OutsideQuietGame>
             <AiOwnerIncomingVoice />
