@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 
 type CallState = "idle" | "calling" | "complete" | "failed";
 type CallResult = { id?: string; status?: string; message?: string };
@@ -49,6 +50,7 @@ export default function OwnerCallingPage() {
   return <main className="mx-auto max-w-3xl space-y-6 p-4 md:p-8">
     <header><h1 className="text-2xl font-bold">AI Owner Calling</h1>
       <p className="text-sm text-muted-foreground">Connect a supported SIP/VoIP provider through the VPS voice bridge. Provider credentials must remain server-side.</p></header>
+    <section className="rounded-xl border p-5 space-y-2"><h2 className="font-semibold">Website-to-Website Test Call</h2><p className="text-sm">Test real microphone audio between two browsers without a SIP provider.</p><Link className="inline-block rounded bg-blue-700 px-4 py-2 text-white" href="/admin/dashboard/ai-owner-calling/browser-test">Open Browser Call Test</Link></section>
     <section className="space-y-4 rounded-xl border p-5">
       <label className="block text-sm font-medium" htmlFor="owner-name">Owner name (admin provided)</label>
       <input id="owner-name" value={ownerName} onChange={e=>setOwnerName(e.target.value)} className="w-full rounded-md border bg-background p-3" placeholder="Owner name" />
