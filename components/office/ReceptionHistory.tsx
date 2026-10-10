@@ -5,6 +5,7 @@ import { officeError, officeService } from '@/http/services/office.service';
 import type { ClientInput, OfficeHistory, OfficeRoom } from '@/http/services/office.service';
 import { PhoneReveal } from './PhoneReveal';
 import { RoomDetails } from './RoomDetails';
+import { TenantView } from './TenantDetails';
 import { OfficeVideo } from './OfficeVideo';
 
 type Outcome = 'MOVED_IN' | 'NOT_MOVED_IN';
@@ -91,14 +92,18 @@ function HistoryRow({ entry, serial, busy, onSend, onOutcome }: {
           <div className="flex flex-wrap items-center gap-2"><span className="font-semibold">{entry.clientName}</span><PhoneReveal phone={entry.clientPhone} label="Client phone"/></div>
           <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm font-semibold">{entry.occupancyStatus === 'MOVED_IN' ? 'बसिसकेको / Moved in' : entry.occupancyStatus === 'NOT_MOVED_IN' ? 'नबसेको / Not moved in' : 'अवस्था पुष्टि हुन बाँकी / Not confirmed'}</p>
           <p className="whitespace-pre-wrap text-sm">{entry.notes}</p>
+          <p className="text-xs text-slate-500">Event date/time: {new Date(entry.occurredAt||entry.createdAt).toLocaleString()} · Recorded by {entry.staffName||'Client'}</p>
+          {entry.notMovedReason&&entry.occupancyStatus==='NOT_MOVED_IN'&&<p className="text-sm">Reason not staying: {entry.notMovedReason}</p>}
+          {entry.tenantRental?.tenant&&<TenantView tenant={entry.tenantRental.tenant}/>}
           {entry.recordId && <section className="space-y-2 rounded-lg border bg-white p-3 text-sm" aria-label="Linked client form"><h3 className="font-semibold">Client form · {entry.formName || 'Name not recorded'}</h3><PhoneReveal phone={entry.formPhone} label="Form phone"/><p>Status: {entry.formStatus || '—'}</p><p>Destination: {entry.formDestination || '—'}</p></section>}
           <label className="block space-y-1 text-sm">Reception / outcome notes<textarea className="w-full rounded-lg border bg-white p-3" rows={2} maxLength={5000} value={notes} onChange={event => setNotes(event.target.value)}/></label>
           <div className="flex flex-wrap gap-2">
             <button type="button" className={secondary} disabled={busy || entry.status === 'RENTED'} onClick={() => onSend({ ...entry, id: entry.roomId }, { clientName: entry.clientName, clientPhone: entry.clientPhone, recordId: entry.recordId, notes: '' })}>Send this room again</button>
-            {(['MOVED_IN', 'NOT_MOVED_IN'] as const).map(outcome => <button type="button" key={outcome} className={secondary} disabled={busy} onClick={() => onOutcome(entry, outcome, notes)}>{outcome === 'MOVED_IN' ? 'बसेको / Moved in' : 'नबसेको / Not moved in'}</button>)}
+            {(['MOVED_IN', 'NOT_MOVED_IN'] as const).map(outcome => <button type="button" key={outcome} className={secondary} disabled={busy||(outcome==='NOT_MOVED_IN'&&!notes.trim())} onClick={() => onOutcome(entry, outcome, notes)}>{outcome === 'MOVED_IN' ? 'बसेको / Moved in' : 'नबसेको / Not moved in'}</button>)}
           </div>
         </div>
       </div>}</div>
     </div>
   </li>;
 }
+
