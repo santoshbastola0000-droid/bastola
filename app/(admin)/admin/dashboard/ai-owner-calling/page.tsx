@@ -31,7 +31,7 @@ export default function OwnerCallingPage() {
         return;
       }
       // The backend owns gateway credentials, provider routing and authorization.
-      const response = await fetch(`${API}/admin/ai-owner-calls`, {
+      const response = await fetch(`${API}/admin/owner-voice/calls`, {
         method:"POST", credentials:"include",
         headers:{"Content-Type":"application/json"},
         body:JSON.stringify({to:normalized,consentConfirmed:true,owner:{name:ownerName.trim(),location:location.trim(),rent:rent.trim(),roomType:roomType.trim(),notes:notes.trim()}})
