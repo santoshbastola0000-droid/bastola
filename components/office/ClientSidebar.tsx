@@ -7,7 +7,7 @@ import type { ReceptionClient } from '@/http/services/office.service';
 import { blankMatch, MatchingFields, requirementsPayload, requirementsDraft } from './MatchingFields';
 import { PhoneReveal } from './PhoneReveal';
 
-export function ClientSidebar({ revision, onSaved, onView }: { revision: number; onSaved: (client?: ReceptionClient) => void; onView?: (client: ReceptionClient) => void }) {
+export function ClientSidebar({ revision, onSaved, onView, editClient }: { revision: number; onSaved: (client?: ReceptionClient) => void; onView?: (client: ReceptionClient) => void; editClient?: ReceptionClient | null }) {
   const [name,setName]=useState(''); const [phone,setPhone]=useState(''); const [notes,setNotes]=useState('');
   const [requirements,setRequirements]=useState({...blankMatch,roomType:'ANY'});
   const [clients,setClients]=useState<ReceptionClient[]>([]); const [total,setTotal]=useState(0);
@@ -36,6 +36,7 @@ export function ClientSidebar({ revision, onSaved, onView }: { revision: number;
     try{const result=await officeService.clients(search,page+1);if(current===generation.current){setClients(previous=>[...new Map([...previous,...result.clients].map(client=>[client.id,client])).values()]);setTotal(result.total);setPage(value=>value+1);}}
     catch(error){if(current===generation.current)setError(officeError(error));}finally{if(current===generation.current)setLoading(false);}
   }
+  useEffect(()=>{if(editClient)edit(editClient);},[editClient]);
   function edit(client:ReceptionClient){
     setName(client.name);setPhone(client.phone);setNotes(client.notes||'');
     setRequirements(requirementsDraft(client.requirements));

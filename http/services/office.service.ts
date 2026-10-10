@@ -12,7 +12,7 @@ export interface OfficeRoom {
 export interface OfficeRental { id: string; number: number; clientName?: string; clientPhone?: string; startedAt: string; endedAt?: string | null; staffName?: string; origin: string; tenant?: TenantDetails; }
 export interface RoomMatchProfile { city?: string; area?: string; roomType?: string; capacity?: number; facilities?: string[]; occupancy?: string; parkingVehicles?: string[]; }
 export interface TenantRequirements { city: string; area: string; roomType: string; people: number; minRent: number; maxRent: number; facilities: string[]; alternativeAreas?: string[]; occupancy?: string; parkingRequired?: boolean; vehicle?: string; vehicleCount?: number; rentalEndsOn?: string; moveInDate?: string; }
-export interface ReceptionClient { id: string; name: string; phone: string; notes: string; active: boolean; requirements: TenantRequirements; createdAt: string; updatedAt?: string; reasons?: string[]; mismatches?: string[]; score?: number; }
+export interface ReceptionClient { id: string; name: string; phone: string; notes: string; active: boolean; requirements: TenantRequirements; createdAt: string; fixedRoomId?: string|null; fixedAt?: string|null; updatedAt?: string; reasons?: string[]; mismatches?: string[]; score?: number; }
 export interface OfficeHistory extends OfficeRoom {
   roomId: string; clientId: string; clientName: string; clientPhone: string;
   occurredAt?: string; notMovedReason?: string; tenantRental?: { tenant?: TenantDetails; number: number; startedAt: string; endedAt?: string };
@@ -48,6 +48,7 @@ const unwrap = <T,>(response: { data: T | { data: T } }): T => {
 export const officeService = {
   myRequirements: async () => unwrap<{ client: ReceptionClient | null; name: string; phone: string }>(await privateApi.get('/office/my-requirements')),
   saveMyRequirements: async (data: { clientName: string; clientPhone: string; notes: string; requirements: TenantRequirements }) => privateApi.post('/office/my-requirements',data),
+  ownerRooms: async (phone: string) => unwrap<{total:number;rooms:OfficeRoom[]}>(await privateApi.get('/office/owner-rooms',{params:{phone}})),
   matchingRooms: async (q = '',clientId?: string,page = 0) => unwrap<{ rooms: MatchedRoom[]; total: number }>(await privateApi.get('/office/matching-rooms',{params:{q,clientId,page}})),
   book: async (id: string,message = '') => unwrap<{ id: string }>(await privateApi.post(`/office/matching-rooms/${id}/request`,{message})),
   fee: async () => unwrap<BookingFee>(await privateApi.get('/office/booking-fee')),
@@ -58,6 +59,9 @@ export const officeService = {
   uploadDocument: async (file: File) => { const data = new FormData(); data.append('document',file); return unwrap<{id:string}>(await privateApi.post(`${officeBackend}/office/tenant-documents`,data)); },
   document: async (id: string) => (await privateApi.get<Blob>(`${officeBackend}/office/tenant-documents/${id}`,{responseType:'blob'})).data,
   access: async () => unwrap<{ allowed: boolean; isAdmin: boolean }>(await privateApi.get('/office/access')),
+  foundRoom: async (id:string,roomId:string) => unwrap<ReceptionClient>(await privateApi.post(`/office/clients/${id}/found-room`,{roomId})),
+  fixedRoom: async (id:string) => unwrap<{room:(OfficeRoom&{fixedAt:string})|null}>(await privateApi.get(`/office/clients/${id}/fixed-room`)),
+  setClientActive: async (id:string,active:boolean) => unwrap<ReceptionClient>(await privateApi.patch(`/office/clients/${id}/active`,{active})),
   clients: async (q = '',page = 0) => unwrap<{ clients: ReceptionClient[]; total: number }>(await privateApi.get('/office/clients',{ params: { q,page } })),
   saveClient: async (data: { clientName: string; clientPhone: string; notes: string; requirements: TenantRequirements }) => unwrap<ReceptionClient>(await privateApi.post('/office/clients',data)),
   clientActive: async (id: string,active: boolean) => privateApi.patch(`/office/clients/${id}/active`,{ active }),
