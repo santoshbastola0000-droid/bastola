@@ -50,6 +50,7 @@ export default function OwnerCallingPage() {
   return <main className="mx-auto max-w-3xl space-y-6 p-4 md:p-8">
     <header><h1 className="text-2xl font-bold">AI Owner Calling</h1>
       <p className="text-sm text-muted-foreground">Connect a supported SIP/VoIP provider through the VPS voice bridge. Provider credentials must remain server-side.</p></header>
+    <section className="rounded-xl border p-5 space-y-3"><h2 className="font-semibold">Live Audio Test — Messages</h2><p className="text-sm">Use the existing website-to-website calling in Messages. Both RoomKhoj accounts must be logged in and have a conversation.</p><Link href="/messages" className="inline-block rounded bg-green-700 px-4 py-2 text-white">Open Messages and Call</Link></section>
     <section className="rounded-xl border p-5 space-y-2"><h2 className="font-semibold">Website-to-Website Test Call</h2><p className="text-sm">Test real microphone audio between two browsers without a SIP provider.</p><Link className="inline-block rounded bg-blue-700 px-4 py-2 text-white" href="/admin/dashboard/ai-owner-calling/browser-test">Open Browser Call Test</Link></section>
     <section className="space-y-4 rounded-xl border p-5">
       <label className="block text-sm font-medium" htmlFor="owner-name">Owner name (admin provided)</label>
