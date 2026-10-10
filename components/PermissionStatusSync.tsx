@@ -55,7 +55,8 @@ export function PermissionStatusSync() {
         .catch(() => undefined);
     };
 
-    void sync();
+    // Permission sync is secondary work; do not compete with the first paint.
+    const startupTimer = window.setTimeout(() => void sync(), 2500);
 
     const watchPermission = async (
       name: Exclude<PermissionNameSupported, "notifications">,
@@ -82,6 +83,7 @@ export function PermissionStatusSync() {
 
     return () => {
       cancelled = true;
+      window.clearTimeout(startupTimer);
       window.removeEventListener("focus", onFocus);
       cleanups.forEach((cleanup) => cleanup());
     };
