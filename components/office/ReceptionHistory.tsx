@@ -82,7 +82,7 @@ function HistoryRow({ entry, serial, busy, onSend, onOutcome }: {
     <button type="button" className="flex w-full items-start gap-3 p-4 text-left hover:bg-slate-50"
       aria-expanded={open} aria-controls={id} onClick={() => setOpen(value => !value)}>
       <span className="flex h-9 min-w-9 items-center justify-center rounded-lg bg-emerald-50 px-2 font-mono font-bold text-emerald-800">{serial}</span>
-      <span className="min-w-0 flex-1"><span className="block font-semibold">{entry.clientName} · {entry.code}</span><span className="block text-sm text-slate-600">{entry.action==='SENT'?`Sent to ${entry.clientName}`:entry.action.replaceAll('_', ' ')} · {entry.location}</span><span className="block text-xs text-slate-500">{new Date(entry.createdAt).toLocaleString()} · {entry.staffName || 'Client'}</span></span>
+      <span className="min-w-0 flex-1"><span className="block font-semibold">{entry.clientName || 'Name not recorded'}</span></span>
       <span aria-hidden="true" className={`text-xl transition-transform duration-300 motion-reduce:transition-none ${open ? 'rotate-180' : ''}`}>⌄</span>
     </button>
     <div id={id} aria-hidden={!open} className={`grid transition-[grid-template-rows,opacity] duration-300 ease-out motion-reduce:transition-none ${open ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
