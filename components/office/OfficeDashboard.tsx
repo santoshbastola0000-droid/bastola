@@ -243,3 +243,64 @@ function StaffPermissionsManager({staff,staffSearch,setStaffSearch,loading}:{
     {message&&<p role="status" className="text-sm">{message}</p>}
   </section>;
 }
+
+const FEATURE_OPTIONS = [
+  {id:'VIEW_ROOMS',label:'View Rooms'}, {id:'EDIT_ROOMS',label:'Add / Edit Rooms'},
+  {id:'CLIENT_HISTORY',label:'Client History'}, {id:'LINKED_PHONE_RECORDS',label:'Linked Phone Records'},
+  {id:'JOB_RECORDS',label:'Job Records'}, {id:'USER_PROFILES',label:'User Profiles'},
+  {id:'SAVED_CLIENTS',label:'Saved Clients'}, {id:'ROOM_MATCHING',label:'Room Matching'},
+  {id:'MANAGE_CALLS',label:'Manage Calls'}
+] as const;
+
+function StaffPermissionsManager({staff,staffSearch,setStaffSearch,loading}:{
+  staff:OfficeStaff[];staffSearch:string;setStaffSearch:(v:string)=>void;loading:boolean
+}) {
+  const [userId,setUserId]=useState('');
+  const [permissions,setPermissions]=useState<string[]>([]);
+  const [selected,setSelected]=useState<string[]>([]);
+  const [expanded,setExpanded]=useState(false);
+  const [saving,setSaving]=useState(false);
+  const [message,setMessage]=useState('');
+  useEffect(()=>{
+    let alive=true;setPermissions([]);setSelected([]);setExpanded(false);setMessage('');
+    if(userId) officeService.staffPermissions(userId).then(r=>{if(alive)setPermissions(r.permissions)}).catch(e=>{if(alive)setMessage(officeError(e))});
+    return()=>{alive=false};
+  },[userId]);
+  async function persist(next:string[]){
+    if(!userId)return;
+    setSaving(true);setMessage('');
+    try {const r=await officeService.updateStaffPermissions(userId,next);setPermissions(r.permissions);setSelected([]);setExpanded(false);setMessage('Permissions updated.');}
+    catch(e){setMessage(officeError(e))}
+    finally{setSaving(false)}
+  }
+  return <section className="space-y-4 rounded-xl border bg-white p-5" aria-label="Staff Permission Manager">
+    <h2 className="text-xl font-semibold">Staff Permission Manager</h2>
+    <p className="text-sm text-slate-600">Only admins can manage permissions. Existing reception access is managed separately.</p>
+    <input className={field} placeholder="Search staff by name, phone or email" value={staffSearch} onChange={e=>setStaffSearch(e.target.value)} aria-label="Search staff"/>
+    <label className="block text-sm font-medium">Select User / Staff
+      <select className={field} value={userId} onChange={e=>setUserId(e.target.value)}>
+        <option value="">Choose staff</option>
+        {staff.map(s=><option key={s.id} value={s.id}>{s.name} — {s.email}</option>)}
+      </select>
+    </label>
+    {loading&&<p>Loading staff…</p>}
+    {userId&&<div className="space-y-3">
+      <h3 className="font-semibold">Added Permissions ({permissions.length})</h3>
+      {permissions.length===0&&<p className="rounded-lg bg-slate-50 p-3 text-sm">No permissions added yet.</p>}
+      {permissions.map(p=><div key={p} className="flex items-center justify-between rounded-lg border p-3 text-sm">
+        <span>{FEATURE_OPTIONS.find(o=>o.id===p)?.label||p}</span>
+        <button type="button" disabled={saving} onClick={()=>void persist(permissions.filter(x=>x!==p))} aria-label={`Remove ${p}`} className={secondary}>Remove</button>
+      </div>)}
+      <button type="button" className={button} onClick={()=>setExpanded(v=>!v)} aria-expanded={expanded}>+ Add Permissions {expanded?'⌃':'⌄'}</button>
+      {expanded&&<div className="space-y-3 rounded-xl border p-4">
+        <h3 className="font-semibold">Select Permissions</h3>
+        {FEATURE_OPTIONS.filter(o=>!permissions.includes(o.id)).map(o=><label key={o.id} className="flex items-center gap-3 text-sm">
+          <input type="checkbox" checked={selected.includes(o.id)} onChange={e=>setSelected(v=>e.target.checked?[...v,o.id]:v.filter(x=>x!==o.id))}/>{o.label}
+        </label>)}
+        <button type="button" className={button} disabled={saving||selected.length===0} onClick={()=>void persist([...permissions,...selected])}>Add Selected ({selected.length})</button>
+      </div>}
+      <p className="text-xs text-amber-800">Feature selections are stored for future scoped authorization. They do not by themselves grant Reception access.</p>
+    </div>}
+    {message&&<p role="status" className="text-sm">{message}</p>}
+  </section>;
+}
