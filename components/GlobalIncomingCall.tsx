@@ -41,11 +41,11 @@ export function GlobalIncomingCall() {
          * Keep a connection on every page.  Polling fallback is important
          * on networks where a fresh WebSocket is delayed or blocked.
          */
-        transports: ["polling", "websocket"],
+        transports: ["websocket", "polling"],
         upgrade: true,
         reconnection: true,
         reconnectionAttempts: Infinity,
-        reconnectionDelay: 800,
+        reconnectionDelay: 1800,
         withCredentials: true,
         auth: { token },
       },
