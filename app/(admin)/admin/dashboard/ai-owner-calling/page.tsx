@@ -8,6 +8,11 @@ const API = (process.env.NEXT_PUBLIC_BACKEND_URL || "https://api.roomkhoj.com").
 
 export default function OwnerCallingPage() {
   const [phone, setPhone] = useState("+977");
+  const [ownerName, setOwnerName] = useState("");
+  const [location, setLocation] = useState("");
+  const [rent, setRent] = useState("");
+  const [roomType, setRoomType] = useState("");
+  const [notes, setNotes] = useState("");
   const [consent, setConsent] = useState(false);
   const [state, setState] = useState<CallState>("idle");
   const [error, setError] = useState("");
@@ -29,7 +34,7 @@ export default function OwnerCallingPage() {
       const response = await fetch(`${API}/admin/ai-owner-calls`, {
         method:"POST", credentials:"include",
         headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({to:normalized,consentConfirmed:true})
+        body:JSON.stringify({to:normalized,consentConfirmed:true,owner:{name:ownerName.trim(),location:location.trim(),rent:rent.trim(),roomType:roomType.trim(),notes:notes.trim()}})
       });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.message || "Calling service unavailable");
@@ -45,9 +50,19 @@ export default function OwnerCallingPage() {
     <header><h1 className="text-2xl font-bold">AI Owner Calling</h1>
       <p className="text-sm text-muted-foreground">Connect a supported SIP/VoIP provider through the VPS voice bridge. Provider credentials must remain server-side.</p></header>
     <section className="space-y-4 rounded-xl border p-5">
+      <label className="block text-sm font-medium" htmlFor="owner-name">Owner name (admin provided)</label>
+      <input id="owner-name" value={ownerName} onChange={e=>setOwnerName(e.target.value)} className="w-full rounded-md border bg-background p-3" placeholder="Owner name" />
       <label className="block text-sm font-medium" htmlFor="owner-phone">Owner phone number</label>
       <input id="owner-phone" type="tel" value={phone} onChange={e=>setPhone(e.target.value)}
         className="w-full rounded-md border bg-background p-3" placeholder="+97798XXXXXXXX" />
+      <label className="block text-sm font-medium" htmlFor="owner-location">Room location (optional)</label>
+      <input id="owner-location" value={location} onChange={e=>setLocation(e.target.value)} className="w-full rounded-md border bg-background p-3" placeholder="Pokhara, Lakeside" />
+      <label className="block text-sm font-medium" htmlFor="owner-rent">Rent (optional)</label>
+      <input id="owner-rent" value={rent} onChange={e=>setRent(e.target.value)} className="w-full rounded-md border bg-background p-3" placeholder="Monthly NPR" />
+      <label className="block text-sm font-medium" htmlFor="owner-type">Room type (optional)</label>
+      <input id="owner-type" value={roomType} onChange={e=>setRoomType(e.target.value)} className="w-full rounded-md border bg-background p-3" placeholder="Single room / flat" />
+      <label className="block text-sm font-medium" htmlFor="owner-notes">Known details (optional)</label>
+      <textarea id="owner-notes" value={notes} onChange={e=>setNotes(e.target.value)} className="w-full rounded-md border bg-background p-3" rows={3} placeholder="Facilities, preferred calling time, room availability…" />
       <label className="flex items-center gap-2 text-sm">
         <input type="checkbox" checked={simulation} onChange={e=>setSimulation(e.target.checked)} />
         Simulation mode (no real call)
@@ -59,7 +74,7 @@ export default function OwnerCallingPage() {
       {!simulation && <p role="note" className="rounded-md bg-amber-50 p-3 text-sm text-amber-900">
         Live calling requires a configured Twilio-compatible SIP voice path, stored owner consent verification, and provider authorization.
       </p>}
-      <button type="button" onClick={startCall} disabled={!valid || !consent || state==="calling"}
+      <button type="button" onClick={startCall} disabled={!valid || !ownerName.trim() || !consent || state==="calling"}
         className="rounded-lg bg-blue-700 px-5 py-3 font-medium text-white disabled:opacity-50">
         {state==="calling" ? "Starting…" : simulation ? "Run simulation" : "Start approved call"}
       </button>
