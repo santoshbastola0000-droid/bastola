@@ -21,7 +21,7 @@ export default function OwnerCallingPage() {
     setError(""); setResult(null); setState("calling");
     try {
       if (simulation) {
-        setResult({status:"simulated",message:"No actual call placed. Gateway is not connected."});
+        setResult({status:"simulated",message:"No actual call placed. SIP/VoIP live mode requires provider configuration."});
         setState("complete");
         return;
       }
@@ -43,7 +43,7 @@ export default function OwnerCallingPage() {
 
   return <main className="mx-auto max-w-3xl space-y-6 p-4 md:p-8">
     <header><h1 className="text-2xl font-bold">AI Owner Calling</h1>
-      <p className="text-sm text-muted-foreground">Connect any approved local SIM gateway through the VPS backend. The number alone cannot initiate a call without compatible hardware and operator permission.</p></header>
+      <p className="text-sm text-muted-foreground">Connect a supported SIP/VoIP provider through the VPS voice bridge. Provider credentials must remain server-side.</p></header>
     <section className="space-y-4 rounded-xl border p-5">
       <label className="block text-sm font-medium" htmlFor="owner-phone">Owner phone number</label>
       <input id="owner-phone" type="tel" value={phone} onChange={e=>setPhone(e.target.value)}
@@ -57,7 +57,7 @@ export default function OwnerCallingPage() {
         I confirm this owner opted in to RoomKhoj calls and has not opted out.
       </label>
       {!simulation && <p role="note" className="rounded-md bg-amber-50 p-3 text-sm text-amber-900">
-        Live calling requires the authorized backend endpoint, a configured gateway, verified consent, and provider compliance. No automatic fallback to a personal SIM.
+        Live calling requires a configured Twilio-compatible SIP voice path, stored owner consent verification, and provider authorization.
       </p>}
       <button type="button" onClick={startCall} disabled={!valid || !consent || state==="calling"}
         className="rounded-lg bg-blue-700 px-5 py-3 font-medium text-white disabled:opacity-50">
@@ -71,8 +71,8 @@ export default function OwnerCallingPage() {
       </div>}
     </section>
     <section className="rounded-xl border p-5 text-sm">
-      <h2 className="mb-2 font-semibold">Gateway integration contract</h2>
-      <p>POST /admin/ai-owner-calls: authenticate admin, verify stored owner opt-in, validate destination, enforce limits, enqueue call and return call ID. Never expose SIM gateway credentials to the browser.</p>
+      <h2 className="mb-2 font-semibold">SIP/VoIP integration contract</h2>
+      <p>POST /admin/ai-owner-calls: authenticate admin, verify stored owner opt-in, validate destination, enforce limits, enqueue call and return call ID. Never expose SIP/VoIP credentials to the browser.</p>
       <p className="mt-2">Backend call events must persist transcript consent, extracted room draft, verification status, matching suggestions, and visit approval. Do not auto-publish unverified rooms.</p>
     </section>
   </main>;
