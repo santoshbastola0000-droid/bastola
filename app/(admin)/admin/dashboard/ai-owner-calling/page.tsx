@@ -14,10 +14,25 @@ const API = (process.env.NEXT_PUBLIC_BACKEND_URL || "https://api.roomkhoj.com").
 export default function OwnerCallingPage() {
   const token = useTokenStore(s => s.token);
   const [selectedUserId, setSelectedUserId] = useState("");
+  const [eligibility,setEligibility]=useState<{optedIn:boolean;online:boolean}|null>(null);
+  const [eligibilityError,setEligibilityError]=useState("");
   const [browserStatus, setBrowserStatus] = useState("");
   const [websiteCallId, setWebsiteCallId] = useState("");
   const websiteSocket = useRef<Socket | null>(null);
   const [websiteCalling, setWebsiteCalling] = useState(false);
+  useEffect(() => {
+    setEligibility(null); setEligibilityError("");
+    if (!selectedUserId || !token) return;
+    let active = true;
+    void fetch(API + "/ai-owner/admin/users/" + encodeURIComponent(selectedUserId) + "/eligibility", {
+      credentials:"include",headers:{Authorization:`Bearer ${token}`},
+    }).then(async response => {
+      if(!response.ok)throw new Error("Could not verify call eligibility");
+      return response.json();
+    }).then(data => {if(active)setEligibility({optedIn:data.optedIn===true,online:data.online===true});})
+    .catch(e => {if(active)setEligibilityError(String(e));});
+    return ()=>{active=false;};
+  },[selectedUserId,token]);
   useEffect(() => () => { websiteSocket.current?.disconnect(); websiteSocket.current = null; }, []);
   const [phone, setPhone] = useState("+977");
   const [ownerName, setOwnerName] = useState("");
@@ -42,7 +57,7 @@ export default function OwnerCallingPage() {
   }
 
   function startWebsiteAiCall() {
-    if (!token || !selectedUserId || websiteCalling) return;
+    if (!token || !selectedUserId || !eligibility?.optedIn || !eligibility.online || websiteCalling) return;
     websiteSocket.current?.disconnect();
     const socket = io(API + "/messages", {
       auth: { token }, transports: ["polling", "websocket"], withCredentials: true,
@@ -108,7 +123,8 @@ export default function OwnerCallingPage() {
       <h2 className="font-semibold">Website AI Voice Call (Beta)</h2>
       <p className="text-sm">Select an online registered user above. The user must first enable AI calling in their privacy settings, remain logged in, and accept the incoming call. Continuous Nepali voice uses WebRTC.</p>
       <p className="text-sm">Calls are permitted only when the selected user's recorded opt-in is active.</p>
-      <button disabled={!selectedUserId || websiteCalling} onClick={() => startWebsiteAiCall()} className="rounded-lg bg-green-700 px-5 py-3 text-white disabled:opacity-50">Call selected user with AI</button>
+      {selectedUserId && <p className="text-sm">{eligibilityError || (eligibility ? `Calling consent: ${eligibility.optedIn?"Enabled":"Disabled"} · User: ${eligibility.online?"Online":"Offline"}` : "Checking consent and presence…")}</p>}
+      <button disabled={!selectedUserId || !eligibility?.optedIn || !eligibility.online || websiteCalling} onClick={() => startWebsiteAiCall()} className="rounded-lg bg-green-700 px-5 py-3 text-white disabled:opacity-50">Call selected user with AI</button>
       {websiteCallId && <button type="button" onClick={endWebsiteAiCall} className="rounded-lg bg-red-700 px-5 py-3 text-white">End website AI call</button>}
       <p className="text-sm">User opt-in settings: <Link className="underline" href="/ai-call-privacy">roomkhoj.com/ai-call-privacy</Link></p>
       {browserStatus && <p role="status" className="text-sm">{browserStatus}</p>}
