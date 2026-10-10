@@ -1,0 +1,36 @@
+"use client";
+import { FormEvent, useEffect, useRef, useState } from 'react';
+import { api } from '@/http/api/api';
+import { privateApi } from '@/http/api/privateApi';
+import { officeBackend, officeError } from '@/http/services/office.service';
+export interface AvailableRoom { id: string; code: string; title: string; location: string; details: string; price: number | string; ownerName: string; status: string; tiktokUrl?: string; }
+const unwrap = <T,>(r: {data: T | {data:T}}): T => { const d=r.data;return d && typeof d==='object' && 'data' in d ? (d as {data:T}).data : d as T; };
+export function RoomContactUnlock({roomId}: {roomId:string}) {
+ const [key,setKey]=useState(''), [phone,setPhone]=useState(''), [error,setError]=useState(''), [busy,setBusy]=useState(false);
+ async function unlock(e:FormEvent) {e.preventDefault();if(busy)return;setBusy(true);setError('');try{const r=unwrap<{ownerPhone:string}>(await api.post('/office/availability/'+roomId+'/unlock',{key}));setPhone(r.ownerPhone);setKey('');}catch(e){setError(officeError(e));}finally{setBusy(false);}}
+ return <div className="space-y-2"> {phone ? <div role="status" className="contact-reveal rounded-xl bg-emerald-50 p-4 text-emerald-800"><span className="block text-xs">Contact unlocked</span><a href={'tel:'+phone} className="text-lg font-bold">{phone}</a></div> :
+ <form onSubmit={unlock} className="rounded-xl bg-slate-50 p-3"><label htmlFor={'key-'+roomId} className="mb-2 block text-xs font-semibold">Reception key · Owner contact खोल्नुहोस्</label><div className="flex gap-2"><input id={'key-'+roomId} type="password" autoComplete="off" maxLength={24} required value={key} onChange={e=>setKey(e.target.value)} placeholder="Room key" className="min-w-0 flex-1 rounded-lg border bg-white p-2 text-sm"/><button disabled={busy} className="rounded-lg bg-amber-600 px-3 text-sm font-semibold text-white disabled:opacity-50">{busy?'Checking…':'Unlock'}</button></div></form>}
+ {error && <p role="alert" className="text-xs text-red-700">{error}</p>}
+ <style jsx>{`@keyframes reveal{from{opacity:0;transform:translateY(8px) scale(.97)}to{opacity:1;transform:none}}.contact-reveal{animation:reveal .35s ease-out}@media(prefers-reduced-motion:reduce){.contact-reveal{animation:none}}`}</style></div>;
+}
+export function AvailabilityCard({room}: {room:AvailableRoom}) {
+ return <article data-room-availability className="overflow-hidden rounded-2xl border border-amber-200 bg-white text-slate-900 shadow-sm">
+ <video data-video-intent="room" controls playsInline preload="none" className="aspect-video w-full bg-slate-950" src={officeBackend+'/office/availability/'+room.id+'/video'}/>
+ <div className="space-y-3 p-4"><div className="flex justify-between gap-3"><h3 className="font-bold">{room.title}</h3><span className="rounded-lg bg-amber-50 px-2 py-1 text-xs font-mono">{room.code}</span></div>
+ <p className="text-sm">{room.location} · रु {Number(room.price).toLocaleString()}/month</p><p className="whitespace-pre-wrap text-sm">{room.details}</p><p className="text-xs text-slate-500">Owner: {room.ownerName || '—'}</p>
+ {room.tiktokUrl && <a href={room.tiktokUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-700 underline">TikTok video ↗</a>}
+ <RoomContactUnlock roomId={room.id}/></div>
+</article>;
+}
+export function RoomAvailability() {
+ const [q,setQ]=useState(''), [search,setSearch]=useState(''), [page,setPage]=useState(0), [rooms,setRooms]=useState<AvailableRoom[]>([]), [total,setTotal]=useState(0), [loading,setLoading]=useState(true), [error,setError]=useState('');
+ useEffect(()=>{let alive=true;setLoading(true);setError('');api.get('/office/availability',{params:{q:search,page}}).then(r=>{if(!alive)return;const d=unwrap<{rooms:AvailableRoom[];total:number}>(r);setRooms(d.rooms);setTotal(d.total);}).catch(e=>{if(alive){setRooms([]);setError(officeError(e));}}).finally(()=>{if(alive)setLoading(false);});return()=>{alive=false;};},[search,page]);
+ return <section data-room-availability className="min-h-0 flex-1 overflow-y-auto bg-slate-50 p-4 text-slate-900"><div className="mx-auto max-w-5xl space-y-4"><div><h2 className="text-xl font-bold">Room Availability</h2><p className="text-sm text-slate-500">Reception का available rooms · Video र details</p></div><form onSubmit={e=>{e.preventDefault();setSearch(q.trim());setPage(0);}} className="flex gap-2"><input aria-label="Search available rooms" maxLength={300} value={q} onChange={e=>setQ(e.target.value)} placeholder="Room code, location, owner name or details…" className="min-w-0 flex-1 rounded-xl border bg-white p-3"/><button className="rounded-xl bg-slate-900 px-4 text-white">Search</button></form>{error && <p role="alert" className="text-red-700">{error}</p>}{loading?<p role="status">Loading rooms…</p>:<><p className="text-sm text-slate-500">{total} available rooms</p><div className="grid gap-4 sm:grid-cols-2">{rooms.map(r=><AvailabilityCard key={r.id} room={r}/>)}</div>{!rooms.length && !error && <p>No matching rooms. अर्को location वा code खोज्नुहोस्।</p>}<div className="flex justify-between"><button disabled={page===0} onClick={()=>setPage(p=>p-1)} className="rounded-lg border px-4 py-2 disabled:opacity-40">Previous</button><button disabled={(page+1)*24>=total} onClick={()=>setPage(p=>p+1)} className="rounded-lg border px-4 py-2 disabled:opacity-40">Next</button></div></>}</div></section>;
+}
+export function AdminContactKey({roomId}: {roomId:string}) {
+ const [key,setKey]=useState(''), [error,setError]=useState(''), [busy,setBusy]=useState(false), [copied,setCopied]=useState(false);
+ const generation=useRef(0);
+ useEffect(()=>{const ticket=++generation.current;setKey('');setError('');privateApi.post('/office/rooms/'+roomId+'/contact-key',{}).then(r=>{if(ticket===generation.current)setKey(unwrap<{key:string}>(r).key);}).catch(e=>{if(ticket===generation.current)setError(officeError(e));});return()=>{generation.current++;};},[roomId]);
+ async function rotate(){setBusy(true);setError('');setCopied(false);try{setKey(unwrap<{key:string}>(await privateApi.post('/office/rooms/'+roomId+'/contact-key',{rotate:true})).key);}catch(e){setError(officeError(e));}finally{setBusy(false);}}
+ return <div className="space-y-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-slate-900"><p className="text-sm font-semibold">Owner contact key</p><p className="text-xs">यो room को key client लाई दिएपछि contact खुल्छ। Rotate गर्दा पुरानो key बन्द हुन्छ।</p><code className="block break-all rounded-lg bg-white p-2 text-sm">{key || 'Generating…'}</code><div className="flex gap-2"><button type="button" disabled={!key} onClick={async()=>{try{await navigator.clipboard.writeText(key);setCopied(true);}catch{setError('Copy भएन। Key select गरेर copy गर्नुहोस्।');}}} className="rounded-lg border bg-white px-3 py-2 text-xs">{copied?'Copied':'Copy key'}</button><button type="button" disabled={busy || !key} onClick={()=>void rotate()} className="rounded-lg border bg-white px-3 py-2 text-xs">{busy?'Rotating…':'Rotate key'}</button></div>{error && <p role="alert" className="text-xs text-red-700">{error}</p>}</div>;
+}
