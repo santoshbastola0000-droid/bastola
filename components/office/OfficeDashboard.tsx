@@ -17,6 +17,7 @@ import { MatchingClients } from './MatchingClients';
 import { RentalSummary } from './RentalSummary';
 import { TenantForm } from './TenantForm';
 import { RequestMessages } from './RequestMessages';
+import { ChatFormsInbox } from './ChatFormsInbox';
 import { ClientRequirements } from './ClientRequirements';
 import { blankMatch, MatchingFields } from './MatchingFields';
 
@@ -34,6 +35,7 @@ export function OfficeDashboard() {
   const [serviceUnavailable,setServiceUnavailable] = useState(false);
   const [tenantRoom,setTenantRoom]=useState<OfficeRoom|null>(null);
   const [tenantSource,setTenantSource]=useState<ClientInput|undefined>();
+  const [chatFormsOpen,setChatFormsOpen] = useState(false);
   const [chat,setChat]=useState<string|null>(null);
   const [visitAt,setVisitAt]=useState('');
   const [tab,setTab] = useState('rooms');
@@ -163,6 +165,7 @@ export function OfficeDashboard() {
       <Pagination page={page} total={total} size={24} change={setPage}/>
     </>}
     {(tab==='history'||tab==='search') && <ReceptionHistory key={`${tab}:${search}:${historyRoom || ''}`} query={search} roomId={historyRoom} revision={historyRevision} busy={busy} onSend={openClient} onOutcome={saveOutcome}/>}
+    <details className="rounded-xl border bg-white p-3" onToggle={e=>setChatFormsOpen(e.currentTarget.open)}><summary className="cursor-pointer font-semibold">Chat forms · room & service requirements</summary>{chatFormsOpen&&<ChatFormsInbox/>}</details>
     {tab==='requests' && <><h2 className="font-semibold">Incoming room requests ({requestTotal})</h2>{requestSearch&&<p className="text-sm">Filtered client: {requestSearch} <button className="underline" onClick={()=>{setRequestSearch('');setRequestPage(0);}}>Show all requests</button></p>}{loading?<p>Loading requests…</p>:requests.length===0?<p>No room requests yet.</p>:requests.map(r => <article key={r.id} className="space-y-3 rounded-xl border bg-white p-4"><div className="flex flex-wrap items-center gap-2"><span className="font-semibold">{r.clientName}</span><PhoneReveal phone={r.clientPhone} label="Client phone"/></div><p>{r.code} · {r.title} · {r.location}</p><p className="whitespace-pre-wrap text-sm">{r.message}</p><p className="text-xs text-slate-500">{new Date(r.createdAt).toLocaleString()}</p><label className="flex items-center gap-3">Request status<select disabled={busy} className="rounded-lg border p-2" value={r.status} onChange={e => { const s=e.target.value; void action(async()=> { await officeService.requestStatus(r.id,s); setRequests(prev=>prev.map(x=>x.id===r.id?{...x,status:s}:x)); }); }}>{['NEW','PENDING','CONTACTED','VISIT_SCHEDULED','VISITED','CONFIRMED','CANCELLED','CLOSED'].map(s=><option key={s}>{s}</option>)}</select></label><p className="text-sm">Service charge: {r.serviceCharge==null?'Not configured':`Rs ${r.serviceCharge}`} · Payment: {r.paymentStatus||'UNPAID'}</p><button className={secondary} onClick={()=>setChat(r.id)}>Booking messages</button><button className={secondary} onClick={() => { setQuery(r.clientPhone); setSearch(r.clientPhone); setHistoryRoom(undefined);  setTab('history'); }}>View client rooms & videos</button></article>)}<Pagination page={requestPage} total={requestTotal} size={50} change={setRequestPage}/></>}
     {tab==='requirements'&&<ClientRequirements revision={matchingRevision} onSaved={()=>setMatchingRevision(v=>v+1)} onHistory={phone=>{setQuery(phone);setSearch(phone);setHistoryRoom(undefined);setTab('history');}} onRequests={phone=>{setRequestSearch(phone);setRequestPage(0);setTab('requests');}}/>}
     {tab==='staff' && access.isAdmin && <div className="space-y-4 rounded-xl border bg-white p-5"><h2 className="text-xl font-semibold">Assign reception access</h2><p className="text-sm text-slate-500">Grant staff permission to upload videos, manage room status, share links and record clients. Only admins can assign or revoke access.</p><input className={field} placeholder="Search staff by name, phone or email" aria-label="Find staff" value={staffSearch} onChange={e=>setStaffSearch(e.target.value)}/>{loading?<p>Loading…</p>:staff.length===0?<p>Search for an existing user account to grant access.</p>:staff.map(s=><div key={s.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3"><div><p className="font-semibold">{s.name}</p><p className="text-sm text-slate-500">{s.email}</p><PhoneReveal phone={s.phoneNumber} label="Staff phone"/></div><button className={s.officeAccess?secondary:button} disabled={busy} onClick={()=>void action(async()=>{await officeService.grant(s.id,!s.officeAccess);setStaff(await officeService.staff(staffSearch));setNotice('Staff Office access updated.');})}>{s.officeAccess?'Revoke access':'Grant reception role'}</button></div>)}</div>}
