@@ -7,7 +7,7 @@ import type { ReceptionClient } from '@/http/services/office.service';
 import { blankMatch, MatchingFields, requirementsPayload, requirementsDraft } from './MatchingFields';
 import { PhoneReveal } from './PhoneReveal';
 
-export function ClientSidebar({ revision, onSaved, onView }: { revision: number; onSaved: () => void; onView?: (client: ReceptionClient) => void }) {
+export function ClientSidebar({ revision, onSaved, onView }: { revision: number; onSaved: (client?: ReceptionClient) => void; onView?: (client: ReceptionClient) => void }) {
   const [name,setName]=useState(''); const [phone,setPhone]=useState(''); const [notes,setNotes]=useState('');
   const [requirements,setRequirements]=useState({...blankMatch,roomType:'ANY'});
   const [clients,setClients]=useState<ReceptionClient[]>([]); const [total,setTotal]=useState(0);
@@ -26,9 +26,9 @@ export function ClientSidebar({ revision, onSaved, onView }: { revision: number;
   async function save(event: FormEvent) {
     event.preventDefault();setBusy(true);setError('');setNotice('');
     try{
-      await officeService.saveClient({clientName:name,clientPhone:phone,notes,requirements:requirementsPayload(requirements)});
+      const savedClient = await officeService.saveClient({clientName:name,clientPhone:phone,notes,requirements:requirementsPayload(requirements)});
       setName('');setPhone('');setNotes('');setRequirements({...blankMatch,roomType:'ANY'});
-      setNotice('Client saved. Matching lists updated.');onSaved();
+      setNotice('Client saved. Matching lists updated.');onSaved(savedClient);
     }catch(error){setError(officeError(error));}finally{setBusy(false);}
   }
   async function more(){
