@@ -226,7 +226,7 @@ export default function ReferralPage() {
             </div>
           </div>
         </button>
-        <Link href="/user/dashboard/referrals/games" className="rounded-2xl border bg-card p-5 shadow-sm transition hover:border-primary/50 focus-visible:outline-2 focus-visible:outline-primary">
+        <Link href="/games" className="rounded-2xl border bg-card p-5 shadow-sm transition hover:border-primary/50 focus-visible:outline-2 focus-visible:outline-primary">
           <div className="flex items-start gap-3">
             <span className="rounded-xl bg-pink-100 p-3 text-pink-700"><Heart className="h-6 w-6" /></span>
             <div className="min-w-0 flex-1">
