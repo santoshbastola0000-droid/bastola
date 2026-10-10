@@ -10,6 +10,8 @@ export function AiOwnerDraftReview() {
   const [drafts,setDrafts]=useState<Draft[]>([]);
   const [notice,setNotice]=useState("");
   const [busy,setBusy]=useState("");
+  const [editingId,setEditingId]=useState("");
+  const [edited,setEdited]=useState<Record<string,string|number|null>>({});
   const load=useCallback(async()=>{
     if(!token)return;
     try {
@@ -34,6 +36,20 @@ export function AiOwnerDraftReview() {
     }catch(e){setNotice(String(e));}
     finally{setBusy("");}
   };
+  const saveEdit=async (id:string)=>{
+    if(!token)return;
+    setBusy(id);setNotice("");
+    try {
+      const response=await fetch(API+"/ai-owner/admin/drafts/"+encodeURIComponent(id)+"/details",{
+        method:"PATCH",credentials:"include",
+        headers:{Authorization:`Bearer ${token}`,"Content-Type":"application/json"},
+        body:JSON.stringify({details:edited}),
+      });
+      if(!response.ok)throw new Error("Could not edit draft ("+response.status+")");
+      setEditingId("");setEdited({});await load();
+    }catch(e){setNotice(String(e));}
+    finally{setBusy("");}
+  };
   return <section className="space-y-4 rounded-xl border p-5">
     <div className="flex flex-wrap items-center justify-between gap-2">
       <h2 className="text-lg font-semibold">AI Calling — Room Drafts</h2>
@@ -51,9 +67,11 @@ export function AiOwnerDraftReview() {
         </div>)}
       </dl>
       <p className="text-xs">Missing: {(draft.missingFields||[]).join(", ")||"None"}</p>
-      {draft.reviewStatus==="PENDING"&&<div className="flex gap-2">
-        <button disabled={busy===draft.id} onClick={()=>void review(draft.id,"APPROVED")} className="rounded bg-green-700 px-4 py-2 text-white">Approve draft</button>
-        <button disabled={busy===draft.id} onClick={()=>void review(draft.id,"REJECTED")} className="rounded bg-red-700 px-4 py-2 text-white">Reject draft</button>
+      {draft.reviewStatus==="PENDING"&&<div className="flex flex-wrap gap-2">
+        {editingId===draft.id?<button disabled={busy===draft.id || !Object.keys(edited).length} onClick={()=>void saveEdit(draft.id)} className="rounded bg-blue-700 px-4 py-2 text-white">Save changes</button>:<button onClick={()=>{setEditingId(draft.id);setEdited({});}} className="rounded border px-4 py-2">Edit details</button>}
+        {editingId===draft.id&&<button onClick={()=>{setEditingId("");setEdited({});}} className="rounded border px-4 py-2">Cancel edit</button>}
+        <button disabled={busy===draft.id || editingId===draft.id} onClick={()=>void review(draft.id,"APPROVED")} className="rounded bg-green-700 px-4 py-2 text-white">Approve draft</button>
+        <button disabled={busy===draft.id || editingId===draft.id} onClick={()=>void review(draft.id,"REJECTED")} className="rounded bg-red-700 px-4 py-2 text-white">Reject draft</button>
       </div>}
     </article>)}
   </section>;
