@@ -9,6 +9,7 @@ import { GlobalChatbot } from "@/components/GlobalChatbot";
 import { MobileBottomNav } from "@/components/MobileBottomNav";
 import { RoomKhojAIFloatingButton } from "@/components/RoomKhojAIFloatingButton";
 import { GuestLoginPopup } from "@/components/GuestLoginPopup";
+import { OutsideQuietGame } from "@/components/QuietGameOverlays";
 import { GlobalIncomingCall } from "@/components/GlobalIncomingCall";
 import { PwaInstallPrompt } from "@/components/PwaInstallPrompt";
 import { LanguageProvider } from "@/components/providers/LanguageProvider";
@@ -147,21 +148,21 @@ export default function RootLayout({
         <SecurityChallengeGate />
         <LanguageProvider>
         <SessionChecker />
-        <AutoPushPermission />
+        <OutsideQuietGame><AutoPushPermission /></OutsideQuietGame>
         <AutoLocationUpdate />
         <PermissionStatusSync />
         <EngagementTracker />
         <QueryClientProviderWrapper>
           <TooltipProvider>
-            <GuestLoginPopup />
-            <GlobalIncomingCall />
-            <PwaInstallPrompt />
-            <SiteNoticeBanner />
+            <OutsideQuietGame><GuestLoginPopup /></OutsideQuietGame>
+            <OutsideQuietGame><GlobalIncomingCall /></OutsideQuietGame>
+            <OutsideQuietGame><PwaInstallPrompt /></OutsideQuietGame>
+            <OutsideQuietGame><SiteNoticeBanner /></OutsideQuietGame>
             {children}
 
-          <RoomKhojAIFloatingButton />
-          <MobileBottomNav />           
-          <GlobalChatbot />
+          <OutsideQuietGame><RoomKhojAIFloatingButton /></OutsideQuietGame>
+          <OutsideQuietGame><MobileBottomNav /></OutsideQuietGame>           
+          <OutsideQuietGame><GlobalChatbot /></OutsideQuietGame>
           </TooltipProvider>
           <Toaster />
         </QueryClientProviderWrapper>
