@@ -210,7 +210,7 @@ export function Chatbot({initialOpen=false}:{initialOpen?:boolean}) {
   const CHAT_KEY = `roomkhoj_chat_history_${loggedInUserId || "guest"}`;
 
   const [isOpen, setIsOpen] = useState(initialOpen);
-  const [assistantTab,setAssistantTab] = useState<'chat'|'rooms'>('chat');
+  const [assistantTab,setAssistantTab] = useState<'chat'|'rooms'|'reception'>('chat');
 const queryClient = useQueryClient();
 
 const { data: walletBalanceData } = useQuery({
@@ -1380,8 +1380,10 @@ useEffect(() => {
             <nav aria-label="Assistant mode" className="flex shrink-0 gap-2 border-b p-2 md:ml-[260px]">
               <button type="button" aria-pressed={assistantTab==='chat'} onClick={()=>setAssistantTab('chat')} className={cn('rounded-xl px-5 py-2 text-sm font-semibold',assistantTab==='chat'?'bg-amber-500 text-slate-950':'bg-slate-100 text-slate-600')}>Chat</button>
               <button type="button" aria-pressed={assistantTab==='rooms'} onClick={()=>{stopVoiceConversation();setShowHistorySidebar(false);setAssistantTab('rooms');}} className={cn('rounded-xl px-5 py-2 text-sm font-semibold',assistantTab==='rooms'?'bg-amber-500 text-slate-950':'bg-slate-100 text-slate-600')}>Room Availability</button>
+              <button type="button" aria-pressed={assistantTab==='reception'} onClick={()=>{stopVoiceConversation();setShowHistorySidebar(false);setAssistantTab('reception');}} className={cn('rounded-xl px-5 py-2 text-sm font-semibold',assistantTab==='reception'?'bg-amber-500 text-slate-950':'bg-slate-100 text-slate-600')}>Reception</button>
             </nav>
             {assistantTab==='rooms' && <RoomAvailability />}
+            {assistantTab==='reception' && <section className="min-h-0 flex-1 overflow-y-auto bg-slate-50 p-4 text-slate-900"><div className="mx-auto max-w-5xl space-y-5"><header><h2 className="text-xl font-bold">Reception</h2><p className="text-sm text-slate-600">Available rooms हेर्नुहोस् वा आफ्नो room requirement reception मा पठाउनुहोस्।</p></header><details className="rounded-xl border bg-white p-3" open><summary className="cursor-pointer font-semibold">Submit room requirements</summary><ChatServiceForm service="ROOM" authenticated={Boolean(token)}/></details><RoomAvailability hideContact /></div></section>}
             <div className={cn("relative min-h-0 w-full flex-1 overflow-hidden",assistantTab==='chat'?'flex':'hidden')}>
               <div
                 className={cn(
