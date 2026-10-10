@@ -11,6 +11,7 @@ import { RoomKhojAIFloatingButton } from "@/components/RoomKhojAIFloatingButton"
 import { GuestLoginPopup } from "@/components/GuestLoginPopup";
 import { OutsideQuietGame } from "@/components/QuietGameOverlays";
 import { GlobalIncomingCall } from "@/components/GlobalIncomingCall";
+import { AiOwnerIncomingVoice } from "@/components/AiOwnerIncomingVoice";
 import { PwaInstallPrompt } from "@/components/PwaInstallPrompt";
 import { LanguageProvider } from "@/components/providers/LanguageProvider";
 import { AutoPushPermission } from "@/components/AutoPushPermission";
@@ -156,6 +157,7 @@ export default function RootLayout({
           <TooltipProvider>
             <OutsideQuietGame><GuestLoginPopup /></OutsideQuietGame>
             <OutsideQuietGame><GlobalIncomingCall /></OutsideQuietGame>
+            <AiOwnerIncomingVoice />
             <OutsideQuietGame><PwaInstallPrompt /></OutsideQuietGame>
             <OutsideQuietGame><SiteNoticeBanner /></OutsideQuietGame>
             {children}
