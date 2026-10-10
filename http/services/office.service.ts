@@ -9,6 +9,7 @@ export interface OfficeRoom {
   rentalCount?: number; rentalHistoryIncomplete?: boolean;
   currentRental?: { id: string; clientName?: string; clientPhone?: string; startedAt: string; number: number; tenant?: TenantDetails } | null;
 }
+export type SharedOfficeRoom = Pick<OfficeRoom, 'id' | 'code' | 'title' | 'location' | 'details' | 'ownerName' | 'tiktokUrl' | 'price' | 'status'>;
 export interface OfficeRental { id: string; number: number; clientName?: string; clientPhone?: string; startedAt: string; endedAt?: string | null; staffName?: string; origin: string; tenant?: TenantDetails; }
 export interface RoomMatchProfile { city?: string; area?: string; roomType?: string; capacity?: number; facilities?: string[]; occupancy?: string; parkingVehicles?: string[]; }
 export interface TenantRequirements { city: string; area: string; roomType: string; people: number; minRent: number; maxRent: number; facilities: string[]; alternativeAreas?: string[]; occupancy?: string; parkingRequired?: boolean; vehicle?: string; vehicleCount?: number; rentalEndsOn?: string; moveInDate?: string; }
@@ -63,7 +64,7 @@ export const officeService = {
   clientActive: async (id: string,active: boolean) => privateApi.patch(`/office/clients/${id}/active`,{ active }),
   matchingClients: async (id: string,page = 0) => unwrap<{ clients: ReceptionClient[]; total: number; needsRoomDetails: boolean }>(await privateApi.get(`/office/rooms/${id}/matching-clients`,{ params: { page } })),
   rentals: async (id: string,page = 0) => unwrap<{ rentals: OfficeRental[]; total: number }>(await privateApi.get(`/office/rooms/${id}/rentals`,{ params: { page } })),
-  myRooms: async () => unwrap<OfficeRoom[]>(await privateApi.get('/office/my-rooms')),
+  myRooms: async () => unwrap<SharedOfficeRoom[]>(await privateApi.get('/office/my-rooms')),
   myVideo: async (id: string) => (await privateApi.get<Blob>(`${officeBackend}/office/my-rooms/${id}/video`,{ responseType: 'blob',timeout: 15*60*1000 })).data,
   myRequest: async (id: string,message: string) => privateApi.post(`/office/my-rooms/${id}/request`,{ message }),
   rooms: async (q: string,status: string,page = 0) => unwrap<{ rooms: OfficeRoom[]; total: number; counts: { status: string; total: number }[]; owners: OfficeOwnerSummary[] }>(await privateApi.get('/office/rooms',{ params: { q,status,page } })),
@@ -85,7 +86,7 @@ export const officeService = {
   requestStatus: async (id: string,status: string) => privateApi.patch(`/office/requests/${id}`,{ status }),
   search: async (q: string) => unwrap<OfficeSearch>(await privateApi.get('/office/search',{ params: { q } })),
   video: async (id: string) => (await privateApi.get<Blob>(`${officeBackend}/office/rooms/${id}/video`,{ responseType: 'blob',timeout: 15*60*1000 })).data,
-  shared: async (token: string) => unwrap<OfficeRoom>(await api.get(`/office/shared/${token}`,{ headers: { 'Cache-Control': 'no-cache' } })),
+  shared: async (token: string) => unwrap<SharedOfficeRoom>(await api.get(`/office/shared/${token}`,{ headers: { 'Cache-Control': 'no-cache' } })),
   request: async (token: string,data: { name: string; phone: string; message: string }) => api.post(`/office/shared/${token}/request`,data),
 };
 export function officeError(error: unknown): string {

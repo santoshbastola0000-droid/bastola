@@ -172,7 +172,10 @@ const AdaptiveReelVideo = forwardRef<
 
   useEffect(() => {
     const video = innerRef.current;
-    if (!video || !source) return;
+    if (!video) return;
+    if (!source || preload === 'none') {
+      video.pause(); video.removeAttribute('src'); video.load(); return;
+    }
 
     let destroyed = false;
     let hls: any = null;
@@ -193,6 +196,7 @@ const AdaptiveReelVideo = forwardRef<
 
         hls = new Hls({
           startLevel: -1,
+          autoStartLoad: preload === 'auto',
           capLevelToPlayerSize: true,
           maxBufferLength: 8,
           maxMaxBufferLength: 16,
@@ -220,7 +224,7 @@ const AdaptiveReelVideo = forwardRef<
       destroyed = true;
       hls?.destroy?.();
     };
-  }, [source]);
+  }, [source, preload]);
 
   return (
     <video
@@ -791,9 +795,7 @@ export default function ReelsPage() {
                     source={media(reel.url)}
                     muted={!soundOn}
                     preload={
-                      reelIndex >= activeIndex - 1 && reelIndex <= activeIndex + 2
-                        ? "auto"
-                        : "none"
+                      active ? "auto" : reelIndex === activeIndex + 1 ? "metadata" : "none"
                     }
                     onClick={(event) => {
                       const video = event.currentTarget;
@@ -847,6 +849,7 @@ export default function ReelsPage() {
                       </p>
                     )}
 
+                    {!!reel.post.hashtags?.length && <div className="mt-2 flex flex-wrap gap-2">{reel.post.hashtags.map(tag=><span key={tag} className="rounded-full bg-white/10 px-2 py-1 text-xs text-amber-200">#{tag}</span>)}</div>}
                     <div className="mt-2 text-[11px] font-semibold text-white/65">
                       {timeAgo(reel.post.createdAt)} · RoomKhoj Reels
                     </div>

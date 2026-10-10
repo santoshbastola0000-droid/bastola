@@ -33,6 +33,9 @@ import { cn } from "@/lib/utils";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { walletService } from "@/http/services/wallet.service";
 import useTokenStore from "@/store";
+import { RoomAvailability, AvailabilityCard, type AvailableRoom } from "@/components/office/RoomAvailability";
+import { ChatServiceForm, requestedChatForm, type ChatService } from "./ChatServiceForm";
+import { TigerHead } from "./TigerHead";
 
 interface RoomItem {
   id?: string;
@@ -83,6 +86,8 @@ interface ChatMessage {
   timestamp: string;
   roomDetails?: RoomItem;
   roomsList?: RoomItem[];
+  receptionRooms?: AvailableRoom[];
+  serviceForm?: ChatService;
   jobDetails?: JobItem;
   jobsList?: JobItem[];
   nextAction?: string;
@@ -155,7 +160,7 @@ function createConversationId(): string {
   return `${Date.now()}_${Math.random().toString(36).slice(2, 12)}`;
 }
 
-export function Chatbot() {
+export function Chatbot({initialOpen=false}:{initialOpen?:boolean}) {
   const userStore = useUserRole() as any;
   const token = useTokenStore((state) => state.token);
 
@@ -204,7 +209,8 @@ export function Chatbot() {
 
   const CHAT_KEY = `roomkhoj_chat_history_${loggedInUserId || "guest"}`;
 
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(initialOpen);
+  const [assistantTab,setAssistantTab] = useState<'chat'|'rooms'>('chat');
 const queryClient = useQueryClient();
 
 const { data: walletBalanceData } = useQuery({
@@ -1042,6 +1048,14 @@ useEffect(() => {
     if (!textToSend.trim() || sendingRef.current) return;
     if (textToSend.length > 2000) { alert("एकपटकमा 2000 अक्षरसम्म पठाउनुहोस्।"); return; }
 
+    const serviceForm = requestedChatForm(textToSend);
+    if (serviceForm) {
+      const timestamp = new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+      setMessages(prev=>[...prev,{id:crypto.randomUUID(),role:'user',text:textToSend,timestamp},{id:crypto.randomUUID(),role:'bot',text:'तपाईंको requirement यही form मा भर्नुहोस्।',timestamp,serviceForm}]);
+      setInput('');
+      return;
+    }
+
     sendingRef.current = true;
     const request = new AbortController();
     chatRequestRef.current = request;
@@ -1082,6 +1096,7 @@ useEffect(() => {
         headers,
         body: JSON.stringify({
           message: textToSend.slice(0, 2000),
+          roomSource: 'reception',
           conversationId,
           guestSessionId:
             loggedInUserId
@@ -1198,6 +1213,7 @@ useEffect(() => {
         id: (Date.now() + 1).toString(),
         role: "bot",
         text: botReplyText,
+        receptionRooms: responseObj?.receptionRooms || data?.receptionRooms,
         mediaUrl,
         mediaType,
         roomDetails,
@@ -1248,20 +1264,6 @@ useEffect(() => {
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setIsOpen((v) => !v)}
-        className={cn(
-          "hidden md:flex fixed bottom-6 right-6 z-[10000] h-12 w-12 items-center justify-center rounded-full border border-slate-200 bg-slate-900 text-white shadow-xl transition hover:bg-black hover:scale-105 active:scale-95 cursor-pointer",
-          isOpen
-            ? "bg-slate-800 text-white hover:bg-slate-900"
-            : "bg-gradient-to-r from-red-600 to-rose-600 text-white hover:scale-105 active:scale-95"
-        )}
-        aria-label="Toggle AI Assistant"
-      >
-        {isOpen ? <ChevronDown className="w-6 h-6" /> : <MessageCircle className="w-6 h-6" />}
-      </button>
-
       <AnimatePresence>
         {isOpen && (
           <motion.div
@@ -1316,7 +1318,7 @@ useEffect(() => {
                 </button>
 
                 <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-900 dark:bg-white">
-                  <Sparkles className="h-4 w-4 text-white dark:text-slate-900" />
+                  <TigerHead />
                 </div>
                 <div>
                   <h2 className="text-sm font-semibold leading-none text-slate-900 dark:text-white">
@@ -1375,7 +1377,12 @@ useEffect(() => {
               </button>
             </div>
 
-            <div className="relative flex min-h-0 w-full flex-1 overflow-hidden">
+            <nav aria-label="Assistant mode" className="flex shrink-0 gap-2 border-b p-2 md:ml-[260px]">
+              <button type="button" aria-pressed={assistantTab==='chat'} onClick={()=>setAssistantTab('chat')} className={cn('rounded-xl px-5 py-2 text-sm font-semibold',assistantTab==='chat'?'bg-amber-500 text-slate-950':'bg-slate-100 text-slate-600')}>Chat</button>
+              <button type="button" aria-pressed={assistantTab==='rooms'} onClick={()=>{stopVoiceConversation();setShowHistorySidebar(false);setAssistantTab('rooms');}} className={cn('rounded-xl px-5 py-2 text-sm font-semibold',assistantTab==='rooms'?'bg-amber-500 text-slate-950':'bg-slate-100 text-slate-600')}>Room Availability</button>
+            </nav>
+            {assistantTab==='rooms' && <RoomAvailability />}
+            <div className={cn("relative min-h-0 w-full flex-1 overflow-hidden",assistantTab==='chat'?'flex':'hidden')}>
               <div
                 className={cn(
                   "fixed inset-y-0 left-0 z-40 w-[260px] bg-[#f9f9f9] text-slate-900 flex flex-col transition-transform duration-300 border-r border-slate-200 dark:bg-[#171717] dark:text-white dark:border-white/10 md:translate-x-0",
@@ -1878,6 +1885,8 @@ useEffect(() => {
                         </div>
                       )}
 
+                      {msg.serviceForm && <ChatServiceForm service={msg.serviceForm} authenticated={Boolean(token)}/>}
+                      {msg.receptionRooms?.map(room=><div className="mb-3" key={room.id}><AvailabilityCard room={room}/></div>)}
                       <p className="whitespace-pre-wrap break-words">{msg.text}</p>
 
                       {!!msg.quickReplies?.length && (
@@ -2098,7 +2107,7 @@ useEffect(() => {
                         sendMessage();
                       }
                     }}
-                    placeholder="Ask RoomKhoj AI"
+                    placeholder="Room code, location, budget वा आफ्नो प्रश्न लेख्नुहोस्…"
                     rows={1}
                     className="
                       block

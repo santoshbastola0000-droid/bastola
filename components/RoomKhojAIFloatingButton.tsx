@@ -7,6 +7,7 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { TigerHead } from "./user/TigerHead";
 import { Mic, Sparkles } from "lucide-react";
 
 const BUTTON_SIZE = 62;
@@ -221,14 +222,8 @@ export function RoomKhojAIFloatingButton() {
         style={buttonStyle}
         className="group fixed z-40 flex h-[62px] w-[62px] touch-none select-none cursor-grab items-center justify-center rounded-full transition-transform active:cursor-grabbing active:scale-95"
       >
-        <span className="absolute inset-[-6px] rounded-full bg-gradient-to-r from-cyan-400 via-violet-500 to-fuchsia-500 opacity-60 blur-xl animate-pulse" />
-        <span className="absolute inset-0 rounded-full bg-[conic-gradient(from_0deg,#22d3ee,#8b5cf6,#ec4899,#3b82f6,#22d3ee)] animate-[spin_4s_linear_infinite]" />
-        <span className="absolute inset-[3px] rounded-full bg-black/90 backdrop-blur-xl shadow-[inset_0_0_18px_rgba(255,255,255,0.15)]" />
-        <span className="absolute inset-[9px] rounded-full bg-gradient-to-br from-cyan-400/30 via-violet-500/30 to-fuchsia-500/30 blur-sm" />
-        <Sparkles
-          className="relative z-10 h-7 w-7 text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.8)] transition-transform duration-300 group-hover:scale-110"
-          strokeWidth={2}
-        />
+        <span className="absolute inset-0 rounded-full border-2 border-amber-300 bg-amber-50 shadow-lg" />
+        <span className="relative z-10"><TigerHead /></span>
         <span className="absolute bottom-[3px] right-[3px] z-20 h-3 w-3 rounded-full border-2 border-white bg-green-500" />
       </button>
     </>

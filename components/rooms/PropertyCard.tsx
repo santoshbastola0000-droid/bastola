@@ -273,11 +273,12 @@ export function PropertyCard({
               </button>
             ) : (
               <video
+                data-video-intent="room"
                 src={imageUrl}
                 controls
                 muted
                 playsInline
-                preload={networkProfile.liteMode ? "none" : "metadata"}
+                preload="none"
                 onLoadedData={() => setImgLoaded(true)}
                 className="h-full w-full object-cover"
               />
