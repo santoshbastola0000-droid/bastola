@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { io } from "socket.io-client";
+import { io, type Socket } from "socket.io-client";
 import useTokenStore from "@/store";
 import { AiOwnerUserSelector } from "@/components/AiOwnerUserSelector";
 import { AiOwnerDraftReview } from "@/components/AiOwnerDraftReview";
@@ -15,6 +15,10 @@ export default function OwnerCallingPage() {
   const token = useTokenStore(s => s.token);
   const [selectedUserId, setSelectedUserId] = useState("");
   const [browserStatus, setBrowserStatus] = useState("");
+  const [websiteCallId, setWebsiteCallId] = useState("");
+  const websiteSocket = useRef<Socket | null>(null);
+  const [websiteCalling, setWebsiteCalling] = useState(false);
+  useEffect(() => () => { websiteSocket.current?.disconnect(); websiteSocket.current = null; }, []);
   const [phone, setPhone] = useState("+977");
   const [ownerName, setOwnerName] = useState("");
   const [location, setLocation] = useState("");
@@ -29,22 +33,46 @@ export default function OwnerCallingPage() {
   const normalized = phone.trim();
   const valid = /^\+?[1-9]\d{7,14}$/.test(normalized);
 
-  async function startWebsiteAiCall() {
-    if (!token || !selectedUserId || !consent) return;
+  function endWebsiteAiCall() {
+    if (websiteCallId) websiteSocket.current?.emit("ai-owner:end", {callId:websiteCallId});
+    websiteSocket.current?.disconnect();
+    websiteSocket.current = null;
+    setWebsiteCallId(""); setWebsiteCalling(false);
+    setBrowserStatus("Call ended by admin");
+  }
+
+  function startWebsiteAiCall() {
+    if (!token || !selectedUserId || websiteCalling) return;
+    websiteSocket.current?.disconnect();
+    const socket = io(API + "/messages", {
+      auth: { token }, transports: ["polling", "websocket"], withCredentials: true,
+    });
+    websiteSocket.current=socket;
+    setWebsiteCalling(true);
     setBrowserStatus("Connecting to RoomKhoj…");
-    const socket = io(API + "/messages", { auth: { token }, transports: ["polling", "websocket"], withCredentials: true });
-    socket.on("connect", () => {
-      socket.timeout(12000).emit("ai-owner:call", { targetUserId: selectedUserId, consentConfirmed: true }, (error: Error | null, response: { success?: boolean; error?: string; callId?: string }) => {
-        if (error || !response?.success) { setBrowserStatus(response?.error || "Calling unavailable"); socket.disconnect(); return; }
-        setBrowserStatus("Calling user on RoomKhoj… Call ID: " + response.callId);
-      });
+    socket.once("connect", () => {
+      socket.timeout(12000).emit("ai-owner:call",
+        {targetUserId:selectedUserId,consentConfirmed:true},
+        (error: Error | null, response: {success?:boolean;error?:string;callId?:string}) => {
+          if (error || !response?.success || !response.callId) {
+            setBrowserStatus(response?.error || "Calling unavailable");
+            setWebsiteCalling(false); socket.disconnect(); return;
+          }
+          setWebsiteCallId(response.callId);
+          setBrowserStatus("Ringing user's RoomKhoj account…");
+        });
     });
-    socket.on("ai-owner:status", (event: { status: string }) => {
-      setBrowserStatus("Website call: " + event.status);
-      if (["ended", "declined", "no-answer"].includes(event.status)) socket.disconnect();
+    socket.on("ai-owner:status",(event:{callId?:string;status?:string})=>{
+      if (!event?.status) return;
+      setBrowserStatus("Website AI call: " + event.status);
+      if (["ended","declined","no-answer","failed"].includes(event.status)) {
+        setWebsiteCallId(""); setWebsiteCalling(false); socket.disconnect();
+      }
     });
-    socket.on("connect_error", () => { setBrowserStatus("Calling server unavailable"); socket.disconnect(); });
-    setTimeout(() => { socket.disconnect(); }, 120000);
+    socket.on("connect_error", () => {
+      setBrowserStatus("Calling server unavailable");
+      setWebsiteCalling(false); socket.disconnect();
+    });
   }
 
   async function startCall() {
@@ -79,8 +107,9 @@ export default function OwnerCallingPage() {
     <section className="rounded-xl border p-5 space-y-3">
       <h2 className="font-semibold">Website AI Voice Call (Beta)</h2>
       <p className="text-sm">Select an online registered user above. The user must first enable AI calling in their privacy settings, remain logged in, and accept the incoming call. Continuous Nepali voice uses WebRTC.</p>
-      <label className="flex items-start gap-2 text-sm"><input type="checkbox" checked={consent} onChange={e => setConsent(e.target.checked)} />I confirm the user opted in to RoomKhoj contact.</label>
-      <button disabled={!selectedUserId || !consent} onClick={() => void startWebsiteAiCall()} className="rounded-lg bg-green-700 px-5 py-3 text-white disabled:opacity-50">Call selected user with AI</button>
+      <p className="text-sm">Calls are permitted only when the selected user's recorded opt-in is active.</p>
+      <button disabled={!selectedUserId || websiteCalling} onClick={() => startWebsiteAiCall()} className="rounded-lg bg-green-700 px-5 py-3 text-white disabled:opacity-50">Call selected user with AI</button>
+      {websiteCallId && <button type="button" onClick={endWebsiteAiCall} className="rounded-lg bg-red-700 px-5 py-3 text-white">End website AI call</button>}
       <p className="text-sm">User opt-in settings: <Link className="underline" href="/ai-call-privacy">roomkhoj.com/ai-call-privacy</Link></p>
       {browserStatus && <p role="status" className="text-sm">{browserStatus}</p>}
     </section>
