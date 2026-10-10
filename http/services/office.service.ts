@@ -48,6 +48,7 @@ const unwrap = <T,>(response: { data: T | { data: T } }): T => {
 export const officeService = {
   myRequirements: async () => unwrap<{ client: ReceptionClient | null; name: string; phone: string }>(await privateApi.get('/office/my-requirements')),
   saveMyRequirements: async (data: { clientName: string; clientPhone: string; notes: string; requirements: TenantRequirements }) => privateApi.post('/office/my-requirements',data),
+  ownerRooms: async (phone: string) => unwrap<{total:number;rooms:OfficeRoom[]}>(await privateApi.get('/office/owner-rooms',{params:{phone}})),
   matchingRooms: async (q = '',clientId?: string,page = 0) => unwrap<{ rooms: MatchedRoom[]; total: number }>(await privateApi.get('/office/matching-rooms',{params:{q,clientId,page}})),
   book: async (id: string,message = '') => unwrap<{ id: string }>(await privateApi.post(`/office/matching-rooms/${id}/request`,{message})),
   fee: async () => unwrap<BookingFee>(await privateApi.get('/office/booking-fee')),
