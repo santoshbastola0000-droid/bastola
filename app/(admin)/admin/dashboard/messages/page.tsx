@@ -9,6 +9,7 @@ import {
   Send,
   ShieldCheck,
 } from "lucide-react";
+import { AdminAiCallButton } from "@/components/messages/AdminAiCallButton";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -282,6 +283,7 @@ export default function AdminMessagesPage() {
 
         <div className="flex min-h-[420px] flex-col">
           <div className="flex items-center gap-2 border-b p-4">
+            {selectedUser && <AdminAiCallButton targetUserId={selectedUser.id} targetName={selectedUser.name}/>}
             <ShieldCheck className="h-4 w-4 text-emerald-600" />
             <span className="text-sm font-semibold text-gray-900">
               {selectedConversation
