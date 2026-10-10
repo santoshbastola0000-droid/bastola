@@ -2,6 +2,7 @@ import { privateApi } from '@/http/api/privateApi';
 import { api } from '@/http/api/api';
 
 export interface OfficeRoom {
+  videoStorage?: "CDN" | "VPS";
   id: string; code: string; title: string; location: string; details: string;
   ownerName: string; ownerPhone: string; tiktokUrl: string; price: number | string;
   status: 'AVAILABLE' | 'RENTED'; createdAt?: string;
