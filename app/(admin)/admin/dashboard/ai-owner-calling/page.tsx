@@ -5,6 +5,7 @@ import Link from "next/link";
 import { io } from "socket.io-client";
 import useTokenStore from "@/store";
 import { AiOwnerUserSelector } from "@/components/AiOwnerUserSelector";
+import { AiOwnerDraftReview } from "@/components/AiOwnerDraftReview";
 
 type CallState = "idle" | "calling" | "complete" | "failed";
 type CallResult = { id?: string; status?: string; message?: string };
@@ -77,11 +78,13 @@ export default function OwnerCallingPage() {
     <AiOwnerUserSelector onSelect={user => { setOwnerName(user.name); setPhone(user.phone || ""); setSelectedUserId(user.id); setError(""); setResult(null); }} />
     <section className="rounded-xl border p-5 space-y-3">
       <h2 className="font-semibold">Website AI Voice Call (Beta)</h2>
-      <p className="text-sm">Select an online registered user above. They must have RoomKhoj open and accept the incoming call. AI speaks Nepali and listens to recorded answers one at a time.</p>
+      <p className="text-sm">Select an online registered user above. The user must first enable AI calling in their privacy settings, remain logged in, and accept the incoming call. Continuous Nepali voice uses WebRTC.</p>
       <label className="flex items-start gap-2 text-sm"><input type="checkbox" checked={consent} onChange={e => setConsent(e.target.checked)} />I confirm the user opted in to RoomKhoj contact.</label>
       <button disabled={!selectedUserId || !consent} onClick={() => void startWebsiteAiCall()} className="rounded-lg bg-green-700 px-5 py-3 text-white disabled:opacity-50">Call selected user with AI</button>
+      <p className="text-sm">User opt-in settings: <Link className="underline" href="/ai-call-privacy">roomkhoj.com/ai-call-privacy</Link></p>
       {browserStatus && <p role="status" className="text-sm">{browserStatus}</p>}
     </section>
+    <AiOwnerDraftReview />
     <section className="rounded-xl border p-5 space-y-3"><h2 className="font-semibold">Live Audio Test — Messages</h2><p className="text-sm">Use the existing website-to-website calling in Messages. Both RoomKhoj accounts must be logged in and have a conversation.</p><Link href="/messages" className="inline-block rounded bg-green-700 px-4 py-2 text-white">Open Messages and Call</Link></section>
     <section className="rounded-xl border p-5 space-y-2"><h2 className="font-semibold">Website-to-Website Test Call</h2><p className="text-sm">Test real microphone audio between two browsers without a SIP provider.</p><Link className="inline-block rounded bg-blue-700 px-4 py-2 text-white" href="/admin/dashboard/ai-owner-calling/browser-test">Open Browser Call Test</Link></section>
     <section className="space-y-4 rounded-xl border p-5">
