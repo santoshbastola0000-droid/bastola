@@ -20,6 +20,15 @@ export default function OwnerCallingPage() {
   const [websiteCallId, setWebsiteCallId] = useState("");
   const websiteSocket = useRef<Socket | null>(null);
   const [websiteCalling, setWebsiteCalling] = useState(false);
+  const [dialStartedAt, setDialStartedAt] = useState<number | null>(null);
+  const [dialSeconds, setDialSeconds] = useState(0);
+  const [websiteCallPhase, setWebsiteCallPhase] = useState<"idle" | "connecting" | "dialing" | "ringing" | "connected" | "ended" | "failed">("idle");
+  useEffect(() => {
+    if (!dialStartedAt || !["connecting","dialing","ringing"].includes(websiteCallPhase)) return;
+    const tick = () => setDialSeconds(Math.floor((Date.now() - dialStartedAt) / 1000));
+    tick(); const timer = setInterval(tick, 1000);
+    return () => clearInterval(timer);
+  }, [dialStartedAt, websiteCallPhase]);
   useEffect(() => {
     setEligibility(null); setEligibilityError("");
     if (!selectedUserId || !token) return;
@@ -53,7 +62,7 @@ export default function OwnerCallingPage() {
     websiteSocket.current?.disconnect();
     websiteSocket.current = null;
     setWebsiteCallId(""); setWebsiteCalling(false);
-    setBrowserStatus("Call ended by admin");
+    setBrowserStatus("Call ended by admin"); setWebsiteCallPhase("ended"); setDialStartedAt(null);
   }
 
   function startWebsiteAiCall() {
@@ -64,6 +73,7 @@ export default function OwnerCallingPage() {
     });
     websiteSocket.current=socket;
     setWebsiteCalling(true);
+    setDialStartedAt(Date.now()); setDialSeconds(0); setWebsiteCallPhase("connecting");
     setBrowserStatus("Connecting to RoomKhoj…");
     socket.once("connect", () => {
       socket.timeout(12000).emit("ai-owner:call",
@@ -71,22 +81,25 @@ export default function OwnerCallingPage() {
         (error: Error | null, response: {success?:boolean;error?:string;callId?:string}) => {
           if (error || !response?.success || !response.callId) {
             setBrowserStatus(response?.error || "Calling unavailable");
-            setWebsiteCalling(false); socket.disconnect(); return;
+            setWebsiteCalling(false); setWebsiteCallPhase("failed"); setDialStartedAt(null); socket.disconnect(); return;
           }
           setWebsiteCallId(response.callId);
+          setWebsiteCallPhase("ringing");
           setBrowserStatus("Ringing user's RoomKhoj account…");
         });
     });
     socket.on("ai-owner:status",(event:{callId?:string;status?:string})=>{
       if (!event?.status) return;
       setBrowserStatus("Website AI call: " + event.status);
+      if (["accepted","connected","active","in-progress"].includes(event.status)) { setWebsiteCallPhase("connected"); setDialStartedAt(null); }
+      else if (["ringing","calling","dialing"].includes(event.status)) setWebsiteCallPhase("ringing");
       if (["ended","declined","no-answer","failed"].includes(event.status)) {
-        setWebsiteCallId(""); setWebsiteCalling(false); socket.disconnect();
+        setWebsiteCallId(""); setWebsiteCalling(false); setWebsiteCallPhase(event.status === "ended" ? "ended" : "failed"); setDialStartedAt(null); socket.disconnect();
       }
     });
     socket.on("connect_error", () => {
       setBrowserStatus("Calling server unavailable");
-      setWebsiteCalling(false); socket.disconnect();
+      setWebsiteCalling(false); setWebsiteCallPhase("failed"); setDialStartedAt(null); socket.disconnect();
     });
   }
 
@@ -125,6 +138,7 @@ export default function OwnerCallingPage() {
       <p className="text-sm">Calls are permitted only when the selected user's recorded opt-in is active.</p>
       {selectedUserId && <p className="text-sm">{eligibilityError || (eligibility ? `Calling consent: ${eligibility.optedIn?"Enabled":"Disabled"} · User: ${eligibility.online?"Online":"Offline"}` : "Checking consent and presence…")}</p>}
       <button disabled={!selectedUserId || !eligibility?.optedIn || !eligibility.online || websiteCalling} onClick={() => startWebsiteAiCall()} className="rounded-lg bg-green-700 px-5 py-3 text-white disabled:opacity-50">Call selected user with AI</button>
+      {websiteCallPhase !== "idle" && <div role="status" aria-live="polite" className="rounded-xl border bg-background p-4 space-y-2"><div className="flex items-center gap-3"><span className={`h-3 w-3 rounded-full ${["connecting","dialing","ringing"].includes(websiteCallPhase) ? "animate-pulse bg-amber-500" : websiteCallPhase === "connected" ? "bg-green-500" : "bg-gray-400"}`} /><strong>{websiteCallPhase === "connecting" ? "Connecting to server…" : websiteCallPhase === "ringing" ? "Dialing… Ringing user" : websiteCallPhase === "connected" ? "Call accepted / connected" : websiteCallPhase === "ended" ? "Call ended" : "Call failed or not answered"}</strong></div>{["connecting","dialing","ringing"].includes(websiteCallPhase) && <p className="text-sm tabular-nums">Waiting {Math.floor(dialSeconds / 60).toString().padStart(2,"0")}:{(dialSeconds % 60).toString().padStart(2,"0")} · Awaiting user acceptance</p>}<p className="text-xs text-muted-foreground">Ringing means the server accepted the call request; it does not confirm the user answered.</p></div>}
       {websiteCallId && <button type="button" onClick={endWebsiteAiCall} className="rounded-lg bg-red-700 px-5 py-3 text-white">End website AI call</button>}
       <p className="text-sm">User opt-in settings: <Link className="underline" href="/ai-call-privacy">roomkhoj.com/ai-call-privacy</Link></p>
       {browserStatus && <p role="status" className="text-sm">{browserStatus}</p>}
