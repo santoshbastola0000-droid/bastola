@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import {
   Check,
@@ -13,6 +14,9 @@ import {
   Users,
   CircleDollarSign,
   BadgeDollarSign,
+  Heart,
+  Brain,
+  ChevronDown,
 } from "lucide-react";
 
 import { privateApi } from "@/http/api/privateApi";
@@ -49,6 +53,7 @@ type ReferralStats = {
 
 export default function ReferralPage() {
   const [copied, setCopied] = useState(false);
+  const [showReferralDetails, setShowReferralDetails] = useState(false);
   const [promoCopied, setPromoCopied] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [selectedReferralType, setSelectedReferralType] = useState<
@@ -209,6 +214,32 @@ export default function ReferralPage() {
         </p>
       </div>
 
+      <div className="grid gap-4 md:grid-cols-2">
+        <button type="button" onClick={() => setShowReferralDetails((value) => !value)} aria-expanded={showReferralDetails}
+          className="rounded-2xl border bg-card p-5 text-left shadow-sm transition hover:border-primary/50 focus-visible:outline-2 focus-visible:outline-primary">
+          <div className="flex items-start gap-3">
+            <span className="rounded-xl bg-emerald-100 p-3 text-emerald-700"><Gift className="h-6 w-6" /></span>
+            <div className="min-w-0 flex-1">
+              <h2 className="text-lg font-bold">Invite & Earn Money</h2>
+              <p className="mt-1 text-sm leading-6 text-muted-foreground">पहिलेकै verified signup, Premium Agent referral, promo code, wallet earnings, statistics र सबै rules हेर्नुहोस्।</p>
+              <span className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-primary">{showReferralDetails ? "Hide details" : "View earnings & referral details"} <ChevronDown className={`h-4 w-4 transition-transform ${showReferralDetails ? "rotate-180" : ""}`} /></span>
+            </div>
+          </div>
+        </button>
+        <Link href="/user/dashboard/referrals/games" className="rounded-2xl border bg-card p-5 shadow-sm transition hover:border-primary/50 focus-visible:outline-2 focus-visible:outline-primary">
+          <div className="flex items-start gap-3">
+            <span className="rounded-xl bg-pink-100 p-3 text-pink-700"><Heart className="h-6 w-6" /></span>
+            <div className="min-w-0 flex-1">
+              <h2 className="text-lg font-bold">Play & Challenge Friends</h2>
+              <p className="mt-1 text-sm leading-6 text-muted-foreground">Secret Crush Meter ❤️ र How Well Do You Know Me? 🧠 खेल्नुहोस्। साथीलाई challenge पठाउनुहोस् र रमाइलो result हेर्नुहोस्।</p>
+              <span className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-primary"><Brain className="h-4 w-4" /> Play games →</span>
+            </div>
+          </div>
+        </Link>
+      </div>
+
+      {showReferralDetails && (
+      <>
       <div className="grid gap-4 md:grid-cols-2">
         <Card
           className={`cursor-pointer transition-all ${
@@ -418,6 +449,9 @@ export default function ReferralPage() {
           <p>5. सबैभन्दा धेरै qualified referral ल्याउनेले monthly Rs. 10,000 जित्ने मौका पाउँछ।</p>
         </CardContent>
       </Card>
+
+      </>
+      )}
 
       <Dialog open={shareOpen} onOpenChange={setShareOpen}>
         <DialogContent className="w-[94vw] max-w-xl overflow-hidden rounded-3xl p-0">
