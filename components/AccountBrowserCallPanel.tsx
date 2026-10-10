@@ -6,6 +6,7 @@ import { useAccountBrowserCall } from "@/components/useAccountBrowserCall";
 export function AccountBrowserCallPanel({ admin = false }: { admin?: boolean }) {
   const { status, incoming, callId, call, accept, reject, hangup, audio } = useAccountBrowserCall();
   const [phone, setPhone] = useState("");
+  if (!admin && !incoming && !callId) return null;
   return <section className="rounded-xl border bg-background p-4 space-y-3">
     <h2 className="text-lg font-semibold">RoomKhoj Website Calling</h2>
     <p role="status" className="text-sm">{status}</p>
