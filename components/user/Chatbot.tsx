@@ -34,6 +34,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { walletService } from "@/http/services/wallet.service";
 import useTokenStore from "@/store";
 import { RoomAvailability, AvailabilityCard, type AvailableRoom } from "@/components/office/RoomAvailability";
+import { ChatServiceForm, requestedChatForm, type ChatService } from "./ChatServiceForm";
 import { TigerHead } from "./TigerHead";
 
 interface RoomItem {
@@ -86,6 +87,7 @@ interface ChatMessage {
   roomDetails?: RoomItem;
   roomsList?: RoomItem[];
   receptionRooms?: AvailableRoom[];
+  serviceForm?: ChatService;
   jobDetails?: JobItem;
   jobsList?: JobItem[];
   nextAction?: string;
@@ -1046,6 +1048,14 @@ useEffect(() => {
     if (!textToSend.trim() || sendingRef.current) return;
     if (textToSend.length > 2000) { alert("एकपटकमा 2000 अक्षरसम्म पठाउनुहोस्।"); return; }
 
+    const serviceForm = requestedChatForm(textToSend);
+    if (serviceForm) {
+      const timestamp = new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+      setMessages(prev=>[...prev,{id:crypto.randomUUID(),role:'user',text:textToSend,timestamp},{id:crypto.randomUUID(),role:'bot',text:'तपाईंको requirement यही form मा भर्नुहोस्।',timestamp,serviceForm}]);
+      setInput('');
+      return;
+    }
+
     sendingRef.current = true;
     const request = new AbortController();
     chatRequestRef.current = request;
@@ -1875,6 +1885,7 @@ useEffect(() => {
                         </div>
                       )}
 
+                      {msg.serviceForm && <ChatServiceForm service={msg.serviceForm} authenticated={Boolean(token)}/>}
                       {msg.receptionRooms?.map(room=><div className="mb-3" key={room.id}><AvailabilityCard room={room}/></div>)}
                       <p className="whitespace-pre-wrap break-words">{msg.text}</p>
 
