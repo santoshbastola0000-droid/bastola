@@ -53,6 +53,8 @@ export type SocialReactionSummary = {
 };
 
 export type SocialPost = {
+  receptionRoomId?: string | null;
+  hashtags?: string[];
   id: string;
   userId: string;
   content?: string | null;
