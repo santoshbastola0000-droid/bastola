@@ -80,6 +80,8 @@ export const officeService = {
   revoke: async (id: string) => privateApi.post(`/office/rooms/${id}/revoke`),
   history: async (q: string,roomId?: string,page = 0) => unwrap<{ history: OfficeHistory[]; total: number }>(await privateApi.get('/office/history',{ params: { q,roomId,page } })),
   forms: async (phone: string) => unwrap<OfficeForm[]>(await privateApi.get('/office/forms',{ params: { phone } })),
+  staffPermissions: async (id: string) => unwrap<{userId:string;permissions:string[]}>(await privateApi.get(`/office/staff/${id}/permissions`)),
+  updateStaffPermissions: async (id: string,permissions:string[]) => unwrap<{userId:string;permissions:string[]}>(await privateApi.patch(`/office/staff/${id}/permissions`,{permissions})),
   staff: async (q: string) => unwrap<OfficeStaff[]>(await privateApi.get('/office/staff',{ params: { q } })),
   grant: async (id: string,active: boolean) => privateApi.patch(`/office/staff/${id}`,{ active }),
   requests: async (page = 0,q = '') => unwrap<{ requests: OfficeRequest[]; total: number }>(await privateApi.get('/office/requests',{ params: { page,q } })),

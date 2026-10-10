@@ -168,7 +168,7 @@ export function OfficeDashboard() {
     <details className="rounded-xl border bg-white p-3" onToggle={e=>setChatFormsOpen(e.currentTarget.open)}><summary className="cursor-pointer font-semibold">Chat forms · room & service requirements</summary>{chatFormsOpen&&<ChatFormsInbox/>}</details>
     {tab==='requests' && <><h2 className="font-semibold">Incoming room requests ({requestTotal})</h2>{requestSearch&&<p className="text-sm">Filtered client: {requestSearch} <button className="underline" onClick={()=>{setRequestSearch('');setRequestPage(0);}}>Show all requests</button></p>}{loading?<p>Loading requests…</p>:requests.length===0?<p>No room requests yet.</p>:requests.map(r => <article key={r.id} className="space-y-3 rounded-xl border bg-white p-4"><div className="flex flex-wrap items-center gap-2"><span className="font-semibold">{r.clientName}</span><PhoneReveal phone={r.clientPhone} label="Client phone"/></div><p>{r.code} · {r.title} · {r.location}</p><p className="whitespace-pre-wrap text-sm">{r.message}</p><p className="text-xs text-slate-500">{new Date(r.createdAt).toLocaleString()}</p><label className="flex items-center gap-3">Request status<select disabled={busy} className="rounded-lg border p-2" value={r.status} onChange={e => { const s=e.target.value; void action(async()=> { await officeService.requestStatus(r.id,s); setRequests(prev=>prev.map(x=>x.id===r.id?{...x,status:s}:x)); }); }}>{['NEW','PENDING','CONTACTED','VISIT_SCHEDULED','VISITED','CONFIRMED','CANCELLED','CLOSED'].map(s=><option key={s}>{s}</option>)}</select></label><p className="text-sm">Service charge: {r.serviceCharge==null?'Not configured':`Rs ${r.serviceCharge}`} · Payment: {r.paymentStatus||'UNPAID'}</p><button className={secondary} onClick={()=>setChat(r.id)}>Booking messages</button><button className={secondary} onClick={() => { setQuery(r.clientPhone); setSearch(r.clientPhone); setHistoryRoom(undefined);  setTab('history'); }}>View client rooms & videos</button></article>)}<Pagination page={requestPage} total={requestTotal} size={50} change={setRequestPage}/></>}
     {tab==='requirements'&&<ClientRequirements revision={matchingRevision} onSaved={()=>setMatchingRevision(v=>v+1)} onHistory={phone=>{setQuery(phone);setSearch(phone);setHistoryRoom(undefined);setTab('history');}} onRequests={phone=>{setRequestSearch(phone);setRequestPage(0);setTab('requests');}}/>}
-    {tab==='staff' && access.isAdmin && <div className="space-y-4 rounded-xl border bg-white p-5"><h2 className="text-xl font-semibold">Assign reception access</h2><p className="text-sm text-slate-500">Grant staff permission to upload videos, manage room status, share links and record clients. Only admins can assign or revoke access.</p><input className={field} placeholder="Search staff by name, phone or email" aria-label="Find staff" value={staffSearch} onChange={e=>setStaffSearch(e.target.value)}/>{loading?<p>Loading…</p>:staff.length===0?<p>Search for an existing user account to grant access.</p>:staff.map(s=><div key={s.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3"><div><p className="font-semibold">{s.name}</p><p className="text-sm text-slate-500">{s.email}</p><PhoneReveal phone={s.phoneNumber} label="Staff phone"/></div><button className={s.officeAccess?secondary:button} disabled={busy} onClick={()=>void action(async()=>{await officeService.grant(s.id,!s.officeAccess);setStaff(await officeService.staff(staffSearch));setNotice('Staff Office access updated.');})}>{s.officeAccess?'Revoke access':'Grant reception role'}</button></div>)}</div>}
+    {tab==='staff' && access.isAdmin && <StaffPermissionsManager staff={staff} staffSearch={staffSearch} setStaffSearch={setStaffSearch} loading={loading} />}
 
     {showEditor && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-3" role="dialog" aria-modal="true" aria-label="Room video form"><form onSubmit={saveRoom} className="max-h-[90vh] w-full max-w-2xl space-y-4 overflow-y-auto rounded-2xl bg-white p-6"><div className="flex justify-between"><h2 className="text-xl font-bold">{editing?'Edit room details':'Add private room video'}</h2><button type="button" disabled={busy} onClick={()=>setShowEditor(false)}>Close ✕</button></div>{error&&<p role="alert" className="text-red-700">{error}</p>}<div className="grid gap-3 sm:grid-cols-2">{[['code','Room code (automatic)'],['title','Room title *'],['location','Location *'],['ownerName','Owner name'],['ownerPhone','Owner phone *'],['price','Monthly rent (NPR)'],['tiktokUrl','TikTok link (optional)']].map(([key,label])=><label key={key} className="space-y-1 text-sm">{label}<input className={field} readOnly={key==='code'} placeholder={key==='code'?'Assigned automatically when saved':undefined} required={key==='title'} type={key==='price'?'number':key==='tiktokUrl'?'url':key==='ownerPhone'?'tel':'text'} min={key==='price'?0:undefined} step={key==='price'?'0.01':undefined} value={draft[key as keyof typeof draft]} onChange={e=>setDraft({...draft,[key]:e.target.value})}/></label>)}</div><MatchingFields value={matchDraft} onChange={setMatchDraft}/><label className="block space-y-1 text-sm">Room details / facilities<textarea className={field} rows={4} maxLength={5000} value={draft.details} onChange={e=>setDraft({...draft,details:e.target.value})}/></label>{!editing&&<label className="block space-y-2 text-sm">Room video * (MP4 / MOV, max 150 MB)<input className={field} type="file" required accept="video/mp4,video/quicktime,.mp4,.mov" onChange={e=>setVideo(e.target.files?.[0]||null)}/><span className="block text-slate-500">Use a browser-compatible MP4 for reliable playback. This video will not appear in public room listings.</span></label>}<button className={button} disabled={busy}>{busy?`Saving… ${progress>0?progress+'%':''}`:'Save room'}</button></form></div>}
     {selected && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-3" role="dialog" aria-modal="true" aria-label="Share room with client"><div className="max-h-[90vh] w-full max-w-xl space-y-4 overflow-y-auto rounded-2xl bg-white p-6"><div className="flex justify-between"><h2 className="text-xl font-bold">{selected.code} · Client / current tenant</h2><button disabled={busy} onClick={()=>setSelected(null)}>Close ✕</button></div>{error&&<p role="alert" className="text-red-700">{error}</p>}{notice&&<p role="status" className="text-emerald-700">{notice}</p>}<label className="block text-sm">Client name *<input required className={field} value={client.clientName} onChange={e=>{setClient({...client,clientName:e.target.value});setShare(null);}}/></label><label className="block text-sm">Client phone *<input required className={field} type="tel" value={client.clientPhone} onChange={e=>{setClient({...client,clientPhone:e.target.value,clientId:undefined,recordId:''});setForms([]);setShare(null);}}/></label><button disabled={busy||!client.clientPhone} className={secondary} onClick={()=>void action(async()=>{setForms(await officeService.forms(client.clientPhone));})}>Find client forms</button><label className="block text-sm">Link client form (optional)<select className={field} value={client.recordId} onChange={e=>setClient({...client,recordId:e.target.value})}><option value="">No linked form</option>{forms.map(f=><option key={f.id} value={f.id}>{f.name} · {f.status}</option>)}</select></label><label className="block text-sm">Visit date/time (optional)<input type="datetime-local" className={field} value={visitAt} onChange={e=>setVisitAt(e.target.value)}/></label><label className="block text-sm">Visit / reception notes<textarea className={field} rows={3} value={client.notes} onChange={e=>setClient({...client,notes:e.target.value})}/></label><div className="flex flex-wrap gap-2"><button disabled={busy||selected.status==='RENTED'||!client.clientName||!client.clientPhone} className={button} onClick={()=>void clientAction('share')}>Create private share link</button><button disabled={busy||!client.clientName||!client.clientPhone} className={secondary} onClick={()=>void clientAction('VISIT_PENDING')}>Mark visit pending</button><button disabled={busy||!client.clientName||!client.clientPhone} className={secondary} onClick={()=>void clientAction('VISITED')}>Record client visit</button><button disabled={busy||!client.clientName||!client.clientPhone} className={secondary} onClick={()=>void clientAction('MOVED_IN')}>Record moved-in client</button></div>{share&&shareClient&&<div className="space-y-3 rounded-xl bg-emerald-50 p-4"><p className="text-sm">Expires {new Date(share.expiresAt).toLocaleDateString()}. Anyone with this link can view this room. It never exposes client history.</p><input readOnly className={field} value={share.url} aria-label="Private room link"/><div className="flex flex-wrap gap-2"><button className={secondary} onClick={()=>void action(async()=>{await navigator.clipboard.writeText(share.url);setNotice('Link copied.');})}>Copy link</button><a className={button} target="_blank" rel="noopener noreferrer" href={`https://wa.me/${whatsappPhone(shareClient.clientPhone)}?text=${encodeURIComponent(`${selected.code} · ${selected.title}\n${selected.location}\n${share.url}`)}`}>Open WhatsApp ↗</a><button disabled={busy} className={secondary} onClick={()=>void action(async()=>{await officeService.visit(selected.id,shareClient,'SENT',share.shareId);setNotice('Recorded as sent to this client.');setShare(null);})}>Mark as sent</button></div></div>}</div></div>}
@@ -182,3 +182,125 @@ function Pagination({ page,total,size,change }: { page: number; total: number; s
 function whatsappPhone(phone: string) { const d=phone.replace(/\D/g,'').replace(/^00/,''); return d.length===10?'977'+d:d; }
 
 
+
+const FEATURE_OPTIONS = [
+  {id:'VIEW_ROOMS',label:'View Rooms'}, {id:'EDIT_ROOMS',label:'Add / Edit Rooms'},
+  {id:'CLIENT_HISTORY',label:'Client History'}, {id:'LINKED_PHONE_RECORDS',label:'Linked Phone Records'},
+  {id:'JOB_RECORDS',label:'Job Records'}, {id:'USER_PROFILES',label:'User Profiles'},
+  {id:'SAVED_CLIENTS',label:'Saved Clients'}, {id:'ROOM_MATCHING',label:'Room Matching'},
+  {id:'MANAGE_CALLS',label:'Manage Calls'}
+] as const;
+
+function StaffPermissionsManager({staff,staffSearch,setStaffSearch,loading}:{
+  staff:OfficeStaff[];staffSearch:string;setStaffSearch:(v:string)=>void;loading:boolean
+}) {
+  const [userId,setUserId]=useState('');
+  const [permissions,setPermissions]=useState<string[]>([]);
+  const [selected,setSelected]=useState<string[]>([]);
+  const [expanded,setExpanded]=useState(false);
+  const [saving,setSaving]=useState(false);
+  const [message,setMessage]=useState('');
+  useEffect(()=>{
+    let alive=true;setPermissions([]);setSelected([]);setExpanded(false);setMessage('');
+    if(userId) officeService.staffPermissions(userId).then(r=>{if(alive)setPermissions(r.permissions)}).catch(e=>{if(alive)setMessage(officeError(e))});
+    return()=>{alive=false};
+  },[userId]);
+  async function persist(next:string[]){
+    if(!userId)return;
+    setSaving(true);setMessage('');
+    try {const r=await officeService.updateStaffPermissions(userId,next);setPermissions(r.permissions);setSelected([]);setExpanded(false);setMessage('Permissions updated.');}
+    catch(e){setMessage(officeError(e))}
+    finally{setSaving(false)}
+  }
+  return <section className="space-y-4 rounded-xl border bg-white p-5" aria-label="Staff Permission Manager">
+    <h2 className="text-xl font-semibold">Staff Permission Manager</h2>
+    <p className="text-sm text-slate-600">Only admins can manage permissions. Existing reception access is managed separately.</p>
+    <input className={field} placeholder="Search staff by name, phone or email" value={staffSearch} onChange={e=>setStaffSearch(e.target.value)} aria-label="Search staff"/>
+    <label className="block text-sm font-medium">Select User / Staff
+      <select className={field} value={userId} onChange={e=>setUserId(e.target.value)}>
+        <option value="">Choose staff</option>
+        {staff.map(s=><option key={s.id} value={s.id}>{s.name} — {s.email}</option>)}
+      </select>
+    </label>
+    {loading&&<p>Loading staff…</p>}
+    {userId&&<div className="space-y-3">
+      <h3 className="font-semibold">Added Permissions ({permissions.length})</h3>
+      {permissions.length===0&&<p className="rounded-lg bg-slate-50 p-3 text-sm">No permissions added yet.</p>}
+      {permissions.map(p=><div key={p} className="flex items-center justify-between rounded-lg border p-3 text-sm">
+        <span>{FEATURE_OPTIONS.find(o=>o.id===p)?.label||p}</span>
+        <button type="button" disabled={saving} onClick={()=>void persist(permissions.filter(x=>x!==p))} aria-label={`Remove ${p}`} className={secondary}>Remove</button>
+      </div>)}
+      <button type="button" className={button} onClick={()=>setExpanded(v=>!v)} aria-expanded={expanded}>+ Add Permissions {expanded?'⌃':'⌄'}</button>
+      {expanded&&<div className="space-y-3 rounded-xl border p-4">
+        <h3 className="font-semibold">Select Permissions</h3>
+        {FEATURE_OPTIONS.filter(o=>!permissions.includes(o.id)).map(o=><label key={o.id} className="flex items-center gap-3 text-sm">
+          <input type="checkbox" checked={selected.includes(o.id)} onChange={e=>setSelected(v=>e.target.checked?[...v,o.id]:v.filter(x=>x!==o.id))}/>{o.label}
+        </label>)}
+        <button type="button" className={button} disabled={saving||selected.length===0} onClick={()=>void persist([...permissions,...selected])}>Add Selected ({selected.length})</button>
+      </div>}
+      <p className="text-xs text-amber-800">Feature selections are stored for future scoped authorization. They do not by themselves grant Reception access.</p>
+    </div>}
+    {message&&<p role="status" className="text-sm">{message}</p>}
+  </section>;
+}
+
+const FEATURE_OPTIONS = [
+  {id:'VIEW_ROOMS',label:'View Rooms'}, {id:'EDIT_ROOMS',label:'Add / Edit Rooms'},
+  {id:'CLIENT_HISTORY',label:'Client History'}, {id:'LINKED_PHONE_RECORDS',label:'Linked Phone Records'},
+  {id:'JOB_RECORDS',label:'Job Records'}, {id:'USER_PROFILES',label:'User Profiles'},
+  {id:'SAVED_CLIENTS',label:'Saved Clients'}, {id:'ROOM_MATCHING',label:'Room Matching'},
+  {id:'MANAGE_CALLS',label:'Manage Calls'}
+] as const;
+
+function StaffPermissionsManager({staff,staffSearch,setStaffSearch,loading}:{
+  staff:OfficeStaff[];staffSearch:string;setStaffSearch:(v:string)=>void;loading:boolean
+}) {
+  const [userId,setUserId]=useState('');
+  const [permissions,setPermissions]=useState<string[]>([]);
+  const [selected,setSelected]=useState<string[]>([]);
+  const [expanded,setExpanded]=useState(false);
+  const [saving,setSaving]=useState(false);
+  const [message,setMessage]=useState('');
+  useEffect(()=>{
+    let alive=true;setPermissions([]);setSelected([]);setExpanded(false);setMessage('');
+    if(userId) officeService.staffPermissions(userId).then(r=>{if(alive)setPermissions(r.permissions)}).catch(e=>{if(alive)setMessage(officeError(e))});
+    return()=>{alive=false};
+  },[userId]);
+  async function persist(next:string[]){
+    if(!userId)return;
+    setSaving(true);setMessage('');
+    try {const r=await officeService.updateStaffPermissions(userId,next);setPermissions(r.permissions);setSelected([]);setExpanded(false);setMessage('Permissions updated.');}
+    catch(e){setMessage(officeError(e))}
+    finally{setSaving(false)}
+  }
+  return <section className="space-y-4 rounded-xl border bg-white p-5" aria-label="Staff Permission Manager">
+    <h2 className="text-xl font-semibold">Staff Permission Manager</h2>
+    <p className="text-sm text-slate-600">Only admins can manage permissions. Existing reception access is managed separately.</p>
+    <input className={field} placeholder="Search staff by name, phone or email" value={staffSearch} onChange={e=>setStaffSearch(e.target.value)} aria-label="Search staff"/>
+    <label className="block text-sm font-medium">Select User / Staff
+      <select className={field} value={userId} onChange={e=>setUserId(e.target.value)}>
+        <option value="">Choose staff</option>
+        {staff.map(s=><option key={s.id} value={s.id}>{s.name} — {s.email}</option>)}
+      </select>
+    </label>
+    {loading&&<p>Loading staff…</p>}
+    {userId&&<div className="space-y-3">
+      <h3 className="font-semibold">Added Permissions ({permissions.length})</h3>
+      {permissions.length===0&&<p className="rounded-lg bg-slate-50 p-3 text-sm">No permissions added yet.</p>}
+      {permissions.map(p=><div key={p} className="flex items-center justify-between rounded-lg border p-3 text-sm">
+        <span>{FEATURE_OPTIONS.find(o=>o.id===p)?.label||p}</span>
+        <button type="button" disabled={saving} onClick={()=>void persist(permissions.filter(x=>x!==p))} aria-label={`Remove ${p}`} className={secondary}>Remove</button>
+      </div>)}
+      <button type="button" className={button} onClick={()=>setExpanded(v=>!v)} aria-expanded={expanded}>+ Add Permissions {expanded?'⌃':'⌄'}</button>
+      {expanded&&<div className="space-y-3 rounded-xl border p-4">
+        <h3 className="font-semibold">Select Permissions</h3>
+        {FEATURE_OPTIONS.filter(o=>!permissions.includes(o.id)).map(o=><label key={o.id} className="flex items-center gap-3 text-sm">
+          <input type="checkbox" checked={selected.includes(o.id)} onChange={e=>setSelected(v=>e.target.checked?[...v,o.id]:v.filter(x=>x!==o.id))}/>{o.label}
+        </label>)}
+        <button type="button" className={button} disabled={saving||selected.length===0} onClick={()=>void persist([...permissions,...selected])}>Add Selected ({selected.length})</button>
+      </div>}
+      <p className="text-xs text-amber-800">Feature selections are stored for future scoped authorization. They do not by themselves grant Reception access.</p>
+    </div>}
+    {message&&<p role="status" className="text-sm">{message}</p>}
+  </section>;
+}
