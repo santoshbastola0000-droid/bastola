@@ -214,6 +214,10 @@ export default function ReferralPage() {
         </p>
       </div>
 
+      <Link href="/funny-check" className="mb-4 block rounded-2xl border border-amber-300 bg-amber-50 p-5 text-amber-950 shadow-sm transition hover:shadow-md">
+        <div className="flex items-center gap-3"><span className="text-3xl">🤣</span><div><h2 className="text-lg font-bold">तिमी कत्तिको चुतिया छौ? — Friend Challenge</h2><p className="mt-1 text-sm">आफ्नो नाम राखेर साथीलाई challenge पठाऊ। उसले छानेका 10 वटै उत्तर Monitoring मा हेर! 👀</p></div></div>
+        <span className="mt-3 inline-block text-sm font-bold">Create Challenge & Monitor →</span>
+      </Link>
       <div className="grid gap-4 md:grid-cols-2">
         <button type="button" onClick={() => setShowReferralDetails((value) => !value)} aria-expanded={showReferralDetails}
           className="rounded-2xl border bg-card p-5 text-left shadow-sm transition hover:border-primary/50 focus-visible:outline-2 focus-visible:outline-primary">

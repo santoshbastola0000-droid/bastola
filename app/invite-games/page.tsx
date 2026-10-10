@@ -67,7 +67,7 @@ export default function ReferralGamesPage() {
         <Link href="/" className="rounded-lg border p-2" aria-label="Back to RoomKhoj"><ArrowLeft className="h-5 w-5" /></Link>
         <div><h1 className="text-2xl font-bold">Play & Challenge Friends 🎉</h1><p className="text-sm text-muted-foreground">रमाइलो खेल, साथीलाई challenge र shareable result।</p></div>
       </div>
-      {!game ? <div className="grid gap-4 sm:grid-cols-2">
+      {!game ? <><Link href="/funny-check" className="block rounded-2xl border border-amber-300 bg-amber-50 p-5 text-amber-950 shadow-sm"><h2 className="text-xl font-bold">🤣 तिमी कत्तिको चुतिया छौ?</h2><p className="mt-2 text-sm">10 funny questions • साथीलाई link share गर • उसले के छान्यो monitoring मा हेर!</p><span className="mt-3 inline-block font-semibold">Play & Monitor →</span></Link><div className="grid gap-4 sm:grid-cols-2">
         <button type="button" onClick={() => { setGame("friends"); setAnswers([]); setStep(0); }} className="rounded-2xl border bg-card p-6 text-left shadow-sm hover:border-primary">
           <Brain className="mb-3 h-8 w-8 text-primary" /><h2 className="text-xl font-bold">How Well Do You Know Me?</h2>
           <p className="mt-2 text-sm text-muted-foreground">5 प्रश्नको आफ्नो answer छान्नुहोस्। Link share गरेर साथीले कति मिलाउँछ हेर्नुहोस्।</p>
@@ -78,7 +78,7 @@ export default function ReferralGamesPage() {
           <p className="mt-2 text-sm text-muted-foreground">5 funny love questions को उत्तर दिनुहोस् र आफ्नो personality result share गर्नुहोस्।</p>
           <p className="mt-4 font-semibold text-pink-600">Play now →</p>
         </button>
-      </div> : <Card>
+      </div></> : <Card>
         <CardHeader>
           <CardTitle>{game === "friends" ? "🧠 Best Friend Challenge" : "❤️ Secret Crush Meter"}</CardTitle>
           <CardDescription>{game === "friends" ? (challenge ? "साथीको उत्तर अनुमान गर्नुहोस्!" : "आफ्नो उत्तर छानेर साथीलाई quiz पठाउनुहोस्।") : "यो केवल मनोरञ्जनका लागि हो; वास्तविक प्रेमको परीक्षण होइन।"}</CardDescription>
