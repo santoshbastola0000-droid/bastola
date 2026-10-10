@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { io } from "socket.io-client";
+import useTokenStore from "@/store";
 import { AiOwnerUserSelector } from "@/components/AiOwnerUserSelector";
 
 type CallState = "idle" | "calling" | "complete" | "failed";
@@ -9,6 +11,9 @@ type CallResult = { id?: string; status?: string; message?: string };
 const API = (process.env.NEXT_PUBLIC_BACKEND_URL || "https://api.roomkhoj.com").replace(/\/$/, "");
 
 export default function OwnerCallingPage() {
+  const token = useTokenStore(s => s.token);
+  const [selectedUserId, setSelectedUserId] = useState("");
+  const [browserStatus, setBrowserStatus] = useState("");
   const [phone, setPhone] = useState("+977");
   const [ownerName, setOwnerName] = useState("");
   const [location, setLocation] = useState("");
@@ -22,6 +27,24 @@ export default function OwnerCallingPage() {
   const [simulation, setSimulation] = useState(true);
   const normalized = phone.trim();
   const valid = /^\+?[1-9]\d{7,14}$/.test(normalized);
+
+  async function startWebsiteAiCall() {
+    if (!token || !selectedUserId || !consent) return;
+    setBrowserStatus("Connecting to RoomKhoj…");
+    const socket = io(API + "/messages", { auth: { token }, transports: ["polling", "websocket"], withCredentials: true });
+    socket.on("connect", () => {
+      socket.timeout(12000).emit("ai-owner:call", { targetUserId: selectedUserId, consentConfirmed: true }, (error: Error | null, response: { success?: boolean; error?: string; callId?: string }) => {
+        if (error || !response?.success) { setBrowserStatus(response?.error || "Calling unavailable"); socket.disconnect(); return; }
+        setBrowserStatus("Calling user on RoomKhoj… Call ID: " + response.callId);
+      });
+    });
+    socket.on("ai-owner:status", (event: { status: string }) => {
+      setBrowserStatus("Website call: " + event.status);
+      if (["ended", "declined", "no-answer"].includes(event.status)) socket.disconnect();
+    });
+    socket.on("connect_error", () => { setBrowserStatus("Calling server unavailable"); socket.disconnect(); });
+    setTimeout(() => { socket.disconnect(); }, 120000);
+  }
 
   async function startCall() {
     if (!valid || !consent || state === "calling") return;
@@ -51,7 +74,14 @@ export default function OwnerCallingPage() {
   return <main className="mx-auto max-w-3xl space-y-6 p-4 md:p-8">
     <header><h1 className="text-2xl font-bold">AI Owner Calling</h1>
       <p className="text-sm text-muted-foreground">Connect a supported SIP/VoIP provider through the VPS voice bridge. Provider credentials must remain server-side.</p></header>
-    <AiOwnerUserSelector onSelect={user => { setOwnerName(user.name); setPhone(user.phone || ""); setError(""); setResult(null); }} />
+    <AiOwnerUserSelector onSelect={user => { setOwnerName(user.name); setPhone(user.phone || ""); setSelectedUserId(user.id); setError(""); setResult(null); }} />
+    <section className="rounded-xl border p-5 space-y-3">
+      <h2 className="font-semibold">Website AI Voice Call (Beta)</h2>
+      <p className="text-sm">Select an online registered user above. They must have RoomKhoj open and accept the incoming call. AI speaks Nepali and listens to recorded answers one at a time.</p>
+      <label className="flex items-start gap-2 text-sm"><input type="checkbox" checked={consent} onChange={e => setConsent(e.target.checked)} />I confirm the user opted in to RoomKhoj contact.</label>
+      <button disabled={!selectedUserId || !consent} onClick={() => void startWebsiteAiCall()} className="rounded-lg bg-green-700 px-5 py-3 text-white disabled:opacity-50">Call selected user with AI</button>
+      {browserStatus && <p role="status" className="text-sm">{browserStatus}</p>}
+    </section>
     <section className="rounded-xl border p-5 space-y-3"><h2 className="font-semibold">Live Audio Test — Messages</h2><p className="text-sm">Use the existing website-to-website calling in Messages. Both RoomKhoj accounts must be logged in and have a conversation.</p><Link href="/messages" className="inline-block rounded bg-green-700 px-4 py-2 text-white">Open Messages and Call</Link></section>
     <section className="rounded-xl border p-5 space-y-2"><h2 className="font-semibold">Website-to-Website Test Call</h2><p className="text-sm">Test real microphone audio between two browsers without a SIP provider.</p><Link className="inline-block rounded bg-blue-700 px-4 py-2 text-white" href="/admin/dashboard/ai-owner-calling/browser-test">Open Browser Call Test</Link></section>
     <section className="space-y-4 rounded-xl border p-5">
