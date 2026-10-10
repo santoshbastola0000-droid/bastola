@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { io, type Socket } from "socket.io-client";
+import { privateApi } from "@/http/api/privateApi";
 import useTokenStore from "@/store";
 
 const API = (process.env.NEXT_PUBLIC_BACKEND_URL || "https://api.roomkhoj.com").replace(/\/$/, "");
@@ -14,6 +15,11 @@ export function AiOwnerIncomingVoice() {
   const mic = useRef<MediaStream | null>(null);
   const audio = useRef<HTMLAudioElement | null>(null);
   const active = useRef("");
+  const epoch = useRef(0);
+  const accepting = useRef(false);
+  const negotiation = useRef<AbortController|null>(null);
+  const watchdog = useRef<ReturnType<typeof setTimeout>|null>(null);
+  const [connecting,setConnecting] = useState(false);
   const utterances = useRef<string[]>([]);
   const [callId, setCallId] = useState("");
   const [connected, setConnected] = useState(false);
@@ -24,6 +30,9 @@ export function AiOwnerIncomingVoice() {
   const [captured, setCaptured] = useState(0);
 
   const stopAudio = useCallback(() => {
+    epoch.current+=1;accepting.current=false;setConnecting(false);
+    negotiation.current?.abort();negotiation.current=null;
+    if(watchdog.current)clearTimeout(watchdog.current);watchdog.current=null;
     peer.current?.close(); peer.current = null;
     mic.current?.getTracks().forEach(track => track.stop()); mic.current = null;
     if (audio.current) { audio.current.pause(); audio.current.srcObject = null; }
@@ -48,14 +57,15 @@ export function AiOwnerIncomingVoice() {
       setFinished(false);
       setStatus("RoomKhoj AI बाट incoming call");
     });
+    s.on('disconnect',()=>{if(active.current){stopAudio();setFinished(true);setStatus('Call server connection छुट्यो। फेरि call गर्नुहोस्।');}});
     s.on("ai-owner:ended", (data: { callId?: string }) => {
       if (data.callId !== active.current) return;
       stopAudio();
       setFinished(true);
       setStatus("Call सकियो। चाहनुहुन्छ भने room draft सुरक्षित गर्न अनुमति दिनुहोस्।");
     });
-    return () => { s.disconnect(); socket.current = null; stopAudio(); };
-  }, [token, stopAudio]);
+    return () => { s.disconnect(); socket.current = null; close(); };
+  }, [token, stopAudio, close]);
 
   const end = () => {
     if (active.current) socket.current?.emit("ai-owner:end", { callId: active.current });
@@ -66,38 +76,55 @@ export function AiOwnerIncomingVoice() {
 
   const accept = async () => {
     const id = active.current;
-    if (!id || !socket.current) return;
+    if (!id || !socket.current || accepting.current) return;
+    accepting.current=true;setConnecting(true);
+    const attempt=++epoch.current;
+    const isCurrent=()=>active.current===id&&epoch.current===attempt;
+    const request=new AbortController();negotiation.current=request;
+    watchdog.current=setTimeout(()=>{if(!isCurrent())return;stopAudio();socket.current?.emit('ai-owner:end',{callId:id});setFinished(true);setStatus('AI voice connection timed out। फेरि call गर्नुहोस्।');},30000);
     setStatus("Connecting real-time AI voice…");
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
       });
+      if(!isCurrent()){stream.getTracks().forEach(track=>track.stop());return;}
       mic.current = stream;
       const accepted = await socket.current.timeout(12000).emitWithAck("ai-owner:respond", { callId: id, accept: true }) as { success?: boolean; error?: string };
+      if(!isCurrent())return;
       if (!accepted?.success) throw new Error(accepted?.error || "Call acceptance failed");
       const result = await socket.current.timeout(15000).emitWithAck("ai-owner:realtime-token", { callId: id }) as TokenResult;
+      if(!isCurrent())return;
       if (!result.success || !result.token) throw new Error(result.error || "Realtime AI unavailable");
-      if (active.current !== id) { stream.getTracks().forEach(track => track.stop()); return; }
+      if (!isCurrent()) { stream.getTracks().forEach(track => track.stop()); return; }
       const pc = new RTCPeerConnection();
       peer.current = pc;
       stream.getAudioTracks().forEach(track => pc.addTrack(track, stream));
       pc.ontrack = event => {
+        if(!isCurrent())return;
         if (audio.current) {
-          audio.current.srcObject = event.streams[0];
-          void audio.current.play().catch(() => setStatus("AI सुन्न audio player थिच्नुहोस्"));
+          audio.current.srcObject = event.streams[0] || new MediaStream([event.track]);
+          void audio.current.play().catch(() => {if(isCurrent())setStatus("AI सुन्न audio player थिच्नुहोस्");});
         }
       };
+      const ready=()=>{
+        if(!isCurrent()||pc.connectionState!=='connected'||channel.readyState!=='open')return;
+        if(watchdog.current)clearTimeout(watchdog.current);watchdog.current=null;
+        accepting.current=false;setConnecting(false);setConnected(true);setStatus('AI सँग live कुरा गर्नुहोस्');
+        socket.current?.emit('ai-owner:ready',{callId:id});
+      };
       pc.onconnectionstatechange = () => {
+        if(!isCurrent())return;
         if (pc.connectionState === "connected") {
-          setConnected(true);
-          setStatus("AI सँग live कुरा गर्नुहोस्");
+          ready();
         }
         if (["failed", "disconnected"].includes(pc.connectionState)) {
-          setStatus("Audio connection interrupted; please end and retry");
+          if(watchdog.current)clearTimeout(watchdog.current);
+          watchdog.current=setTimeout(()=>{if(!isCurrent()||pc.connectionState==='connected')return;stopAudio();socket.current?.emit('ai-owner:end',{callId:id});setFinished(true);setStatus('Audio connection छुट्यो। फेरि call गर्नुहोस्।');},8000);
         }
       };
       const channel = pc.createDataChannel("oai-events");
       channel.onmessage = event => {
+        if(!isCurrent())return;
         try {
           const message = JSON.parse(event.data) as { type?: string; transcript?: string };
           if (message.type === "conversation.item.input_audio_transcription.completed") {
@@ -110,21 +137,27 @@ export function AiOwnerIncomingVoice() {
         } catch { /* Ignore malformed realtime events */ }
       };
       channel.onopen = () => {
+        if(!isCurrent())return;
         channel.send(JSON.stringify({
           type: "response.create",
           response: { instructions: "Greet the caller in Nepali, identify yourself as RoomKhoj AI, and politely ask permission to discuss available rental rooms." },
         }));
+        ready();
       };
       const offer = await pc.createOffer();
+      if(!isCurrent())return;
       await pc.setLocalDescription(offer);
+      if(!isCurrent())return;
       const response = await fetch("https://api.openai.com/v1/realtime/calls", {
-        method: "POST",
+        method: "POST",signal:request.signal,
         headers: { Authorization: `Bearer ${result.token}`, "Content-Type": "application/sdp" },
         body: offer.sdp,
       });
       if (!response.ok) throw new Error("OpenAI audio negotiation failed: " + response.status);
-      await pc.setRemoteDescription({ type: "answer", sdp: await response.text() });
+      const answer=await response.text();if(!isCurrent())return;
+      await pc.setRemoteDescription({ type: "answer", sdp: answer });
     } catch (error) {
+      if(!isCurrent())return;
       setStatus(error instanceof Error ? error.message : "Realtime voice failed");
       stopAudio();
       if (id === active.current) socket.current?.emit("ai-owner:end", { callId: id });
@@ -137,12 +170,9 @@ export function AiOwnerIncomingVoice() {
     setSaving(true);
     setStatus("Room information तयार हुँदैछ…");
     try {
-      const response = await fetch(API + "/ai-owner/calls/" + encodeURIComponent(callId) + "/draft", {
-        method: "POST", credentials: "include",
-        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ saveConsent: true, turns: utterances.current }),
+      await privateApi.post('/ai-owner/calls/'+encodeURIComponent(callId)+'/draft', {
+        saveConsent:true,turns:utterances.current,
       });
-      if (!response.ok) throw new Error("Cannot save draft (" + response.status + ")");
       utterances.current = [];
       setStatus("Room draft सुरक्षित भयो। Admin ले review गर्नेछन्।");
       setConsentSave(false);
@@ -159,7 +189,7 @@ export function AiOwnerIncomingVoice() {
       <p className="text-sm">यो RoomKhoj को AI सहायक हो, मानव कर्मचारी होइन।</p>
       <p role="status" className="text-sm">{status}</p>
       <audio ref={audio} autoPlay controls playsInline className="w-full" />
-      {!connected && !finished && <button onClick={() => void accept()} disabled={status.startsWith("Connecting")} className="rounded-lg bg-green-700 px-5 py-3 text-white disabled:opacity-50">Accept AI Call</button>}
+      {!connected && !finished && <button onClick={() => void accept()} disabled={connecting} className="rounded-lg bg-green-700 px-5 py-3 text-white disabled:opacity-50">Accept AI Call</button>}
       {!finished && <button onClick={connected ? end : () => {
         socket.current?.emit("ai-owner:respond", { callId, accept: false }); close();
       }} className="ml-2 rounded-lg bg-red-700 px-5 py-3 text-white">{connected ? "End Call" : "Decline"}</button>}
@@ -178,3 +208,4 @@ export function AiOwnerIncomingVoice() {
     </div>
   </div>;
 }
+
