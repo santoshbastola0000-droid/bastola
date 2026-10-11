@@ -22,22 +22,43 @@ export function RoomKhojAIFloatingButton() {
     x: Math.max(EDGE, window.innerWidth - WIDTH - EDGE),
     y: EDGE,
   });
+  const snapToCorner = (next: Position): Position => {
+    const maxX = Math.max(EDGE, window.innerWidth - WIDTH - EDGE);
+    const maxY = Math.max(EDGE, window.innerHeight - HEIGHT - (window.innerWidth < 768 ? 82 : EDGE));
+    return {
+      x: next.x + WIDTH / 2 < window.innerWidth / 2 ? EDGE : maxX,
+      y: next.y + HEIGHT / 2 < (EDGE + maxY + HEIGHT / 2) / 2 ? EDGE : maxY,
+    };
+  };
+  const saveCorner = (next: Position) => {
+    try { localStorage.setItem(KEY, JSON.stringify(next)); } catch {}
+  };
   const clamp = (next: Position): Position => ({
     x: Math.max(EDGE, Math.min(window.innerWidth - WIDTH - EDGE, next.x)),
     y: Math.max(EDGE, Math.min(window.innerHeight - HEIGHT - (window.innerWidth < 768 ? 82 : EDGE), next.y)),
   });
   useEffect(() => {
-    // Always return to the screen corner, including after reload.
-    try { localStorage.removeItem(KEY); } catch {}
-    setPosition(corner());
-    const resize = () => setPosition(corner());
+    // Restore the previously chosen corner after reload.
+    let initial = corner();
+    try {
+      const saved = JSON.parse(localStorage.getItem(KEY) || "null");
+      if (Number.isFinite(saved?.x) && Number.isFinite(saved?.y)) initial = snapToCorner(saved);
+    } catch {}
+    setPosition(initial);
+    const resize = () => setPosition(current => {
+      if (!current) return corner();
+      const next = snapToCorner(current);
+      saveCorner(next);
+      return next;
+    });
     window.addEventListener("resize", resize);
     return () => { window.removeEventListener("resize", resize); timers.current.forEach(clearTimeout); timers.current = []; };
   }, []);
-  const rescue = () => {
+  const rescue = (destination: Position) => {
     timers.current.forEach(clearTimeout);
     timers.current = [];
-    setPosition(corner());
+    setPosition(destination);
+    saveCorner(destination);
     if (typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
       setAnimation("idle");
       return;
@@ -67,13 +88,22 @@ export function RoomKhojAIFloatingButton() {
     if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
     dragRef.current = null;
     if (!drag.moved) { if (open) openChatbot(); return; }
-    // Dragging into the middle startles the monkey; always climb back to safety.
-    rescue();
+    // The monkey grips whichever screen corner is nearest.
+    // Dropping far from a corner starts the falling/climbing animation.
+    const destination = snapToCorner(drag.last);
+    const nearCorner = Math.hypot(drag.last.x - destination.x, drag.last.y - destination.y) < 44;
+    if (nearCorner) {
+      setPosition(destination);
+      saveCorner(destination);
+      setAnimation("idle");
+    } else {
+      rescue(destination);
+    }
   };
   if (pathname?.startsWith("/messages")) return null;
   return <button
     type="button"
-    aria-label="Open RoomKhoj AI; drag monkey to see it fall and climb back"
+    aria-label="Open RoomKhoj AI; drag monkey to any screen corner"
     title="Tap for RoomKhoj AI, drag for monkey animation"
     onPointerDown={onDown}
     onPointerMove={onMove}
