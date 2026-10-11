@@ -20,7 +20,7 @@ export function RoomKhojAIFloatingButton() {
   const openChatbot = () => window.dispatchEvent(new CustomEvent("open-roomkhoj-chatbot"));
   const corner = (): Position => ({
     x: Math.max(EDGE, window.innerWidth - WIDTH - EDGE),
-    y: Math.max(EDGE, window.innerHeight - HEIGHT - (window.innerWidth < 768 ? 102 : 24)),
+    y: EDGE,
   });
   const clamp = (next: Position): Position => ({
     x: Math.max(EDGE, Math.min(window.innerWidth - WIDTH - EDGE, next.x)),
@@ -80,7 +80,7 @@ export function RoomKhojAIFloatingButton() {
     onPointerUp={event => onFinish(event, true)}
     onPointerCancel={event => onFinish(event, false)}
     onKeyDown={event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openChatbot(); } }}
-    style={position ? { left: position.x, top: position.y } : { right: EDGE, bottom: 102 }}
+    style={position ? { left: position.x, top: position.y } : { right: EDGE, top: EDGE }}
     className="fixed z-40 flex h-[126px] w-[78px] cursor-grab touch-none select-none items-center justify-center border-0 bg-transparent p-0 shadow-none active:cursor-grabbing"
   ><HangingMonkey scared={animation === "fall" || animation === "climb"} motion={animation}/></button>;
 }
