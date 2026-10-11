@@ -35,7 +35,7 @@ import { walletService } from "@/http/services/wallet.service";
 import useTokenStore from "@/store";
 import { RoomAvailability, AvailabilityCard, type AvailableRoom } from "@/components/office/RoomAvailability";
 import { ChatServiceForm, requestedChatForm, type ChatService } from "./ChatServiceForm";
-import { TigerHead } from "./TigerHead";
+import { MonkeyHead } from "./MonkeyHead";
 
 interface RoomItem {
   id?: string;
@@ -1318,7 +1318,7 @@ useEffect(() => {
                 </button>
 
                 <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-900 dark:bg-white">
-                  <TigerHead />
+                  <MonkeyHead />
                 </div>
                 <div>
                   <h2 className="text-sm font-semibold leading-none text-slate-900 dark:text-white">
@@ -1382,7 +1382,7 @@ useEffect(() => {
               <button type="button" aria-pressed={assistantTab==='rooms'} onClick={()=>{stopVoiceConversation();setShowHistorySidebar(false);setAssistantTab('rooms');}} className={cn('rounded-xl px-5 py-2 text-sm font-semibold',assistantTab==='rooms'?'bg-amber-500 text-slate-950':'bg-slate-100 text-slate-600')}>Room Availability</button>
               <button type="button" aria-pressed={assistantTab==='reception'} onClick={()=>{stopVoiceConversation();setShowHistorySidebar(false);setAssistantTab('reception');}} className={cn('rounded-xl px-5 py-2 text-sm font-semibold',assistantTab==='reception'?'bg-amber-500 text-slate-950':'bg-slate-100 text-slate-600')}>Reception</button>
             </nav>
-            {assistantTab==='rooms' && <RoomAvailability />}
+            {assistantTab==='rooms' && <RoomAvailability hideContact />}
             {assistantTab==='reception' && <section className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-slate-50 p-4 text-slate-900"><div className="mx-auto max-w-5xl space-y-5"><header><h2 className="text-xl font-bold">Reception</h2><p className="text-sm text-slate-600">Available rooms हेर्नुहोस् वा आफ्नो room requirement reception मा पठाउनुहोस्।</p></header><details className="rounded-xl border bg-white p-3" open><summary className="cursor-pointer font-semibold">Submit room requirements</summary><ChatServiceForm service="ROOM" authenticated={Boolean(token)}/></details><RoomAvailability hideContact embedded /></div></section>}
             <div className={cn("relative min-h-0 w-full flex-1 overflow-hidden",assistantTab==='chat'?'flex':'hidden')}>
               <div
@@ -1888,7 +1888,7 @@ useEffect(() => {
                       )}
 
                       {msg.serviceForm && <ChatServiceForm service={msg.serviceForm} authenticated={Boolean(token)}/>}
-                      {msg.receptionRooms?.map(room=><div className="mb-3" key={room.id}><AvailabilityCard room={room}/></div>)}
+                      {msg.receptionRooms?.map(room=><div className="mb-3" key={room.id}><AvailabilityCard room={room} hideContact /></div>)}
                       <p className="whitespace-pre-wrap break-words">{msg.text}</p>
 
                       {!!msg.quickReplies?.length && (
