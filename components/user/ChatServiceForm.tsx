@@ -27,9 +27,9 @@ export function ChatServiceForm({service,authenticated}:{service:ChatService;aut
       if (!form || typeof form.id !== 'string') return;
       const req=form.requirements||{};
       const parts=String(form.location||'').split(',');
-      const dateMatch=String(form.details||'').match(/^Preferred date: (\\d{4}-\\d{2}-\\d{2})(?:\\n|$)/);
+      const dateMatch=String(form.details||'').match(/^Preferred date: (\d{4}-\d{2}-\d{2})(?:\n|$)/);
       setSubmittedId(form.id);
-      setDraft({name:form.name||'',phone:form.phone||'',city:parts.shift()?.trim()||'Pokhara',area:parts.join(',').trim(),roomType:req.roomType||'ANY',people:String(req.people||1),budget:String(req.maxRent||''),date:dateMatch?.[1]||'',details:String(form.details||'').replace(/^Preferred date: \\d{4}-\\d{2}-\\d{2}\\n?/, '')});
+      setDraft({name:form.name||'',phone:form.phone||'',city:parts.shift()?.trim()||'Pokhara',area:parts.join(',').trim(),roomType:req.roomType||'ANY',people:String(req.people||1),budget:String(req.maxRent||''),date:dateMatch?.[1]||'',details:String(form.details||'').replace(/^Preferred date: \d{4}-\d{2}-\d{2}\n?/, '')});
       setDone(true);
     }).catch(()=>{/* A missing previous form should not stop a fresh submission. */});
     return()=>{active=false;};
