@@ -7,6 +7,7 @@ export function HangingMonkey({ scared = false, motion = "idle" }: { scared?: bo
       <path className="monkey-tail" d="M67 111C105 103 96 141 76 134C62 130 76 116 85 125" fill="none" stroke="#754632" strokeWidth="11" strokeLinecap="round"/>
       <path d="M35 100Q50 85 68 105L74 135Q51 156 28 134Z" fill="#754632" stroke="#34201b" strokeWidth="3"/>
       <ellipse cx="50" cy="122" rx="17" ry="21" fill="#e9ac83"/>
+      <text x="50" y="128" textAnchor="middle" fontSize="19" fontWeight="900" fill="#642d20" stroke="#fff4e8" strokeWidth="1.3" paintOrder="stroke" letterSpacing="1">AI</text>
       <g className="monkey-legs" stroke="#754632" strokeWidth="13" fill="none" strokeLinecap="round">
         <path d="M36 137L27 154L15 151"/>
         <path d="M64 137L75 154L87 147"/>
