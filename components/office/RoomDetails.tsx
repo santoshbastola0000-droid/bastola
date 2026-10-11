@@ -6,7 +6,7 @@ import { PhoneReveal } from './PhoneReveal';
 export function RoomDetails({ room }: { room: OfficeRoom }) {
   return <div className="space-y-1 p-3">
     <div className="flex items-start justify-between gap-3"><h3 className="text-base font-semibold">{room.title}</h3><span className="rounded-lg bg-slate-100 px-3 py-1 font-mono font-bold">{room.code}</span></div>
-    <p className="text-slate-600">📍 {room.location} · रु {Number(room.price).toLocaleString()}/month</p>
+    <p className="text-slate-600">📍 {room.location} · रु {Number(room.price).toLocaleString()}/month</p>{room.matchProfile?.exactAddress&&<p className="text-sm text-slate-600">Exact address: {room.matchProfile.exactAddress}</p>}{room.matchProfile?.latitude != null&&room.matchProfile?.longitude != null&&<a className="inline-block text-sm text-blue-700 underline" target="_blank" rel="noopener noreferrer" href={'https://www.google.com/maps?q='+encodeURIComponent(String(room.matchProfile.latitude)+','+String(room.matchProfile.longitude))}>📍 View exact location on map ↗</a>}
     <div className="rounded-lg bg-slate-50 p-3 text-sm text-slate-700"><p className="mb-1 font-semibold">Room details</p><p className="whitespace-pre-wrap">{room.details || "No details added yet."}</p></div>
     <div className="flex flex-wrap items-center gap-2 text-sm"><span>Owner: {room.ownerName || '—'}</span><PhoneReveal phone={room.ownerPhone} label="Owner phone"/></div>
     {room.tiktokUrl && <a className="inline-block text-sm text-blue-700 underline" href={room.tiktokUrl} target="_blank" rel="noopener noreferrer">Open TikTok ↗</a>}
