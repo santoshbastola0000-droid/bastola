@@ -1,4 +1,6 @@
-import type { OfficeRoom } from '@/http/services/office.service';
+"use client";
+import { useEffect, useState, type FormEvent } from 'react';
+import { officeService, officeError, type OfficeRoom } from '@/http/services/office.service';
 import { PhoneReveal } from './PhoneReveal';
 
 export function RoomDetails({ room }: { room: OfficeRoom }) {
@@ -11,3 +13,42 @@ export function RoomDetails({ room }: { room: OfficeRoom }) {
   </div>;
 }
 
+
+/** Admin-only inline editor; writes to the existing room details column. */
+export function RoomDetailsEditor({ room, onSaved }: { room: OfficeRoom; onSaved: () => Promise<void> }) {
+  const [details, setDetails] = useState(room.details || '');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [saved, setSaved] = useState(false);
+  useEffect(() => { setDetails(room.details || ''); setError(''); setSaved(false); }, [room.id, room.details]);
+  async function save(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (saving) return;
+    setSaving(true); setError(''); setSaved(false);
+    try {
+      await officeService.update(room.id, {
+        code: room.code, title: room.title, location: room.location,
+        details: details.trim(), ownerName: room.ownerName, ownerPhone: room.ownerPhone,
+        tiktokUrl: room.tiktokUrl, price: room.price, matchProfile: room.matchProfile,
+      });
+      await onSaved();
+      setSaved(true);
+    } catch (cause) { setError(officeError(cause)); }
+    finally { setSaving(false); }
+  }
+  return <form onSubmit={save} className="space-y-2 rounded-xl border border-blue-100 bg-blue-50/50 p-3">
+    <label htmlFor={'room-details-edit-'+room.id} className="block text-sm font-semibold text-slate-900">Add / edit room details (Admin only)</label>
+    <textarea id={'room-details-edit-'+room.id} rows={5} maxLength={5000} value={details}
+      onChange={event=>{setDetails(event.target.value);setSaved(false);}}
+      placeholder="Room size, floor, kitchen, bathroom, water, Wi-Fi, rules and other details..."
+      className="w-full rounded-lg border border-slate-300 bg-white p-3 text-sm text-slate-900" />
+    <div className="flex items-center gap-3">
+      <button type="submit" disabled={saving || details.trim()===(room.details || '').trim()}
+        className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
+        {saving?'Saving…':'Save details'}
+      </button>
+      {saved && <span role="status" className="text-sm text-emerald-700">Details saved</span>}
+    </div>
+    {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
+  </form>;
+}
