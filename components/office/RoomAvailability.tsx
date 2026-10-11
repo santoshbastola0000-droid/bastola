@@ -3,7 +3,7 @@ import { FormEvent, useEffect, useRef, useState } from 'react';
 import { api } from '@/http/api/api';
 import { privateApi } from '@/http/api/privateApi';
 import { officeBackend, officeError } from '@/http/services/office.service';
-export interface AvailableRoom { id: string; code: string; title: string; location: string; details: string; price: number | string; ownerName: string; status: string; tiktokUrl?: string; }
+export interface AvailableRoom { id: string; code: string; title: string; location: string; details: string; price: number | string; ownerName: string; status: string; tiktokUrl?: string; matchProfile?: {exactAddress?: string; latitude?: number | null; longitude?: number | null}; }
 const unwrap = <T,>(r: {data: T | {data:T}}): T => { const d=r.data;return d && typeof d==='object' && 'data' in d ? (d as {data:T}).data : d as T; };
 export function RoomContactUnlock({roomId}: {roomId:string}) {
  const [key,setKey]=useState(''), [phone,setPhone]=useState(''), [error,setError]=useState(''), [busy,setBusy]=useState(false);
@@ -34,7 +34,7 @@ export function RoomAvailability({hideContact=true,embedded=false}: {hideContact
        <video key={selectedRoom.id} controls playsInline preload="metadata" data-video-intent="room" className="aspect-video w-full rounded-xl bg-slate-950" src={officeBackend+'/office/availability/'+encodeURIComponent(selectedRoom.id)+'/video'}/>
        <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="text-xl font-bold">{selectedRoom.title}</h3><span className="rounded-lg bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">Available</span></div>
        <p className="text-sm">📍 {selectedRoom.location}</p>
-       <p className="text-lg font-bold text-blue-700">रु {Number(selectedRoom.price).toLocaleString()}/month</p>
+       <p className="text-lg font-bold text-blue-700">रु {Number(selectedRoom.price).toLocaleString()}/month</p>{selectedRoom.matchProfile?.exactAddress&&<p className="text-sm">📍 {selectedRoom.matchProfile.exactAddress}</p>}{selectedRoom.matchProfile?.latitude != null&&selectedRoom.matchProfile?.longitude != null&&<a className="block text-sm text-blue-700 underline" target="_blank" rel="noopener noreferrer" href={"https://www.google.com/maps?q="+encodeURIComponent(String(selectedRoom.matchProfile.latitude)+","+String(selectedRoom.matchProfile.longitude))}>Open exact location in Google Maps ↗</a>}
        <section className="rounded-xl border p-3"><h4 className="mb-2 font-semibold">Room details</h4><p className="whitespace-pre-wrap text-sm">{selectedRoom.details || 'No details provided.'}</p></section>
        {selectedRoom.tiktokUrl && <a className="block text-sm text-blue-700 underline" href={selectedRoom.tiktokUrl} target="_blank" rel="noopener noreferrer">Watch TikTok video ↗</a>}
        <section className="rounded-xl border border-amber-200 p-3"><h4 className="mb-2 font-bold">Owner contact</h4><p className="mb-3 text-xs text-slate-600">Admin/Reception बाट दिएको room key राखेपछि मात्र owner phone देखिन्छ।</p><RoomContactUnlock key={selectedRoom.id} roomId={selectedRoom.id}/></section>
