@@ -1,5 +1,5 @@
 "use client";
-import { FormEvent, useRef, useState } from 'react';
+import { FormEvent, useEffect, useRef, useState } from 'react';
 import { privateApi } from '@/http/api/privateApi';
 import { officeError } from '@/http/services/office.service';
 
@@ -17,6 +17,23 @@ const field='mt-1 w-full min-w-0 rounded-lg border border-slate-300 bg-white p-2
 export function ChatServiceForm({service,authenticated}:{service:ChatService;authenticated:boolean}) {
   const [draft,setDraft]=useState({name:'',phone:'',city:'Pokhara',area:'',roomType:'ANY',people:'1',budget:'',date:'',details:''});
   const [busy,setBusy]=useState(false);const [done,setDone]=useState(false);const [editing,setEditing]=useState(false);const [submittedId,setSubmittedId]=useState<string|null>(null);const [error,setError]=useState('');const pending=useRef(false);const key=useRef<string>('');
+  useEffect(()=>{
+    if (!authenticated || service !== 'ROOM') return;
+    let active=true;
+    privateApi.get('/office/chat-forms/my-latest-room').then(response=>{
+      if (!active) return;
+      const data=response.data?.data||response.data;
+      const form=data?.form;
+      if (!form || typeof form.id !== 'string') return;
+      const req=form.requirements||{};
+      const parts=String(form.location||'').split(',');
+      const dateMatch=String(form.details||'').match(/^Preferred date: (\\d{4}-\\d{2}-\\d{2})(?:\\n|$)/);
+      setSubmittedId(form.id);
+      setDraft({name:form.name||'',phone:form.phone||'',city:parts.shift()?.trim()||'Pokhara',area:parts.join(',').trim(),roomType:req.roomType||'ANY',people:String(req.people||1),budget:String(req.maxRent||''),date:dateMatch?.[1]||'',details:String(form.details||'').replace(/^Preferred date: \\d{4}-\\d{2}-\\d{2}\\n?/, '')});
+      setDone(true);
+    }).catch(()=>{/* A missing previous form should not stop a fresh submission. */});
+    return()=>{active=false;};
+  },[authenticated,service]);
   const update=(name:keyof typeof draft,value:string)=>setDraft(prev=>({...prev,[name]:value}));
   async function submit(event:FormEvent) {
     event.preventDefault();if(pending.current||!authenticated)return;
