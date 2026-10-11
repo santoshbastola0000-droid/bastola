@@ -6,9 +6,8 @@ import {
   useState,
   type PointerEvent as ReactPointerEvent,
 } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { TigerHead } from "./user/TigerHead";
-import { Mic, Sparkles } from "lucide-react";
 
 const BUTTON_SIZE = 62;
 const EDGE_SPACE = 12;
@@ -30,7 +29,6 @@ type DragState = {
 };
 
 export function RoomKhojAIFloatingButton() {
-  const router = useRouter();
   const pathname = usePathname();
   const [position, setPosition] = useState<Position | null>(null);
   const dragRef = useRef<DragState | null>(null);
@@ -39,10 +37,6 @@ export function RoomKhojAIFloatingButton() {
     window.dispatchEvent(
       new CustomEvent("open-roomkhoj-chatbot"),
     );
-  };
-
-  const openVoice = () => {
-    router.push("/ai/voice");
   };
 
   const clampPosition = (next: Position): Position => {
@@ -182,29 +176,8 @@ export function RoomKhojAIFloatingButton() {
     return null;
   }
 
-  const voiceStyle = position
-    ? {
-        left: `${Math.max(6, position.x - 8)}px`,
-        top: `${Math.max(6, position.y - 10)}px`,
-      }
-    : {
-        right: "66px",
-        bottom: "168px",
-      };
-
   return (
     <>
-      <button
-        type="button"
-        aria-label="Open RoomKhoj Live Voice"
-        title="Live Voice Assistant"
-        onClick={openVoice}
-        style={voiceStyle}
-        className="fixed z-[41] flex h-9 w-9 items-center justify-center rounded-full border-2 border-white bg-slate-950 text-white shadow-xl transition hover:scale-105 active:scale-95 dark:border-slate-900"
-      >
-        <Mic className="h-4 w-4" />
-      </button>
-
       <button
         type="button"
         aria-label="Open or move RoomKhoj AI"
