@@ -193,10 +193,9 @@ export function RoomKhojAIFloatingButton() {
           }
         }}
         style={buttonStyle}
-        className="group fixed z-40 flex h-[62px] w-[62px] touch-none select-none cursor-grab items-center justify-center transition-transform active:cursor-grabbing active:scale-95"
+        className="group fixed z-40 flex h-[62px] w-[62px] touch-none select-none cursor-grab items-center justify-center bg-transparent border-0 shadow-none transition-transform active:cursor-grabbing active:scale-95"
       >
         <span className="relative z-10"><MonkeyHead /></span>
-        <span className="absolute bottom-[3px] right-[3px] z-20 h-3 w-3 rounded-full border-2 border-white bg-green-500" />
       </button>
     </>
   );
