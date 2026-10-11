@@ -7,7 +7,7 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from "react";
 import { usePathname } from "next/navigation";
-import { TigerHead } from "./user/TigerHead";
+import { MonkeyHead } from "./user/MonkeyHead";
 
 const BUTTON_SIZE = 62;
 const EDGE_SPACE = 12;
@@ -196,7 +196,7 @@ export function RoomKhojAIFloatingButton() {
         className="group fixed z-40 flex h-[62px] w-[62px] touch-none select-none cursor-grab items-center justify-center rounded-full transition-transform active:cursor-grabbing active:scale-95"
       >
         <span className="absolute inset-0 rounded-full border-2 border-amber-300 bg-amber-50 shadow-lg" />
-        <span className="relative z-10"><TigerHead /></span>
+        <span className="relative z-10"><MonkeyHead /></span>
         <span className="absolute bottom-[3px] right-[3px] z-20 h-3 w-3 rounded-full border-2 border-white bg-green-500" />
       </button>
     </>
