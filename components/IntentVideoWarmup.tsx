@@ -18,7 +18,7 @@ export function IntentVideoWarmup(){
    const done=()=>{video.removeEventListener('loadedmetadata',done);video.removeEventListener('error',done);window.clearTimeout(timer);current=null;release=()=>{};timer=window.setTimeout(next,500);};
    release=done;
    const load=()=>{if(stop || !video.isConnected){done();return;}video.addEventListener('loadedmetadata',done,{once:true});video.addEventListener('error',done,{once:true});video.preload='metadata';video.load();timer=window.setTimeout(done,6000);};
-   if('requestIdleCallback' in window)idle=window.requestIdleCallback(load,{timeout:1500});else timer=window.setTimeout(load,350);
+   if(typeof window.requestIdleCallback === 'function') idle=window.requestIdleCallback(load,{timeout:1500}); else timer=window.setTimeout(load,350);
   };
   const intersection=new IntersectionObserver(entries=>{
    entries.filter(e=>e.isIntersecting).sort((a,b)=>a.boundingClientRect.top-b.boundingClientRect.top).forEach(entry=>{
