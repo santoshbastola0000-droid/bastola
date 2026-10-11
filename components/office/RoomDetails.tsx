@@ -7,7 +7,7 @@ export function RoomDetails({ room }: { room: OfficeRoom }) {
   return <div className="space-y-1 p-3">
     <div className="flex items-start justify-between gap-3"><h3 className="text-base font-semibold">{room.title}</h3><span className="rounded-lg bg-slate-100 px-3 py-1 font-mono font-bold">{room.code}</span></div>
     <p className="text-slate-600">📍 {room.location} · रु {Number(room.price).toLocaleString()}/month</p>
-    <details className="text-sm text-slate-700"><summary className="cursor-pointer">Room details</summary><p className="whitespace-pre-wrap">{room.details}</p></details>
+    <div className="rounded-lg bg-slate-50 p-3 text-sm text-slate-700"><p className="mb-1 font-semibold">Room details</p><p className="whitespace-pre-wrap">{room.details || "No details added yet."}</p></div>
     <div className="flex flex-wrap items-center gap-2 text-sm"><span>Owner: {room.ownerName || '—'}</span><PhoneReveal phone={room.ownerPhone} label="Owner phone"/></div>
     {room.tiktokUrl && <a className="inline-block text-sm text-blue-700 underline" href={room.tiktokUrl} target="_blank" rel="noopener noreferrer">Open TikTok ↗</a>}
   </div>;
@@ -20,6 +20,7 @@ export function RoomDetailsEditor({ room, onSaved }: { room: OfficeRoom; onSaved
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [saved, setSaved] = useState(false);
+  const [editing, setEditing] = useState(false);
   useEffect(() => { setDetails(room.details || ''); setError(''); setSaved(false); }, [room.id, room.details]);
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -33,10 +34,13 @@ export function RoomDetailsEditor({ room, onSaved }: { room: OfficeRoom; onSaved
       });
       await onSaved();
       setSaved(true);
+      setEditing(false);
     } catch (cause) { setError(officeError(cause)); }
     finally { setSaving(false); }
   }
-  return <form onSubmit={save} className="space-y-2 rounded-xl border border-blue-100 bg-blue-50/50 p-3">
+  return <div className="space-y-2"><button type="button" onClick={()=>{setEditing(value=>!value);setError("");}} className="rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm font-semibold text-blue-700">{editing?"Cancel edit":"Edit details"}</button>
+    {saved && !editing && <span role="status" className="ml-2 text-sm text-emerald-700">Details saved</span>}
+    {editing && <form onSubmit={save} className="space-y-2 rounded-xl border border-blue-100 bg-blue-50/50 p-3">
     <label htmlFor={'room-details-edit-'+room.id} className="block text-sm font-semibold text-slate-900">Add / edit room details (Admin only)</label>
     <textarea id={'room-details-edit-'+room.id} rows={5} maxLength={5000} value={details}
       onChange={event=>{setDetails(event.target.value);setSaved(false);}}
@@ -50,5 +54,5 @@ export function RoomDetailsEditor({ room, onSaved }: { room: OfficeRoom; onSaved
       {saved && <span role="status" className="text-sm text-emerald-700">Details saved</span>}
     </div>
     {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
-  </form>;
+  </form>}</div>;
 }
