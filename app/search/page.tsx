@@ -7,6 +7,7 @@ import { BriefcaseBusiness, Building2, Loader2, Search, UserRound, Wrench } from
 import { NavBar } from "@/components/common/navbar";
 import { socialService, type GlobalSearchResult, type SearchSuggestion } from "@/http/services/social.service";
 import { syntheticBotAvatarDataUrl } from "@/lib/synthetic-bot-avatar";
+import { PublicRoomCodeSearch, receptionCode } from "@/components/office/PublicRoomCodeSearch";
 
 const backendUrl = String(
   process.env.NEXT_PUBLIC_BACKEND_URL || "https://api.roomkhoj.com",
@@ -262,17 +263,19 @@ function SearchContent() {
             </div>
           )}
 
+          <PublicRoomCodeSearch query={initial} />
+
           {loading ? (
             <div className="flex justify-center py-20"><Loader2 className="h-7 w-7 animate-spin text-red-600" /></div>
           ) : initial.trim().length < 2 ? (
             <div className="rounded-2xl border bg-white p-8 text-center text-slate-500">
               Search by user name, post text, room location/title, job or service.
             </div>
-          ) : !result || total === 0 ? (
+          ) : (!result || total === 0) && !receptionCode(initial) ? (
             <div className="rounded-2xl border bg-white p-8 text-center text-slate-500">
               No results found for <b>{initial}</b>.
             </div>
-          ) : (
+          ) : result ? (
             <div className="space-y-6">
               {result.users.length > 0 && (
                 <Section title="People" icon={<UserRound className="h-5 w-5" />}>
@@ -358,7 +361,7 @@ function SearchContent() {
                 </Section>
               )}
             </div>
-          )}
+          ) : null}
         </div>
       </main>
     </>
