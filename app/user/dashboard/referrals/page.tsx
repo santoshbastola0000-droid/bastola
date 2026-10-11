@@ -218,6 +218,15 @@ export default function ReferralPage() {
         <div className="flex items-center gap-3"><span className="text-3xl">🤣</span><div><h2 className="text-lg font-bold">तिमी कत्तिको चुतिया छौ? — Friend Challenge</h2><p className="mt-1 text-sm">आफ्नो नाम राखेर साथीलाई challenge पठाऊ। उसले छानेका 10 वटै उत्तर Monitoring मा हेर! 👀</p></div></div>
         <span className="mt-3 inline-block text-sm font-bold">Create Challenge & Monitor →</span>
       </Link>
+      <Link href="/user/dashboard/referrals/snake" className="block rounded-2xl border border-lime-500/40 bg-lime-50 p-5 text-lime-950 shadow-sm transition hover:shadow-md dark:bg-lime-950/30 dark:text-lime-100">
+        <div className="flex items-center gap-4">
+          <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-[#a2b68a] font-mono text-2xl font-black text-[#243923]">▦</span>
+          <div><h2 className="text-lg font-bold">Classic Nokia Snake Game 🐍</h2>
+            <p className="mt-1 text-sm">पुरानो बटनवाला Nokia फोनजस्तै Snake खेल्नुहोस्। Mobile buttons, score र high score सहित!</p>
+            <span className="mt-2 inline-block text-sm font-bold">Play Snake →</span>
+          </div>
+        </div>
+      </Link>
       <div className="grid gap-4 md:grid-cols-2">
         <button type="button" onClick={() => setShowReferralDetails((value) => !value)} aria-expanded={showReferralDetails}
           className="rounded-2xl border bg-card p-5 text-left shadow-sm transition hover:border-primary/50 focus-visible:outline-2 focus-visible:outline-primary">
