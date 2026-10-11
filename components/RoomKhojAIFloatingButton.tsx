@@ -1,202 +1,86 @@
 "use client";
-
-import {
-  useEffect,
-  useRef,
-  useState,
-  type PointerEvent as ReactPointerEvent,
-} from "react";
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { usePathname } from "next/navigation";
-import { MonkeyHead } from "./user/MonkeyHead";
+import { HangingMonkey } from "./user/HangingMonkey";
 
-const BUTTON_SIZE = 62;
-const EDGE_SPACE = 12;
-const POSITION_KEY = "roomkhoj_ai_button_position";
-
-type Position = {
-  x: number;
-  y: number;
-};
-
-type DragState = {
-  pointerId: number;
-  startX: number;
-  startY: number;
-  originX: number;
-  originY: number;
-  moved: boolean;
-  lastPosition: Position;
-};
+const WIDTH = 78;
+const HEIGHT = 126;
+const EDGE = 8;
+const KEY = "roomkhoj_ai_button_position";
+type Position = { x: number; y: number };
+type DragState = { pointerId: number; startX: number; startY: number; origin: Position; moved: boolean; last: Position };
+type Animation = "idle" | "fall" | "climb";
 
 export function RoomKhojAIFloatingButton() {
   const pathname = usePathname();
   const [position, setPosition] = useState<Position | null>(null);
+  const [animation, setAnimation] = useState<Animation>("idle");
   const dragRef = useRef<DragState | null>(null);
-
-  const openChatbot = () => {
-    window.dispatchEvent(
-      new CustomEvent("open-roomkhoj-chatbot"),
-    );
-  };
-
-  const clampPosition = (next: Position): Position => {
-    const isMobile = window.innerWidth < 768;
-    const bottomReserved = isMobile ? 82 : EDGE_SPACE;
-    const maxX = Math.max(
-      EDGE_SPACE,
-      window.innerWidth - BUTTON_SIZE - EDGE_SPACE,
-    );
-    const maxY = Math.max(
-      EDGE_SPACE,
-      window.innerHeight - BUTTON_SIZE - bottomReserved,
-    );
-
-    return {
-      x: Math.min(Math.max(next.x, EDGE_SPACE), maxX),
-      y: Math.min(Math.max(next.y, EDGE_SPACE), maxY),
-    };
-  };
-
-  const getDefaultPosition = (): Position => {
-    const isMobile = window.innerWidth < 768;
-    return clampPosition({
-      x: window.innerWidth - BUTTON_SIZE - 16,
-      y:
-        window.innerHeight -
-        BUTTON_SIZE -
-        (isMobile ? 120 : 24),
-    });
-  };
-
+  const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const openChatbot = () => window.dispatchEvent(new CustomEvent("open-roomkhoj-chatbot"));
+  const corner = (): Position => ({
+    x: Math.max(EDGE, window.innerWidth - WIDTH - EDGE),
+    y: Math.max(EDGE, window.innerHeight - HEIGHT - (window.innerWidth < 768 ? 102 : 24)),
+  });
+  const clamp = (next: Position): Position => ({
+    x: Math.max(EDGE, Math.min(window.innerWidth - WIDTH - EDGE, next.x)),
+    y: Math.max(EDGE, Math.min(window.innerHeight - HEIGHT - (window.innerWidth < 768 ? 82 : EDGE), next.y)),
+  });
   useEffect(() => {
-    let initialPosition: Position | null = null;
-
-    try {
-      const saved = localStorage.getItem(POSITION_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (
-          Number.isFinite(parsed?.x) &&
-          Number.isFinite(parsed?.y)
-        ) {
-          initialPosition = {
-            x: Number(parsed.x),
-            y: Number(parsed.y),
-          };
-        }
-      }
-    } catch {
-      localStorage.removeItem(POSITION_KEY);
-    }
-
-    setPosition(
-      clampPosition(
-        initialPosition || getDefaultPosition(),
-      ),
-    );
-
-    const handleResize = () => {
-      setPosition((current) =>
-        clampPosition(current || getDefaultPosition()),
-      );
-    };
-
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
+    // Always return to the screen corner, including after reload.
+    try { localStorage.removeItem(KEY); } catch {}
+    setPosition(corner());
+    const resize = () => setPosition(corner());
+    window.addEventListener("resize", resize);
+    return () => { window.removeEventListener("resize", resize); timers.current.forEach(clearTimeout); timers.current = []; };
   }, []);
-
-  const handlePointerDown = (
-    event: ReactPointerEvent<HTMLButtonElement>,
-  ) => {
-    if (!position) return;
+  const rescue = () => {
+    timers.current.forEach(clearTimeout);
+    timers.current = [];
+    setPosition(corner());
+    if (typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setAnimation("idle");
+      return;
+    }
+    setAnimation("fall");
+    timers.current.push(setTimeout(() => setAnimation("climb"), 680));
+    timers.current.push(setTimeout(() => setAnimation("idle"), 1980));
+  };
+  const onDown = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    if (!position || animation !== "idle") return;
     event.currentTarget.setPointerCapture(event.pointerId);
-    dragRef.current = {
-      pointerId: event.pointerId,
-      startX: event.clientX,
-      startY: event.clientY,
-      originX: position.x,
-      originY: position.y,
-      moved: false,
-      lastPosition: position,
-    };
+    dragRef.current = { pointerId: event.pointerId, startX: event.clientX, startY: event.clientY, origin: position, moved: false, last: position };
   };
-
-  const handlePointerMove = (
-    event: ReactPointerEvent<HTMLButtonElement>,
-  ) => {
+  const onMove = (event: ReactPointerEvent<HTMLButtonElement>) => {
     const drag = dragRef.current;
     if (!drag || drag.pointerId !== event.pointerId) return;
-
-    const deltaX = event.clientX - drag.startX;
-    const deltaY = event.clientY - drag.startY;
-    if (Math.abs(deltaX) > 4 || Math.abs(deltaY) > 4) {
-      drag.moved = true;
-    }
-
-    const next = clampPosition({
-      x: drag.originX + deltaX,
-      y: drag.originY + deltaY,
-    });
-    drag.lastPosition = next;
-    setPosition(next);
+    const dx = event.clientX - drag.startX;
+    const dy = event.clientY - drag.startY;
+    if (Math.abs(dx) > 5 || Math.abs(dy) > 5) drag.moved = true;
+    if (!drag.moved) return;
+    drag.last = clamp({ x: drag.origin.x + dx, y: drag.origin.y + dy });
+    setPosition(drag.last);
   };
-
-  const finishPointer = (
-    event: ReactPointerEvent<HTMLButtonElement>,
-    openWhenNotMoved: boolean,
-  ) => {
+  const onFinish = (event: ReactPointerEvent<HTMLButtonElement>, open: boolean) => {
     const drag = dragRef.current;
     if (!drag || drag.pointerId !== event.pointerId) return;
-
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-      event.currentTarget.releasePointerCapture(event.pointerId);
-    }
-
-    localStorage.setItem(
-      POSITION_KEY,
-      JSON.stringify(drag.lastPosition),
-    );
-
-    const shouldOpen = openWhenNotMoved && !drag.moved;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
     dragRef.current = null;
-    if (shouldOpen) openChatbot();
+    if (!drag.moved) { if (open) openChatbot(); return; }
+    // Dragging into the middle startles the monkey; always climb back to safety.
+    rescue();
   };
-
-  const buttonStyle = position
-    ? {
-        left: `${position.x}px`,
-        top: `${position.y}px`,
-      }
-    : {
-        right: "16px",
-        bottom: "120px",
-      };
-
-  if (pathname?.startsWith("/messages")) {
-    return null;
-  }
-
-  return (
-    <>
-      <button
-        type="button"
-        aria-label="Open or move RoomKhoj AI"
-        title="Drag to move RoomKhoj AI"
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={(event) => finishPointer(event, true)}
-        onPointerCancel={(event) => finishPointer(event, false)}
-        onKeyDown={(event) => {
-          if (event.key === "Enter" || event.key === " ") {
-            event.preventDefault();
-            openChatbot();
-          }
-        }}
-        style={buttonStyle}
-        className="group fixed z-40 flex h-[62px] w-[62px] touch-none select-none cursor-grab items-center justify-center bg-transparent border-0 shadow-none transition-transform active:cursor-grabbing active:scale-95"
-      >
-        <span className="relative z-10"><MonkeyHead /></span>
-      </button>
-    </>
-  );
+  if (pathname?.startsWith("/messages")) return null;
+  return <button
+    type="button"
+    aria-label="Open RoomKhoj AI; drag monkey to see it fall and climb back"
+    title="Tap for RoomKhoj AI, drag for monkey animation"
+    onPointerDown={onDown}
+    onPointerMove={onMove}
+    onPointerUp={event => onFinish(event, true)}
+    onPointerCancel={event => onFinish(event, false)}
+    onKeyDown={event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openChatbot(); } }}
+    style={position ? { left: position.x, top: position.y } : { right: EDGE, bottom: 102 }}
+    className="fixed z-40 flex h-[126px] w-[78px] cursor-grab touch-none select-none items-center justify-center border-0 bg-transparent p-0 shadow-none active:cursor-grabbing"
+  ><HangingMonkey scared={animation === "fall" || animation === "climb"} motion={animation}/></button>;
 }
