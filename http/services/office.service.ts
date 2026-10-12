@@ -6,6 +6,7 @@ export interface OfficeRoom {
   ownerName: string; ownerPhone: string; tiktokUrl: string; price: number | string;
   status: 'AVAILABLE' | 'RENTED'; createdAt?: string;
   matchProfile?: RoomMatchProfile;
+  availabilityExpired?: boolean; availabilityConfirmedAt?: string;
   rentalCount?: number; rentalHistoryIncomplete?: boolean;
   currentRental?: { id: string; clientName?: string; clientPhone?: string; startedAt: string; number: number; tenant?: TenantDetails } | null;
 }
