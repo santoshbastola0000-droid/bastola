@@ -94,6 +94,7 @@ import {
 } from "@/lib/user-utils";
 import { UsersListSkeleton } from "@/components/user/UsersListSkeleton";
 import { formatPriceNPR, timeAgo } from "@/lib/utils";
+import { useUserStore } from "@/stores/user-store";
 
 export default function UsersPage() { return <Suspense fallback={<p>Loading users…</p>}><UsersList /></Suspense>; }
 
@@ -130,6 +131,8 @@ function UsersList() {
     role: UserRole;
     isVerified: boolean;
   } | null>(null);
+  const [renameUser, setRenameUser] = useState<{ id: string; name: string; email: string } | null>(null);
+  const [newName, setNewName] = useState("");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [creditDialogUser, setCreditDialogUser] = useState<any | null>(null);
   const [creditAmount, setCreditAmount] = useState("");
@@ -190,6 +193,35 @@ function UsersList() {
   });
 
   console.log("users", usersResponse);
+
+  const renameMutation = useMutation({
+    mutationFn: ({ id, name }: { id: string; name: string }) => userService.changeName(id, name),
+    onSuccess: (saved) => {
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+      const session = useUserStore.getState();
+      if (session.user?.id === saved.id) session.updateUser({ name: saved.name });
+      setRenameUser(null);
+      toast.success("Name changed successfully");
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.message || "Could not change name");
+    },
+  });
+
+  const openNameChange = (user: { id: string; name: string; email: string }) => {
+    setRenameUser(user);
+    setNewName(user.name);
+  };
+
+  const saveName = () => {
+    const name = newName.trim();
+    if (!renameUser || renameMutation.isPending) return;
+    if (!name || name.length > 100) {
+      toast.error("Enter a name between 1 and 100 characters");
+      return;
+    }
+    renameMutation.mutate({ id: renameUser.id, name });
+  };
 
   // Delete user mutation
   const adminCreditMutation = useMutation({
@@ -481,6 +513,7 @@ function UsersList() {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">
             <DropdownMenuLabel>Actions</DropdownMenuLabel>
+            <DropdownMenuItem onClick={() => openNameChange(user)}>Name change</DropdownMenuItem>
             <DropdownMenuSeparator />
             {user.role !== UserRole.ADMIN && (
               <>
@@ -1111,6 +1144,7 @@ function UsersList() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
+                          <Button variant="outline" size="sm" onClick={() => openNameChange(user)}>Name change</Button>
                           <Link
                             href={`/admin/dashboard/messages?userId=${encodeURIComponent(user.id)}`}
                           >
@@ -1384,6 +1418,28 @@ function UsersList() {
           </CardContent>
         </Card>
       )}
+
+      <AlertDialog open={Boolean(renameUser)} onOpenChange={(open) => {
+        if (!open && !renameMutation.isPending) setRenameUser(null);
+      }}>
+        <AlertDialogContent className="w-[95vw] max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Name change</AlertDialogTitle>
+            <AlertDialogDescription>Change the account name for {renameUser?.email}.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <form onSubmit={(event) => { event.preventDefault(); saveName(); }} className="space-y-4">
+            <label htmlFor="admin-user-name" className="text-sm font-medium">New name</label>
+            <Input id="admin-user-name" autoFocus required maxLength={100} value={newName}
+              disabled={renameMutation.isPending} onChange={(event) => setNewName(event.target.value)} />
+            <AlertDialogFooter>
+              <AlertDialogCancel type="button" disabled={renameMutation.isPending}>Cancel</AlertDialogCancel>
+              <Button type="submit" disabled={renameMutation.isPending || !newName.trim()}>
+                {renameMutation.isPending ? "Saving…" : "Save name"}
+              </Button>
+            </AlertDialogFooter>
+          </form>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Add Balance Dialog */}
       <AlertDialog
