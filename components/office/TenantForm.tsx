@@ -16,11 +16,19 @@ export function TenantForm({room,source,onClose,onSaved}:{room:OfficeRoom;source
       await onSaved();onClose();
     }catch(e){setError(officeError(e));}finally{pending.current=false;setBusy(false);}
   }
+  async function skip(){
+    if(pending.current)return;pending.current=true;setBusy(true);setError('');
+    try{
+      await officeService.status(room.id,'RENTED',undefined,undefined,true);
+      await onSaved();onClose();
+    }catch(e){setError(officeError(e));}finally{pending.current=false;setBusy(false);}
+  }
   const field='mt-1 w-full rounded-lg border p-2.5';
-  return <dialog ref={dialog} className="max-h-[90vh] w-[calc(100%-1.5rem)] max-w-xl overflow-y-auto rounded-xl p-5 backdrop:bg-black/60" onCancel={e=>{e.preventDefault();if(!busy)onClose();}}><form onSubmit={save} className="space-y-3"><div className="flex items-center justify-between gap-3"><h2 className="text-lg font-bold">{room.code} · Save tenant & mark rented</h2><button type="button" disabled={busy} onClick={onClose}>Close ✕</button></div><p className="text-sm text-slate-600">Room changes to Rented only after these details save successfully.</p>{error&&<p role="alert" className="text-red-700">{error}</p>}
+  return <dialog ref={dialog} className="max-h-[90vh] w-[calc(100%-1.5rem)] max-w-xl overflow-y-auto rounded-xl p-5 backdrop:bg-black/60" onCancel={e=>{e.preventDefault();if(!busy)onClose();}}><form onSubmit={save} className="space-y-3"><div className="flex items-center justify-between gap-3"><h2 className="text-lg font-bold">{room.code} · Save tenant & mark rented</h2><button type="button" disabled={busy} onClick={onClose}>Close ✕</button></div><p className="text-sm text-slate-600">Save tenant details, or skip this form to mark the room Rented without tenant details.</p>{error&&<p role="alert" className="text-red-700">{error}</p>}
     <div className="grid gap-3 sm:grid-cols-2"><label>Name *<input autoFocus required maxLength={180} className={field} value={tenant.name} onChange={e=>setTenant({...tenant,name:e.target.value})}/></label><label>Phone *<input required type="tel" maxLength={30} className={field} value={tenant.phone} onChange={e=>setTenant({...tenant,phone:e.target.value})}/></label><label>People staying *<input required type="number" min={1} max={room.matchProfile?.capacity||100} className={field} value={tenant.people} onChange={e=>setTenant({...tenant,people:Number(e.target.value)})}/></label><label>Move-in date *<input required type="date" className={field} value={tenant.moveInDate} onChange={e=>setTenant({...tenant,moveInDate:e.target.value})}/></label></div>
     {(['address','occupation','emergencyContact'] as const).map(key=><label className="block text-sm" key={key}>{key==='emergencyContact'?'Emergency contact':key}<input maxLength={key==='address'?500:180} className={field} value={tenant[key]||''} onChange={e=>setTenant({...tenant,[key]:e.target.value})}/></label>)}
     <label className="block text-sm">Citizenship photocopy / photo (optional, private)<input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" className={field} onChange={e=>setFile(e.target.files?.[0]||null)}/></label>{tenant.documentId&&!file&&<p className="text-xs text-emerald-700">Private document uploaded.</p>}
     <label className="block text-sm">Other tenant details<textarea maxLength={5000} className={field} value={tenant.notes||''} onChange={e=>setTenant({...tenant,notes:e.target.value})}/></label><button disabled={busy} className="rounded-lg bg-emerald-700 px-4 py-2.5 text-white disabled:opacity-50">{busy?'Saving…':'Save tenant & mark Rented'}</button>
+    <button type="button" disabled={busy} onClick={()=>void skip()} className="ml-2 rounded-lg border px-4 py-2.5 disabled:opacity-50">Skip & mark Rented</button>
   </form></dialog>;
 }
