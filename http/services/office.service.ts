@@ -74,7 +74,7 @@ export const officeService = {
     timeout: 15*60*1000,onUploadProgress: e => onProgress(e.total ? Math.round(e.loaded*100/e.total) : 0),
   })),
   update: async (id: string,data: Omit<OfficeRoom,'id'|'status'|'createdAt'>) => unwrap<OfficeRoom>(await privateApi.patch(`/office/rooms/${id}`,data)),
-  status: async (id: string,status: string,tenant?: TenantDetails,sourceClientId?: string) => privateApi.patch(`/office/rooms/${id}/status`,{ status,tenant,sourceClientId }),
+  status: async (id: string,status: string,tenant?: TenantDetails,sourceClientId?: string,skipTenantForm = false) => privateApi.patch(`/office/rooms/${id}/status`,{ status,tenant,sourceClientId,skipTenantForm }),
   share: async (id: string,client: ClientInput) => unwrap<{ token: string; shareId: string; expiresAt: string }>(await privateApi.post(`/office/rooms/${id}/share`,client)),
   visit: async (id: string,client: ClientInput,action: string,shareId?: string,occurredAt?: string) => privateApi.post(`/office/rooms/${id}/history`,{ ...client,action,shareId,occurredAt }),
   revoke: async (id: string) => privateApi.post(`/office/rooms/${id}/revoke`),
