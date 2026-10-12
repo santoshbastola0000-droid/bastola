@@ -11,6 +11,9 @@ import { CheckCircle2, Loader2, ScanSearch, ShieldAlert } from "lucide-react";
 type Severity = "CRITICAL" | "HIGH" | "MEDIUM" | "LOW" | "INFO";
 
 type ScanReport = {
+  evidencePolicy?: string;
+  pageAudits?: Array<{ url: string; method: string; status: number; scannedAt: string; findingCount: number; tests: Array<{ name: string; status: 'CHECKED' | 'SKIPPED'; findingCount: number; reason?: string }> }>;
+
   target: string;
   scannedAt: string;
   readOnly: boolean;
@@ -80,6 +83,8 @@ export default function SecurityScannerPage() {
   const [confirmed, setConfirmed] = useState(false);
   const [loading, setLoading] = useState(false);
   const [report, setReport] = useState<ScanReport | null>(null);
+  const [pageFilter, setPageFilter] = useState('');
+  const [selectedPage, setSelectedPage] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [advancedResult, setAdvancedResult] = useState<any>(null);
   const [tokenA, setTokenA] = useState("");
@@ -348,6 +353,36 @@ export default function SecurityScannerPage() {
 
       {report && (
         <>
+          <Card>
+            <CardHeader><CardTitle>Evidence and report export</CardTitle></CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-sm text-muted-foreground">{report.evidencePolicy || 'Read-only results are preliminary observations, not verified exploit proofs.'}</p>
+              <Button variant="outline" onClick={() => {
+                const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
+                const href = URL.createObjectURL(blob);
+                const anchor = document.createElement('a'); anchor.href = href; anchor.download = 'security-scan-report.json'; anchor.click();
+                URL.revokeObjectURL(href);
+              }}>Download JSON report</Button>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader><CardTitle>Page-by-page test evidence ({report.pageAudits?.length ?? 0})</CardTitle></CardHeader>
+            <CardContent className="space-y-3">
+              <Input value={pageFilter} onChange={e => setPageFilter(e.target.value)} placeholder="Search scanned URL" />
+              <div className="max-h-[520px] space-y-2 overflow-y-auto">
+                {(report.pageAudits || []).filter(p => p.url.toLowerCase().includes(pageFilter.toLowerCase())).slice(0, 500).map(page => (
+                  <div key={page.url} className="rounded-md border p-3">
+                    <button type="button" onClick={() => setSelectedPage(selectedPage === page.url ? null : page.url)} className="w-full break-all text-left text-sm font-medium underline-offset-2 hover:underline">{page.status || 'FAILED'} · {page.url} · {page.findingCount} observations</button>
+                    {selectedPage === page.url && <div className="mt-3 space-y-2 text-xs">
+                      <p className="text-muted-foreground">GET · {page.scannedAt}</p>
+                      {page.tests.map((test, i) => <div key={i} className="rounded bg-muted/40 p-2"><strong>{test.status}</strong> · {test.name} · {test.findingCount} observations{test.reason ? ` · ${test.reason}` : ''}</div>)}
+                    </div>}
+                  </div>
+                ))}
+              </div>
+              {(report.pageAudits?.length ?? 0) > 500 && <p className="text-xs text-muted-foreground">Showing first 500 matching pages. Download JSON to inspect the complete report.</p>}
+            </CardContent>
+          </Card>
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-8">
             <SummaryCard title="जोखिम स्कोर" value={report.summary.riskScore} suffix="/100" />
             <SummaryCard title="कुल भेटिएका page" value={report.summary.pagesDiscovered} />
