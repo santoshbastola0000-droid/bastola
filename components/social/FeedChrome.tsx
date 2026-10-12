@@ -1,4 +1,5 @@
 "use client";
+import { BrandWordmark } from "@/components/BrandWordmark";
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
@@ -226,7 +227,7 @@ export function FeedChrome() {
             aria-label="RoomKhoj Home"
             className="min-w-0 flex-1 truncate text-[30px] font-black leading-none tracking-[-0.055em] text-red-600"
           >
-            roomkhoj
+            <BrandWordmark />
           </Link>
 
           <button
