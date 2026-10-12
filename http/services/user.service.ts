@@ -42,6 +42,11 @@ export interface UserFilters {
 }
 
 export const userService = {
+  changeName: async (userId: string, name: string): Promise<{ id: string; name: string }> => {
+    const response = await privateApi.patch(`/user/admin/users/${encodeURIComponent(userId)}/name`, { name });
+    return response.data;
+  },
+
   getUsers: async (
     filters: UserFilters = {},
   ): Promise<PaginatedUserResponse> => {
