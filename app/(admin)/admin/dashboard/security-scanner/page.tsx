@@ -83,6 +83,8 @@ export default function SecurityScannerPage() {
   const [confirmed, setConfirmed] = useState(false);
   const [loading, setLoading] = useState(false);
   const [report, setReport] = useState<ScanReport | null>(null);
+  const [history, setHistory] = useState<Array<{ id: string; target: string; state: string; scannedPages: number; createdAt: string }>>([]);
+  const [historyError, setHistoryError] = useState('');
   const [pageFilter, setPageFilter] = useState('');
   const [selectedPage, setSelectedPage] = useState<string | null>(null);
   const [error, setError] = useState("");
@@ -95,7 +97,12 @@ export default function SecurityScannerPage() {
   const [progress, setProgress] = useState<{ scannedPages: number; discoveredPages: number; remainingPages: number; scannedApis: number; currentUrl?: string; message?: string } | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  useEffect(() => () => { if (pollRef.current) clearInterval(pollRef.current); }, []);
+  useEffect(() => {
+    privateApi.get('/admin/security-scanner/history?limit=25')
+      .then(r => setHistory(Array.isArray(r.data?.data) ? r.data.data : []))
+      .catch(() => setHistoryError('Scan history अहिले उपलब्ध छैन। Backend update लागू भएको छ कि जाँच्नुहोस्।'));
+    return () => { if (pollRef.current) clearInterval(pollRef.current); };
+  }, []);
 
   const runScan = async () => {
     setError("");
@@ -249,6 +256,18 @@ export default function SecurityScannerPage() {
         </CardContent>
       </Card>
 
+
+      <Card>
+        <CardHeader><CardTitle>Previous scan history</CardTitle></CardHeader>
+        <CardContent className="space-y-2">
+          {historyError && <p className="text-sm text-muted-foreground">{historyError}</p>}
+          {history.length === 0 && !historyError && <p className="text-sm text-muted-foreground">No stored scans found.</p>}
+          {history.map(job => <div key={job.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border p-2 text-xs">
+            <span className="break-all">{job.target} · {job.scannedPages} pages · {job.createdAt ? new Date(job.createdAt).toLocaleString() : 'Unknown date'}</span>
+            <Badge variant="outline">{job.state}</Badge>
+          </div>)}
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
