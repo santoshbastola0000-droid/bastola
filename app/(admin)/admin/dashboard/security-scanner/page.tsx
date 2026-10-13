@@ -377,6 +377,23 @@ export default function SecurityScannerPage() {
             <CardContent className="space-y-3">
               <p className="text-sm text-muted-foreground">{report.evidencePolicy || 'Read-only results are preliminary observations, not verified exploit proofs.'}</p>
               <Button variant="outline" onClick={() => {
+                const rows = [
+                  ['URL','Method','HTTP Status','Scanned At','Finding Count','Test','Test Status','Test Finding Count','Skip Reason'],
+                  ...(report.pageAudits || []).flatMap(page => page.tests.map(test => [
+                    page.url, page.method, String(page.status), page.scannedAt, String(page.findingCount),
+                    test.name, test.status, String(test.findingCount), test.reason || ''
+                  ]))
+                ];
+                const csv = rows.map(row => row.map(value => {
+                  const safe = /^[=+@\-\t\r]/.test(String(value)) ? "'" + value : String(value);
+                  return '"' + safe.replace(/"/g, '""') + '"';
+                }).join(',')).join('\r\n');
+                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+                const href = URL.createObjectURL(blob);
+                const anchor = document.createElement('a'); anchor.href = href; anchor.download = 'security-page-tests.csv'; anchor.click();
+                URL.revokeObjectURL(href);
+              }} disabled={!report.pageAudits?.length}>Download per-page CSV</Button>
+              <Button variant="outline" onClick={() => {
                 const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
                 const href = URL.createObjectURL(blob);
                 const anchor = document.createElement('a'); anchor.href = href; anchor.download = 'security-scan-report.json'; anchor.click();
