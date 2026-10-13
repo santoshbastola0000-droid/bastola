@@ -264,7 +264,7 @@ export default function SecurityScannerPage() {
           {history.length === 0 && !historyError && <p className="text-sm text-muted-foreground">No stored scans found.</p>}
           {history.map(job => <div key={job.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border p-2 text-xs">
             <span className="break-all">{job.target} · {job.scannedPages} pages · {job.createdAt ? new Date(job.createdAt).toLocaleString() : 'Unknown date'}</span>
-            <Badge variant="outline">{job.state}</Badge>
+            <div className="flex items-center gap-2"><Badge variant="outline">{job.state}</Badge>{job.state === 'COMPLETED' && <Button size="sm" variant="outline" onClick={async () => { try { setError(''); const response = await privateApi.get(`/admin/security-scanner/status/${encodeURIComponent(job.id)}`); if (response.data?.data?.result) setReport(response.data.data.result); else setError('Report उपलब्ध छैन।'); } catch (e: any) { setError(e?.response?.data?.message || 'Previous report खोल्न सकिएन।'); } }}>View report</Button>}</div>
           </div>)}
         </CardContent>
       </Card>
