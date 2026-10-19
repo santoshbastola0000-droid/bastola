@@ -1,6 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { UserRole } from "@/types/user.types";
-import { User, Shield, CheckCircle, Clock } from "lucide-react";
+import { User, Shield, CheckCircle, Clock, ChevronDown } from "lucide-react";
 
 export const getRoleBadge = (role: UserRole) => {
   const variants = {
@@ -27,23 +27,65 @@ export const getRoleBadge = (role: UserRole) => {
   );
 };
 
+/**
+ * Admin verification summary.
+ *
+ * Email verification is backed by the existing account isVerified flag.
+ * The current User model does not have a separate phone-verification flag,
+ * so phone verification is intentionally shown as Pending rather than
+ * incorrectly treating a verified email as a verified phone number.
+ */
 export const getVerificationBadge = (isVerified: boolean) => {
-  return isVerified ? (
-    <Badge
-      variant="outline"
-      className="bg-emerald-50 text-emerald-700 border-emerald-200"
-    >
-      <CheckCircle className="h-3 w-3 mr-1" />
-      Verified
-    </Badge>
-  ) : (
-    <Badge
-      variant="outline"
-      className="bg-amber-50 text-amber-700 border-amber-200"
-    >
-      <Clock className="h-3 w-3 mr-1" />
-      Pending
-    </Badge>
+  const statusClass = (verified: boolean) =>
+    verified
+      ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+      : "border-amber-200 bg-amber-50 text-amber-700";
+
+  const StatusIcon = (verified: boolean) =>
+    verified ? CheckCircle : Clock;
+
+  const EmailIcon = StatusIcon(isVerified);
+  const PhoneIcon = StatusIcon(false);
+
+  return (
+    <details className="group relative min-w-[112px]">
+      <summary className="list-none cursor-pointer [&::-webkit-details-marker]:hidden">
+        <Badge
+          variant="outline"
+          className={`${statusClass(isVerified)} gap-1.5 whitespace-nowrap`}
+        >
+          <EmailIcon className="h-3 w-3" />
+          {isVerified ? "Verified" : "Pending"}
+          <ChevronDown className="h-3 w-3 transition-transform group-open:rotate-180" />
+        </Badge>
+      </summary>
+
+      <div className="absolute right-0 z-50 mt-2 w-56 rounded-lg border bg-white p-2 shadow-lg">
+        <div className="mb-2 px-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+          Verification
+        </div>
+        <div className="space-y-1">
+          <div className="flex items-center justify-between gap-3 rounded-md px-2 py-1.5 text-xs">
+            <span className="flex items-center gap-1.5 text-slate-700">
+              <EmailIcon className="h-3.5 w-3.5" />
+              Email
+            </span>
+            <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 font-medium ${statusClass(isVerified)}`}>
+              {isVerified ? "Verified" : "Pending"}
+            </span>
+          </div>
+          <div className="flex items-center justify-between gap-3 rounded-md px-2 py-1.5 text-xs">
+            <span className="flex items-center gap-1.5 text-slate-700">
+              <PhoneIcon className="h-3.5 w-3.5" />
+              Phone number
+            </span>
+            <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 font-medium ${statusClass(false)}`}>
+              Pending
+            </span>
+          </div>
+        </div>
+      </div>
+    </details>
   );
 };
 
