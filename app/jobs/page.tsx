@@ -4,6 +4,7 @@ import { BriefcaseBusiness } from "lucide-react";
 import { NavBar } from "@/components/common/navbar";
 import Footer from "@/components/common/footer";
 import ApprovedVacancies from "@/components/jobs/ApprovedVacancies";
+import { NEPAL_CITIES } from "@/lib/seo-landings";
 
 const title = "Jobs in Nepal & Job Vacancies | RoomKhoj";
 
@@ -66,16 +67,7 @@ const jobCategories = [
   "Part-time Jobs",
 ];
 
-const locations = [
-  "Kathmandu",
-  "Pokhara",
-  "Lalitpur",
-  "Bhaktapur",
-  "Chitwan",
-  "Butwal",
-  "Biratnagar",
-  "Dharan",
-];
+const locations = NEPAL_CITIES.map((city) => city.name);
 
 const jsonLd = {
   "@context": "https://schema.org",
@@ -140,24 +132,19 @@ export default function NepalJobsPage() {
             </h2>
 
             <div className="mt-7 flex flex-wrap gap-3">
-              {locations.map((location) =>
-                location === "Pokhara" ? (
+              {locations.map((location) => {
+                const city = NEPAL_CITIES.find((item) => item.name === location);
+                if (!city) return null;
+                return (
                   <Link
                     key={location}
-                    href="/jobs/pokhara"
-                    className="rounded-full border border-red-300 bg-red-100 px-4 py-2 font-semibold text-red-700"
-                  >
-                    Jobs in Pokhara
-                  </Link>
-                ) : (
-                  <span
-                    key={location}
-                    className="rounded-full border border-slate-200 bg-slate-50 px-4 py-2 font-medium text-slate-700"
+                    href={`/jobs/${city.slug}`}
+                    className="rounded-full border border-red-200 bg-red-50 px-4 py-2 font-medium text-red-700 hover:bg-red-100"
                   >
                     Jobs in {location}
-                  </span>
-                ),
-              )}
+                  </Link>
+                );
+              })}
             </div>
           </div>
         </section>
