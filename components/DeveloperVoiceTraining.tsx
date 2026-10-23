@@ -55,7 +55,7 @@ export default function DeveloperVoiceTraining() {
     const timer=setTimeout(disable,Math.max(0,Date.parse(session.expiresAt)-Date.now()));
     return ()=>clearTimeout(timer);
   },[session,disable]);
-  useEffect(()=>{setSession(null);setDraft(null);setMemories([]);draftRef.current=null;setFeedback(null);setBusy(false);},[token]);
+  useEffect(()=>{setSession(null);setDraft(null);setMemories([]);draftRef.current=null;setFeedback(null);setBusy(false);setLesson("");setSearch("");setFilter("ALL");setStatus("");opening.current=false;saving.current=false;},[token]);
 
   async function enable(){
     if(opening.current)return;
@@ -139,7 +139,7 @@ export default function DeveloperVoiceTraining() {
     {session&&<>
       <Voice key={session.id} developerSessionId={session.id} onUtterance={utterance} feedback={feedback}/>
       <label className="block text-sm">बोलेको lesson सच्याउनुहोस्
-        <textarea value={lesson} maxLength={1500} onChange={e=>{setLesson(e.target.value);draftRef.current=null;setDraft(null);sequence.current++;inFlight.current?.abort();setBusy(false);}} className="mt-2 min-h-24 w-full rounded border bg-background p-3"/>
+        <textarea disabled={saving.current} value={lesson} maxLength={1500} onChange={e=>{setLesson(e.target.value);draftRef.current=null;setDraft(null);sequence.current++;inFlight.current?.abort();setBusy(false);}} className="mt-2 min-h-24 w-full rounded border bg-background p-3"/>
       </label>
       <button type="button" disabled={busy||lesson.trim().length<4} onClick={()=>void review(lesson)} className="rounded-lg border px-4 py-2 disabled:opacity-50">बुझाइ, सुझाव र जोखिम जाँच्नुहोस्</button>
       {draft&&<div className="space-y-2 rounded-xl border p-4">
