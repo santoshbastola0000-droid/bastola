@@ -57,7 +57,7 @@ export default function AiCallsPrivacySettings() {
   return <main className="mx-auto max-w-xl space-y-5 p-6">
     <h1 className="text-2xl font-bold">AI Voice Calling Privacy</h1>
     <p>RoomKhoj बाट AI ले वेबसाइटमा incoming call गर्न अनुमति दिने वा नदिने तपाईंको निर्णय हो। यो वास्तविक फोन नम्बरमा जाने call होइन।</p>
-    <p>AI ले आफू AI भएको परिचय दिन्छ। तपाईंले Accept थिचेपछि मात्रै माइक्रोफोन चल्छ। Room draft अलग अनुमति लिएर मात्रै सुरक्षित गरिन्छ।</p>
+    <p>AI ले आफू AI भएको परिचय दिन्छ। तपाईंले Accept थिचेपछि मात्रै माइक्रोफोन चल्छ। Call स्वीकार गर्दा छुट्टै ऐच्छिक अनुमति दिएमा AI र तपाईंको text transcript admin call history मा सुरक्षित हुन्छ। अनुमति नदिएमा transcript पठाइँदैन। Room draft अलग अनुमति लिएर मात्रै सुरक्षित गरिन्छ।</p>
     {!token?<p>पहिला <Link href="/auth/login?redirect=%2Fai-call-privacy" className="underline">login गर्नुहोस्</Link>।</p>:loading?<p role="status">Loading…</p>:optedIn!==null&&
     <label className="flex items-center gap-3 rounded-lg border p-4">
       <input type="checkbox" checked={optedIn} disabled={saving} onChange={event=>void update(event.target.checked)} />
