@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
+const OwnerRealtimeVoice = dynamic(() => import("@/components/OwnerRealtimeVoice"), { ssr: false });
 import { ArrowLeft, Mic, MicOff, PhoneOff, Sparkles, Volume2 } from "lucide-react";
 import useTokenStore from "@/store";
 import { recordingExtension, speechChunks, VoiceSession } from "@/lib/voice/voice-utils";
@@ -245,6 +247,8 @@ export default function LiveVoiceConversation({ ownerMode = false }: { ownerMode
     const turn = session.current.next(); stopPlayback(); listen(turn);
   }
   const orbScale = phase === "listening" ? "scale-110" : phase === "speaking" ? "scale-105" : "scale-100";
+
+  if (ownerMode) return <OwnerRealtimeVoice />;
 
   return (
     <main className={ownerMode ? "overflow-hidden rounded-2xl bg-[#0b0b0d] text-white" : "min-h-[100dvh] overflow-hidden bg-[#0b0b0d] text-white"}>
