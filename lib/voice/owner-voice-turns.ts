@@ -11,9 +11,12 @@ export class OwnerVoiceTurns {
   private closed = false;
   constructor(private readonly send: (event: Record<string, unknown>) => void) {}
 
-  greet() {
-    this.create({ instructions: 'Introduce yourself as RoomKhoj AI in Nepali and ask whether the owner has any vacant rental rooms. Ask only this one question.' });
+  greet(developer = false) {
+    this.create({ instructions: developer
+      ? 'Greet the administrator as RoomKhoj AI in Developer Mode and ask what speaking style or memory they want to teach. Do not ask about rental rooms.'
+      : 'Introduce yourself as RoomKhoj AI in Nepali and ask whether the owner has any vacant rental rooms. Ask only this one question.' });
   }
+  feedback() { this.pending = true; this.pump(); }
   handle(type: string, now: number) {
     if (this.closed) return;
     if (type === 'input_audio_buffer.speech_started') {
