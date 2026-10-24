@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import useTokenStore from "@/store";
 const API=(process.env.NEXT_PUBLIC_BACKEND_URL||"https://api.roomkhoj.com").replace(/\/$/,"");
 type Draft={id:string;callId:string;details:Record<string,string|number|null>;
-  missingFields:string[];reviewStatus:string;userName:string;callStatus:string;
+  ownerStatements?:string[];missingFields:string[];reviewStatus:string;userName:string;callStatus:string;
   callStartedAt:string;callEndedAt:string|null;createdAt:string;};
 export function AiOwnerDraftReview() {
   const token=useTokenStore(s=>s.token);
@@ -67,6 +67,11 @@ export function AiOwnerDraftReview() {
         </div>)}
       </dl>
       <p className="text-xs">Missing: {(draft.missingFields||[]).join(", ")||"None"}</p>
+      {!!draft.ownerStatements?.length&&<details className="rounded border p-3">
+        <summary className="cursor-pointer text-sm font-medium">Owner का मूल उत्तर र ठाउँको विवरण ({draft.ownerStatements.length})</summary>
+        <p className="mt-2 text-xs">Owner को transcript जस्ताको तस्तै हो; पछिको सुधारले पुरानो बोली मेटाउँदैन। Map सुझावलाई घरको पुष्टि भएको ठेगाना नमान्नुहोस्।</p>
+        <ol className="mt-2 list-decimal space-y-1 pl-5 text-sm">{draft.ownerStatements.map((text,index)=><li key={index}>{text}</li>)}</ol>
+      </details>}
       {draft.reviewStatus==="PENDING"&&<div className="flex flex-wrap gap-2">
         {editingId===draft.id?<button disabled={busy===draft.id || !Object.keys(edited).length} onClick={()=>void saveEdit(draft.id)} className="rounded bg-blue-700 px-4 py-2 text-white">Save changes</button>:<button onClick={()=>{setEditingId(draft.id);setEdited({});}} className="rounded border px-4 py-2">Edit details</button>}
         {editingId===draft.id&&<button onClick={()=>{setEditingId("");setEdited({});}} className="rounded border px-4 py-2">Cancel edit</button>}

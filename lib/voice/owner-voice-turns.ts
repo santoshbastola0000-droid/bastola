@@ -13,11 +13,14 @@ export class OwnerVoiceTurns {
   private localVoiced=true;
   private measured=false;
   private cue=false;
+  private toolsPending=0;
   constructor(private readonly send:(event:Record<string,unknown>)=>void) {}
   greet(developer=false){this.create({instructions:developer
     ? 'Greet the administrator as RoomKhoj AI in Developer Mode and ask what speaking style or memory they want to teach. Do not ask about rental rooms.'
     : 'Use the configured Start introduction from the session instructions, including the RoomKhoj AI disclosure. Keep it brief, then wait for the owner.'});}
   feedback(){this.pending=true;this.pump();}
+  holdTool(){if(!this.closed)this.toolsPending++;}
+  releaseTool(reply=true){if(this.closed)return;this.toolsPending=Math.max(0,this.toolsPending-1);if(reply)this.pending=true;this.pump();}
   microphone(voiced:boolean,now:number){
     if(this.closed)return;
     this.measured=true;this.localVoiced=voiced;
@@ -44,7 +47,7 @@ export class OwnerVoiceTurns {
     this.pump();
   }
   tick(now:number){
-    if(this.closed||!this.speaking||this.pending||this.busy||this.playing||this.usedCue||
+    if(this.closed||this.toolsPending||!this.speaking||this.pending||this.busy||this.playing||this.usedCue||
       !this.measured||this.localVoiced||this.pauseAt===null||now-this.pauseAt<450||now-this.pauseAt>1000||
       now-this.startedAt<7000||now-this.lastCue<14000)return;
     this.usedCue=true;this.lastCue=now;this.cue=true;
@@ -52,7 +55,7 @@ export class OwnerVoiceTurns {
     this.create({conversation:'none',input:[],instructions:'During this brief pause say ONLY "'+cue+'" softly, then stop. This means listening only, never agreement, fact verification or saving. Do not answer, ask a question or finish the owner sentence.'});
   }
   private pump(){
-    if(this.closed||!this.pending||this.speaking||this.busy||this.playing)return;
+    if(this.closed||this.toolsPending||!this.pending||this.speaking||this.busy||this.playing)return;
     this.pending=false;this.cue=false;this.create({});
   }
   private create(response:Record<string,unknown>){
