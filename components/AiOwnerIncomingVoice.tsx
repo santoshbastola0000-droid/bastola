@@ -44,6 +44,7 @@ export function AiOwnerIncomingVoice() {
   const [consentSave, setConsentSave] = useState(false);
   const [saving, setSaving] = useState(false);
   const [captured, setCaptured] = useState(0);
+  const [captureWarning,setCaptureWarning]=useState('');
 
   const stopAudio = useCallback(() => {
     mapLookup.current?.stop();mapLookup.current=null;setMapResult(null);
@@ -73,6 +74,7 @@ export function AiOwnerIncomingVoice() {
       active.current = data.callId;
       utterances.current = [];
       setCaptured(0);
+      setCaptureWarning('');
       setShareTranscript(false);setHistoryError("");
       setCallId(data.callId);
       setFinished(false);
@@ -195,9 +197,11 @@ export function AiOwnerIncomingVoice() {
             persistTurn('ai:'+item+':'+(message.content_index||0),'AI',wordsForHistory);
           if (message.type === "conversation.item.input_audio_transcription.completed") {
             const words = String(message.transcript || "").trim();
-            if (words && words.length <= 700 && utterances.current.length < 50) {
+            if (words && words.length <= 4000 && utterances.current.length < 200 && utterances.current.reduce((n,t)=>n+t.length,0)+words.length<=20000) {
               utterances.current.push(words);
               setCaptured(utterances.current.length);
+            }else if(words){
+              setCaptureWarning('कुराकानी लामो भएकाले केही उत्तर draft मा अटेनन्। Save गर्नुअघि admin लाई बाँकी ठाउँको विवरण छुट्टै दिनुहोस्।');
             }
           }
         } catch { /* Ignore malformed realtime events */ }
@@ -261,6 +265,7 @@ export function AiOwnerIncomingVoice() {
         AI र मेरो कुराकानीको text RoomKhoj admin को call history मा राख्न अनुमति दिन्छु। यो ऐच्छिक हो।
       </label>}
       {historyError && <p role="alert" className="text-sm text-red-600">{historyError}</p>}
+      {captureWarning&&<p role="alert" className="text-sm text-amber-700">{captureWarning}</p>}
       {connected&&<OwnerListeningIndicator speaking={ownerSpeaking} levels={levels}/>}
       <OwnerMapCandidates result={mapResult}/>
       <audio ref={audio} autoPlay controls playsInline className="w-full" />

@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import useTokenStore from "@/store";
 const API=(process.env.NEXT_PUBLIC_BACKEND_URL||"https://api.roomkhoj.com").replace(/\/$/,"");
 type Draft={id:string;callId:string;details:Record<string,string|number|null>;
-  ownerStatements?:string[];missingFields:string[];reviewStatus:string;userName:string;callStatus:string;
+  ownerStatements?:string[];locationNotes?:{turn:number;kind:string;quote:string;original:string}[];missingFields:string[];reviewStatus:string;userName:string;callStatus:string;
   callStartedAt:string;callEndedAt:string|null;createdAt:string;};
 export function AiOwnerDraftReview() {
   const token=useTokenStore(s=>s.token);
@@ -67,6 +67,14 @@ export function AiOwnerDraftReview() {
         </div>)}
       </dl>
       <p className="text-xs">Missing: {(draft.missingFields||[]).join(", ")||"None"}</p>
+      <section className="space-y-2 rounded border p-3 text-sm" aria-label="Owner location history">
+        <h3 className="font-medium">Main location: {draft.details?.location||'अझै स्पष्ट छैन'}</h3>
+        <p className="text-xs">थप ठाउँ, landmark र जाने बाटो · Owner ले बोलेको history (पुष्टि भएको ठेगाना होइन)</p>
+        {draft.locationNotes?.length?<ol className="list-decimal space-y-2 pl-5">{draft.locationNotes.map((note,index)=><li key={index}>
+          <span className="text-xs opacity-70">{({MAIN_AREA:'मुख्य क्षेत्र',LANDMARK:'Landmark',DIRECTIONS:'जाने बाटो',ALTERNATIVE:'अर्को ठाउँ',PREVIOUS:'पहिलेको ठाउँ',CORRECTION:'सच्याएको विवरण',OTHER:'थप location'} as Record<string,string>)[note.kind]||'थप location'}:</span> {note.quote}
+          {note.original!==note.quote&&<p className="text-xs opacity-70">पूरा बोली: {note.original}</p>}
+        </li>)}</ol>:<p className="text-xs">छुट्टै location history छैन; तल मूल उत्तर हेर्नुहोस्।</p>}
+      </section>
       {!!draft.ownerStatements?.length&&<details className="rounded border p-3">
         <summary className="cursor-pointer text-sm font-medium">Owner का मूल उत्तर र ठाउँको विवरण ({draft.ownerStatements.length})</summary>
         <p className="mt-2 text-xs">Owner को transcript जस्ताको तस्तै हो; पछिको सुधारले पुरानो बोली मेटाउँदैन। Map सुझावलाई घरको पुष्टि भएको ठेगाना नमान्नुहोस्।</p>

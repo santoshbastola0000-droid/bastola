@@ -25,5 +25,9 @@ const tool=(id='call-1')=>({type:'response.function_call_arguments.done',name:'l
  const ended=new OwnerMapLookup(t3,e=>events.push(e),(_a,signal)=>{signal.addEventListener('abort',()=>{});return new Promise(r=>release=r);},()=>assert.fail('End blocks late UI'));
  ended.handle(tool());ended.stop();t3.stop();release({available:true,reason:'CANDIDATES_ONLY'});await flush();assert.equal(events.length,0,'End blocks late audio and map output');
  const t4=new OwnerVoiceTurns(e=>events.push(e));const failed=new OwnerMapLookup(t4,e=>events.push(e),async()=>{throw new Error('offline');},()=>{});failed.handle(tool());await flush();assert.match(events[0].item.output,/MAP_LOOKUP_UNAVAILABLE/);assert.equal(events[1].type,'response.create','Continue talking after map failure');failed.stop();t4.stop();
- console.log('PASS: map tool serialization, real owner evidence, duplicate calls, stale results, End cleanup and map failure fallback');
+ let count=0;events=[];const t5=new OwnerVoiceTurns(e=>events.push(e));
+ const bounded=new OwnerMapLookup(t5,e=>events.push(e),async()=>{count++;return {available:true,reason:'CANDIDATES_ONLY'};},()=>{});
+ for(let i=0;i<3;i++){bounded.handle(tool('bounded-'+i));await flush();t5.handle('response.done',i);}
+ assert.equal(count,2,'Never get stuck making repeated map lookups');assert.ok(events.some(e=>e.item?.output?.includes('MAP_LOOKUP_LIMIT')));bounded.stop();t5.stop();
+ console.log('PASS: map tool serialization, owner evidence, duplicate calls, stale results, End cleanup, failure fallback and two-lookup limit');
 })().catch(e=>{console.error(e);process.exitCode=1;});

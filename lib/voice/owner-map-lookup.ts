@@ -1,6 +1,6 @@
 import type { OwnerVoiceTurns } from './owner-voice-turns';
 export type PublicMapPlace={placeId:string;name:string;address:string;mapsUrl:string;attributions?:{provider:string;providerUri:string}[]};
-export type OwnerMapResult={available:boolean;reason:string;source?:string;anchors?:PublicMapPlace[];nearby?:PublicMapPlace[]};
+export type OwnerMapResult={available:boolean;reason:string;source?:string;note?:string;anchors?:PublicMapPlace[];nearby?:PublicMapPlace[]};
 type ToolEvent={type?:string;name?:string;call_id?:string;arguments?:string;transcript?:string;item_id?:string;event_id?:string};
 
 /** Map data remains a transient suggestion. Only real owner transcripts supply search context. */
@@ -37,13 +37,13 @@ export class OwnerMapLookup {
     const abort=new AbortController();this.aborts.add(abort);
     const timer=setTimeout(()=>abort.abort(),10000);
     let result:OwnerMapResult={available:false,reason:'MAP_LOOKUP_UNAVAILABLE'};
-    const allowed=!this.inFlight&&this.requests<12;
+    const allowed=!this.inFlight&&this.requests<2;
     if(allowed){this.inFlight=true;this.requests++;}
     try {
       if(allowed) {
         const args=JSON.parse(raw);
         result=await this.request({...args,ownerWords:this.words.join('\n').slice(-2000)},abort.signal);
-      }else result={available:false,reason:'MAP_LOOKUP_LIMIT'};
+      }else result={available:false,reason:'MAP_LOOKUP_LIMIT',note:'Two map lookups are enough. Stop location probing, keep owner wording, leave exact address unknown and finish politely.'};
     }catch { /* Keep conversation usable when maps or networking fail. */ }
     finally {clearTimeout(timer);this.aborts.delete(abort);if(allowed)this.inFlight=false;}
     if(this.closed)return;
