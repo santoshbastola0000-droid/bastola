@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
+const DeveloperVoiceTraining=dynamic(()=>import("@/components/DeveloperVoiceTraining"),{ssr:false});
 import useTokenStore from "@/store";
 
 type ProposalResult = {
@@ -133,6 +135,8 @@ export default function AiDeveloperPage() {
           admin approval.
         </p>
       </div>
+
+      <DeveloperVoiceTraining />
 
       <div className="rounded-xl border bg-white p-5 shadow-sm">
         <label className="mb-2 block text-sm font-medium">

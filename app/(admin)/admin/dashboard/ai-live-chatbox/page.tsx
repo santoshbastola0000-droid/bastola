@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { AiAutoCalling } from "@/components/admin/AiAutoCalling";
 import { useEffect, useMemo, useState } from "react";
 import { privateApi } from "@/http/api/privateApi";
 import useTokenStore from "@/store";
@@ -123,6 +124,7 @@ export default function AiLiveChatboxPage() {
         <p className="text-sm text-muted-foreground">कसलाई call भयो र कसले के भन्यो — call history र कुराकानी।</p></div>
       <Link href="/admin/dashboard/ai-owner-calling" className="rounded-lg bg-blue-700 px-4 py-2 text-sm text-white">AI Owner Calling खोल्नुहोस्</Link>
     </header>
+    <AiAutoCalling />
     <div className="flex flex-wrap items-center gap-2">
       <button aria-pressed={channel === "website"} className={`rounded-lg border px-4 py-2 ${channel === "website" ? "bg-blue-700 text-white" : ""}`} onClick={() => changeChannel("website")}>Website calls</button>
       <button aria-pressed={channel === "phone"} className={`rounded-lg border px-4 py-2 ${channel === "phone" ? "bg-blue-700 text-white" : ""}`} onClick={() => changeChannel("phone")}>Phone calls</button>

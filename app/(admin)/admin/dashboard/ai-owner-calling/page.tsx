@@ -2,9 +2,12 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import dynamic from "next/dynamic";
+const LiveVoiceConversation = dynamic(() => import("@/components/LiveVoiceConversation"), { ssr: false });
 import { io, type Socket } from "socket.io-client";
 import useTokenStore from "@/store";
 import { AiOwnerUserSelector } from "@/components/AiOwnerUserSelector";
+import { AiAutoCalling } from "@/components/admin/AiAutoCalling";
 import { AiOwnerDraftReview } from "@/components/AiOwnerDraftReview";
 
 type CallState = "idle" | "calling" | "complete" | "failed";
@@ -131,7 +134,13 @@ export default function OwnerCallingPage() {
   return <main className="mx-auto max-w-3xl space-y-6 p-4 md:p-8">
     <header><h1 className="text-2xl font-bold">AI Owner Calling</h1>
       <p className="text-sm text-muted-foreground">Connect a supported SIP/VoIP provider through the VPS voice bridge. Provider credentials must remain server-side.</p></header>
+    <section className="space-y-3">
+      <h2 className="text-lg font-semibold">AI सँग कुरा गर्नुहोस्</h2>
+      <p className="text-sm text-muted-foreground">Start थिचेर microphone अनुमति दिनुहोस्। AI ले पहिले बोल्छ, त्यसपछि तपाईंको जवाफ सुन्छ। यो browser बाट हुने AI कुराकानी हो।</p>
+      <LiveVoiceConversation ownerMode />
+    </section>
     <AiOwnerUserSelector onSelect={user => { setOwnerName(user.name); setPhone(user.phone || ""); setSelectedUserId(user.id); setError(""); setResult(null); }} />
+    <AiAutoCalling selectedPhone={phone} selectedName={ownerName} />
     <section className="rounded-xl border p-5 space-y-3">
       <h2 className="font-semibold">Website AI Voice Call (Beta)</h2>
       <p className="text-sm">Select an online registered user above. The user must first enable AI calling in their privacy settings, remain logged in, and accept the incoming call. Continuous Nepali voice uses WebRTC.</p>

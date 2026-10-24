@@ -58,4 +58,3 @@ export const getGroup = (item: NavItem): NavGroup => {
   ) || "Others";
 };
 export const navGroups = Object.keys(groupPaths) as NavGroup[];
-
