@@ -2,14 +2,16 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import useTokenStore from "@/store";
+import { developerVoiceCommand } from "@/lib/voice/developer-voice-command";
 import { OwnerVoiceTurns } from "@/lib/voice/owner-voice-turns";
 
 const API = (process.env.NEXT_PUBLIC_BACKEND_URL || "https://api.roomkhoj.com").replace(/\/$/, "");
 type Phase = "idle" | "connecting" | "listening" | "speaking" | "error";
 
-type TrainingProps = { developerSessionId?: string; onUtterance?: (text: string) => void; feedback?: { id: string; text: string } | null };
-export default function OwnerRealtimeVoice({ developerSessionId, onUtterance, feedback }: TrainingProps) {
+type TrainingProps = { autoStart?: boolean; developerSessionId?: string; onUtterance?: (text: string) => void; feedback?: { id: string; text: string } | null };
+export default function OwnerRealtimeVoice({ autoStart=false, developerSessionId, onUtterance, feedback }: TrainingProps) {
   const token = useTokenStore(state => state.token);
+  const autoStarted=useRef(false);
   const [phase, setPhase] = useState<Phase>("idle");
   const [status, setStatus] = useState("Start थिचेर AI सँग कुरा गर्नुहोस्");
   const [heard, setHeard] = useState("");
@@ -163,6 +165,14 @@ export default function OwnerRealtimeVoice({ developerSessionId, onUtterance, fe
           setPhase("listening"); setStatus("सुन्दैछु…");
         } else if (type === "conversation.item.input_audio_transcription.completed") {
           const text=String(message.transcript || "").slice(0, 2000);
+          const command=developerVoiceCommand(text);
+          if(!developerSessionId && command==='ON'){
+            stop();setHeard('Developer Mode unlock अनुरोध');
+            window.dispatchEvent(new Event('roomkhoj:developer-unlock'));return;
+          }
+          if(developerSessionId && command==='OFF'){
+            stop();window.dispatchEvent(new Event('roomkhoj:developer-lock'));return;
+          }
           setHeard(text);
           if (developerSessionId) utteranceCallback.current?.(text);
         } else if (type === "response.output_audio_transcript.done") {
@@ -188,6 +198,12 @@ export default function OwnerRealtimeVoice({ developerSessionId, onUtterance, fe
         : error instanceof Error ? error.message : "Voice जोडिन सकेन।");
     }
   }
+
+  const startRef=useRef(start);startRef.current=start;
+  useEffect(()=>{
+    if(autoStart&&token&&!autoStarted.current){autoStarted.current=true;void startRef.current();}
+    return()=>{autoStarted.current=false;};
+  },[autoStart,token,developerSessionId]);
 
   const active = phase !== "idle" && phase !== "error";
   return <section className="space-y-4 rounded-2xl bg-[#0b0b0d] p-6 text-white">

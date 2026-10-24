@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
+const DeveloperVoiceTraining = dynamic(() => import("@/components/DeveloperVoiceTraining"), { ssr: false });
 const LiveVoiceConversation = dynamic(() => import("@/components/LiveVoiceConversation"), { ssr: false });
 import { io, type Socket } from "socket.io-client";
 import useTokenStore from "@/store";
@@ -140,6 +141,7 @@ export default function OwnerCallingPage() {
       <LiveVoiceConversation ownerMode />
     </section>
     <AiOwnerUserSelector onSelect={user => { setOwnerName(user.name); setPhone(user.phone || ""); setSelectedUserId(user.id); setError(""); setResult(null); }} />
+    <DeveloperVoiceTraining />
     <AiAutoCalling selectedPhone={phone} selectedName={ownerName} />
     <section className="rounded-xl border p-5 space-y-3">
       <h2 className="font-semibold">Website AI Voice Call (Beta)</h2>
