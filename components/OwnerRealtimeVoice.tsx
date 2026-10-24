@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import useTokenStore from "@/store";
 import { developerVoiceCommand } from "@/lib/voice/developer-voice-command";
+import { OwnerListeningIndicator } from "@/components/OwnerListeningIndicator";
+import { monitorMicrophone } from "@/lib/voice/microphone-meter";
 import { OwnerVoiceTurns } from "@/lib/voice/owner-voice-turns";
 
 const API = (process.env.NEXT_PUBLIC_BACKEND_URL || "https://api.roomkhoj.com").replace(/\/$/, "");
@@ -18,6 +20,9 @@ export default function OwnerRealtimeVoice({ autoStart=false, developerSessionId
   const [reply, setReply] = useState("");
   const [muted, setMuted] = useState(false);
   const [playBlocked, setPlayBlocked] = useState(false);
+  const [ownerSpeaking,setOwnerSpeaking]=useState(false);
+  const [levels,setLevels]=useState<number[]>([]);
+  const stopMeter=useRef<(()=>void)|null>(null);
   const audio = useRef<HTMLAudioElement>(null);
   const utteranceCallback = useRef(onUtterance); utteranceCallback.current = onUtterance;
   const dataChannel = useRef<RTCDataChannel | null>(null);
@@ -34,6 +39,7 @@ export default function OwnerRealtimeVoice({ autoStart=false, developerSessionId
   const disconnect = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const cleanup = useCallback(() => {
+    stopMeter.current?.();stopMeter.current=null;setOwnerSpeaking(false);setLevels([]);
     epoch.current++;
     running.current = false;
     request.current?.abort(); request.current = null;
@@ -96,6 +102,11 @@ export default function OwnerRealtimeVoice({ autoStart=false, developerSessionId
       });
       if (!current()) { stream.getTracks().forEach(track => track.stop()); return; }
       mic.current = stream;
+      stopMeter.current=monitorMicrophone(stream,(voiced,levels,now)=>{
+        if(!current())return;
+        setLevels(levels);setOwnerSpeaking(voiced);
+        turns.current?.microphone(voiced,now);
+      });
       const tokenResponse = await fetch(API + "/ai-owner/admin/voice-token", {
         method: "POST", credentials: "include", signal: abort.signal,
         headers: { Authorization: `Bearer ${token}`, "Content-Type":"application/json" },
@@ -138,7 +149,7 @@ export default function OwnerRealtimeVoice({ autoStart=false, developerSessionId
         if (watchdog.current) clearTimeout(watchdog.current); watchdog.current = null;
         setPhase("listening"); setStatus("AI जोडियो। सहज रूपमा कुरा गर्नुहोस्।");
         coordinator.greet(Boolean(developerSessionId));
-        ticker.current = setInterval(() => { if (payload?.acknowledgements !== false) coordinator.tick(performance.now()); }, 500);
+        ticker.current = setInterval(() => { if ((payload?.data?.acknowledgements??payload?.acknowledgements) !== false && mic.current?.getAudioTracks().some(t=>t.enabled)) coordinator.tick(performance.now()); }, 500);
         duration.current = setTimeout(() => {
           if (!current()) return;
           stop(); setStatus("१० मिनेटको voice test सकियो। चाहनुहुन्छ भने फेरि Start थिच्नुहोस्।");
@@ -156,7 +167,9 @@ export default function OwnerRealtimeVoice({ autoStart=false, developerSessionId
         }
         coordinator.handle(type, performance.now());
         if (type === "input_audio_buffer.speech_started") {
-          setPhase("listening"); setStatus("हजुर, सुन्दैछु… आरामले कुरा पूरा गर्नुहोस्।");
+          setOwnerSpeaking(true);setPhase("listening"); setStatus("हजुर, सुन्दैछु… आरामले कुरा पूरा गर्नुहोस्।");
+        } else if (type === "input_audio_buffer.speech_stopped") {
+          setOwnerSpeaking(false);
         } else if (type === "input_audio_buffer.committed") {
           setStatus("तपाईंको कुरा बुझ्दैछु…");
         } else if (type === "output_audio_buffer.started") {
@@ -215,6 +228,7 @@ export default function OwnerRealtimeVoice({ autoStart=false, developerSessionId
     <h3 className="text-lg font-semibold">{developerSessionId ? "Developer Mode — आवाजबाट सिकाउनुहोस्" : "RoomKhoj AI सँग कुरा गर्नुहोस्"}</h3>
     <p className="text-sm text-white/60">यो AI सहायक हो। आरामले बोल्नुहोस्; “अ…” वा “हम्म…” पछि आफ्नो कुरा पूरा गर्न सक्नुहुन्छ।</p>
     <p role="status" aria-live="polite">{status}</p>
+    {active && phase!=="connecting" && <OwnerListeningIndicator speaking={ownerSpeaking} levels={levels} muted={muted}/> }
     <audio ref={audio} autoPlay playsInline />
     {playBlocked && <button type="button" className="rounded-lg bg-white/20 px-4 py-3" onClick={() => {
       void audio.current?.play().then(() => setPlayBlocked(false)).catch(() => setPlayBlocked(true));

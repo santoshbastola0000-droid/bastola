@@ -5,8 +5,12 @@ import { io, type Socket } from "socket.io-client";
 import { privateApi } from "@/http/api/privateApi";
 import useTokenStore from "@/store";
 
+import { OwnerVoiceTurns } from "@/lib/voice/owner-voice-turns";
+import { monitorMicrophone } from "@/lib/voice/microphone-meter";
+import { OwnerListeningIndicator } from "@/components/OwnerListeningIndicator";
+
 const API = (process.env.NEXT_PUBLIC_BACKEND_URL || "https://api.roomkhoj.com").replace(/\/$/, "");
-type TokenResult = { success?: boolean; token?: string; model?: string; error?: string };
+type TokenResult = { success?: boolean; token?: string; model?: string; error?: string; manualTurns?:boolean; acknowledgements?:boolean };
 
 export function AiOwnerIncomingVoice() {
   const token = useTokenStore(s => s.token);
@@ -19,6 +23,11 @@ export function AiOwnerIncomingVoice() {
   const accepting = useRef(false);
   const negotiation = useRef<AbortController|null>(null);
   const watchdog = useRef<ReturnType<typeof setTimeout>|null>(null);
+  const turns=useRef<OwnerVoiceTurns|null>(null);
+  const ticker=useRef<ReturnType<typeof setInterval>|null>(null);
+  const stopMeter=useRef<(()=>void)|null>(null);
+  const [ownerSpeaking,setOwnerSpeaking]=useState(false);
+  const [levels,setLevels]=useState<number[]>([]);
   const [connecting,setConnecting] = useState(false);
   const utterances = useRef<string[]>([]);
   const transcriptUpload = useRef<Promise<void>>(Promise.resolve());
@@ -33,6 +42,9 @@ export function AiOwnerIncomingVoice() {
   const [captured, setCaptured] = useState(0);
 
   const stopAudio = useCallback(() => {
+    turns.current?.stop();turns.current=null;
+    if(ticker.current)clearInterval(ticker.current);ticker.current=null;
+    stopMeter.current?.();stopMeter.current=null;setOwnerSpeaking(false);setLevels([]);
     epoch.current+=1;accepting.current=false;setConnecting(false);
     negotiation.current?.abort();negotiation.current=null;
     if(watchdog.current)clearTimeout(watchdog.current);watchdog.current=null;
@@ -93,6 +105,10 @@ export function AiOwnerIncomingVoice() {
       });
       if(!isCurrent()){stream.getTracks().forEach(track=>track.stop());return;}
       mic.current = stream;
+      stopMeter.current=monitorMicrophone(stream,(voiced,levels,now)=>{
+        if(!isCurrent())return;
+        setLevels(levels);setOwnerSpeaking(voiced);turns.current?.microphone(voiced,now);
+      });
       const accepted = await socket.current.timeout(12000).emitWithAck("ai-owner:respond", { callId: id, accept: true }) as { success?: boolean; error?: string };
       if(!isCurrent())return;
       if (!accepted?.success) throw new Error(accepted?.error || "Call acceptance failed");
@@ -113,7 +129,7 @@ export function AiOwnerIncomingVoice() {
           }
         });
       };
-      const result = await socket.current.timeout(15000).emitWithAck("ai-owner:realtime-token", { callId: id }) as TokenResult;
+      const result = await socket.current.timeout(15000).emitWithAck("ai-owner:realtime-token", { callId: id,manualTurns:true }) as TokenResult;
       if(!isCurrent())return;
       if (!result.success || !result.token) throw new Error(result.error || "Realtime AI unavailable");
       if (!isCurrent()) { stream.getTracks().forEach(track => track.stop()); return; }
@@ -144,10 +160,20 @@ export function AiOwnerIncomingVoice() {
         }
       };
       const channel = pc.createDataChannel("oai-events");
+      const coordinator=result.manualTurns===true?new OwnerVoiceTurns(event=>{
+        if(isCurrent()&&channel.readyState==='open')channel.send(JSON.stringify(event));
+      }):null;
+      turns.current=coordinator;
       channel.onmessage = event => {
         if(!isCurrent())return;
         try {
-          const message = JSON.parse(event.data) as { type?: string; transcript?: string; item_id?: string; event_id?:string; content_index?:number };
+          const message = JSON.parse(event.data) as { type?: string; transcript?: string; item_id?: string; event_id?:string; content_index?:number; response?:{status?:string} };
+          if(message.type==='error'||(message.type==='response.done'&&message.response?.status==='failed')){
+            stopAudio();socket.current?.emit('ai-owner:end',{callId:id});setFinished(true);setStatus('AI आवाजमा समस्या भयो। फेरि call गर्नुहोस्।');return;
+          }
+          coordinator?.handle(message.type||'',performance.now());
+          if(message.type==='input_audio_buffer.speech_started')setOwnerSpeaking(true);
+          if(message.type==='input_audio_buffer.speech_stopped')setOwnerSpeaking(false);
           const wordsForHistory=String(message.transcript||'').trim();
           const item=message.item_id||message.event_id;
           if(item && message.type==='conversation.item.input_audio_transcription.completed')
@@ -165,7 +191,9 @@ export function AiOwnerIncomingVoice() {
       };
       channel.onopen = () => {
         if(!isCurrent())return;
-        channel.send(JSON.stringify({
+        if(coordinator){
+          coordinator.greet();ticker.current=setInterval(()=>{if(result.acknowledgements!==false)coordinator.tick(performance.now());},100);
+        }else channel.send(JSON.stringify({
           type: "response.create",
           response: { instructions: "Use the configured Start introduction in your session instructions, including the AI disclosure. Then wait for the answer; keep follow-ups brief and contextual." },
         }));
@@ -220,6 +248,7 @@ export function AiOwnerIncomingVoice() {
         AI र मेरो कुराकानीको text RoomKhoj admin को call history मा राख्न अनुमति दिन्छु। यो ऐच्छिक हो।
       </label>}
       {historyError && <p role="alert" className="text-sm text-red-600">{historyError}</p>}
+      {connected&&<OwnerListeningIndicator speaking={ownerSpeaking} levels={levels}/>}
       <audio ref={audio} autoPlay controls playsInline className="w-full" />
       {!connected && !finished && <button onClick={() => void accept()} disabled={connecting} className="rounded-lg bg-green-700 px-5 py-3 text-white disabled:opacity-50">Accept AI Call</button>}
       {!finished && <button onClick={connected ? end : () => {
