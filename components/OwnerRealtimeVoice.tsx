@@ -6,6 +6,8 @@ import { developerVoiceCommand } from "@/lib/voice/developer-voice-command";
 import { OwnerListeningIndicator } from "@/components/OwnerListeningIndicator";
 import { monitorMicrophone } from "@/lib/voice/microphone-meter";
 import { OwnerVoiceTurns } from "@/lib/voice/owner-voice-turns";
+import { OwnerMapLookup, type OwnerMapResult } from '@/lib/voice/owner-map-lookup';
+import { OwnerMapCandidates } from '@/components/OwnerMapCandidates';
 
 const API = (process.env.NEXT_PUBLIC_BACKEND_URL || "https://api.roomkhoj.com").replace(/\/$/, "");
 type Phase = "idle" | "connecting" | "listening" | "speaking" | "error";
@@ -33,12 +35,15 @@ export default function OwnerRealtimeVoice({ autoStart=false, developerSessionId
   const running = useRef(false);
   const request = useRef<AbortController | null>(null);
   const turns = useRef<OwnerVoiceTurns | null>(null);
+  const mapLookup=useRef<OwnerMapLookup|null>(null);
+  const [mapResult,setMapResult]=useState<OwnerMapResult|null>(null);
   const ticker = useRef<ReturnType<typeof setInterval> | null>(null);
   const watchdog = useRef<ReturnType<typeof setTimeout> | null>(null);
   const duration = useRef<ReturnType<typeof setTimeout> | null>(null);
   const disconnect = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const cleanup = useCallback(() => {
+    mapLookup.current?.stop();mapLookup.current=null;setMapResult(null);
     stopMeter.current?.();stopMeter.current=null;setOwnerSpeaking(false);setLevels([]);
     epoch.current++;
     running.current = false;
@@ -110,7 +115,7 @@ export default function OwnerRealtimeVoice({ autoStart=false, developerSessionId
       const tokenResponse = await fetch(API + "/ai-owner/admin/voice-token", {
         method: "POST", credentials: "include", signal: abort.signal,
         headers: { Authorization: `Bearer ${token}`, "Content-Type":"application/json" },
-        body: JSON.stringify(developerSessionId ? { developerSessionId } : {}),
+        body: JSON.stringify(developerSessionId ? { developerSessionId } : {mapTools:true}),
       });
       if (!current()) return;
       if (!tokenResponse.ok) {
@@ -128,6 +133,14 @@ export default function OwnerRealtimeVoice({ autoStart=false, developerSessionId
         if (current() && channel.readyState === "open") channel.send(JSON.stringify(event));
       });
       turns.current = coordinator;
+      if(!developerSessionId)mapLookup.current=new OwnerMapLookup(coordinator,event=>{
+        if(current()&&channel.readyState==='open')channel.send(JSON.stringify(event));
+      },async(args,signal)=>{
+        const response=await fetch(API+'/ai-owner/admin/location-lookup',{method:'POST',credentials:'include',signal,
+          headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify(args)});
+        if(!response.ok)throw new Error('Map unavailable');
+        const payload=await response.json();return payload.data||payload;
+      },result=>{if(current())setMapResult(result);});
       stream.getAudioTracks().forEach(track => pc.addTrack(track, stream));
       pc.ontrack = event => {
         if (!current() || !audio.current) return;
@@ -159,12 +172,13 @@ export default function OwnerRealtimeVoice({ autoStart=false, developerSessionId
       channel.onerror = () => fail("AI connection मा समस्या आयो। फेरि Start थिच्नुहोस्।");
       channel.onmessage = event => {
         if (!current()) return;
-        let message: { type?: string; transcript?: string; response?: { status?: string } };
+        let message: { type?: string; transcript?: string; response?: { status?: string };name?:string;call_id?:string;arguments?:string;item_id?:string;event_id?:string };
         try { message = JSON.parse(String(event.data)); } catch { return; }
         const type = message.type || "";
         if (type === "error" || (type === "response.done" && message.response?.status === "failed")) {
           fail("AI ले जवाफ दिन सकेन। फेरि Start थिच्नुहोस्।"); return;
         }
+        mapLookup.current?.handle(message);
         coordinator.handle(type, performance.now());
         if (type === "input_audio_buffer.speech_started") {
           setOwnerSpeaking(true);setPhase("listening"); setStatus("हजुर, सुन्दैछु… आरामले कुरा पूरा गर्नुहोस्।");
@@ -245,6 +259,7 @@ export default function OwnerRealtimeVoice({ autoStart=false, developerSessionId
     </div>
     {heard && <p className="text-sm text-white/70"><strong>तपाईं:</strong> {heard}</p>}
     {reply && <p className="text-sm text-white/70"><strong>AI:</strong> {reply}</p>}
+    <OwnerMapCandidates result={mapResult}/>
     <p className="text-xs text-white/45">{developerSessionId ? "Training draft जाँचेर मात्र Save गर्नुहोस्। Mode बन्द गर्दा training रोक्छ।" : "SIM आवश्यक छैन। यस परीक्षणले room विवरण save वा publish गर्दैन।"} End गर्दा microphone बन्द हुन्छ।</p>
   </section>;
 }

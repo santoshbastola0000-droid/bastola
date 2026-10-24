@@ -8,6 +8,8 @@ import useTokenStore from "@/store";
 import { OwnerVoiceTurns } from "@/lib/voice/owner-voice-turns";
 import { monitorMicrophone } from "@/lib/voice/microphone-meter";
 import { OwnerListeningIndicator } from "@/components/OwnerListeningIndicator";
+import { OwnerMapLookup, type OwnerMapResult } from '@/lib/voice/owner-map-lookup';
+import { OwnerMapCandidates } from '@/components/OwnerMapCandidates';
 
 const API = (process.env.NEXT_PUBLIC_BACKEND_URL || "https://api.roomkhoj.com").replace(/\/$/, "");
 type TokenResult = { success?: boolean; token?: string; model?: string; error?: string; manualTurns?:boolean; acknowledgements?:boolean };
@@ -24,6 +26,8 @@ export function AiOwnerIncomingVoice() {
   const negotiation = useRef<AbortController|null>(null);
   const watchdog = useRef<ReturnType<typeof setTimeout>|null>(null);
   const turns=useRef<OwnerVoiceTurns|null>(null);
+  const mapLookup=useRef<OwnerMapLookup|null>(null);
+  const [mapResult,setMapResult]=useState<OwnerMapResult|null>(null);
   const ticker=useRef<ReturnType<typeof setInterval>|null>(null);
   const stopMeter=useRef<(()=>void)|null>(null);
   const [ownerSpeaking,setOwnerSpeaking]=useState(false);
@@ -40,8 +44,10 @@ export function AiOwnerIncomingVoice() {
   const [consentSave, setConsentSave] = useState(false);
   const [saving, setSaving] = useState(false);
   const [captured, setCaptured] = useState(0);
+  const [captureWarning,setCaptureWarning]=useState('');
 
   const stopAudio = useCallback(() => {
+    mapLookup.current?.stop();mapLookup.current=null;setMapResult(null);
     turns.current?.stop();turns.current=null;
     if(ticker.current)clearInterval(ticker.current);ticker.current=null;
     stopMeter.current?.();stopMeter.current=null;setOwnerSpeaking(false);setLevels([]);
@@ -68,6 +74,7 @@ export function AiOwnerIncomingVoice() {
       active.current = data.callId;
       utterances.current = [];
       setCaptured(0);
+      setCaptureWarning('');
       setShareTranscript(false);setHistoryError("");
       setCallId(data.callId);
       setFinished(false);
@@ -129,7 +136,7 @@ export function AiOwnerIncomingVoice() {
           }
         });
       };
-      const result = await socket.current.timeout(15000).emitWithAck("ai-owner:realtime-token", { callId: id,manualTurns:true }) as TokenResult;
+      const result = await socket.current.timeout(15000).emitWithAck("ai-owner:realtime-token", { callId: id,manualTurns:true,mapTools:true }) as TokenResult;
       if(!isCurrent())return;
       if (!result.success || !result.token) throw new Error(result.error || "Realtime AI unavailable");
       if (!isCurrent()) { stream.getTracks().forEach(track => track.stop()); return; }
@@ -164,13 +171,21 @@ export function AiOwnerIncomingVoice() {
         if(isCurrent()&&channel.readyState==='open')channel.send(JSON.stringify(event));
       }):null;
       turns.current=coordinator;
+      if(coordinator)mapLookup.current=new OwnerMapLookup(coordinator,event=>{
+        if(isCurrent()&&channel.readyState==='open')channel.send(JSON.stringify(event));
+      },async(args,signal)=>{
+        const response=await fetch(API+'/ai-owner/calls/'+encodeURIComponent(id)+'/location-lookup',{method:'POST',credentials:'include',signal,
+          headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify(args)});
+        if(!response.ok)throw new Error('Map unavailable');const payload=await response.json();return payload.data||payload;
+      },result=>{if(isCurrent())setMapResult(result);});
       channel.onmessage = event => {
         if(!isCurrent())return;
         try {
-          const message = JSON.parse(event.data) as { type?: string; transcript?: string; item_id?: string; event_id?:string; content_index?:number; response?:{status?:string} };
+          const message = JSON.parse(event.data) as { type?: string; transcript?: string; item_id?: string; event_id?:string; content_index?:number; response?:{status?:string};name?:string;call_id?:string;arguments?:string };
           if(message.type==='error'||(message.type==='response.done'&&message.response?.status==='failed')){
             stopAudio();socket.current?.emit('ai-owner:end',{callId:id});setFinished(true);setStatus('AI आवाजमा समस्या भयो। फेरि call गर्नुहोस्।');return;
           }
+          mapLookup.current?.handle(message);
           coordinator?.handle(message.type||'',performance.now());
           if(message.type==='input_audio_buffer.speech_started')setOwnerSpeaking(true);
           if(message.type==='input_audio_buffer.speech_stopped')setOwnerSpeaking(false);
@@ -182,9 +197,11 @@ export function AiOwnerIncomingVoice() {
             persistTurn('ai:'+item+':'+(message.content_index||0),'AI',wordsForHistory);
           if (message.type === "conversation.item.input_audio_transcription.completed") {
             const words = String(message.transcript || "").trim();
-            if (words && words.length <= 700 && utterances.current.length < 50) {
+            if (words && words.length <= 4000 && utterances.current.length < 200 && utterances.current.reduce((n,t)=>n+t.length,0)+words.length<=20000) {
               utterances.current.push(words);
               setCaptured(utterances.current.length);
+            }else if(words){
+              setCaptureWarning('कुराकानी लामो भएकाले केही उत्तर draft मा अटेनन्। Save गर्नुअघि admin लाई बाँकी ठाउँको विवरण छुट्टै दिनुहोस्।');
             }
           }
         } catch { /* Ignore malformed realtime events */ }
@@ -248,7 +265,9 @@ export function AiOwnerIncomingVoice() {
         AI र मेरो कुराकानीको text RoomKhoj admin को call history मा राख्न अनुमति दिन्छु। यो ऐच्छिक हो।
       </label>}
       {historyError && <p role="alert" className="text-sm text-red-600">{historyError}</p>}
+      {captureWarning&&<p role="alert" className="text-sm text-amber-700">{captureWarning}</p>}
       {connected&&<OwnerListeningIndicator speaking={ownerSpeaking} levels={levels}/>}
+      <OwnerMapCandidates result={mapResult}/>
       <audio ref={audio} autoPlay controls playsInline className="w-full" />
       {!connected && !finished && <button onClick={() => void accept()} disabled={connecting} className="rounded-lg bg-green-700 px-5 py-3 text-white disabled:opacity-50">Accept AI Call</button>}
       {!finished && <button onClick={connected ? end : () => {
@@ -258,7 +277,7 @@ export function AiOwnerIncomingVoice() {
         <p className="text-xs">Room draft बनाउन तपाईंको बोलीबाट {captured} उत्तर राखिएको छ। Transcript को अनुमति दिएको भए कुराकानी छुट्टै admin history मा पठाइन्छ। Draft का लागि तलको अनुमति आवश्यक छ।</p>
         {captured > 0 && <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" checked={consentSave} onChange={e => setConsentSave(e.target.checked)} />
-          मेरो room जानकारीबाट draft बनाउन र PostgreSQL मा सुरक्षित गर्न अनुमति छ।
+          मेरो room विवरण र मैले भनेका मूल उत्तर/ठाउँको विवरण draft मा सुरक्षित गर्न अनुमति छ।
         </label>}
         <div className="flex justify-center gap-2">
           {captured > 0 && <button disabled={!consentSave || saving} onClick={() => void saveDraft()} className="rounded-lg bg-green-700 px-4 py-2 text-white disabled:opacity-50">Save room draft</button>}
