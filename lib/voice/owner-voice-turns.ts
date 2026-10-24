@@ -14,7 +14,7 @@ export class OwnerVoiceTurns {
   greet(developer = false) {
     this.create({ instructions: developer
       ? 'Greet the administrator as RoomKhoj AI in Developer Mode and ask what speaking style or memory they want to teach. Do not ask about rental rooms.'
-      : 'Introduce yourself as RoomKhoj AI in Nepali and ask whether the owner has any vacant rental rooms. Ask only this one question.' });
+      : 'Use the configured Start introduction from the session instructions, including the RoomKhoj AI disclosure. Keep it brief, then wait for the owner.' });
   }
   feedback() { this.pending = true; this.pump(); }
   handle(type: string, now: number) {

@@ -9,6 +9,7 @@ import { io, type Socket } from "socket.io-client";
 import useTokenStore from "@/store";
 import { AiOwnerUserSelector } from "@/components/AiOwnerUserSelector";
 import { AiAutoCalling } from "@/components/admin/AiAutoCalling";
+import { OwnerVoiceMemory } from "@/components/admin/OwnerVoiceMemory";
 import { OwnerRequiredDetails } from "@/components/OwnerRequiredDetails";
 import { AiOwnerDraftReview } from "@/components/AiOwnerDraftReview";
 
@@ -99,6 +100,7 @@ export default function OwnerCallingPage() {
       <p className="text-sm text-muted-foreground">Owner छानेर website call गर्नुहोस् वा अनुमति भएका नम्बर auto-call queue मा राख्नुहोस्। प्रश्न र बोल्ने शैली तल मिलाउन सकिन्छ।</p></header>
     <OwnerRequiredDetails />
     <AiOwnerUserSelector onSelect={user => { setOwnerName(user.name); setPhone(user.phone || ""); setSelectedUserId(user.id); }} />
+    <OwnerVoiceMemory userId={selectedUserId} />
     <DeveloperVoiceTraining />
     <AiAutoCalling selectedPhone={phone} selectedName={ownerName} />
     <section className="rounded-xl border p-5 space-y-3">

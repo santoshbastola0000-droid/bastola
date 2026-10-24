@@ -176,7 +176,12 @@ export default function OwnerRealtimeVoice({ autoStart=false, developerSessionId
           setHeard(text);
           if (developerSessionId) utteranceCallback.current?.(text);
         } else if (type === "response.output_audio_transcript.done") {
-          setReply(String(message.transcript || "").slice(0, 2000));
+          const spoken=String(message.transcript || "").slice(0,2000);
+          setReply(spoken);
+          if(!developerSessionId)void fetch(API+"/ai-owner/admin/question-library/capture",{
+            method:"POST",credentials:"include",headers:{Authorization:`Bearer ${token}`,"Content-Type":"application/json"},
+            body:JSON.stringify({text:spoken}),
+          }).catch(()=>undefined);
         }
       };
       const offer = await pc.createOffer();

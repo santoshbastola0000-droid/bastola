@@ -167,7 +167,7 @@ export function AiOwnerIncomingVoice() {
         if(!isCurrent())return;
         channel.send(JSON.stringify({
           type: "response.create",
-          response: { instructions: "Say in Nepali: नमस्ते, म RoomKhoj को AI सहायक बोल्दै छु। तपाईंको घरमा भाडामा दिने कुनै खाली कोठा छ? Then wait for the answer. Keep the conversation brief and ask one question at a time." },
+          response: { instructions: "Use the configured Start introduction in your session instructions, including the AI disclosure. Then wait for the answer; keep follow-ups brief and contextual." },
         }));
         ready();
       };

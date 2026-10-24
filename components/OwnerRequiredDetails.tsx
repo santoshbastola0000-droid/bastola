@@ -5,13 +5,13 @@ import useTokenStore from "@/store";
 
 const API = (process.env.NEXT_PUBLIC_BACKEND_URL || "https://api.roomkhoj.com").replace(/\/$/, "");
 const FIELDS: Record<string, string> = {
-  ownerName:"मालिकको नाम", location:"ठाउँ", landmark:"नजिकको चिनारी", roomType:"कोठाको प्रकार",
+  ownerName:"मालिकको नाम", location:"ठाउँ", floor:"तल्ला", landmark:"नजिकको चिनारी", roomType:"कोठाको प्रकार",
   monthlyRentNpr:"मासिक भाडा", depositNpr:"धरौटी", availableRooms:"खाली कोठाको संख्या",
   bathroom:"बाथरुम", kitchen:"भान्सा", water:"पानी", electricity:"बिजुली", wifi:"Wi-Fi",
   parking:"पार्किङ", furnished:"फर्निचर", availableFrom:"खाली हुने मिति", restrictions:"सर्तहरू", notes:"अन्य विवरण / सुविधा",
 };
 type Question = {field:string; question:string; required:boolean; enabled:boolean};
-type Plan = {questions:Question[];updatedAt:string|null};
+type Plan = {questions:Question[];introduction:string;updatedAt:string|null};
 const button = "rounded-lg border px-3 py-2 text-sm disabled:opacity-40";
 
 export function OwnerRequiredDetails() {
@@ -29,7 +29,7 @@ export function OwnerRequiredDetails() {
       if(!r.ok)throw new Error("प्रश्न लोड भएनन्। Backend update र admin login जाँच गर्नुहोस्।");
       const raw=await r.json();const data:Plan=raw.data||raw;
       if(!Array.isArray(data.questions))throw new Error("प्रश्नको format मिलेन।");
-      setPlan(data);setSaved(JSON.stringify(data.questions));
+      setPlan(data);setSaved(JSON.stringify({questions:data.questions,introduction:data.introduction}));
     }catch(e){if(!signal?.aborted)setError(e instanceof Error?e.message:"लोड भएन।");}
     finally{if(!signal?.aborted)setBusy(false);}
   },[token]);
@@ -48,7 +48,7 @@ export function OwnerRequiredDetails() {
     if(!plan||!token||busy)return;
     setBusy(true);setError("");setNotice("");
     try {
-      const r=await fetch(API+"/ai-owner/admin/required-details",{method:"PATCH",credentials:"include",headers:{Authorization:`Bearer ${token}`,"Content-Type":"application/json"},body:JSON.stringify({questions:plan.questions})});
+      const r=await fetch(API+"/ai-owner/admin/required-details",{method:"PATCH",credentials:"include",headers:{Authorization:`Bearer ${token}`,"Content-Type":"application/json"},body:JSON.stringify({questions:plan.questions,introduction:plan.introduction})});
       const raw=await r.json().catch(()=>({}));
       if(!r.ok)throw new Error(typeof raw.message==="string"?raw.message:"प्रश्न save भएनन्। फेरि प्रयास गर्नुहोस्।");
       const data:Plan=raw.data||raw;setPlan(data);setSaved(JSON.stringify(data.questions));
@@ -56,8 +56,8 @@ export function OwnerRequiredDetails() {
     }catch(e){setError(e instanceof Error?e.message:"Save भएन।");}
     finally{setBusy(false);}
   };
-  const dirty=plan!==null && JSON.stringify(plan.questions)!==saved;
-  const valid=plan!==null && plan.questions.every(q=>q.question.trim().length>=4&&q.question.length<=400);
+  const dirty=plan!==null && JSON.stringify({questions:plan.questions,introduction:plan.introduction})!==saved;
+  const valid=plan!==null && plan.introduction?.trim().length>=4 && plan.introduction.length<=400 && plan.questions.every(q=>q.question.trim().length>=4&&q.question.length<=400);
   const available=Object.keys(FIELDS).filter(field=>!plan?.questions.some(q=>q.field===field));
   return <section className="space-y-4 rounded-xl border p-5" aria-labelledby="required-details-title">
     <h2 id="required-details-title" className="text-lg font-semibold">आवश्यक विवरण</h2>
@@ -67,6 +67,10 @@ export function OwnerRequiredDetails() {
     {!plan?<button type="button" className={button} disabled={busy||!token} onClick={()=>void load()}>{busy?"लोड हुँदैछ…":"फेरि लोड गर्नुहोस्"}</button>:<>
       <fieldset disabled={busy} className="space-y-3">
         <legend className="sr-only">Owner call का प्रश्नहरू</legend>
+        <label className="block space-y-2 text-sm"><span>परिचयपछि बोल्ने सुरुको कुरा</span>
+          <textarea maxLength={400} rows={2} value={plan.introduction||""} onChange={e=>{setNotice("");setPlan(p=>p?{...p,introduction:e.target.value}:p);}} className="w-full rounded-lg border bg-background p-3"/>
+        </label>
+        <p className="text-xs text-muted-foreground">अघि “नमस्ते, म RoomKhoj को AI सहायक हुँ।” स्वतः जोडिन्छ। त्यसपछिको छोटो परिचय/प्रश्न यहाँ लेख्नुहोस्।</p>
         {!plan.questions.length&&<p className="text-sm">प्रश्न छैनन्। तलबाट विवरण थप्नुहोस्।</p>}
         {plan.questions.map((q,i)=><div key={q.field} className="space-y-3 rounded-lg border p-3">
           <label htmlFor={`owner-question-${q.field}`} className="block text-sm font-medium">{i+1}. {FIELDS[q.field]}</label>
