@@ -99,6 +99,10 @@ export default function DeveloperVoiceUnlock({onVerified}:{onVerified:(session:S
     const abort=new AbortController();activeRequest.current=abort;
     try{
       const next:Challenge=await request('sessions',{},abort.signal);
+      if(typeof next?.id!=='string'||next.unlockStage!=='PASSWORD'){
+        if(next?.id)void fetch(API+'/ai-owner/admin/training/sessions/'+next.id,{method:'DELETE',credentials:'include',headers:{Authorization:`Bearer ${token}`}}).catch(()=>undefined);
+        throw new Error('Voice unlock का लागि VPS backend update/reload आवश्यक छ।');
+      }
       if(generation!==epoch.current){void fetch(API+'/ai-owner/admin/training/sessions/'+next.id,{method:'DELETE',credentials:'include',headers:{Authorization:`Bearer ${token}`}});return;}
       challengeRef.current=next;setChallenge(next);pending.current=false;setBusy(false);
       await prompt(next,generation,true);
