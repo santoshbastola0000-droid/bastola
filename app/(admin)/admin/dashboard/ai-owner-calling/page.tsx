@@ -9,6 +9,7 @@ import { io, type Socket } from "socket.io-client";
 import useTokenStore from "@/store";
 import { AiOwnerUserSelector } from "@/components/AiOwnerUserSelector";
 import { AiAutoCalling } from "@/components/admin/AiAutoCalling";
+import { OwnerRequiredDetails } from "@/components/OwnerRequiredDetails";
 import { AiOwnerDraftReview } from "@/components/AiOwnerDraftReview";
 
 type CallState = "idle" | "calling" | "complete" | "failed";
@@ -135,6 +136,7 @@ export default function OwnerCallingPage() {
   return <main className="mx-auto max-w-3xl space-y-6 p-4 md:p-8">
     <header><h1 className="text-2xl font-bold">AI Owner Calling</h1>
       <p className="text-sm text-muted-foreground">Connect a supported SIP/VoIP provider through the VPS voice bridge. Provider credentials must remain server-side.</p></header>
+    <OwnerRequiredDetails />
     <section className="space-y-3">
       <h2 className="text-lg font-semibold">AI सँग कुरा गर्नुहोस्</h2>
       <p className="text-sm text-muted-foreground">Start थिचेर microphone अनुमति दिनुहोस्। AI ले पहिले बोल्छ, त्यसपछि तपाईंको जवाफ सुन्छ। यो browser बाट हुने AI कुराकानी हो।</p>
