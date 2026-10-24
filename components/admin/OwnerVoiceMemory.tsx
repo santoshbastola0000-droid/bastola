@@ -12,16 +12,17 @@ export function OwnerVoiceMemory({userId}:{userId:string}){
  const [notice,setNotice]=useState("");
  const [busy,setBusy]=useState(false);
  const [refresh,setRefresh]=useState(0);
+ const [offset,setOffset]=useState(0);
  useEffect(()=>{
   if(!token)return;
   const controller=new AbortController();
   setItems([]);setPreferences({});setEvidence("");setNotice("");
   const request=(path:string)=>fetch(API+path,{credentials:"include",cache:"no-store",signal:controller.signal,headers:{Authorization:"Bearer "+token}}).then(async r=>{if(!r.ok)throw new Error("लोड भएन। Backend update र admin access जाँच्नुहोस्।");const d=await r.json();return d.data||d;});
-  void Promise.all([request("/ai-owner/admin/question-library"),userId?request("/ai-owner/admin/users/"+encodeURIComponent(userId)+"/communication"):Promise.resolve(null)])
+  void Promise.all([request("/ai-owner/admin/question-library?offset="+offset),userId?request("/ai-owner/admin/users/"+encodeURIComponent(userId)+"/communication"):Promise.resolve(null)])
    .then(([questions,memory])=>{if(controller.signal.aborted)return;setItems(questions);if(memory){setPreferences(memory.preferences||{});setEvidence(memory.evidence||"");}})
    .catch(e=>{if(!controller.signal.aborted)setNotice(String(e.message||e));});
   return()=>controller.abort();
- },[token,userId,refresh]);
+ },[token,userId,refresh,offset]);
  async function save(path:string,body:unknown){
   if(!token||busy)return;
   setBusy(true);setNotice("");
@@ -34,7 +35,7 @@ export function OwnerVoiceMemory({userId}:{userId:string}){
  }
  return <section className="space-y-4 rounded-xl border p-5">
   <div className="flex items-center justify-between gap-2"><h2 className="text-lg font-semibold">प्रश्न भण्डार र Owner को बोल्ने रोजाइ</h2><button type="button" disabled={busy} onClick={()=>setRefresh(n=>n+1)} className="rounded border px-3 py-2">Refresh</button></div>
-  <p className="text-sm text-muted-foreground">AI का प्रश्न Draft मा आउँछन्। सच्याएर सम्बन्धित विवरण छानेपछि मात्र प्रयोगमा राख्नुहोस्। पछिल्ला २०० फरक प्रश्न देखिन्छन्; दोहोरिएको प्रश्नको संख्या बढ्छ।</p>
+  <p className="text-sm text-muted-foreground">AI का प्रश्न Draft मा आउँछन्। सच्याएर सम्बन्धित विवरण छानेपछि मात्र प्रयोगमा राख्नुहोस्। प्रत्येक पेजमा २०० फरक प्रश्न देखिन्छन्; दोहोरिएको प्रश्नको संख्या बढ्छ।</p>
   {notice&&<p role="status" className="text-sm">{notice}</p>}
   <details className="rounded-lg border p-3"><summary className="cursor-pointer font-medium">AI ले सोधेका प्रश्न ({items.length})</summary>
    {!items.length&&<p className="mt-3 text-sm">अहिलेसम्म प्रश्न आएको छैन। Website call मा transcript को अनुमति दिएपछि प्रश्न पनि यहाँ आउँछन्।</p>}
@@ -47,6 +48,7 @@ export function OwnerVoiceMemory({userId}:{userId:string}){
      <button type="button" disabled={busy} onClick={()=>void save("/ai-owner/admin/question-library/"+item.id,{question:item.question,field:item.field,status:item.status})} className="rounded bg-blue-700 px-3 py-2 text-sm text-white disabled:opacity-40">Save</button>
     </div>
    </article>)}
+   <div className="mt-3 flex justify-between"><button type="button" disabled={offset===0||busy} onClick={()=>setOffset(n=>Math.max(0,n-200))}>Previous</button><span>Page {offset/200+1}</span><button type="button" disabled={items.length<200||busy} onClick={()=>setOffset(n=>n+200)}>Next</button></div>
   </details>
   {userId?<div className="space-y-3 rounded-lg border p-3">
    <h3 className="font-medium">छानिएको Owner को सञ्चार रोजाइ</h3>
