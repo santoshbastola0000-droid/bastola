@@ -21,6 +21,9 @@ export function AiOwnerIncomingVoice() {
   const watchdog = useRef<ReturnType<typeof setTimeout>|null>(null);
   const [connecting,setConnecting] = useState(false);
   const utterances = useRef<string[]>([]);
+  const transcriptUpload = useRef<Promise<void>>(Promise.resolve());
+  const [shareTranscript,setShareTranscript] = useState(false);
+  const [historyError,setHistoryError] = useState("");
   const [callId, setCallId] = useState("");
   const [connected, setConnected] = useState(false);
   const [finished, setFinished] = useState(false);
@@ -53,6 +56,7 @@ export function AiOwnerIncomingVoice() {
       active.current = data.callId;
       utterances.current = [];
       setCaptured(0);
+      setShareTranscript(false);setHistoryError("");
       setCallId(data.callId);
       setFinished(false);
       setStatus("RoomKhoj AI बाट incoming call");
@@ -92,6 +96,23 @@ export function AiOwnerIncomingVoice() {
       const accepted = await socket.current.timeout(12000).emitWithAck("ai-owner:respond", { callId: id, accept: true }) as { success?: boolean; error?: string };
       if(!isCurrent())return;
       if (!accepted?.success) throw new Error(accepted?.error || "Call acceptance failed");
+      const storeTranscript=shareTranscript;
+      if (storeTranscript) {
+        await privateApi.post('/ai-owner/calls/'+encodeURIComponent(id)+'/transcript-consent',{consent:true});
+        if(!isCurrent())return;
+      }
+      const persistTurn=(eventId:string,speaker:'OWNER'|'AI',text:string)=>{
+        if(!storeTranscript || !text || text.length>4000)return;
+        transcriptUpload.current=transcriptUpload.current.then(async()=>{
+          const payload={turns:[{eventId,speaker,text}]};
+          try {
+            try {await privateApi.post('/ai-owner/calls/'+encodeURIComponent(id)+'/turns',payload);}
+            catch {await privateApi.post('/ai-owner/calls/'+encodeURIComponent(id)+'/turns',payload);}
+          } catch {
+            if(active.current===id)setHistoryError('केही संवाद history मा सुरक्षित भएनन्।');
+          }
+        });
+      };
       const result = await socket.current.timeout(15000).emitWithAck("ai-owner:realtime-token", { callId: id }) as TokenResult;
       if(!isCurrent())return;
       if (!result.success || !result.token) throw new Error(result.error || "Realtime AI unavailable");
@@ -126,7 +147,13 @@ export function AiOwnerIncomingVoice() {
       channel.onmessage = event => {
         if(!isCurrent())return;
         try {
-          const message = JSON.parse(event.data) as { type?: string; transcript?: string };
+          const message = JSON.parse(event.data) as { type?: string; transcript?: string; item_id?: string; event_id?:string; content_index?:number };
+          const wordsForHistory=String(message.transcript||'').trim();
+          const item=message.item_id||message.event_id;
+          if(item && message.type==='conversation.item.input_audio_transcription.completed')
+            persistTurn('owner:'+item+':'+(message.content_index||0),'OWNER',wordsForHistory);
+          if(item && ['response.output_audio_transcript.done','response.audio_transcript.done'].includes(message.type||''))
+            persistTurn('ai:'+item+':'+(message.content_index||0),'AI',wordsForHistory);
           if (message.type === "conversation.item.input_audio_transcription.completed") {
             const words = String(message.transcript || "").trim();
             if (words && words.length <= 700 && utterances.current.length < 50) {
@@ -140,7 +167,7 @@ export function AiOwnerIncomingVoice() {
         if(!isCurrent())return;
         channel.send(JSON.stringify({
           type: "response.create",
-          response: { instructions: "Greet the caller in Nepali, identify yourself as RoomKhoj AI, and politely ask permission to discuss available rental rooms." },
+          response: { instructions: "Say in Nepali: नमस्ते, म RoomKhoj को AI सहायक बोल्दै छु। तपाईंको घरमा भाडामा दिने कुनै खाली कोठा छ? Then wait for the answer. Keep the conversation brief and ask one question at a time." },
         }));
         ready();
       };
@@ -188,24 +215,28 @@ export function AiOwnerIncomingVoice() {
       <h2 className="text-xl font-bold">RoomKhoj AI Live Call</h2>
       <p className="text-sm">यो RoomKhoj को AI सहायक हो, मानव कर्मचारी होइन।</p>
       <p role="status" className="text-sm">{status}</p>
+      {!connected && !finished && <label className="flex items-start gap-2 text-left text-sm">
+        <input type="checkbox" disabled={connecting} checked={shareTranscript} onChange={e=>setShareTranscript(e.target.checked)} />
+        AI र मेरो कुराकानीको text RoomKhoj admin को call history मा राख्न अनुमति दिन्छु। यो ऐच्छिक हो।
+      </label>}
+      {historyError && <p role="alert" className="text-sm text-red-600">{historyError}</p>}
       <audio ref={audio} autoPlay controls playsInline className="w-full" />
       {!connected && !finished && <button onClick={() => void accept()} disabled={connecting} className="rounded-lg bg-green-700 px-5 py-3 text-white disabled:opacity-50">Accept AI Call</button>}
       {!finished && <button onClick={connected ? end : () => {
         socket.current?.emit("ai-owner:respond", { callId, accept: false }); close();
       }} className="ml-2 rounded-lg bg-red-700 px-5 py-3 text-white">{connected ? "End Call" : "Decline"}</button>}
       {finished && <>
-        <p className="text-xs">तपाईंको बोलीबाट {captured} उत्तर स्थानीय रूपमा राखिएको छ। तपाईंले अनुमति नदिएसम्म server मा draft पठाइँदैन।</p>
+        <p className="text-xs">Room draft बनाउन तपाईंको बोलीबाट {captured} उत्तर राखिएको छ। Transcript को अनुमति दिएको भए कुराकानी छुट्टै admin history मा पठाइन्छ। Draft का लागि तलको अनुमति आवश्यक छ।</p>
         {captured > 0 && <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" checked={consentSave} onChange={e => setConsentSave(e.target.checked)} />
           मेरो room जानकारीबाट draft बनाउन र PostgreSQL मा सुरक्षित गर्न अनुमति छ।
         </label>}
         <div className="flex justify-center gap-2">
           {captured > 0 && <button disabled={!consentSave || saving} onClick={() => void saveDraft()} className="rounded-lg bg-green-700 px-4 py-2 text-white disabled:opacity-50">Save room draft</button>}
-          <button onClick={close} className="rounded-lg border px-4 py-2">Close without saving</button>
+          <button onClick={close} className="rounded-lg border px-4 py-2">Close</button>
         </div>
       </>}
       <p className="text-xs text-muted-foreground">Realtime WebRTC voice. Raw audio is not saved by RoomKhoj AI Calling.</p>
     </div>
   </div>;
 }
-

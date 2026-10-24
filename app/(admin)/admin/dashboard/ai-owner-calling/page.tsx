@@ -7,6 +7,7 @@ const LiveVoiceConversation = dynamic(() => import("@/components/LiveVoiceConver
 import { io, type Socket } from "socket.io-client";
 import useTokenStore from "@/store";
 import { AiOwnerUserSelector } from "@/components/AiOwnerUserSelector";
+import { AiAutoCalling } from "@/components/admin/AiAutoCalling";
 import { AiOwnerDraftReview } from "@/components/AiOwnerDraftReview";
 
 type CallState = "idle" | "calling" | "complete" | "failed";
@@ -139,6 +140,7 @@ export default function OwnerCallingPage() {
       <LiveVoiceConversation ownerMode />
     </section>
     <AiOwnerUserSelector onSelect={user => { setOwnerName(user.name); setPhone(user.phone || ""); setSelectedUserId(user.id); setError(""); setResult(null); }} />
+    <AiAutoCalling selectedPhone={phone} selectedName={ownerName} />
     <section className="rounded-xl border p-5 space-y-3">
       <h2 className="font-semibold">Website AI Voice Call (Beta)</h2>
       <p className="text-sm">Select an online registered user above. The user must first enable AI calling in their privacy settings, remain logged in, and accept the incoming call. Continuous Nepali voice uses WebRTC.</p>
