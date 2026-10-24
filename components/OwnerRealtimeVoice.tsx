@@ -194,8 +194,8 @@ export default function OwnerRealtimeVoice({ autoStart=false, developerSessionId
           const text=String(message.transcript || "").slice(0, 2000);
           const command=developerVoiceCommand(text);
           if(!developerSessionId && command==='ON'){
-            stop();setHeard('Developer Mode unlock अनुरोध');
-            window.dispatchEvent(new Event('roomkhoj:developer-unlock'));return;
+            stop();setHeard('Developer Mode अहिले बन्द छ।');
+            setStatus('Voice training खर्च घटाउन अहिले बन्द गरिएको छ। सामान्य AI call फेरि सुरु गर्न सक्नुहुन्छ।');return;
           }
           if(developerSessionId && command==='OFF'){
             stop();window.dispatchEvent(new Event('roomkhoj:developer-lock'));return;
