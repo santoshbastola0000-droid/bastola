@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import useTokenStore from "@/store";
+import DeveloperVoiceUnlock from "@/components/DeveloperVoiceUnlock";
 const Voice = dynamic(() => import("@/components/OwnerRealtimeVoice"), { ssr:false });
 const API=(process.env.NEXT_PUBLIC_BACKEND_URL || "https://api.roomkhoj.com").replace(/\/$/,"");
 type Review={kind:"style"|"memory";text:string;summary:string;suggestions:string[];risks:string[];severity:"low"|"medium"|"high";style:{tone:string;length:string;acknowledgements:boolean}|null};
@@ -57,18 +58,20 @@ export default function DeveloperVoiceTraining() {
   },[session,disable]);
   useEffect(()=>{setSession(null);setDraft(null);setMemories([]);draftRef.current=null;setFeedback(null);setBusy(false);setLesson("");setSearch("");setFilter("ALL");setStatus("");opening.current=false;saving.current=false;},[token]);
 
-  async function enable(){
+  async function activate(next:Session){
     if(opening.current)return;
-    opening.current=true;const seq=++sequence.current;setBusy(true);setStatus("");
+    opening.current=true;const seq=++sequence.current;setBusy(true);setStatus('Developer Mode खुल्यो। अब आवाजबाट सिकाउनुहोस्।');
     try{
-      const next:Session=await request("sessions","POST");
-      if(seq!==sequence.current){void request("sessions/"+next.id,"DELETE").catch(()=>undefined);return;}
       sessionRef.current=next;setSession(next);
       const rows=await request("sessions/"+next.id+"/memories");
       if(seq===sequence.current){setMemories(rows);setHasMore(rows.length===100);}
-    }catch(e){if(seq===sequence.current)setStatus(e instanceof Error?e.message:"Mode खोल्न सकिएन।");}
+    }catch(e){if(seq===sequence.current)setStatus(e instanceof Error?e.message:"History ल्याउन सकिएन।");}
     finally{if(seq===sequence.current){opening.current=false;setBusy(false);}}
   }
+  useEffect(()=>{
+    const lock=()=>disable();window.addEventListener('roomkhoj:developer-lock',lock);
+    return()=>window.removeEventListener('roomkhoj:developer-lock',lock);
+  },[disable]);
 
   async function review(source:string){
     const current=sessionRef.current;if(!current||saving.current)return;
@@ -133,11 +136,12 @@ export default function DeveloperVoiceTraining() {
     <div className="flex flex-wrap items-center justify-between gap-3">
       <div><h2 className="text-lg font-semibold">Developer Voice Training & AI Memory</h2>
       <p className="text-sm text-muted-foreground">आवाजबाट सिकाउनुहोस्। बोलेको lesson review draft का रूपमा राखिन्छ; स्पष्ट पुष्टि गरेपछि मात्र सक्रिय memory हुन्छ।</p></div>
-      <button type="button" disabled={busy&&!session} aria-pressed={!!session} onClick={session?disable:()=>void enable()} className="rounded-lg bg-blue-700 px-4 py-3 text-white disabled:opacity-50">{session?"Developer Mode बन्द गर्नुहोस्":"Developer Mode खोल्नुहोस्"}</button>
+      <button type="button" disabled={busy&&!session} aria-pressed={!!session} onClick={session?disable:()=>window.dispatchEvent(new Event('roomkhoj:developer-unlock'))} className="rounded-lg bg-blue-700 px-4 py-3 text-white disabled:opacity-50">{session?"Developer Mode बन्द गर्नुहोस्":"Developer Mode खोल्नुहोस्"}</button>
     </div>
     <p role="status" aria-live="polite" className="text-sm">{status}</p>
+    {!session&&<DeveloperVoiceUnlock onVerified={next=>void activate(next)}/>}
     {session&&<>
-      <Voice key={session.id} developerSessionId={session.id} onUtterance={utterance} feedback={feedback}/>
+      <Voice key={session.id} autoStart developerSessionId={session.id} onUtterance={utterance} feedback={feedback}/>
       <label className="block text-sm">बोलेको lesson सच्याउनुहोस्
         <textarea disabled={saving.current} value={lesson} maxLength={1500} onChange={e=>{setLesson(e.target.value);draftRef.current=null;setDraft(null);sequence.current++;inFlight.current?.abort();setBusy(false);}} className="mt-2 min-h-24 w-full rounded border bg-background p-3"/>
       </label>
