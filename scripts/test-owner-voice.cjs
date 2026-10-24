@@ -22,3 +22,14 @@ t.handle('input_audio_buffer.speech_stopped',11000);t.handle('input_audio_buffer
 events=[];t=new OwnerVoiceTurns(e=>events.push(e));t.handle('input_audio_buffer.speech_started',0);t.microphone(false,1000);t.tick(1450);assert.equal(events.length,0,'Short utterances receive no cue');
 t.microphone(false,7000);t.tick(9000);assert.equal(events.length,0,'Stale pause receives no cue');
 console.log('PASS: measured pauses, continuous speech, cue interruption, audio serialization, no meter fallback and End cleanup');
+const meterExports={};let sampleTick,closed=0,disconnected=0,cleared=0,connected=0;
+class FakeAudioContext{
+ constructor(){this.state='running';}
+ createMediaStreamSource(){return {connect:()=>{connected++;},disconnect:()=>{disconnected++;}};}
+ createAnalyser(){return {fftSize:1024,getFloatTimeDomainData:buffer=>buffer.fill(0.1)};}
+ resume(){return Promise.resolve();}close(){closed++;return Promise.resolve();}
+}
+vm.runInNewContext(ts.transpileModule(fs.readFileSync(require('node:path').join(__dirname,'../lib/voice/microphone-meter.ts'),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020}}).outputText,{exports:meterExports,AudioContext:FakeAudioContext,Float32Array,performance:{now:()=>1000},setInterval:fn=>{sampleTick=fn;return 1;},clearInterval:()=>{cleared++;}});
+let measurement;const stopMeter=meterExports.monitorMicrophone({},(voiced,levels)=>{measurement={voiced,levels};});sampleTick();
+assert.equal(measurement.voiced,true);assert.equal(measurement.levels.length,7);assert.ok(measurement.levels.every(v=>v>0));assert.equal(connected,1,'Only analyser connected; no speaker monitor path');
+stopMeter();assert.equal(cleared,1);assert.equal(closed,1);assert.equal(disconnected,1);console.log('PASS: real-signal meter and audio resource cleanup');
