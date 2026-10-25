@@ -10,7 +10,7 @@ export interface OfficeRoom {
   rentalCount?: number; rentalHistoryIncomplete?: boolean;
   currentRental?: { id: string; clientName?: string; clientPhone?: string; startedAt: string; number: number; tenant?: TenantDetails } | null;
 }
-export type SharedOfficeRoom = Pick<OfficeRoom, 'id' | 'code' | 'title' | 'location' | 'details' | 'tiktokUrl' | 'price' | 'status'>;
+export type SharedOfficeRoom = Pick<OfficeRoom, 'id' | 'code' | 'title' | 'location' | 'details' | 'tiktokUrl' | 'price' | 'status' | 'matchProfile'>;
 export interface OfficeRental { id: string; number: number; clientName?: string; clientPhone?: string; startedAt: string; endedAt?: string | null; staffName?: string; origin: string; tenant?: TenantDetails; }
 export interface RoomMatchProfile { exactAddress?: string; latitude?: number | null; longitude?: number | null; city?: string; area?: string; roomType?: string; capacity?: number; facilities?: string[]; occupancy?: string; parkingVehicles?: string[]; }
 export interface TenantRequirements { city: string; area: string; roomType: string; people: number; minRent: number; maxRent: number; facilities: string[]; alternativeAreas?: string[]; occupancy?: string; parkingRequired?: boolean; vehicle?: string; vehicleCount?: number; rentalEndsOn?: string; moveInDate?: string; }
