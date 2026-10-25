@@ -12,6 +12,8 @@ import { AiAutoCalling } from "@/components/admin/AiAutoCalling";
 import { OwnerVoiceMemory } from "@/components/admin/OwnerVoiceMemory";
 import { OwnerRequiredDetails } from "@/components/OwnerRequiredDetails";
 import { AiOwnerDraftReview } from "@/components/AiOwnerDraftReview";
+import { OwnerCollectedData } from '@/components/OwnerCollectedData';
+import { OwnerKnowledgeEditor } from '@/components/OwnerKnowledgeEditor';
 
 const API = (process.env.NEXT_PUBLIC_BACKEND_URL || "https://api.roomkhoj.com").replace(/\/$/, "");
 
@@ -95,10 +97,11 @@ export default function OwnerCallingPage() {
     });
   }
 
-  return <main className="mx-auto max-w-3xl space-y-6 p-4 md:p-8">
+  return <main className="mx-auto max-w-7xl space-y-6 p-4 md:p-8">
     <header><h1 className="text-2xl font-bold">AI Owner Calling</h1>
       <p className="text-sm text-muted-foreground">Owner छानेर website call गर्नुहोस् वा अनुमति भएका नम्बर auto-call queue मा राख्नुहोस्। प्रश्न र बोल्ने शैली तल मिलाउन सकिन्छ।</p></header>
     <OwnerRequiredDetails />
+    <OwnerKnowledgeEditor />
     <AiOwnerUserSelector onSelect={user => { setOwnerName(user.name); setPhone(user.phone || ""); setSelectedUserId(user.id); }} />
     <OwnerVoiceMemory userId={selectedUserId} />
     <DeveloperVoiceTraining />
@@ -114,6 +117,7 @@ export default function OwnerCallingPage() {
       <p className="text-sm">User opt-in settings: <Link className="underline" href="/ai-call-privacy">roomkhoj.com/ai-call-privacy</Link></p>
       {browserStatus && <p role="status" className="text-sm">{browserStatus}</p>}
     </section>
+    <OwnerCollectedData />
     <AiOwnerDraftReview />
     <details className="space-y-4 rounded-xl border p-5">
       <summary className="cursor-pointer font-semibold">परीक्षण र Diagnostics</summary>

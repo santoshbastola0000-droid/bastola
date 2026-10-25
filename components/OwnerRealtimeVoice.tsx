@@ -6,6 +6,8 @@ import { developerVoiceCommand } from "@/lib/voice/developer-voice-command";
 import { OwnerListeningIndicator } from "@/components/OwnerListeningIndicator";
 import { monitorMicrophone } from "@/lib/voice/microphone-meter";
 import { OwnerVoiceTurns } from "@/lib/voice/owner-voice-turns";
+import dynamic from 'next/dynamic';
+const LocalOwnerVoice=dynamic(()=>import('@/components/LocalOwnerVoice'),{ssr:false});
 import { OwnerMapLookup, type OwnerMapResult } from '@/lib/voice/owner-map-lookup';
 import { OwnerMapCandidates } from '@/components/OwnerMapCandidates';
 
@@ -17,6 +19,7 @@ export default function OwnerRealtimeVoice({ autoStart=false, developerSessionId
   const token = useTokenStore(state => state.token);
   const autoStarted=useRef(false);
   const [phase, setPhase] = useState<Phase>("idle");
+  const [localMode,setLocalMode]=useState(false);
   const [status, setStatus] = useState("Start थिचेर AI सँग कुरा गर्नुहोस्");
   const [heard, setHeard] = useState("");
   const [reply, setReply] = useState("");
@@ -102,6 +105,16 @@ export default function OwnerRealtimeVoice({ autoStart=false, developerSessionId
     }
     watchdog.current = setTimeout(() => fail("AI जोडिन समय लाग्यो। फेरि Start थिच्नुहोस्।"), 30000);
     try {
+      if(!developerSessionId){
+        const runtimeResponse=await fetch(API+'/ai-owner/voice-runtime',{credentials:'include',signal:abort.signal,headers:{Authorization:`Bearer ${token}`}});
+        if(!current())return;
+        if(runtimeResponse.ok){const payload=await runtimeResponse.json();const runtime=payload.data||payload;
+          if(['LOCAL','HYBRID'].includes(runtime.mode)){
+            if(!runtime.configured)throw new Error('Voice worker र local models पहिले configure गर्नुहोस्।');
+            cleanup();setPhase('idle');setLocalMode(true);return;
+          }
+        }
+      }
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 },
       });
@@ -238,6 +251,7 @@ export default function OwnerRealtimeVoice({ autoStart=false, developerSessionId
   },[autoStart,token,developerSessionId]);
 
   const active = phase !== "idle" && phase !== "error";
+  if(localMode)return <LocalOwnerVoice autoStart onEnd={()=>setLocalMode(false)}/>;
   return <section className="space-y-4 rounded-2xl bg-[#0b0b0d] p-6 text-white">
     <h3 className="text-lg font-semibold">{developerSessionId ? "Developer Mode — आवाजबाट सिकाउनुहोस्" : "RoomKhoj AI सँग कुरा गर्नुहोस्"}</h3>
     <p className="text-sm text-white/60">यो AI सहायक हो। आरामले बोल्नुहोस्; “अ…” वा “हम्म…” पछि आफ्नो कुरा पूरा गर्न सक्नुहुन्छ।</p>

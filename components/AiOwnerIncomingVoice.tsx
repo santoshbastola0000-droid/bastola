@@ -10,6 +10,8 @@ import { monitorMicrophone } from "@/lib/voice/microphone-meter";
 import { OwnerListeningIndicator } from "@/components/OwnerListeningIndicator";
 import { OwnerMapLookup, type OwnerMapResult } from '@/lib/voice/owner-map-lookup';
 import { OwnerMapCandidates } from '@/components/OwnerMapCandidates';
+import dynamic from 'next/dynamic';
+const LocalOwnerVoice=dynamic(()=>import('@/components/LocalOwnerVoice'),{ssr:false});
 
 const API = (process.env.NEXT_PUBLIC_BACKEND_URL || "https://api.roomkhoj.com").replace(/\/$/, "");
 type TokenResult = { success?: boolean; token?: string; model?: string; error?: string; manualTurns?:boolean; acknowledgements?:boolean };
@@ -44,9 +46,12 @@ export function AiOwnerIncomingVoice() {
   const [consentSave, setConsentSave] = useState(false);
   const [saving, setSaving] = useState(false);
   const [captured, setCaptured] = useState(0);
+  const [localVoiceActive,setLocalVoiceActive]=useState(false);
+  const localTurn=useRef<((speaker:'OWNER'|'AI',text:string)=>void)|null>(null);
   const [captureWarning,setCaptureWarning]=useState('');
 
   const stopAudio = useCallback(() => {
+    setLocalVoiceActive(false);localTurn.current=null;
     mapLookup.current?.stop();mapLookup.current=null;setMapResult(null);
     turns.current?.stop();turns.current=null;
     if(ticker.current)clearInterval(ticker.current);ticker.current=null;
@@ -107,6 +112,27 @@ export function AiOwnerIncomingVoice() {
     watchdog.current=setTimeout(()=>{if(!isCurrent())return;stopAudio();socket.current?.emit('ai-owner:end',{callId:id});setFinished(true);setStatus('AI voice connection timed out। फेरि call गर्नुहोस्।');},30000);
     setStatus("Connecting real-time AI voice…");
     try {
+      const runtimeResponse=await fetch(API+'/ai-owner/voice-runtime',{credentials:'include',signal:request.signal,headers:{Authorization:`Bearer ${token}`}});
+      if(!isCurrent())return;
+      if(runtimeResponse.ok){const payload=await runtimeResponse.json();const runtime=payload.data||payload;
+        if(['LOCAL','HYBRID'].includes(runtime.mode)){
+          if(!runtime.configured)throw new Error('Voice worker/models configure भएका छैनन्।');
+          const accepted=await socket.current.timeout(12000).emitWithAck('ai-owner:respond',{callId:id,accept:true}) as {success?:boolean;error?:string};
+          if(!isCurrent())return;if(!accepted.success)throw new Error(accepted.error||'Call not accepted');
+          if(shareTranscript){await privateApi.post('/ai-owner/calls/'+encodeURIComponent(id)+'/transcript-consent',{consent:true});if(!isCurrent())return;}
+          localTurn.current=(speaker,text)=>{
+            if(!isCurrent())return;
+            if(speaker==='OWNER'&&text.length<=4000&&utterances.current.length<200&&utterances.current.reduce((n,t)=>n+t.length,0)+text.length<=20000){utterances.current.push(text);setCaptured(utterances.current.length);}
+            else if(speaker==='OWNER')setCaptureWarning('लामो कुराकानीको केही विवरण अटेन। Admin लाई बाँकी विवरण दिनुहोस्।');
+            if(shareTranscript){const eventId='worker:'+crypto.randomUUID();transcriptUpload.current=transcriptUpload.current.then(async()=>{
+              try{await privateApi.post('/ai-owner/calls/'+encodeURIComponent(id)+'/turns',{turns:[{eventId,speaker,text}]});}
+              catch{setHistoryError('Transcript history upload भएन।');}
+            });}
+          };
+          if(watchdog.current)clearTimeout(watchdog.current);watchdog.current=null;
+          accepting.current=false;setConnecting(false);setConnected(true);setLocalVoiceActive(true);setStatus('AI worker सँग कुरा गर्नुहोस्');return;
+        }
+      }
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
       });
@@ -267,6 +293,7 @@ export function AiOwnerIncomingVoice() {
       {historyError && <p role="alert" className="text-sm text-red-600">{historyError}</p>}
       {captureWarning&&<p role="alert" className="text-sm text-amber-700">{captureWarning}</p>}
       {connected&&<OwnerListeningIndicator speaking={ownerSpeaking} levels={levels}/>}
+      {localVoiceActive&&<LocalOwnerVoice callId={callId} autoStart onTurn={(speaker,text)=>localTurn.current?.(speaker,text)} onEnd={end} onReady={()=>socket.current?.emit('ai-owner:ready',{callId})}/>}
       <OwnerMapCandidates result={mapResult}/>
       <audio ref={audio} autoPlay controls playsInline className="w-full" />
       {!connected && !finished && <button onClick={() => void accept()} disabled={connecting} className="rounded-lg bg-green-700 px-5 py-3 text-white disabled:opacity-50">Accept AI Call</button>}
