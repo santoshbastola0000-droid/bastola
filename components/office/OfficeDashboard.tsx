@@ -128,7 +128,7 @@ export function OfficeDashboard() {
   async function saveRoom(e: FormEvent) {
     e.preventDefault();
     await action(async () => {
-      const matchProfile={city:matchDraft.city,area:matchDraft.area,roomType:matchDraft.roomType,capacity:matchDraft.capacity.trim()===''?null:Number(matchDraft.capacity),facilities:matchDraft.facilities,occupancy:matchDraft.occupancy,parkingVehicles:matchDraft.parkingVehicles,exactAddress,latitude:latitude.trim()===''?null:Number(latitude),longitude:longitude.trim()===''?null:Number(longitude)};
+      const matchProfile={city:matchDraft.city,area:matchDraft.area,roomType:matchDraft.roomType,capacity:matchDraft.capacity.trim()===''?undefined:Number(matchDraft.capacity),facilities:matchDraft.facilities,occupancy:matchDraft.occupancy,parkingVehicles:matchDraft.parkingVehicles,exactAddress,latitude:latitude.trim()===''?null:Number(latitude),longitude:longitude.trim()===''?null:Number(longitude)};
       if (editing) await officeService.update(editing.id,{...draft,matchProfile});
       else {
         if (video && video.size>150*1024*1024) throw new Error('Video must be 150 MB or smaller');
