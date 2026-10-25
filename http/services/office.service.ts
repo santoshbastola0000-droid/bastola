@@ -74,6 +74,7 @@ export const officeService = {
     // Send large videos straight to the API; do not route through Vercel's request-body limit.
     timeout: 15*60*1000,onUploadProgress: e => onProgress(e.total ? Math.round(e.loaded*100/e.total) : 0),
   })),
+  uploadVideo: async (id: string,data: FormData,onProgress: (percent:number)=>void) => unwrap<OfficeRoom>(await privateApi.post(`${officeBackend}/office/rooms/${id}/video`,data,{timeout:15*60*1000,onUploadProgress:e=>onProgress(e.total?Math.round(e.loaded*100/e.total):0)})),
   update: async (id: string,data: Omit<OfficeRoom,'id'|'status'|'createdAt'>) => unwrap<OfficeRoom>(await privateApi.patch(`/office/rooms/${id}`,data)),
   status: async (id: string,status: string,tenant?: TenantDetails,sourceClientId?: string,skipTenantForm = false) => privateApi.patch(`/office/rooms/${id}/status`,{ status,tenant,sourceClientId,skipTenantForm }),
   share: async (id: string,client: ClientInput) => unwrap<{ token: string; shareId: string; expiresAt: string }>(await privateApi.post(`/office/rooms/${id}/share`,client)),
