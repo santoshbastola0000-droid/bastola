@@ -26,7 +26,7 @@ function removeCustomLines(raw:string){return raw.split('\n').filter(line=>!line
 function parseDetails(raw: string): Record<string,string> { const result: Record<string,string> = {}; const lines=removeCustomLines(raw).split('\n'); const extra:string[]=[]; for(const line of lines){const label=questionLabels.find(k=>line.startsWith(k+': ')); if(label) result[label]=line.slice(label.length+2); else extra.push(line); } result['Other details']=extra.join('\n').trim(); return result; }
 function serializeDetails(values:Record<string,string>){return [...questionLabels.map(k=>values[k]?.trim()?k+': '+values[k].trim():''),values['Other details']?.trim()||''].filter(Boolean).join('\n');}
 
-export function RoomDetails({ room }: { room: OfficeRoom }) {
+export function RoomDetails({ room, onEdit }: { room: OfficeRoom; onEdit?: () => void }) {
   const [tab,setTab]=useState<'overview'|'owner'|'history'>('overview');
   const [more,setMore]=useState(false);
   useEffect(()=>{setTab('overview');setMore(false);},[room.id]);
@@ -59,6 +59,10 @@ export function RoomDetails({ room }: { room: OfficeRoom }) {
       <div className="flex items-center justify-between gap-2"><p className="text-sm font-bold">Room information completeness</p><span className="text-xs text-slate-500">{6-missing.length}/6</span></div>
       <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-emerald-500" style={{width:`${((6-missing.length)/6)*100}%`}}/></div>
       <p className="mt-2 text-xs text-slate-600">{missing.length?'Missing: '+missing.join(', '):'All key details entered'}. Missing details do not block saving.</p>
+      {missing.length>0&&onEdit&&<div className="mt-3 flex flex-wrap gap-2" aria-label="Add missing room information">
+        {missing.map(field=><button key={field} type="button" onClick={onEdit} className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-800 hover:bg-blue-100">+ Add {field}</button>)}
+      </div>}
+      {onEdit&&<button type="button" onClick={onEdit} className="mt-3 text-sm font-semibold text-blue-700 underline">Edit any room information</button>}
     </div>
     <div role="tablist" aria-label="Room information" className="grid grid-cols-3 gap-1 rounded-xl bg-slate-100 p-1">{(['overview','owner','history'] as const).map(value=><button key={value} type="button" role="tab" aria-selected={tab===value} onClick={()=>setTab(value)} className={`rounded-lg px-2 py-2 text-sm font-semibold capitalize ${tab===value?'bg-white text-blue-700 shadow-sm':'text-slate-600'}`}>{value}</button>)}</div>
     {tab==='overview'&&<div role="tabpanel" className="space-y-4">
