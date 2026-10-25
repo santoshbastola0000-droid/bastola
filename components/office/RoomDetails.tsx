@@ -81,7 +81,10 @@ export function RoomDetails({ room }: { room: OfficeRoom }) {
     </div>}
     {tab==='owner'&&<div role="tabpanel" className="space-y-3 rounded-lg bg-slate-50 p-3">
       <h4 className="font-bold">Owner Information</h4><p className="text-sm">Name: {room.ownerName||'Not entered'}</p>
-      <PhoneReveal phone={room.ownerPhone} label="Owner phone"/>
+      <div className="rounded-lg border border-slate-200 bg-white p-3">
+        <p className="mb-2 text-xs font-semibold text-slate-500">Phone saved by Reception</p>
+        <PhoneReveal key={room.id} phone={room.ownerPhone} label="Owner phone"/>
+      </div>
       <p className="text-xs text-slate-500">Owner contact is protected by Reception access controls.</p>
     </div>}
     {tab==='history'&&<div role="tabpanel" className="space-y-2 rounded-lg bg-slate-50 p-3 text-sm">
