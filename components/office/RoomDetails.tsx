@@ -27,15 +27,71 @@ function parseDetails(raw: string): Record<string,string> { const result: Record
 function serializeDetails(values:Record<string,string>){return [...questionLabels.map(k=>values[k]?.trim()?k+': '+values[k].trim():''),values['Other details']?.trim()||''].filter(Boolean).join('\n');}
 
 export function RoomDetails({ room }: { room: OfficeRoom }) {
+  const [tab,setTab]=useState<'overview'|'owner'|'history'>('overview');
+  const [more,setMore]=useState(false);
+  useEffect(()=>{setTab('overview');setMore(false);},[room.id]);
   const parsed=parseDetails(room.details||'');
   const questions=parseCustomQuestions(room.details||'');
-  return <div className="space-y-1 p-3">
-    <div className="flex items-start justify-between gap-3"><h3 className="text-base font-semibold">{room.title}</h3><span className="rounded-lg bg-slate-100 px-3 py-1 font-mono font-bold">{room.code}</span></div>
-    <p className="text-slate-600">📍 Location: {room.matchProfile?.exactAddress || room.location || "Not entered"} · Rent: रु {Number(room.price).toLocaleString()}/month</p>{room.matchProfile?.exactAddress&&<p className="text-sm text-slate-600">Exact address: {room.matchProfile.exactAddress}</p>}{room.matchProfile?.latitude != null&&room.matchProfile?.longitude != null&&<a className="inline-block text-sm text-blue-700 underline" target="_blank" rel="noopener noreferrer" href={'https://www.google.com/maps?q='+encodeURIComponent(String(room.matchProfile.latitude)+','+String(room.matchProfile.longitude))}>📍 View exact location on map ↗</a>}
-    <div className="space-y-2 rounded-lg bg-slate-50 p-3 text-sm text-slate-700"><p className="font-semibold">Room details</p>{questionLabels.map(label=>parsed[label]&&<p key={label}><strong>{fieldInfo[label].title}:</strong> {parsed[label]}</p>)}{questions.map((item,index)=><p key={index}><strong>{item.question}:</strong> {item.answer||"—"}</p>)}{parseDetails(room.details||"")["Other details"]&&<p className="whitespace-pre-wrap">{parseDetails(room.details||"")["Other details"]}</p>}{!room.details&&<p>No details added yet.</p>}</div>
-    <div className="flex flex-wrap items-center gap-2 text-sm"><span>Owner: {room.ownerName || '—'}</span><PhoneReveal phone={room.ownerPhone} label="Owner phone"/></div>
-    {room.tiktokUrl && <a className="inline-block text-sm text-blue-700 underline" href={room.tiktokUrl} target="_blank" rel="noopener noreferrer">Open TikTok ↗</a>}
-  </div>;
+  const profile=room.matchProfile;
+  const rent=Number(room.price);
+  const rentKnown=Number.isFinite(rent)&&rent>0;
+  const place=profile?.exactAddress||room.location||profile?.area||profile?.city||'Not entered';
+  const facilities=profile?.facilities||[];
+  const missing=[
+    !rentKnown&&'Rent',!room.location&&!profile?.exactAddress&&'Location',
+    !profile?.roomType&&'Room type',!profile?.capacity&&'Capacity',
+    !facilities.length&&'Facilities',!room.ownerPhone&&'Owner phone'
+  ].filter((item):item is string=>Boolean(item));
+  const status=room.status==='RENTED'?'Rented':room.availabilityExpired?'Confirmation required':'Available';
+  const info=[['Monthly rent',rentKnown?'Rs. '+rent.toLocaleString()+'/month':'Not entered'],
+    ['Location',place],['Room type',profile?.roomType||'Not entered'],
+    ['Capacity',profile?.capacity?String(profile.capacity)+' people':'Not entered'],
+    ['Times rented',String(room.rentalCount||0)+' times'],['Availability',status]];
+  return <section className="space-y-4 rounded-xl border border-slate-200 bg-white p-3 text-slate-900 sm:p-4">
+    <header className="flex flex-wrap items-start justify-between gap-2">
+      <div><p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Reception / Room Details</p>
+        <h3 className="text-lg font-bold">{room.title||'Untitled room'}</h3>
+        <p className="text-sm text-slate-600">{room.code} · {place}</p></div>
+      <span className={`rounded-full px-3 py-1 text-xs font-bold ${room.status==='RENTED'?'bg-slate-200 text-slate-800':room.availabilityExpired?'bg-amber-100 text-amber-800':'bg-emerald-100 text-emerald-800'}`}>{status}</span>
+    </header>
+    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">{info.map(([label,value])=><div key={label} className="min-w-0 rounded-xl bg-slate-50 p-3"><p className="text-xs text-slate-500">{label}</p><p className="mt-1 break-words text-sm font-bold">{value}</p></div>)}</div>
+    <div className="rounded-xl border border-slate-200 p-3">
+      <div className="flex items-center justify-between gap-2"><p className="text-sm font-bold">Room information completeness</p><span className="text-xs text-slate-500">{6-missing.length}/6</span></div>
+      <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-emerald-500" style={{width:`${((6-missing.length)/6)*100}%`}}/></div>
+      <p className="mt-2 text-xs text-slate-600">{missing.length?'Missing: '+missing.join(', '):'All key details entered'}. Missing details do not block saving.</p>
+    </div>
+    <div role="tablist" aria-label="Room information" className="grid grid-cols-3 gap-1 rounded-xl bg-slate-100 p-1">{(['overview','owner','history'] as const).map(value=><button key={value} type="button" role="tab" aria-selected={tab===value} onClick={()=>setTab(value)} className={`rounded-lg px-2 py-2 text-sm font-semibold capitalize ${tab===value?'bg-white text-blue-700 shadow-sm':'text-slate-600'}`}>{value}</button>)}</div>
+    {tab==='overview'&&<div role="tabpanel" className="space-y-4">
+      <div><h4 className="mb-2 font-bold">Facilities & Services</h4>{facilities.length?<div className="flex flex-wrap gap-2">{facilities.map(facility=><span key={facility} className="rounded-lg bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-800">✓ {facility}</span>)}</div>:<p className="text-sm text-slate-500">Facilities not confirmed yet.</p>}</div>
+      <div className="space-y-2"><h4 className="font-bold">Room Rules & Information</h4>
+        {questionLabels.map(label=>parsed[label]&&<p key={label} className="rounded-lg bg-slate-50 p-2 text-sm"><strong>{fieldInfo[label].title}: </strong>{parsed[label]}</p>)}
+        {questions.map((item,index)=><p key={index} className="rounded-lg bg-slate-50 p-2 text-sm"><strong>{item.question}: </strong>{item.answer||'Not entered'}</p>)}
+        {parsed['Other details']&&<p className="whitespace-pre-wrap rounded-lg bg-slate-50 p-2 text-sm">{parsed['Other details']}</p>}
+        {!room.details&&<p className="text-sm text-slate-500">No room rules or notes added yet.</p>}
+      </div>
+      <button type="button" onClick={()=>setMore(!more)} aria-expanded={more} className="w-full rounded-lg border border-slate-200 p-3 text-left text-sm font-semibold">More room details {more?'⌃':'⌄'}</button>
+      {more&&<div className="space-y-2 rounded-lg bg-slate-50 p-3 text-sm">
+        <p><strong>City / Area:</strong> {[profile?.city,profile?.area].filter(Boolean).join(', ')||'Not entered'}</p>
+        <p><strong>Exact address:</strong> {profile?.exactAddress||'Not entered'}</p>
+        <p><strong>Occupancy:</strong> {profile?.occupancy||'Not entered'}</p>
+        <p><strong>Parking:</strong> {profile?.parkingVehicles?.join(', ')||'Not entered'}</p>
+        {profile?.latitude!=null&&profile.longitude!=null&&<a className="text-blue-700 underline" target="_blank" rel="noopener noreferrer" href={'https://www.google.com/maps?q='+encodeURIComponent(profile.latitude+','+profile.longitude)}>View map ↗</a>}
+        {room.tiktokUrl&&/^https?:\/\//i.test(room.tiktokUrl)&&<p><a className="text-blue-700 underline" href={room.tiktokUrl} target="_blank" rel="noopener noreferrer">Open TikTok ↗</a></p>}
+      </div>}
+    </div>}
+    {tab==='owner'&&<div role="tabpanel" className="space-y-3 rounded-lg bg-slate-50 p-3">
+      <h4 className="font-bold">Owner Information</h4><p className="text-sm">Name: {room.ownerName||'Not entered'}</p>
+      <PhoneReveal phone={room.ownerPhone} label="Owner phone"/>
+      <p className="text-xs text-slate-500">Owner contact is protected by Reception access controls.</p>
+    </div>}
+    {tab==='history'&&<div role="tabpanel" className="space-y-2 rounded-lg bg-slate-50 p-3 text-sm">
+      <h4 className="font-bold">Rental & Staff History</h4>
+      <p>Times rented: {room.rentalCount||0}</p>
+      <p>Last availability confirmation: {room.availabilityConfirmedAt?new Date(room.availabilityConfirmedAt).toLocaleString():'Not recorded'}</p>
+      <p>Current rental: {room.currentRental?'Rented':'None recorded'}</p>
+      <p className="text-slate-600">Full tenant history, staff comments and client visits are available in the sections below.</p>
+    </div>}
+  </section>;
 }
 
 
