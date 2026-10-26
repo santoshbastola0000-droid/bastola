@@ -20,7 +20,6 @@ import { AutoLocationUpdate } from "@/components/AutoLocationUpdate";
 import { PermissionStatusSync } from "@/components/PermissionStatusSync";
 import { EngagementTracker } from "@/components/EngagementTracker";
 import { SiteNoticeBanner } from "@/components/common/site-notice";
-import { RoomKhojStartupSplash } from "@/components/RoomKhojStartupSplash";
 import { SecurityChallengeGate } from "@/components/SecurityChallengeGate";
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -146,7 +145,6 @@ export default function RootLayout({
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(siteJsonLd) }}
         />
-        <RoomKhojStartupSplash />
         <SecurityChallengeGate />
         <LanguageProvider>
         <SessionChecker />
