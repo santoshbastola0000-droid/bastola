@@ -12,7 +12,7 @@ export function MatchingFields({ value, onChange, tenant = false }: { value: Mat
   const field='mt-1 w-full rounded-lg border bg-white p-2.5 text-slate-900';
   return <fieldset className="space-y-3 rounded-xl border p-3">
     <legend className="px-1 text-sm font-semibold">{tenant?'Tenant requirements':'Room matching details'}</legend>
-    <div className="grid grid-cols-2 gap-3">
+    <div className="grid grid-cols-1 gap-3">
       <label className="text-sm">City<input maxLength={100} className={field} value={value.city} placeholder="Pokhara" onChange={event=>onChange({...value,city:event.target.value})}/></label>
       <label className="text-sm">{tenant?'Main preferred area':'Area'}<input maxLength={100} className={field} value={value.area} placeholder={tenant?'Any area if blank':'Lakeside'} onChange={event=>onChange({...value,area:event.target.value})}/></label>
       <label className="text-sm">Room type<select className={field} value={value.roomType} onChange={event=>onChange({...value,roomType:event.target.value})}><option value="">Choose type</option>{tenant&&<option value="ANY">Any room type</option>}<option value="SINGLE">Single room</option><option value="FLAT">Flat</option><option value="HOSTEL">Hostel</option></select></label>
