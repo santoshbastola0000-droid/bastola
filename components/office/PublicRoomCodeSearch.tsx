@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { api } from "@/http/api/api";
 import { officeBackend, officeError } from "@/http/services/office.service";
-import { RoomContactUnlock, type AvailableRoom } from "./RoomAvailability";
+import { type AvailableRoom } from "./RoomAvailability";
+import { PublicRoomDetails } from "./PublicRoomDetails";
 
 function unwrap<T>(value: { data: T | { data: T } }): T {
   const payload = value.data;
@@ -52,10 +53,9 @@ export function PublicRoomCodeSearch({ query }: { query: string }) {
         src={officeBackend + "/office/availability/" + encodeURIComponent(room.id) + "/video"} />
       <h3 className="font-bold">{room.title}</h3>
       <p>📍 {room.location} · रु {Number(room.price).toLocaleString("en-NP")}/month</p>
-      <p className="whitespace-pre-wrap text-sm">{room.details}</p>
+      <PublicRoomDetails room={room}/>
       {room.tiktokUrl && <a className="text-sm text-blue-700 underline" href={room.tiktokUrl} target="_blank" rel="noopener noreferrer">Watch room video ↗</a>}
-      <p className="text-sm font-semibold">Owner phone हेर्न reception बाट प्राप्त key राख्नुहोस्।</p>
-      <RoomContactUnlock roomId={room.id} />
+      
     </div>}
   </section>;
 }

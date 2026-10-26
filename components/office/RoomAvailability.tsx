@@ -2,8 +2,9 @@
 import { FormEvent, useEffect, useRef, useState } from 'react';
 import { api } from '@/http/api/api';
 import { privateApi } from '@/http/api/privateApi';
+import { PublicRoomDetails } from './PublicRoomDetails';
 import { officeBackend, officeError } from '@/http/services/office.service';
-export interface AvailableRoom { id: string; code: string; title: string; location: string; details: string; price: number | string; ownerName: string; status: string; tiktokUrl?: string; hasVideo?: boolean; matchProfile?: {exactAddress?: string; latitude?: number | null; longitude?: number | null}; }
+export interface AvailableRoom { id: string; code: string; title: string; location: string; details: string; price: number | string; ownerName: string; status: string; tiktokUrl?: string; hasVideo?: boolean; matchProfile?: {exactAddress?: string; latitude?: number | null; longitude?: number | null; city?:string;area?:string;roomType?:string;capacity?:number;facilities?:string[];occupancy?:string;parkingVehicles?:string[]}; }
 const unwrap = <T,>(r: {data: T | {data:T}}): T => { const d=r.data;return d && typeof d==='object' && 'data' in d ? (d as {data:T}).data : d as T; };
 export function RoomContactUnlock({roomId}: {roomId:string}) {
  const [key,setKey]=useState(''), [unlocked,setUnlocked]=useState<{ownerPhone:string;ownerName?:string;exactAddress?:string;latitude?:number|null;longitude?:number|null}|null>(null), [error,setError]=useState(''), [busy,setBusy]=useState(false);
@@ -17,9 +18,9 @@ export function AvailabilityCard({room,hideContact=true,onSelect}: {room:Availab
  return <article data-room-availability role={onSelect ? "button" : undefined} tabIndex={onSelect ? 0 : undefined} aria-label={onSelect ? `View details for ${room.code}` : undefined} onClick={event=>{if(onSelect && !(event.target as HTMLElement).closest("a,button,input,video"))onSelect(room);}} onKeyDown={event=>{if(onSelect && (event.key==="Enter"||event.key===" ") && event.target===event.currentTarget){event.preventDefault();onSelect(room);}}} className={"overflow-hidden rounded-2xl border border-amber-200 bg-white text-slate-900 shadow-sm "+(onSelect?"cursor-pointer transition hover:border-amber-500 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-500":"")}>
  {room.hasVideo !== false ? <video data-video-intent="room" controls playsInline preload="none" className="aspect-video w-full bg-slate-950" src={officeBackend+'/office/availability/'+room.id+'/video'}/> : <div className="flex aspect-video items-center justify-center bg-slate-100"><img src="/roomkhoj-logo.png" alt="RoomKhoj logo — no room video available" className="h-20 w-20 object-contain opacity-80" /></div>}
  <div className="space-y-3 p-4"><div className="flex justify-between gap-3"><h3 className="font-bold">{room.title}</h3><span className="rounded-lg bg-amber-50 px-2 py-1 text-xs font-mono">{room.code}</span></div>
- <p className="text-sm">{room.location} · रु {Number(room.price).toLocaleString()}/month</p><p className="whitespace-pre-wrap text-sm">{room.details}</p>{!hideContact && <p className="text-xs text-slate-500">Owner: {room.ownerName || '—'}</p>}
+ <p className="text-sm">{room.location} · रु {Number(room.price).toLocaleString()}/month</p><PublicRoomDetails room={room}/>
  {room.tiktokUrl && <a href={room.tiktokUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-700 underline">TikTok video ↗</a>}
- {!hideContact && <RoomContactUnlock roomId={room.id}/>}</div>
+ </div>
 </article>;
 }
 export function RoomAvailability({hideContact=true,embedded=false}: {hideContact?:boolean;embedded?:boolean} = {}) {
