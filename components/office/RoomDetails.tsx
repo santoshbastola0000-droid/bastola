@@ -26,7 +26,7 @@ function removeCustomLines(raw:string){return raw.split('\n').filter(line=>!line
 function parseDetails(raw: string): Record<string,string> { const result: Record<string,string> = {}; const lines=removeCustomLines(raw).split('\n'); const extra:string[]=[]; for(const line of lines){const label=questionLabels.find(k=>line.startsWith(k+': ')); if(label) result[label]=line.slice(label.length+2); else extra.push(line); } result['Other details']=extra.join('\n').trim(); return result; }
 function serializeDetails(values:Record<string,string>){return [...questionLabels.map(k=>values[k]?.trim()?k+': '+values[k].trim():''),values['Other details']?.trim()||''].filter(Boolean).join('\n');}
 
-export function RoomDetails({ room }: { room: OfficeRoom }) {
+export function RoomDetails({ room, onEdit }: { room: OfficeRoom; onEdit?: () => void }) {
   const [tab,setTab]=useState<'overview'|'owner'|'history'>('overview');
   const [more,setMore]=useState(false);
   useEffect(()=>{setTab('overview');setMore(false);},[room.id]);
@@ -59,6 +59,40 @@ export function RoomDetails({ room }: { room: OfficeRoom }) {
       <div className="flex items-center justify-between gap-2"><p className="text-sm font-bold">Room information completeness</p><span className="text-xs text-slate-500">{6-missing.length}/6</span></div>
       <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-emerald-500" style={{width:`${((6-missing.length)/6)*100}%`}}/></div>
       <p className="mt-2 text-xs text-slate-600">{missing.length?'Missing: '+missing.join(', '):'All key details entered'}. Missing details do not block saving.</p>
+    </div>
+    <div className="rounded-xl border border-slate-200 p-3">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <h4 className="font-bold">All saved form details</h4>
+        {onEdit&&<button type="button" onClick={onEdit} className="rounded-lg border border-blue-300 bg-blue-50 px-3 py-2 text-sm font-semibold text-blue-700">✎ Edit all details</button>}
+      </div>
+      <dl className="divide-y divide-slate-100 text-sm">
+        {([
+          ['Room code',room.code],
+          ['Room title',room.title],
+          ['Location',room.location],
+          ['Monthly rent',rentKnown?'Rs. '+rent.toLocaleString()+'/month':''],
+          ['Owner name',room.ownerName],
+          ['Owner phone',room.ownerPhone?'Protected — use Owner tab to reveal':''],
+          ['TikTok URL',room.tiktokUrl],
+          ['City',profile?.city],
+          ['Area',profile?.area],
+          ['Exact address',profile?.exactAddress],
+          ['Latitude',profile?.latitude==null?'':String(profile.latitude)],
+          ['Longitude',profile?.longitude==null?'':String(profile.longitude)],
+          ['Room type',profile?.roomType],
+          ['Capacity',profile?.capacity==null?'':String(profile.capacity)],
+          ['Facilities',facilities.join(', ')],
+          ['Occupancy',profile?.occupancy],
+          ['Parking vehicles',profile?.parkingVehicles?.join(', ')],
+          ...questionLabels.map(label=>[fieldInfo[label].title,parsed[label]]),
+          ...questions.map(item=>[item.question,item.answer]),
+          ['Other details',parsed['Other details']],
+        ] as Array<[string,string|undefined]>).map(([label,value])=><div key={label} className="grid grid-cols-[minmax(0,40%)_minmax(0,1fr)] gap-3 py-2">
+          <dt className="font-medium text-slate-600">{label}</dt>
+          <dd className="min-w-0 whitespace-pre-wrap break-words text-slate-900">{value?.trim()||'Not entered'}</dd>
+        </div>)}
+      </dl>
+      {onEdit&&missing.length>0&&<div className="mt-3 flex flex-wrap gap-2">{missing.map(label=><button key={label} type="button" onClick={onEdit} className="rounded-lg bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700">+ Add {label}</button>)}</div>}
     </div>
     <div role="tablist" aria-label="Room information" className="grid grid-cols-3 gap-1 rounded-xl bg-slate-100 p-1">{(['overview','owner','history'] as const).map(value=><button key={value} type="button" role="tab" aria-selected={tab===value} onClick={()=>setTab(value)} className={`rounded-lg px-2 py-2 text-sm font-semibold capitalize ${tab===value?'bg-white text-blue-700 shadow-sm':'text-slate-600'}`}>{value}</button>)}</div>
     {tab==='overview'&&<div role="tabpanel" className="space-y-4">
