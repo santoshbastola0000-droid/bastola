@@ -53,7 +53,7 @@ export function PublicRoomCodeSearch({ query }: { query: string }) {
         src={officeBackend + "/office/availability/" + encodeURIComponent(room.id) + "/video"} />
       <h3 className="font-bold">{room.title}</h3>
       <p>📍 {room.location} · रु {Number(room.price).toLocaleString("en-NP")}/month</p>
-      <PublicRoomDetails room={room}/>
+      <details className="rounded-xl border border-slate-200 bg-white"><summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-blue-700">📋 View room details</summary><div className="border-t border-slate-100 p-2"><PublicRoomDetails room={room}/></div></details>
       {room.tiktokUrl && <a className="text-sm text-blue-700 underline" href={room.tiktokUrl} target="_blank" rel="noopener noreferrer">Watch room video ↗</a>}
       
     </div>}
