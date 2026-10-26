@@ -73,7 +73,7 @@ export function PublicSocialFeedScreen() {
     else setLoading(true);
 
     try {
-      const params = new URLSearchParams({ limit: "20" });
+      const params = new URLSearchParams({ limit: "10" });
       if (before) params.set("before", before);
       const response = await fetch(`${backendUrl}/public/social/feed?${params.toString()}`, {
         method: "GET",
@@ -106,7 +106,7 @@ export function PublicSocialFeedScreen() {
       (entries) => {
         if (entries[0]?.isIntersecting && !loadingMore) void load(nextCursor);
       },
-      { rootMargin: "700px" },
+      { rootMargin: "200px" },
     );
     observer.observe(node);
     return () => observer.disconnect();
@@ -161,9 +161,9 @@ export function PublicSocialFeedScreen() {
                     const src = media(url);
                     const type = post.mediaTypes?.[index] || "IMAGE";
                     return type === "VIDEO" ? (
-                      <video key={`${url}-${index}`} src={src} controls playsInline preload="metadata" className="max-h-[620px] w-full object-contain" />
+                      <video key={`${url}-${index}`} src={src} controls playsInline preload="none" className="max-h-[620px] w-full object-contain" />
                     ) : (
-                      <img key={`${url}-${index}`} src={src} alt="Post media" loading="lazy" className="max-h-[620px] w-full object-contain" />
+                      <img key={`${url}-${index}`} src={src} alt="Post media" loading="lazy" decoding="async" className="max-h-[620px] w-full object-contain" />
                     );
                   })}
                 </div>
