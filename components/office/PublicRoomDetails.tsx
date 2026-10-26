@@ -11,6 +11,7 @@ export function PublicRoomDetails({room}:{room:PublicRoom}) {
  const p=room.matchProfile;
  const entries:Array<[string,unknown]>=[
  ['Room Code',room.code],['Room Title',room.title],['Room Type',p?.roomType],['Location',room.location],['City',p?.city],['Area',p?.area],
+ ['Owner Name','***'],['Owner Phone','***'],['Exact Address','***'],['Latitude','***'],['Longitude','***'],
  ['Monthly Rent',Number(room.price)>0?'Rs. '+Number(room.price).toLocaleString():'Not entered'],['Capacity',p?.capacity],
  ['Water / Electricity',parsed['Water / Electricity']],['Wi-Fi',parsed['Wi-Fi']],['Parking',parsed['Parking']],
  ['Facilities',p?.facilities],['Parking Vehicles',p?.parkingVehicles],['Occupancy',p?.occupancy],
