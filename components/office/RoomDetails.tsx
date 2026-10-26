@@ -26,7 +26,7 @@ function removeCustomLines(raw:string){return raw.split('\n').filter(line=>!line
 function parseDetails(raw: string): Record<string,string> { const result: Record<string,string> = {}; const lines=removeCustomLines(raw).split('\n'); const extra:string[]=[]; for(const line of lines){const label=questionLabels.find(k=>line.startsWith(k+': ')); if(label) result[label]=line.slice(label.length+2); else extra.push(line); } result['Other details']=extra.join('\n').trim(); return result; }
 function serializeDetails(values:Record<string,string>){return [...questionLabels.map(k=>values[k]?.trim()?k+': '+values[k].trim():''),values['Other details']?.trim()||''].filter(Boolean).join('\n');}
 
-export function RoomDetails({ room, onEdit }: { room: OfficeRoom; onEdit?: () => void }) {
+export function RoomDetails({ room, onEdit, isAdmin = false }: { room: OfficeRoom; onEdit?: () => void; isAdmin?: boolean }) {
   const [tab,setTab]=useState<'overview'|'owner'|'history'>('overview');
   const [more,setMore]=useState(false);
   useEffect(()=>{setTab('overview');setMore(false);},[room.id]);
@@ -72,7 +72,7 @@ export function RoomDetails({ room, onEdit }: { room: OfficeRoom; onEdit?: () =>
           ['Location',room.location],
           ['Monthly rent',rentKnown?'Rs. '+rent.toLocaleString()+'/month':''],
           ['Owner name',room.ownerName],
-          ['Owner phone',room.ownerPhone?'Protected — use Owner tab to reveal':''],
+          ...(isAdmin ? [['Owner phone',room.ownerPhone?'Protected — use Owner tab to reveal':'Not entered']] : []),
           ['TikTok URL',room.tiktokUrl],
           ['City',profile?.city],
           ['Area',profile?.area],
@@ -94,7 +94,7 @@ export function RoomDetails({ room, onEdit }: { room: OfficeRoom; onEdit?: () =>
       </dl>
       {onEdit&&missing.length>0&&<div className="mt-3 flex flex-wrap gap-2">{missing.map(label=><button key={label} type="button" onClick={onEdit} className="rounded-lg bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700">+ Add {label}</button>)}</div>}
     </div>
-    <div role="tablist" aria-label="Room information" className="grid grid-cols-3 gap-1 rounded-xl bg-slate-100 p-1">{(['overview','owner','history'] as const).map(value=><button key={value} type="button" role="tab" aria-selected={tab===value} onClick={()=>setTab(value)} className={`rounded-lg px-2 py-2 text-sm font-semibold capitalize ${tab===value?'bg-white text-blue-700 shadow-sm':'text-slate-600'}`}>{value}</button>)}</div>
+    <div role="tablist" aria-label="Room information" className="grid grid-cols-3 gap-1 rounded-xl bg-slate-100 p-1">{(isAdmin ? ['overview','owner','history'] as const : ['overview','history'] as const).map(value=><button key={value} type="button" role="tab" aria-selected={tab===value} onClick={()=>setTab(value)} className={`rounded-lg px-2 py-2 text-sm font-semibold capitalize ${tab===value?'bg-white text-blue-700 shadow-sm':'text-slate-600'}`}>{value}</button>)}</div>
     {tab==='overview'&&<div role="tabpanel" className="space-y-4">
       <div><h4 className="mb-2 font-bold">Facilities & Services</h4>{facilities.length?<div className="flex flex-wrap gap-2">{facilities.map(facility=><span key={facility} className="rounded-lg bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-800">✓ {facility}</span>)}</div>:<p className="text-sm text-slate-500">Facilities not confirmed yet.</p>}</div>
       <div className="space-y-2"><h4 className="font-bold">Room Rules & Information</h4>
@@ -113,7 +113,7 @@ export function RoomDetails({ room, onEdit }: { room: OfficeRoom; onEdit?: () =>
         {room.tiktokUrl&&/^https?:\/\//i.test(room.tiktokUrl)&&<p><a className="text-blue-700 underline" href={room.tiktokUrl} target="_blank" rel="noopener noreferrer">Open TikTok ↗</a></p>}
       </div>}
     </div>}
-    {tab==='owner'&&<div role="tabpanel" className="space-y-3 rounded-lg bg-slate-50 p-3">
+    {isAdmin&&tab==='owner'&&<div role="tabpanel" className="space-y-3 rounded-lg bg-slate-50 p-3">
       <h4 className="font-bold">Owner Information</h4><p className="text-sm">Name: {room.ownerName||'Not entered'}</p>
       <PhoneReveal phone={room.ownerPhone} label="Owner phone"/>
       <p className="text-xs text-slate-500">Owner contact is protected by Reception access controls.</p>
