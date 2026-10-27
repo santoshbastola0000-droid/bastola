@@ -16,6 +16,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { recordService } from "@/http/services/record.service";
+import { privateApi } from "@/http/api/privateApi";
+import { PaperClientForm } from "./PaperClientForm";
 import { roomService } from "@/http/services/room.service";
 import { messageService } from "@/http/services/message.service";
 import { PaymentStatus, RecordsFilter, UpdateRecordDTO } from "@/types/record.types";
@@ -30,6 +32,10 @@ interface Props {
 export default function RecordList({ recordYearId, title = "Daily Records" }: Props) {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const [showPaperForm,setShowPaperForm]=useState(false);
+  const [paperMatches,setPaperMatches]=useState<Record<string,{id:string;clientId:string}>>({});
+  const [paperPreview,setPaperPreview]=useState<Record<string,string>|null>(null);
+  const [paperError,setPaperError]=useState("");
   const [search, setSearch] = useState("");
   const [appliedSearch, setAppliedSearch] = useState("");
   const [page, setPage] = useState(0);
@@ -45,6 +51,17 @@ export default function RecordList({ recordYearId, title = "Daily Records" }: Pr
   });
 
   const records = data?.data || [];
+  useEffect(()=>{
+    let active=true;
+    const clients=records.map(r=>({id:r.id,name:r.name,phone:r.customerNumber})).filter(c=>c.name&&c.phone);
+    setPaperMatches({});
+    if(clients.length)void privateApi.post('/office/paper-forms/client-matches',{clients:clients.slice(0,100)}).then(res=>{
+      if(active){const payload=res.data?.data||res.data;setPaperMatches(Object.fromEntries((payload.matches||[]).map((m:{clientId:string;id:string})=>[m.clientId,m])));}
+    }).catch(()=>{});
+    return ()=>{active=false;};
+  },[data]);
+  const previewPaper=async(id:string)=>{setPaperError('');try{const res=await privateApi.get('/office/paper-forms/'+encodeURIComponent(id));setPaperPreview((res.data?.data||res.data).values||{});}catch{setPaperError('Unable to open saved form.');}};
+
   const selected = records.find((r) => r.id === selectedId);
   const quickEditRecord = records.find((r) => r.id === quickEditId);
   const total = data?.pagination?.total || 0;
@@ -84,8 +101,9 @@ export default function RecordList({ recordYearId, title = "Daily Records" }: Pr
           <h1 className="text-2xl font-bold">{title}</h1>
           <p className="text-sm text-muted-foreground">Staff-friendly daily customer follow-up record. Total: {total}</p>
         </div>
-        <Button asChild><Link href={`/admin/dashboard/records/year/${recordYearId}/create`}><Plus className="mr-2 h-4 w-4" /> Add Daily Record</Link></Button>
+        <div className="flex flex-wrap gap-2"><Button variant="outline" onClick={()=>setShowPaperForm(v=>!v)}>{showPaperForm?"Hide Client Form":"+ Client Form"}</Button><Button asChild><Link href={`/admin/dashboard/records/year/${recordYearId}/create`}><Plus className="mr-2 h-4 w-4" /> Add Daily Record</Link></Button></div>
       </div>
+      {showPaperForm&&<PaperClientForm />}
 
       <Card className="border-green-200 bg-green-50/50"><CardContent className="p-4">
         <div className="flex flex-col gap-3 md:flex-row md:items-center">
@@ -103,15 +121,15 @@ export default function RecordList({ recordYearId, title = "Daily Records" }: Pr
             </TableRow></TableHeader>
             <TableBody>
               {isLoading || (isFetching && records.length === 0) ? <TableRow><TableCell colSpan={13} className="h-24 text-center">Loading records...</TableCell></TableRow> : records.length === 0 ? <TableRow><TableCell colSpan={13} className="h-24 text-center">No record found</TableCell></TableRow> : records.map((record) => (
-                <TableRow key={record.id} className="odd:bg-green-50 even:bg-green-100/60">
-                  <TableCell className="font-medium">{record.name}</TableCell><TableCell>{record.customerNumber}</TableCell><TableCell>{record.entryDate || "-"}</TableCell><TableCell>{record.roomPlaceAddress || "-"}</TableCell>
+                <TableRow key={record.id} className={paperMatches[record.id]?"bg-emerald-200 hover:bg-emerald-300":"odd:bg-green-50 even:bg-green-100/60"}>
+                  <TableCell className="font-medium">{record.name}{paperMatches[record.id]&&<span className="ml-1 text-xs font-bold text-emerald-800">✓ Form filled</span>}</TableCell><TableCell>{record.customerNumber}</TableCell><TableCell>{record.entryDate || "-"}</TableCell><TableCell>{record.roomPlaceAddress || "-"}</TableCell>
                   <TableCell><div className="whitespace-nowrap">Rs. {Number(record.formCharge || 0).toLocaleString()}</div><div className="text-[11px] text-muted-foreground">{record.payMode}</div><Badge variant={record.paymentStatus === PaymentStatus.PAID ? "default" : "secondary"} className="mt-1 text-[10px]">{record.paymentStatus}</Badge></TableCell>
                   <TableCell>{record.place || "-"}</TableCell>
                   <TableCell className="max-w-[220px] whitespace-normal"><div className="flex gap-1"><MapPinned className="mt-0.5 h-3.5 w-3.5 shrink-0" />{record.customerDestination || "-"}</div></TableCell>
                   <TableCell><Badge variant="outline"><Home className="mr-1 h-3 w-3" />{record.shownRoomIds?.length || 0} room</Badge></TableCell>
                   <TableCell>{record.workType || "-"}</TableCell><TableCell>{record.authorizedName || "-"}</TableCell><TableCell className="max-w-[220px] whitespace-normal">{record.status || record.remarks || "-"}</TableCell><TableCell className="max-w-[260px] whitespace-normal">{record.userDetails || "-"}</TableCell>
                   <TableCell><div className="flex min-w-[190px] justify-end gap-1">
-                    <Button variant="outline" size="sm" onClick={() => setQuickEditId(record.id)} title="Quick Update"><PencilLine className="mr-1 h-3.5 w-3.5" />Quick Update</Button>
+                    {paperMatches[record.id]&&<Button variant="outline" size="sm" onClick={()=>void previewPaper(paperMatches[record.id].id)}>Form Preview</Button>}<Button variant="outline" size="sm" onClick={() => setQuickEditId(record.id)} title="Quick Update"><PencilLine className="mr-1 h-3.5 w-3.5" />Quick Update</Button>
                     <Button variant="ghost" size="icon" onClick={() => openFollowUp(record)} title="Message for follow-up" disabled={messagingId === record.id}><MessageCircle className="h-4 w-4 text-green-700" /></Button>
                     <Button variant="ghost" size="icon" onClick={() => setSelectedId(record.id)} title="View details"><Eye className="h-4 w-4" /></Button>
                     <Button variant="ghost" size="icon" asChild title="Full Edit"><Link href={`/admin/dashboard/records/${record.id}/edit`}><Edit className="h-4 w-4" /></Link></Button>
@@ -126,6 +144,12 @@ export default function RecordList({ recordYearId, title = "Daily Records" }: Pr
 
       {totalPages > 1 && <div className="flex items-center justify-end gap-2"><Button variant="outline" disabled={page <= 0} onClick={() => setPage((p) => Math.max(0, p - 1))}>Previous</Button><span className="text-sm">Page {page + 1} / {totalPages}</span><Button variant="outline" disabled={page + 1 >= totalPages} onClick={() => setPage((p) => p + 1)}>Next</Button></div>}
 
+      {paperError&&<p role="alert" className="text-red-700">{paperError}</p>}
+      <Dialog open={!!paperPreview} onOpenChange={open=>{if(!open)setPaperPreview(null);}}>
+        <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto"><DialogHeader><DialogTitle>Saved RoomKhoj Client Form</DialogTitle></DialogHeader>
+        {paperPreview&&<div className="space-y-3"><p className="text-center font-bold">Roomkhoj.com · Pokhara, Trade Mall 4th floor</p>
+        {Object.entries(paperPreview).map(([key,value])=><div key={key} className="flex gap-4 border-b py-1 text-sm"><span className="w-1/3 font-semibold">{key.replace(/([A-Z])/g,' $1')}</span><span className="whitespace-pre-wrap">{value||'—'}</span></div>)}</div>}</DialogContent>
+      </Dialog>
       <Dialog open={!!quickEditId} onOpenChange={(open) => !open && setQuickEditId(null)}>
         <DialogContent className="max-w-xl"><DialogHeader><DialogTitle>Quick Update</DialogTitle></DialogHeader>
           {quickEditRecord && <QuickUpdateForm record={quickEditRecord} onDone={() => setQuickEditId(null)} recordYearId={recordYearId} />}
