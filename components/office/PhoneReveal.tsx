@@ -2,13 +2,13 @@
 
 import { useId, useState } from 'react';
 
-export function PhoneReveal({ phone, label = 'Phone' }: { phone?: string; label?: string }) {
+export function PhoneReveal({ phone, label = 'Phone', highlighted = false }: { phone?: string; label?: string; highlighted?: boolean }) {
   const [open, setOpen] = useState(false);
   const id = useId();
   if (!phone) return <span className="text-sm text-slate-500">{label}: Not recorded</span>;
   return <span className="inline-flex max-w-full flex-col items-start align-middle">
     <button type="button" aria-expanded={open} aria-controls={id}
-      className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium hover:bg-slate-50"
+      className={`rounded-lg border px-3 py-1.5 text-sm font-medium ${highlighted ? "border-emerald-400 bg-emerald-100 text-emerald-800 hover:bg-emerald-200" : "border-slate-200 bg-white hover:bg-slate-50"}`}
       onClick={() => setOpen(value => !value)}>
       {open ? 'Hide' : 'Show'} {label.toLowerCase()} {open ? '⌃' : '⌄'}
     </button>
