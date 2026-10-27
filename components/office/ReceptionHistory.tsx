@@ -7,6 +7,7 @@ import { PhoneReveal } from './PhoneReveal';
 import { RoomDetails } from './RoomDetails';
 import { TenantView } from './TenantDetails';
 import { OfficeVideo } from './OfficeVideo';
+import { privateApi } from '@/http/api/privateApi';
 
 type Outcome = 'MOVED_IN' | 'NOT_MOVED_IN';
 type Props = {
@@ -23,6 +24,8 @@ export function ReceptionHistory({ query = '', roomId, revision = 0, busy, onSen
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [attempt, setAttempt] = useState(0);
+  const [formPhones, setFormPhones] = useState<Set<string>>(new Set());
+  const phoneKey = (phone?: string) => (phone || '').replace(/\D/g,'').slice(-10);
   const generation = useRef(0);
   const pending = useRef(false);
   const scope = useRef('');
@@ -35,6 +38,11 @@ export function ReceptionHistory({ query = '', roomId, revision = 0, busy, onSen
     officeService.history(query, roomId, 0).then(result => {
       if (current !== generation.current) return;
       setEntries(result.history); setTotal(result.total);
+      const phones = [...new Set(result.history.map(entry => phoneKey(entry.clientPhone)).filter(phone => phone.length === 10))];
+      setFormPhones(new Set());
+      if (phones.length) privateApi.post('/office/chat-forms/phone-matches',{phones}).then(response => {
+        if (current === generation.current) setFormPhones(new Set((response.data?.data?.phones || response.data?.phones || []) as string[]));
+      }).catch(() => { if (current === generation.current) setFormPhones(new Set()); });
     }).catch(error => {
       if (current === generation.current) setError(officeError(error));
     }).finally(() => {
@@ -51,6 +59,10 @@ export function ReceptionHistory({ query = '', roomId, revision = 0, busy, onSen
       const result = await officeService.history(query, roomId, page + 1);
       if (current !== generation.current) return;
       setEntries(previous => [...new Map([...previous, ...result.history].map(entry => [entry.id, entry])).values()]);
+      const phones=[...new Set(result.history.map(entry=>phoneKey(entry.clientPhone)).filter(phone=>phone.length===10))];
+      if(phones.length) void privateApi.post('/office/chat-forms/phone-matches',{phones}).then(response=>{
+        if(current===generation.current) setFormPhones(previous=>new Set([...previous,...((response.data?.data?.phones || response.data?.phones || []) as string[])]));
+      }).catch(()=>undefined);
       setTotal(result.total); setPage(value => value + 1);
     } catch (error) {
       if (current === generation.current) setError(officeError(error));
@@ -63,7 +75,7 @@ export function ReceptionHistory({ query = '', roomId, revision = 0, busy, onSen
     <div><h2 className="text-lg font-semibold">Client history ({total})</h2><p className="text-sm text-slate-500">Newest first · Click a numbered row to open details here. Saved history is permanent.</p></div>
     {error && <div role="alert" className="rounded-lg bg-red-50 p-3 text-red-700">{error} <button type="button" className="underline" onClick={() => entries.length ? void loadMore() : setAttempt(value => value + 1)}>Try again</button></div>}
     <ol className="space-y-3">
-      {entries.map((entry, index) => <HistoryRow key={entry.id} entry={entry} serial={index + 1} busy={busy} onSend={onSend} onOutcome={onOutcome}/>)}
+      {entries.map((entry, index) => <HistoryRow key={entry.id} entry={entry} serial={index + 1} busy={busy} formFilled={formPhones.has(phoneKey(entry.clientPhone))} onSend={onSend} onOutcome={onOutcome}/>)}
     </ol>
     {loading && <p role="status" className="text-sm text-slate-500">Loading history…</p>}
     {!loading && !error && entries.length === 0 && <p className="text-sm text-slate-500">No matching client history.</p>}
@@ -71,25 +83,25 @@ export function ReceptionHistory({ query = '', roomId, revision = 0, busy, onSen
   </section>;
 }
 
-function HistoryRow({ entry, serial, busy, onSend, onOutcome }: {
-  entry: OfficeHistory; serial: number; busy: boolean;
+function HistoryRow({ entry, serial, busy, formFilled, onSend, onOutcome }: {
+  entry: OfficeHistory; serial: number; busy: boolean; formFilled: boolean;
   onSend: Props['onSend']; onOutcome: Props['onOutcome'];
 }) {
   const [open, setOpen] = useState(false);
   const [notes, setNotes] = useState('');
   const id = useId();
-  return <li className="overflow-hidden rounded-xl border bg-white">
-    <button type="button" className="flex w-full items-start gap-3 p-4 text-left hover:bg-slate-50"
+  return <li className={`overflow-hidden rounded-xl border ${formFilled ? "border-emerald-400 bg-emerald-50" : "bg-white"}`}>
+    <button type="button" className={`flex w-full items-start gap-3 p-4 text-left ${formFilled ? "text-emerald-900 hover:bg-emerald-100" : "hover:bg-slate-50"}`}
       aria-expanded={open} aria-controls={id} onClick={() => setOpen(value => !value)}>
       <span className="flex h-9 min-w-9 items-center justify-center rounded-lg bg-emerald-50 px-2 font-mono font-bold text-emerald-800">{serial}</span>
-      <span className="min-w-0 flex-1"><span className="block font-semibold">{entry.clientName || 'Name not recorded'}</span></span>
+      <span className="min-w-0 flex-1"><span className="block font-semibold">{entry.clientName || 'Name not recorded'}</span>{formFilled && <span className="text-xs font-semibold text-emerald-700">✓ Form filled</span>}</span>
       <span aria-hidden="true" className={`text-xl transition-transform duration-300 motion-reduce:transition-none ${open ? 'rotate-180' : ''}`}>⌄</span>
     </button>
     <div id={id} aria-hidden={!open} className={`grid transition-[grid-template-rows,opacity] duration-300 ease-out motion-reduce:transition-none ${open ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
       <div className="min-h-0 overflow-hidden">{open && <div className="border-t">
         <OfficeVideo roomId={entry.roomId}/><RoomDetails room={{ ...entry, id: entry.roomId }}/>
         <div className="space-y-3 bg-slate-50 p-4">
-          <div className="flex flex-wrap items-center gap-2"><span className="font-semibold">{entry.clientName}</span><PhoneReveal phone={entry.clientPhone} label="Client phone"/></div>
+          <div className="flex flex-wrap items-center gap-2"><span className="font-semibold">{entry.clientName}</span><PhoneReveal phone={entry.clientPhone} label="Client phone" highlighted={formFilled}/></div>
           <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm font-semibold">{entry.occupancyStatus === 'MOVED_IN' ? 'बसिसकेको / Moved in' : entry.occupancyStatus === 'NOT_MOVED_IN' ? 'नबसेको / Not moved in' : 'अवस्था पुष्टि हुन बाँकी / Not confirmed'}</p>
           <p className="whitespace-pre-wrap text-sm">{entry.notes}</p>
           <p className="text-xs text-slate-500">Event date/time: {new Date(entry.occurredAt||entry.createdAt).toLocaleString()} · Recorded by {entry.staffName||'Client'}</p>
