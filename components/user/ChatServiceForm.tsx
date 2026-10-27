@@ -71,7 +71,7 @@ export function ChatServiceForm({service,authenticated}:{service:ChatService;aut
       key.current ||= crypto.randomUUID();
       const req=service==='ROOM'?requirementsPayload(roomRequirements):undefined;
       const extra=service==='ROOM'?extraRequirementNotes(roomRequirements,draft.callTime,draft.contactPreference):'';
-      const details=[draft.date&&`Preferred date: ${draft.date}`,service==='ROOM'?extra:'',draft.details].filter(Boolean).join('\\n');
+      const details=[service!=='ROOM'&&draft.date&&`Preferred date: ${draft.date}`,service==='ROOM'?extra:'',draft.details].filter(Boolean).join('\\n');
       const payload={requestKey:key.current,service,name:draft.name,phone:draft.phone,location:[service==='ROOM'?roomRequirements.city:draft.city,service==='ROOM'?roomRequirements.area:draft.area].filter(Boolean).join(', '),details,requirements:req};
       if(editing){if(!submittedId)throw new Error('Existing request ID unavailable. Please refresh and contact reception to update the request.');await privateApi.patch('/office/chat-forms/'+encodeURIComponent(submittedId),payload);}
       else{const response=await privateApi.post('/office/chat-forms',payload);const result=response.data?.data||response.data;setSubmittedId(typeof result?.id==='string'?result.id:typeof result?.form?.id==='string'?result.form.id:null);}
@@ -88,7 +88,7 @@ export function ChatServiceForm({service,authenticated}:{service:ChatService;aut
         <label className="text-xs">City *<input required maxLength={100} className={field} value={draft.city} onChange={e=>update('city',e.target.value)}/></label>
         <label className="text-xs">Area<input maxLength={100} className={field} value={draft.area} onChange={e=>update('area',e.target.value)}/></label>
       </>}
-      <label className="col-span-2 text-xs">Preferred date / move-in date<input type="date" className={field} value={draft.date} onChange={e=>update('date',e.target.value)}/></label>
+      {service!=='ROOM'&&<label className="col-span-2 text-xs">Preferred date / move-in date<input type="date" className={field} value={draft.date} onChange={e=>update('date',e.target.value)}/></label>}
       <label className="text-xs">Best time to call<select className={field} value={draft.callTime} onChange={e=>update('callTime',e.target.value)}>{['Any time','Morning (9–12)','Afternoon (12–5)','Evening (5–8)'].map(v=><option key={v}>{v}</option>)}</select></label>
       <label className="text-xs">Contact preference<select className={field} value={draft.contactPreference} onChange={e=>update('contactPreference',e.target.value)}>{['Phone call','WhatsApp','SMS'].map(v=><option key={v}>{v}</option>)}</select></label>
       <label className="col-span-2 text-xs">{service==='JOB'?'Desired job, skills & experience':'Additional requirements / questions'}<textarea rows={3} maxLength={2200} className={field} value={draft.details} onChange={e=>update('details',e.target.value)} placeholder="Anything else reception should know…"/></label>
