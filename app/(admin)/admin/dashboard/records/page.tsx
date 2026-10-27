@@ -47,6 +47,7 @@ import {
   SUCCESSTOAST,
 } from "@/lib/constants/app.constants";
 import RecordList from "@/components/admin/records/RecordList";
+import { PaperClientForm } from "@/components/admin/records/PaperClientForm";
 
 const RecordYearList = () => {
   const queryClient = useQueryClient();
@@ -241,6 +242,7 @@ const RecordYearList = () => {
   if (selectedYearId) {
     return (
       <div className="p-4 md:p-6">
+        <PaperClientForm />
         <RecordList
           recordYearId={selectedYearId}
           title={`${selectedYearTitle} - Records`}
@@ -326,6 +328,7 @@ const RecordYearList = () => {
 
   return (
     <div className="p-4 md:p-6 space-y-6">
+      <PaperClientForm />
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
