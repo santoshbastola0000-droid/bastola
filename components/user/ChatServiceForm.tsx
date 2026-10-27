@@ -50,8 +50,11 @@ export function ChatServiceForm({service,authenticated}:{service:ChatService;aut
       const callTime=details.match(/^Best time to call: (.+)$/m)?.[1]||'Any time';
       const contactPreference=details.match(/^Preferred contact: (.+)$/m)?.[1]||'Phone call';
       setSubmittedId(form.id);
-      setDraft({...blankDraft,name:form.name||'',phone:form.phone||'',city,area,date:dateMatch?.[1]||'',callTime,contactPreference,details:details.replace(/^Preferred date: \\d{4}-\\d{2}-\\d{2}\\n?/,'').replace(/^Preferred contact: .*\\n?/m,'').replace(/^Best time to call: .*\\n?/m,'')});
-      setRoomRequirements({...requirementsDraft(req),city:req.city||city,area:req.area||area,roomType:req.roomType||'ANY',people:String(req.people||1),minRent:String(req.minRent||0),maxRent:String(req.maxRent||'')});
+      const userDetails=details.replace(/^(?:Preferred date: \\d{4}-\\d{2}-\\d{2}|Preferred contact: .*|Best time to call: .*|Who will stay: .*|Alternative areas: .*|Vehicle: .*|Parking required|Current rental ends: \\d{4}-\\d{2}-\\d{2}|Desired move-in: \\d{4}-\\d{2}-\\d{2})\\n?/gm,'').trim();
+      const alternativeAreas=details.match(/^Alternative areas: (.+)$/m)?.[1]?.split(', ')||[];
+      const vehicleMatch=details.match(/^Vehicle: (BIKE|CAR|BOTH)(?: \\((\\d+)\\))?$/m);
+      setDraft({...blankDraft,name:form.name||'',phone:form.phone||'',city,area,date:dateMatch?.[1]||'',callTime,contactPreference,details:userDetails});
+      setRoomRequirements({...requirementsDraft(req),city:req.city||city,area:req.area||area,roomType:req.roomType||'ANY',people:String(req.people||1),minRent:String(req.minRent||0),maxRent:String(req.maxRent||''),occupancy:details.match(/^Who will stay: (.+)$/m)?.[1]||'ANY',alternativeAreas,vehicle:vehicleMatch?.[1]||'NONE',vehicleCount:vehicleMatch?.[2]||'1',parkingRequired:/^Parking required$/m.test(details),rentalEndsOn:details.match(/^Current rental ends: (\\d{4}-\\d{2}-\\d{2})$/m)?.[1]||'',moveInDate:details.match(/^Desired move-in: (\\d{4}-\\d{2}-\\d{2})$/m)?.[1]||''});
       setDone(true);
     }).catch(()=>{/* A missing previous form should not stop a fresh submission. */});
     return()=>{active=false;};
@@ -88,7 +91,7 @@ export function ChatServiceForm({service,authenticated}:{service:ChatService;aut
       <label className="col-span-2 text-xs">Preferred date / move-in date<input type="date" className={field} value={draft.date} onChange={e=>update('date',e.target.value)}/></label>
       <label className="text-xs">Best time to call<select className={field} value={draft.callTime} onChange={e=>update('callTime',e.target.value)}>{['Any time','Morning (9–12)','Afternoon (12–5)','Evening (5–8)'].map(v=><option key={v}>{v}</option>)}</select></label>
       <label className="text-xs">Contact preference<select className={field} value={draft.contactPreference} onChange={e=>update('contactPreference',e.target.value)}>{['Phone call','WhatsApp','SMS'].map(v=><option key={v}>{v}</option>)}</select></label>
-      <label className="col-span-2 text-xs">{service==='JOB'?'Desired job, skills & experience':'Additional requirements / questions'}<textarea rows={3} maxLength={2800} className={field} value={draft.details} onChange={e=>update('details',e.target.value)} placeholder="Anything else reception should know…"/></label>
+      <label className="col-span-2 text-xs">{service==='JOB'?'Desired job, skills & experience':'Additional requirements / questions'}<textarea rows={3} maxLength={2200} className={field} value={draft.details} onChange={e=>update('details',e.target.value)} placeholder="Anything else reception should know…"/></label>
     </fieldset>
     {error&&<p role="alert" className="text-xs text-red-700">{error}</p>}
     {!authenticated&&<p className="text-xs">Submit गर्न <a href="/auth/login" className="font-semibold underline">login गर्नुहोस्</a>। Login गरेपछि यो form बाट पठाउन सक्नुहुन्छ।</p>}
