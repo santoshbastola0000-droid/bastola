@@ -36,6 +36,9 @@ export default function RecordList({ recordYearId, title = "Daily Records" }: Pr
   const [paperMatches,setPaperMatches]=useState<Record<string,{id:string;clientId:string}>>({});
   const [paperPreview,setPaperPreview]=useState<Record<string,string>|null>(null);
   const [paperError,setPaperError]=useState("");
+  const [editingPaperId,setEditingPaperId]=useState<string|null>(null);
+  const [editingPaperValues,setEditingPaperValues]=useState<Record<string,string>>({});
+  const [savingPaper,setSavingPaper]=useState(false);
   const [search, setSearch] = useState("");
   const [appliedSearch, setAppliedSearch] = useState("");
   const [page, setPage] = useState(0);
@@ -60,6 +63,8 @@ export default function RecordList({ recordYearId, title = "Daily Records" }: Pr
     }).catch(()=>{});
     return ()=>{active=false;};
   },[data]);
+  const editPaper=async(id:string)=>{setPaperError('');try{const res=await privateApi.get('/office/paper-forms/'+encodeURIComponent(id));setEditingPaperValues((res.data?.data||res.data).values||{});setEditingPaperId(id);}catch{setPaperError('Could not load form for editing.');}};
+  const savePaper=async()=>{if(!editingPaperId)return;setSavingPaper(true);try{await privateApi.patch('/office/paper-forms/'+encodeURIComponent(editingPaperId),{values:editingPaperValues});setEditingPaperId(null);toast.success('Client form updated');queryClient.invalidateQueries({queryKey:['records',recordYearId]});}catch(e:any){setPaperError(e?.response?.data?.message||'Could not update form.');}finally{setSavingPaper(false);}};
   const previewPaper=async(id:string)=>{setPaperError('');try{const res=await privateApi.get('/office/paper-forms/'+encodeURIComponent(id));setPaperPreview((res.data?.data||res.data).values||{});}catch{setPaperError('Unable to open saved form.');}};
 
   const selected = records.find((r) => r.id === selectedId);
@@ -132,7 +137,7 @@ export default function RecordList({ recordYearId, title = "Daily Records" }: Pr
                     {paperMatches[record.id]&&<Button variant="outline" size="sm" onClick={()=>void previewPaper(paperMatches[record.id].id)}>Form Preview</Button>}<Button variant="outline" size="sm" onClick={() => setQuickEditId(record.id)} title="Quick Update"><PencilLine className="mr-1 h-3.5 w-3.5" />Quick Update</Button>
                     <Button variant="ghost" size="icon" onClick={() => openFollowUp(record)} title="Message for follow-up" disabled={messagingId === record.id}><MessageCircle className="h-4 w-4 text-green-700" /></Button>
                     <Button variant="ghost" size="icon" onClick={() => {setSelectedId(record.id);if(paperMatches[record.id])void previewPaper(paperMatches[record.id].id);else setPaperPreview(null);}} title="View details"><Eye className="h-4 w-4" /></Button>
-                    <Button variant="ghost" size="icon" asChild title="Full Edit"><Link href={`/admin/dashboard/records/${record.id}/edit`}><Edit className="h-4 w-4" /></Link></Button>
+                    {paperMatches[record.id]?<Button variant="ghost" size="icon" title="Edit client form" onClick={()=>void editPaper(paperMatches[record.id].id)}><Edit className="h-4 w-4"/></Button>:<Button variant="ghost" size="icon" asChild title="Full Edit"><Link href={`/admin/dashboard/records/${record.id}/edit`}><Edit className="h-4 w-4"/></Link></Button>}
                     <Button variant="ghost" size="icon" title="Delete" disabled={deleteMutation.isPending} onClick={() => { if (window.confirm(`Delete ${record.name}'s record?`)) deleteMutation.mutate(record.id); }}><Trash2 className="h-4 w-4 text-red-600" /></Button>
                   </div></TableCell>
                 </TableRow>
@@ -144,6 +149,13 @@ export default function RecordList({ recordYearId, title = "Daily Records" }: Pr
 
       {totalPages > 1 && <div className="flex items-center justify-end gap-2"><Button variant="outline" disabled={page <= 0} onClick={() => setPage((p) => Math.max(0, p - 1))}>Previous</Button><span className="text-sm">Page {page + 1} / {totalPages}</span><Button variant="outline" disabled={page + 1 >= totalPages} onClick={() => setPage((p) => p + 1)}>Next</Button></div>}
 
+      <Dialog open={!!editingPaperId} onOpenChange={open=>{if(!open)setEditingPaperId(null);}}>
+        <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto"><DialogHeader><DialogTitle>Edit saved client form</DialogTitle></DialogHeader>
+          <form onSubmit={e=>{e.preventDefault();void savePaper();}} className="space-y-3">
+          {Object.entries(editingPaperValues).map(([key,value])=><label key={key} className="block text-sm"><span className="font-semibold">{key.replace(/([A-Z])/g,' $1')}</span><Input value={value} readOnly={key==='phone'} onChange={e=>setEditingPaperValues(old=>({...old,[key]:e.target.value}))}/></label>)}
+          <div className="flex gap-2"><Button disabled={savingPaper} type="submit">{savingPaper?'Saving…':'Save Changes'}</Button><Button type="button" variant="outline" onClick={()=>setEditingPaperId(null)}>Cancel</Button></div></form>
+        </DialogContent>
+      </Dialog>
       {paperError&&<p role="alert" className="text-red-700">{paperError}</p>}
       <Dialog open={!!paperPreview} onOpenChange={open=>{if(!open)setPaperPreview(null);}}>
         <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto"><DialogHeader><DialogTitle>Saved RoomKhoj Client Form</DialogTitle></DialogHeader>
