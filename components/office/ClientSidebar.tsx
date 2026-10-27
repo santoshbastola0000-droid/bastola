@@ -8,6 +8,7 @@ import { blankMatch, MatchingFields, requirementsPayload, requirementsDraft } fr
 import { PhoneReveal } from './PhoneReveal';
 
 export function ClientSidebar({ revision, onSaved, onView }: { revision: number; onSaved: (client?: ReceptionClient) => void; onView?: (client: ReceptionClient) => void }) {
+  const [editing,setEditing]=useState<ReceptionClient|null>(null);
   const [name,setName]=useState(''); const [phone,setPhone]=useState(''); const [notes,setNotes]=useState('');
   const [requirements,setRequirements]=useState({...blankMatch,roomType:'ANY'});
   const [clients,setClients]=useState<ReceptionClient[]>([]); const [total,setTotal]=useState(0);
@@ -27,8 +28,8 @@ export function ClientSidebar({ revision, onSaved, onView }: { revision: number;
     event.preventDefault();setBusy(true);setError('');setNotice('');
     try{
       const savedClient = await officeService.saveClient({clientName:name,clientPhone:phone,notes,requirements:requirementsPayload(requirements)});
-      setName('');setPhone('');setNotes('');setRequirements({...blankMatch,roomType:'ANY'});
-      setNotice('Client saved. Matching lists updated.');onSaved(savedClient);
+      setName('');setPhone('');setNotes('');setRequirements({...blankMatch,roomType:'ANY'});setEditing(null);
+      setNotice(editing?'Saved client updated. Matching lists refreshed.':'Client saved. Matching lists updated.');onSaved(savedClient);
     }catch(error){setError(officeError(error));}finally{setBusy(false);}
   }
   async function more(){
@@ -37,6 +38,7 @@ export function ClientSidebar({ revision, onSaved, onView }: { revision: number;
     catch(error){if(current===generation.current)setError(officeError(error));}finally{if(current===generation.current)setLoading(false);}
   }
   function edit(client:ReceptionClient){
+    setEditing(client);setError('');setNotice('Editing saved client: '+client.name);
     setName(client.name);setPhone(client.phone);setNotes(client.notes||'');
     setRequirements(requirementsDraft(client.requirements));
     listRef.current?.scrollIntoView({behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'});
@@ -48,14 +50,16 @@ export function ClientSidebar({ revision, onSaved, onView }: { revision: number;
   }
   return <aside className="space-y-4 self-start lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto" ref={listRef}>
     <form onSubmit={save} className="space-y-3 rounded-2xl border bg-white p-4">
-      <h2 className="text-lg font-semibold">New client details</h2><p className="text-xs text-slate-500">Save or update a client by phone number. Rooms are ranked by location, budget and people; parking differences are shown.</p>
+      <h2 className="text-lg font-semibold">{editing?`Edit saved client · ${editing.name}`:"New client details"}</h2><p className="text-xs text-slate-500">Save or update a client by phone number. Rooms are ranked by location, budget and people; parking differences are shown.</p>
       {error&&<p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p>}
       {notice&&<p role="status" className="text-sm text-emerald-700">{notice}</p>}
       <label className="block text-sm">Client name *<input required maxLength={180} className="mt-1 w-full rounded-lg border p-2.5" value={name} onChange={event=>setName(event.target.value)}/></label>
-      <label className="block text-sm">Phone number *<input required type="tel" maxLength={30} className="mt-1 w-full rounded-lg border p-2.5" value={phone} onChange={event=>setPhone(event.target.value)}/></label>
+      <label className="block text-sm">Phone number *<input required type="tel" maxLength={30} className="mt-1 w-full rounded-lg border p-2.5" value={phone} readOnly={!!editing} onChange={event=>setPhone(event.target.value)}/></label>
+      {editing&&<p className="text-xs text-amber-800">Phone number is locked while editing to preserve existing client history. Use a separate new client entry for another number.</p>}
       <MatchingFields value={requirements} onChange={setRequirements} tenant/>
       <label className="block text-sm">Client notes<textarea className="mt-1 w-full rounded-lg border p-2.5" rows={2} maxLength={5000} value={notes} onChange={event=>setNotes(event.target.value)}/></label>
-      <button type="submit" disabled={busy} className="w-full rounded-lg bg-emerald-700 px-4 py-2.5 text-white disabled:opacity-50">{busy?'Saving…':'Save client & match rooms'}</button>
+      <button type="submit" disabled={busy} className="w-full rounded-lg bg-emerald-700 px-4 py-2.5 text-white disabled:opacity-50">{busy?'Saving…':editing?'Update saved client':'Save client & match rooms'}</button>
+      {editing&&<button type="button" className="w-full rounded-lg border px-4 py-2" onClick={()=>{setEditing(null);setName("");setPhone("");setNotes("");setRequirements({...blankMatch,roomType:"ANY"});setNotice("");}}>Cancel edit / New client</button>}
     </form>
     <section className="space-y-3 rounded-2xl border bg-white p-4">
       <h2 className="font-semibold">Reception clients ({total})</h2>
