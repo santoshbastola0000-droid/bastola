@@ -1291,21 +1291,9 @@ useEffect(() => {
             "
           >
             <div className="
-              relative
-              z-30
-              flex
-              h-14
-              shrink-0
-              items-center
-              justify-between
-              border-b
-              border-slate-200
-              bg-white/95
-              px-3
-              backdrop-blur-xl
-              md:ml-[260px]
-              dark:border-white/10
-              dark:bg-[#212121]/95
+              relative z-30 flex h-[72px] shrink-0 items-center justify-between
+              border-b border-slate-200/80 bg-white/95 px-4 shadow-sm backdrop-blur-xl
+              md:ml-[260px] dark:border-white/10 dark:bg-[#171717]/95
             ">
               <div className="flex items-center gap-2">
                 <button
@@ -1317,16 +1305,18 @@ useEffect(() => {
                   <PanelLeft className="w-4 h-4" />
                 </button>
 
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-900 dark:bg-white">
-                  <MonkeyHead />
+                <div className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50 via-white to-orange-100 shadow-sm dark:border-amber-400/30 dark:from-amber-300/15 dark:via-white/5 dark:to-orange-400/10">
+                  <div className="h-10 w-10 overflow-hidden rounded-xl">
+                    <MonkeyHead />
+                  </div>
+                  <span className="absolute -bottom-1 -right-1 h-3.5 w-3.5 rounded-full border-2 border-white bg-emerald-500 dark:border-[#171717]" />
                 </div>
-                <div>
-                  <h2 className="text-sm font-semibold leading-none text-slate-900 dark:text-white">
-                    RoomKhoj AI
+                <div className="min-w-0">
+                  <h2 className="text-[15px] font-bold leading-tight tracking-tight text-slate-950 dark:text-white">
+                    RoomKhoj <span className="text-amber-600 dark:text-amber-400">AI</span>
                   </h2>
-                  <span className="mt-1 flex items-center gap-1.5 text-[10px] text-slate-500 dark:text-slate-400">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                    Rooms • Jobs • Career
+                  <span className="mt-1 flex items-center gap-1.5 text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                    Your room & service assistant
                   </span>
                 </div>
               </div>
@@ -1377,10 +1367,10 @@ useEffect(() => {
               </button>
             </div>
 
-            <nav aria-label="Assistant mode" className="flex shrink-0 gap-2 overflow-x-auto border-b p-2 md:ml-[260px]">
-              <button type="button" aria-pressed={assistantTab==='chat'} onClick={()=>setAssistantTab('chat')} className={cn('rounded-xl px-5 py-2 text-sm font-semibold',assistantTab==='chat'?'bg-amber-500 text-slate-950':'bg-slate-100 text-slate-600')}>Chat</button>
-              <button type="button" aria-pressed={assistantTab==='rooms'} onClick={()=>{stopVoiceConversation();setShowHistorySidebar(false);setAssistantTab('rooms');}} className={cn('rounded-xl px-5 py-2 text-sm font-semibold',assistantTab==='rooms'?'bg-amber-500 text-slate-950':'bg-slate-100 text-slate-600')}>Room Availability</button>
-              <button type="button" aria-pressed={assistantTab==='reception'} onClick={()=>{stopVoiceConversation();setShowHistorySidebar(false);setAssistantTab('reception');}} className={cn('rounded-xl px-5 py-2 text-sm font-semibold',assistantTab==='reception'?'bg-amber-500 text-slate-950':'bg-slate-100 text-slate-600')}>Reception</button>
+            <nav aria-label="Assistant mode" className="flex shrink-0 gap-2 overflow-x-auto border-b border-slate-200/80 bg-slate-50/80 px-3 py-2.5 md:ml-[260px] dark:border-white/10 dark:bg-[#1b1b1b]">
+              <button type="button" aria-pressed={assistantTab==='chat'} onClick={()=>setAssistantTab('chat')} className={cn('inline-flex shrink-0 items-center gap-2 rounded-xl border px-4 py-2 text-sm font-semibold transition-all',assistantTab==='chat'?'border-slate-900 bg-slate-900 text-white shadow-sm dark:border-amber-400 dark:bg-amber-400 dark:text-slate-950':'border-transparent bg-white text-slate-600 hover:border-slate-200 hover:bg-white dark:bg-white/5 dark:text-slate-300 dark:hover:border-white/10')}><MessageCircle className="h-4 w-4"/>Chat</button>
+              <button type="button" aria-pressed={assistantTab==='rooms'} onClick={()=>{stopVoiceConversation();setShowHistorySidebar(false);setAssistantTab('rooms');}} className={cn('inline-flex shrink-0 items-center gap-2 rounded-xl border px-4 py-2 text-sm font-semibold transition-all',assistantTab==='rooms'?'border-slate-900 bg-slate-900 text-white shadow-sm dark:border-amber-400 dark:bg-amber-400 dark:text-slate-950':'border-transparent bg-white text-slate-600 hover:border-slate-200 hover:bg-white dark:bg-white/5 dark:text-slate-300 dark:hover:border-white/10')}><Home className="h-4 w-4"/>Room Availability</button>
+              <button type="button" aria-pressed={assistantTab==='reception'} onClick={()=>{stopVoiceConversation();setShowHistorySidebar(false);setAssistantTab('reception');}} className={cn('inline-flex shrink-0 items-center gap-2 rounded-xl border px-4 py-2 text-sm font-semibold transition-all',assistantTab==='reception'?'border-slate-900 bg-slate-900 text-white shadow-sm dark:border-amber-400 dark:bg-amber-400 dark:text-slate-950':'border-transparent bg-white text-slate-600 hover:border-slate-200 hover:bg-white dark:bg-white/5 dark:text-slate-300 dark:hover:border-white/10')}><Building2 className="h-4 w-4"/>Reception</button>
             </nav>
             {assistantTab==='rooms' && <RoomAvailability hideContact />}
             {assistantTab==='reception' && <section className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-slate-50 p-4 text-slate-900"><div className="mx-auto max-w-5xl space-y-5"><header><h2 className="text-xl font-bold">Reception</h2><p className="text-sm text-slate-600">Available rooms हेर्नुहोस् वा आफ्नो room requirement reception मा पठाउनुहोस्।</p></header><details className="rounded-xl border bg-white p-3" open><summary className="cursor-pointer font-semibold">Submit room requirements</summary><ChatServiceForm service="ROOM" authenticated={Boolean(token)}/></details><RoomAvailability hideContact embedded /></div></section>}
