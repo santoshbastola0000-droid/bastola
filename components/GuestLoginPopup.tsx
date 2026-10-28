@@ -38,6 +38,7 @@ export function GuestLoginPopup() {
   const showCountRef = useRef(0);
 
   const isAuthPage = pathname.startsWith("/auth");
+  const isPublicRoomPage = pathname.startsWith("/room/");
   const isFeedPage = pathname === "/feed" || pathname.startsWith("/feed/");
 
   useEffect(() => {
@@ -89,7 +90,7 @@ export function GuestLoginPopup() {
   }, [token, isAuthPage]);
 
   useEffect(() => {
-    if (token || isAuthPage || isFeedPage || open) return;
+    if (token || isAuthPage || isFeedPage || isPublicRoomPage || open) return;
 
     const delay =
       POPUP_DELAYS_MS[
@@ -102,9 +103,9 @@ export function GuestLoginPopup() {
     }, delay);
 
     return () => window.clearTimeout(timer);
-  }, [token, isAuthPage, isFeedPage, open]);
+  }, [token, isAuthPage, isFeedPage, isPublicRoomPage, open]);
 
-  if (!open || token || isAuthPage) return null;
+  if (!open || token || isAuthPage || isPublicRoomPage) return null;
 
   return (
     <div

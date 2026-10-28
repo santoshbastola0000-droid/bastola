@@ -2,6 +2,7 @@
 import { FormEvent, useEffect, useRef, useState } from 'react';
 import { api } from '@/http/api/api';
 import { privateApi } from '@/http/api/privateApi';
+import { RoomShareButton } from "./RoomShareButton";
 import { PublicRoomDetails } from './PublicRoomDetails';
 import { officeBackend, officeError } from '@/http/services/office.service';
 export interface AvailableRoom { id: string; code: string; title: string; location: string; details: string; price: number | string; ownerName: string; status: string; tiktokUrl?: string; hasVideo?: boolean; matchProfile?: {exactAddress?: string; latitude?: number | null; longitude?: number | null; city?:string;area?:string;roomType?:string;capacity?:number;facilities?:string[];occupancy?:string;parkingVehicles?:string[]}; }
@@ -18,6 +19,7 @@ export function AvailabilityCard({room,hideContact=true,onSelect}: {room:Availab
  return <article data-room-availability role={onSelect ? "button" : undefined} tabIndex={onSelect ? 0 : undefined} aria-label={onSelect ? `View details for ${room.code}` : undefined} onClick={event=>{if(onSelect && !(event.target as HTMLElement).closest("a,button,input,video,summary,details"))onSelect(room);}} onKeyDown={event=>{if(onSelect && (event.key==="Enter"||event.key===" ") && event.target===event.currentTarget){event.preventDefault();onSelect(room);}}} className={"overflow-hidden rounded-2xl border border-amber-200 bg-white text-slate-900 shadow-sm "+(onSelect?"cursor-pointer transition hover:border-amber-500 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-500":"")}>
  {room.hasVideo !== false ? <video data-video-intent="room" controls playsInline preload="none" className="aspect-video w-full bg-slate-950" src={officeBackend+'/office/availability/'+room.id+'/video'}/> : <div className="flex aspect-video items-center justify-center bg-slate-100"><img src="/roomkhoj-logo.png" alt="RoomKhoj logo — no room video available" className="h-20 w-20 object-contain opacity-80" /></div>}
  <div className="space-y-3 p-4"><div className="flex justify-between gap-3"><h3 className="font-bold">{room.title}</h3><span className="rounded-lg bg-amber-50 px-2 py-1 text-xs font-mono">{room.code}</span></div>
+ <RoomShareButton code={room.code} title={room.title}/>
  <p className="text-sm">{room.location} · रु {Number(room.price).toLocaleString()}/month</p><details className="rounded-xl border border-slate-200 bg-white"><summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-blue-700">📋 View room details</summary><div className="space-y-3 border-t border-slate-100 p-2"><PublicRoomDetails room={room}/><RoomContactUnlock roomId={room.id}/></div></details>
  {room.tiktokUrl && <a href={room.tiktokUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-700 underline">TikTok video ↗</a>}
  </div>
@@ -34,6 +36,7 @@ export function RoomAvailability({hideContact=true,embedded=false}: {hideContact
      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
        {selectedRoom.hasVideo !== false ? <video key={selectedRoom.id} controls playsInline preload="metadata" data-video-intent="room" className="aspect-video w-full rounded-xl bg-slate-950" src={officeBackend+'/office/availability/'+encodeURIComponent(selectedRoom.id)+'/video'}/> : <div className="flex aspect-video items-center justify-center rounded-xl bg-slate-100"><img src="/roomkhoj-logo.png" alt="RoomKhoj logo — no room video available" className="h-24 w-24 object-contain opacity-80" /></div>}
        <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="text-xl font-bold">{selectedRoom.title}</h3><span className="rounded-lg bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">Available</span></div>
+       <RoomShareButton code={selectedRoom.code} title={selectedRoom.title}/>
        <p className="text-sm">📍 {selectedRoom.location}</p>
        <p className="text-lg font-bold text-blue-700">रु {Number(selectedRoom.price).toLocaleString()}/month</p><details className="rounded-xl border border-slate-200 bg-white"><summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-blue-700">📋 View room details</summary><div className="space-y-3 border-t border-slate-100 p-2"><PublicRoomDetails room={selectedRoom}/><RoomContactUnlock roomId={selectedRoom.id}/></div></details>
        {selectedRoom.tiktokUrl && <a className="block text-sm text-blue-700 underline" href={selectedRoom.tiktokUrl} target="_blank" rel="noopener noreferrer">Watch TikTok video ↗</a>}
