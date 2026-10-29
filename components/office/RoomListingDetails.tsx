@@ -57,27 +57,27 @@ export function RoomListingBody({room,onDetails,compact=false}: {room:AvailableR
     target?.focus({preventScroll:true});
   }
   const rent=Number(room.price);
-  return <div ref={container} className={compact?"space-y-2.5 p-3 text-card-foreground":"space-y-4 p-4 text-card-foreground sm:p-5"}>
+  return <div ref={container} className={compact?"space-y-2 p-2.5 text-card-foreground":"space-y-4 p-4 text-card-foreground sm:p-5"}>
     {compact ? <div className="flex items-start justify-between gap-3">
       <div className="min-w-0 flex-1">
-        <h3 className="line-clamp-2 break-words text-[15px] font-bold leading-snug">{onDetails?<button type="button" onClick={onDetails} className="text-left transition-colors hover:text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring">{room.title||"Room for rent"}</button>:room.title||"Room for rent"}</h3>
+        <h3 className="line-clamp-2 break-words text-[13px] font-bold leading-snug">{onDetails?<button type="button" onClick={onDetails} className="text-left transition-colors hover:text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring">{room.title||"Room for rent"}</button>:room.title||"Room for rent"}</h3>
         <p className="mt-1.5 flex items-start gap-1 text-[11px] leading-4 text-muted-foreground"><MapPin className="mt-0.5 h-3 w-3 shrink-0 text-primary" aria-hidden="true"/><span className="line-clamp-2 min-w-0 break-words">{room.location||"Location not entered"}</span></p>
       </div>
-      <div className="shrink-0 rounded-xl border border-primary/10 bg-primary/5 px-2.5 py-2 text-right">
-        <p className="text-base font-extrabold leading-none tracking-tight text-primary">{Number.isFinite(rent)&&rent>0?"रु "+rent.toLocaleString():"Ask rent"}</p>
+      <div className="shrink-0 rounded-lg border border-primary/10 bg-primary/5 px-2 py-1.5 text-right">
+        <p className="text-sm font-extrabold leading-none tracking-tight text-primary">{Number.isFinite(rent)&&rent>0?"रु "+rent.toLocaleString():"Ask rent"}</p>
         <p className="mt-1 text-[10px] font-medium text-muted-foreground">per month</p>
       </div>
     </div> : (
 <div>
-      <div className="flex flex-wrap items-center justify-between gap-2"><h3 className={compact?"min-w-0 break-words text-base font-bold leading-snug":"min-w-0 break-words text-xl font-extrabold leading-tight"}>{onDetails?<button type="button" onClick={onDetails} className="text-left hover:text-primary">{room.title||"Room for rent"}</button>:room.title||"Room for rent"}</h3><span className="rounded-full bg-primary/10 px-2.5 py-1 text-[10px] font-bold text-primary">Available</span></div>
+      <div className="flex flex-wrap items-center justify-between gap-2"><h3 className={compact?"min-w-0 break-words text-base font-bold leading-snug":"min-w-0 break-words text-xl font-extrabold leading-tight"}>{onDetails?<button type="button" onClick={onDetails} className="text-left hover:text-primary">{room.title||"Room for rent"}</button>:room.title||"Room for rent"}</h3><span role="img" aria-label="Room available" className="h-2 w-2 shrink-0 rounded-full bg-emerald-500"/></div>
       <p className={compact?"mt-0.5 text-base font-bold":"mt-1 text-lg font-bold"}>{Number.isFinite(rent)&&rent>0?<>रु {rent.toLocaleString()}<span className="text-sm font-semibold">/month</span></>:<span className="text-sm">Ask reception for rent</span>}</p>
       <p className="mt-1.5 flex items-start gap-1 text-xs font-medium text-muted-foreground"><MapPin className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true"/><span className="min-w-0 break-words">{room.location||"Location not entered"}</span></p>
     </div>
     )}
     <AdminRoomMessage room={room} compact={compact}/>
     <RoomListingActions room={room} onMessage={message} compact={compact}/>
-    <section className={compact?"space-y-1 rounded-lg bg-muted/40 px-2.5 py-2":"space-y-1"}>{!compact&&<h4 className="text-base font-extrabold">Description</h4>}<p className={"whitespace-pre-line break-words "+(compact?"line-clamp-2 text-xs leading-5":"text-sm leading-relaxed")}>{room.details||("Room for rent in "+room.location+". Contact Room Khoj for availability and viewing.")}</p>{!compact&&<p className="text-[10px] text-muted-foreground">Room code · <span className="font-mono">{room.code}</span></p>}</section>
-    {onDetails?<button type="button" onClick={onDetails} className="flex min-h-10 w-full items-center justify-between rounded-xl border border-primary/15 bg-primary/5 px-3 py-2 text-xs font-bold text-primary transition-colors hover:bg-primary/10"><span>View all room details</span><ChevronRight className="h-4 w-4" aria-hidden="true"/></button>:<><details className="rounded-xl border border-border"><summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-primary">Facilities & all room details</summary><div className="p-2"><PublicRoomDetails room={room}/></div></details><RoomContactUnlock roomId={room.id}/></>}
+    <section className={compact?"space-y-1 rounded-lg bg-muted/40 px-2.5 py-2":"space-y-1"}>{!compact&&<h4 className="text-base font-extrabold">Description</h4>}<p className={"whitespace-pre-line break-words "+(compact?"line-clamp-2 text-[11px] leading-4":"text-sm leading-relaxed")}>{room.details||("Room for rent in "+room.location+". Contact Room Khoj for availability and viewing.")}</p>{!compact&&<p className="text-[10px] text-muted-foreground">Room code · <span className="font-mono">{room.code}</span></p>}</section>
+    {onDetails?<button type="button" onClick={onDetails} className="flex min-h-9 w-full items-center justify-between rounded-lg border border-primary/15 bg-primary/5 px-3 py-2 text-xs font-bold text-primary transition-colors hover:bg-primary/10"><span>View all room details</span><ChevronRight className="h-4 w-4" aria-hidden="true"/></button>:<><details className="rounded-xl border border-border"><summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-primary">Facilities & all room details</summary><div className="p-2"><PublicRoomDetails room={room}/></div></details><RoomContactUnlock roomId={room.id}/></>}
     {!compact&&room.tiktokUrl&&<a href={room.tiktokUrl} target="_blank" rel="noopener noreferrer" className="inline-block text-xs font-semibold text-primary underline underline-offset-4">Watch TikTok video ↗</a>}
   </div>;
 }
