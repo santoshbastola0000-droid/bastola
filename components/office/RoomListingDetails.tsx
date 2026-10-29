@@ -16,6 +16,14 @@ import { RoomListingActions } from "./RoomListingActions";
 const listingDay = new Intl.DateTimeFormat("en-GB",{day:"numeric",month:"short",year:"numeric",timeZone:"Asia/Kathmandu"});
 const listingTime = new Intl.DateTimeFormat("en-GB",{day:"numeric",month:"short",year:"numeric",hour:"numeric",minute:"2-digit",hour12:true,timeZone:"Asia/Kathmandu"});
 
+function DescriptionLabels({text}: {text:string}) {
+  return <>{text.split("\n").map((line,index)=>{
+    const match=line.match(/^([^:：\n]{1,80}[:：])([ \t]*)(.*)$/);
+    const isLabel=match&&!match[3].startsWith("//");
+    return <span key={index}>{index>0?"\n":""}{isLabel?<><strong className="font-bold">{match[1]}</strong>{match[2]}{match[3]}</>:line}</span>;
+  })}</>;
+}
+
 function AdminRoomMessage({room,compact=false}: {room:AvailableRoom;compact?:boolean}) {
   const user=useUserStore(state=>state.user);
   const messageId=useId();
@@ -80,7 +88,7 @@ export function RoomListingBody({room,onDetails,compact=false}: {room:AvailableR
     {validListingDate&&<p className="flex items-center gap-1 text-[10px] text-muted-foreground"><CalendarDays className="h-3 w-3" aria-hidden="true"/><span>Listed · <time dateTime={validListingDate.toISOString()} title={listingTime.format(validListingDate)+" (Nepal time)"}>{compact?listingDay.format(validListingDate):listingTime.format(validListingDate)+" (Nepal time)"}</time></span></p>}
     <AdminRoomMessage room={room} compact={compact}/>
     <RoomListingActions room={room} onMessage={message} compact={compact}/>
-    <section className={compact?"space-y-1 rounded-lg bg-muted/40 px-2.5 py-2":"space-y-1"}>{!compact&&<h4 className="text-base font-extrabold">Description</h4>}<p className={"whitespace-pre-line break-words "+(compact?"line-clamp-2 text-[11px] leading-4":"text-sm leading-relaxed")}>{room.details||("Room for rent in "+room.location+". Contact Room Khoj for availability and viewing.")}</p>{!compact&&<p className="text-[10px] text-muted-foreground">Room code · <span className="font-mono">{room.code}</span></p>}</section>
+    <section className={compact?"space-y-1 rounded-lg bg-muted/40 px-2.5 py-2":"space-y-1"}>{!compact&&<h4 className="text-base font-extrabold">Description</h4>}<p className={"whitespace-pre-line break-words "+(compact?"line-clamp-2 text-[11px] leading-4":"text-sm leading-relaxed")}><DescriptionLabels text={room.details||("Room for rent in "+room.location+". Contact Room Khoj for availability and viewing.")}/></p>{!compact&&<p className="text-[10px] text-muted-foreground">Room code · <span className="font-mono">{room.code}</span></p>}</section>
     {onDetails?<button type="button" onClick={onDetails} className="flex min-h-9 w-full items-center justify-between rounded-lg border border-primary/15 bg-primary/5 px-3 py-2 text-xs font-bold text-primary transition-colors hover:bg-primary/10"><span>View all room details</span><ChevronRight className="h-4 w-4" aria-hidden="true"/></button>:<><details className="rounded-xl border border-border"><summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-primary">Facilities & all room details</summary><div className="p-2"><PublicRoomDetails room={room}/></div></details><RoomContactUnlock roomId={room.id}/></>}
     {!compact&&room.tiktokUrl&&<a href={room.tiktokUrl} target="_blank" rel="noopener noreferrer" className="inline-block text-xs font-semibold text-primary underline underline-offset-4">Watch TikTok video ↗</a>}
   </div>;
