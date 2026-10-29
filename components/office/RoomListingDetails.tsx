@@ -38,7 +38,7 @@ function AdminRoomMessage({room,compact=false}: {room:AvailableRoom;compact?:boo
   const [busy,setBusy]=useState(false),[sent,setSent]=useState(false),[error,setError]=useState("");
   const pending=useRef(false);
   async function send(event:FormEvent) {
-    event.preventDefault();if(pending.current||!user)return;
+    event.preventDefault();event.stopPropagation();if(pending.current||!user||sent)return;
     unlockSounds();
     pending.current=true;setBusy(true);setError("");
     try {
@@ -53,11 +53,12 @@ function AdminRoomMessage({room,compact=false}: {room:AvailableRoom;compact?:boo
   }
   return <section id={messageId+"-box"} className={compact?"rounded-xl border border-border bg-card p-2.5 text-card-foreground":"rounded-2xl border border-border bg-card p-3 text-card-foreground sm:p-4"}>
     <h3 className="flex items-center gap-1.5 text-xs font-semibold"><MessageCircle className="h-4 w-4 text-primary" aria-hidden="true"/>Message Room Khoj</h3>
-    {sent?<p role="status" className="mt-3 rounded-xl bg-primary/10 p-3 text-sm text-primary">Message पठाइयो। अरू room हेर्न सक्नुहुन्छ। Reply Messages मा आउँछ।</p>:user?<form onSubmit={send} className="mt-2 flex items-end gap-2">
+    {user?<form onSubmit={send} className="mt-2 flex items-end gap-2">
       <label className="sr-only" htmlFor={messageId}>Your private message</label>
-      <textarea id={messageId} required minLength={1} maxLength={2000} rows={1} value={message} onChange={e=>setMessage(e.target.value)} className="min-h-10 min-w-0 flex-1 resize-y rounded-xl border-0 bg-muted px-3 py-2 text-[16px] leading-6 sm:text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring" />
-      <button disabled={busy||!message.trim()} className="inline-flex min-h-10 shrink-0 items-center justify-center rounded-lg bg-primary px-3 py-2 text-xs font-bold text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50">{busy?"Sending…":"Send"}</button>
+      <textarea id={messageId} required minLength={1} maxLength={2000} rows={1} value={message} onChange={e=>{setMessage(e.target.value);setSent(false);}} className="min-h-10 min-w-0 flex-1 resize-y rounded-xl border-0 bg-muted px-3 py-2 text-[16px] leading-6 sm:text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring" />
+      <button type="submit" disabled={busy||sent||!message.trim()} className="inline-flex min-h-10 shrink-0 items-center justify-center rounded-lg bg-primary px-3 py-2 text-xs font-bold text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50">{busy?"Sending…":sent?"Sent ✓":"Send"}</button>
     </form>:<Link href="/auth/login" onClick={()=>sessionStorage.setItem("roomkhoj_post_auth_redirect","/rooms?room="+encodeURIComponent(room.id))} className="mt-3 block rounded-xl bg-primary px-4 py-3 text-center text-sm font-semibold text-primary-foreground">Log in to message admin</Link>}
+    {sent&&<p role="status" className="mt-1 text-[11px] text-primary">Message पठाइयो। Reply Messages मा आउँछ।</p>}
     {!compact&&<p className="mt-2 flex items-center gap-1 text-[11px] text-muted-foreground"><LockKeyhole className="h-3 w-3 shrink-0" aria-hidden="true"/>Private chat · Admin मात्र</p>}
     {error&&<p role="alert" className="mt-2 break-words text-xs leading-snug text-destructive">{error}</p>}
   </section>;
