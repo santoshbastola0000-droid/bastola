@@ -100,7 +100,7 @@ export function RoomKhojAIFloatingButton() {
       rescue(destination);
     }
   };
-  if (pathname?.startsWith("/messages")) return null;
+  if (pathname?.startsWith("/messages") || pathname?.startsWith("/admin")) return null;
   return <button
     type="button"
     aria-label="Open RoomKhoj AI; drag monkey to any screen corner"
@@ -114,3 +114,4 @@ export function RoomKhojAIFloatingButton() {
     className="fixed z-40 flex h-[126px] w-[78px] cursor-grab touch-none select-none items-center justify-center border-0 bg-transparent p-0 shadow-none active:cursor-grabbing"
   ><HangingMonkey scared={animation === "fall" || animation === "climb"} motion={animation}/></button>;
 }
+

@@ -10,6 +10,7 @@ import { isTokenExpired } from "@/lib/utils";
 import { toast } from "sonner";
 import { FAILURETOAST } from "@/lib/constants/app.constants";
 import { ThemeProvider } from "@/components/theme-provider";
+import { AdminAgentChatbox } from "@/components/admin/AdminAgentChatbox";
 
 export default function AdminLayout({
   children,
@@ -79,6 +80,8 @@ export default function AdminLayout({
   return (
     <ThemeProvider>
       <AdminWorkspace>{children}</AdminWorkspace>
+      <AdminAgentChatbox />
     </ThemeProvider>
   );
 }
+
