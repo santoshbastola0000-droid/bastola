@@ -1,5 +1,6 @@
 "use client";
 import { FormEvent, useEffect, useRef, useState } from 'react';
+import { MapPin, Building2, ChevronDown, LockKeyhole, ArrowUpRight } from 'lucide-react';
 import { api } from '@/http/api/api';
 import { privateApi } from '@/http/api/privateApi';
 import { PublicRoomDetails } from './PublicRoomDetails';
@@ -15,13 +16,54 @@ export function RoomContactUnlock({roomId}: {roomId:string}) {
  <style jsx>{`@keyframes reveal{from{opacity:0;transform:translateY(8px) scale(.97)}to{opacity:1;transform:none}}.contact-reveal{animation:reveal .35s ease-out}@media(prefers-reduced-motion:reduce){.contact-reveal{animation:none}}`}</style></div>;
 }
 export function AvailabilityCard({room,hideContact=true,onSelect}: {room:AvailableRoom;hideContact?:boolean;onSelect?: (room:AvailableRoom)=>void}) {
- return <article data-room-availability role={onSelect ? "button" : undefined} tabIndex={onSelect ? 0 : undefined} aria-label={onSelect ? `View details for ${room.code}` : undefined} onClick={event=>{if(onSelect && !(event.target as HTMLElement).closest("a,button,input,video,summary,details"))onSelect(room);}} onKeyDown={event=>{if(onSelect && (event.key==="Enter"||event.key===" ") && event.target===event.currentTarget){event.preventDefault();onSelect(room);}}} className={"overflow-hidden rounded-2xl border border-amber-200 bg-white text-slate-900 shadow-sm "+(onSelect?"cursor-pointer transition hover:border-amber-500 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-500":"")}>
- {room.hasVideo !== false ? <video data-video-intent="room" controls playsInline preload="none" className="aspect-video w-full bg-slate-950" src={officeBackend+'/office/availability/'+room.id+'/video'}/> : <div className="flex aspect-video items-center justify-center bg-slate-100"><img src="/roomkhoj-logo.png" alt="RoomKhoj logo — no room video available" className="h-20 w-20 object-contain opacity-80" /></div>}
- <div className="space-y-3 p-4"><div className="flex justify-between gap-3"><h3 className="font-bold">{room.title}</h3><span className="rounded-lg bg-amber-50 px-2 py-1 text-xs font-mono">{room.code}</span></div>
- <p className="text-sm">{room.location} · रु {Number(room.price).toLocaleString()}/month</p><details className="rounded-xl border border-slate-200 bg-white"><summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-blue-700">📋 View room details</summary><div className="space-y-3 border-t border-slate-100 p-2"><PublicRoomDetails room={room}/><RoomContactUnlock roomId={room.id}/></div></details>
- {room.tiktokUrl && <a href={room.tiktokUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-700 underline">TikTok video ↗</a>}
- </div>
-</article>;
+ const profile = room.matchProfile;
+ const rent = Number(room.price);
+ const features = [
+   profile?.roomType,
+   profile?.capacity ? profile.capacity + ' people' : null,
+   ...(profile?.facilities || []).slice(0, 3),
+ ].filter((value): value is string => Boolean(value));
+ return (
+   <article data-room-availability className="group overflow-hidden rounded-3xl border border-slate-200/80 bg-white text-slate-900 shadow-[0_4px_20px_rgba(15,23,42,0.05)] transition-shadow hover:shadow-[0_8px_28px_rgba(15,23,42,0.10)]">
+     <div className="relative overflow-hidden bg-slate-950">
+       {room.hasVideo !== false ? (
+         <video data-video-intent="room" controls playsInline preload="none" aria-label={room.title + ' room video'} className="aspect-video w-full object-contain" src={officeBackend+'/office/availability/'+encodeURIComponent(room.id)+'/video'}/>
+       ) : (
+         <div className="flex aspect-video items-center justify-center bg-gradient-to-br from-slate-100 via-white to-rose-50">
+           <img src="/roomkhoj-logo.png" alt="RoomKhoj — no room video available" loading="lazy" className="h-20 w-20 rounded-2xl object-contain"/>
+         </div>
+       )}
+       <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between gap-2 bg-gradient-to-b from-slate-950/50 to-transparent p-3 pb-8">
+         <span className="inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1.5 text-[11px] font-bold text-emerald-700 shadow-sm"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500"/>Available</span>
+         <span className="rounded-lg border border-white/20 bg-slate-950/70 px-2.5 py-1.5 font-mono text-[11px] font-semibold text-white">{room.code}</span>
+       </div>
+     </div>
+     <div className="space-y-4 p-4 sm:p-5">
+       <div className="space-y-2">
+         <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-rose-600">ROOM KHOJ · RECEPTION</p>
+         <h3 className="break-words text-base font-bold leading-snug sm:text-lg">
+           {onSelect ? <button type="button" onClick={()=>onSelect(room)} className="text-left transition-colors hover:text-rose-600 focus-visible:rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-rose-500">{room.title || 'Room for rent'}</button> : room.title || 'Room for rent'}
+         </h3>
+         <p className="flex items-start gap-1.5 text-sm leading-relaxed text-slate-500"><MapPin aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-rose-500"/><span className="min-w-0 break-words">{room.location || 'Location not entered'}</span></p>
+       </div>
+       <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-rose-100 bg-rose-50/60 px-3.5 py-3">
+         <span className="text-[11px] font-medium text-slate-500">Monthly rent</span>
+         <p className="text-xl font-extrabold tracking-tight text-slate-950">{Number.isFinite(rent) && rent > 0 ? <>रु {rent.toLocaleString()}<span className="ml-1 text-xs font-medium tracking-normal text-slate-500">/ month</span></> : <span className="text-sm">Ask reception</span>}</p>
+       </div>
+       {features.length > 0 && <div className="flex flex-wrap gap-1.5">{features.map((feature,i)=><span key={feature+'-'+i} className="max-w-full break-words rounded-lg border border-slate-100 bg-slate-50 px-2.5 py-1 text-[11px] font-medium text-slate-600">{feature}</span>)}</div>}
+       <details className="group/details overflow-hidden rounded-xl border border-slate-200">
+         <summary className="flex cursor-pointer list-none items-center justify-between gap-2 bg-slate-950 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 [&::-webkit-details-marker]:hidden">
+           <span className="inline-flex items-center gap-2"><Building2 aria-hidden="true" className="h-4 w-4"/>View room details</span><ChevronDown aria-hidden="true" className="h-4 w-4 transition-transform group-open/details:rotate-180"/>
+         </summary>
+         <div className="space-y-3 border-t border-slate-100 bg-slate-50 p-2"><PublicRoomDetails room={room}/><RoomContactUnlock roomId={room.id}/></div>
+       </details>
+       <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-3">
+         <span className="inline-flex items-center gap-1 text-[11px] text-slate-500"><LockKeyhole aria-hidden="true" className="h-3 w-3"/>Contact via reception key</span>
+         {room.tiktokUrl && <a href={room.tiktokUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 rounded-lg px-1 py-1 text-xs font-semibold text-rose-600 underline-offset-4 hover:underline">TikTok video<ArrowUpRight aria-hidden="true" className="h-3.5 w-3.5"/></a>}
+       </div>
+     </div>
+   </article>
+ );
 }
 export function RoomAvailability({hideContact=true,embedded=false}: {hideContact?:boolean;embedded?:boolean} = {}) {
  const [selectedRoom,setSelectedRoom]=useState<AvailableRoom|null>(null);
