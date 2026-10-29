@@ -148,7 +148,7 @@ export function RoomAdminInbox() {
         <div className="max-h-[65vh] overflow-y-auto">
           {loading?<p className="p-4 text-sm text-slate-500">Loading chats…</p>:!conversations.length?<p className="p-4 text-sm text-slate-500">No room chats yet.</p>:conversations.map(conversation=>{
             const customerName=conversation.otherUser?.name||"Client";
-            const initials=customerName.trim().split(/\\s+/).slice(0,2).map(part=>part.charAt(0)).join("").toUpperCase()||"C";
+            const initials=customerName.trim().split(/\s+/).slice(0,2).map(part=>part.charAt(0)).join("").toUpperCase()||"C";
             const selected=openIds.includes(conversation.id);
             return <button key={conversation.id} type="button" aria-pressed={selected} onClick={()=>setOpenIds(current=>current.includes(conversation.id)?current:[...current,conversation.id])} className={"flex w-full min-w-0 items-center gap-3 border-b px-3 py-3 text-left transition-colors "+(selected?"bg-primary/10":"hover:bg-slate-50")}>
               <span className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">{initials}{Number(conversation.unreadCount)>0&&<span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white bg-green-500"/>}</span>
@@ -159,7 +159,7 @@ export function RoomAdminInbox() {
         </div>
       </div>
       <div className="min-w-0 space-y-3">
-        {openChats.length?<div className="grid min-w-0 items-start gap-3 xl:grid-cols-2">{openChats.map(conversation=><UserChatBox key={conversation.id} conversation={conversation} officialAdminId={officialAdminId} onClose={()=>setOpenIds(current=>current.filter(id=>id!==conversation.id)}/>)}</div>:<div className="flex min-h-64 flex-col items-center justify-center rounded-2xl border border-dashed bg-white p-6 text-center"><MessageCircle className="mb-3 h-10 w-10 text-slate-300" aria-hidden="true"/><p className="font-semibold text-slate-700">Your messages</p><p className="mt-1 text-sm text-slate-500">ग्राहकको message हेर्न बायाँपट्टि नाम छान्नुहोस्। नयाँ unread message आउँदा chat आफैँ खुल्छ।</p></div>}
+        {openChats.length?<div className="grid min-w-0 items-start gap-3 xl:grid-cols-2">{openChats.map(conversation=><UserChatBox key={conversation.id} conversation={conversation} officialAdminId={officialAdminId} onClose={()=>setOpenIds(current=>current.filter(id=>id!==conversation.id))}/>)}</div>:<div className="flex min-h-64 flex-col items-center justify-center rounded-2xl border border-dashed bg-white p-6 text-center"><MessageCircle className="mb-3 h-10 w-10 text-slate-300" aria-hidden="true"/><p className="font-semibold text-slate-700">Your messages</p><p className="mt-1 text-sm text-slate-500">ग्राहकको message हेर्न बायाँपट्टि नाम छान्नुहोस्। नयाँ unread message आउँदा chat आफैँ खुल्छ।</p></div>}
       </div>
     </div>
   </section>;
