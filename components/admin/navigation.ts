@@ -16,6 +16,7 @@ export const navItems: NavItem[] = [
   { title: "Scheduled Posts", href: "/admin/dashboard/scheduled-posts", icon: CalendarClock },
   { title: "Profile UI", href: "/admin/dashboard/profile-ui", icon: ShieldCheck },
   { title: "User Band", href: "/admin/dashboard/user-band", icon: ShieldCheck },
+  { title: "Room Chatbox", href: "/admin/dashboard/room-chatbox", icon: MessageSquare },
   { title: "Messages", href: "/admin/dashboard/messages", icon: MessageSquare },
   { title: "Notifications", href: "/admin/dashboard/notifications", icon: Bell },
   { title: "Website Notice", href: "/admin/dashboard/site-notice", icon: Megaphone },
@@ -43,7 +44,7 @@ export const navItems: NavItem[] = [
 
 export type NavGroup = "Office" | "Rooms" | "Users" | "AI" | "Finance" | "Settings" | "Others";
 const groupPaths: Record<NavGroup, string[]> = {
-  Office: ["office", "vacancies", "candidates", "candidate-contacts", "records", "staff-tracking", "#inter-call"],
+  Office: ["office", "room-chatbox", "vacancies", "candidates", "candidate-contacts", "records", "staff-tracking", "#inter-call"],
   Rooms: ["rooms"],
   Users: ["users", "user-band", "messages", "notifications", "referrals"],
   AI: ["bot-users", "bot-engagement", "ai-call", "ai-owner-calling", "ai-live-chatbox", "chatbot", "ai-profiles", "ai-learning", "ai-developer", "ai-flow-monitor"],

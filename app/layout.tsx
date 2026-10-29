@@ -7,6 +7,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { SessionChecker } from "@/components/SessionChecker";
 import { IntentVideoWarmup } from "@/components/IntentVideoWarmup";
 import { GlobalChatbot } from "@/components/GlobalChatbot";
+import { SiteSoundEffects } from "@/components/SiteSoundEffects";
 import { MobileBottomNav } from "@/components/MobileBottomNav";
 import { RoomKhojAIFloatingButton } from "@/components/RoomKhojAIFloatingButton";
 import { GuestLoginPopup } from "@/components/GuestLoginPopup";
@@ -146,6 +147,7 @@ export default function RootLayout({
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(siteJsonLd) }}
         />
+        <SiteSoundEffects />
         <RoomKhojStartupSplash />
         <SecurityChallengeGate />
         <LanguageProvider>

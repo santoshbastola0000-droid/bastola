@@ -1,6 +1,8 @@
 "use client";
 import { FormEvent, useEffect, useRef, useState } from 'react';
 import { MapPin, Building2, ChevronDown, LockKeyhole, ArrowUpRight } from 'lucide-react';
+import { RoomListingActions } from './RoomListingActions';
+import { RoomListingDetails, SharedAvailabilityRoom } from './RoomListingDetails';
 import { api } from '@/http/api/api';
 import { privateApi } from '@/http/api/privateApi';
 import { PublicRoomDetails } from './PublicRoomDetails';
@@ -37,6 +39,7 @@ export function AvailabilityCard({room,hideContact=true,onSelect}: {room:Availab
          <span className="inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1.5 text-[11px] font-bold text-emerald-700 shadow-sm"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500"/>Available</span>
          <span className="rounded-lg border border-white/20 bg-slate-950/70 px-2.5 py-1.5 font-mono text-[11px] font-semibold text-white">{room.code}</span>
        </div>
+       {onSelect && <RoomListingActions room={room} side onMessage={()=>onSelect(room)}/>}
      </div>
      <div className="space-y-4 p-4 sm:p-5">
        <div className="space-y-2">
@@ -51,12 +54,14 @@ export function AvailabilityCard({room,hideContact=true,onSelect}: {room:Availab
          <p className="text-xl font-extrabold tracking-tight text-slate-950">{Number.isFinite(rent) && rent > 0 ? <>रु {rent.toLocaleString()}<span className="ml-1 text-xs font-medium tracking-normal text-slate-500">/ month</span></> : <span className="text-sm">Ask reception</span>}</p>
        </div>
        {features.length > 0 && <div className="flex flex-wrap gap-1.5">{features.map((feature,i)=><span key={feature+'-'+i} className="max-w-full break-words rounded-lg border border-slate-100 bg-slate-50 px-2.5 py-1 text-[11px] font-medium text-slate-600">{feature}</span>)}</div>}
-       <details className="group/details overflow-hidden rounded-xl border border-slate-200">
+       {onSelect ? <button type="button" onClick={()=>onSelect(room)} className="flex w-full items-center justify-between rounded-xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white hover:bg-slate-800"><span>View room details</span><ArrowUpRight aria-hidden="true" className="h-4 w-4"/></button> : (
+<details className="group/details overflow-hidden rounded-xl border border-slate-200">
          <summary className="flex cursor-pointer list-none items-center justify-between gap-2 bg-slate-950 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500 [&::-webkit-details-marker]:hidden">
            <span className="inline-flex items-center gap-2"><Building2 aria-hidden="true" className="h-4 w-4"/>View room details</span><ChevronDown aria-hidden="true" className="h-4 w-4 transition-transform group-open/details:rotate-180"/>
          </summary>
          <div className="space-y-3 border-t border-slate-100 bg-slate-50 p-2"><PublicRoomDetails room={room}/><RoomContactUnlock roomId={room.id}/></div>
        </details>
+       )}
        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-3">
          <span className="inline-flex items-center gap-1 text-[11px] text-slate-500"><LockKeyhole aria-hidden="true" className="h-3 w-3"/>Contact via reception key</span>
          {room.tiktokUrl && <a href={room.tiktokUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 rounded-lg px-1 py-1 text-xs font-semibold text-rose-600 underline-offset-4 hover:underline">TikTok video<ArrowUpRight aria-hidden="true" className="h-3.5 w-3.5"/></a>}
@@ -66,23 +71,15 @@ export function AvailabilityCard({room,hideContact=true,onSelect}: {room:Availab
  );
 }
 export function RoomAvailability({hideContact=true,embedded=false}: {hideContact?:boolean;embedded?:boolean} = {}) {
+ const [sharedRoomId,setSharedRoomId]=useState('');
+ useEffect(()=>{const id=new URL(window.location.href).searchParams.get('room');if(id && /^[0-9a-f-]{36}$/i.test(id))setSharedRoomId(id);},[]);
  const [selectedRoom,setSelectedRoom]=useState<AvailableRoom|null>(null);
  const [q,setQ]=useState(''), [search,setSearch]=useState(''), [page,setPage]=useState(0), [rooms,setRooms]=useState<AvailableRoom[]>([]), [total,setTotal]=useState(0), [loading,setLoading]=useState(true), [error,setError]=useState(''), [retry,setRetry]=useState(0);
  useEffect(()=>{let alive=true;setLoading(true);setError('');api.get('/office/availability',{params:{q:search,page}}).then(r=>{if(!alive)return;const d=unwrap<{rooms:AvailableRoom[];total:number}>(r);const items=Array.isArray(d?.rooms)?d.rooms:Array.isArray(d)?d:[];const visibleRooms=items.filter(room=>room && String(room.status ?? '').trim().toUpperCase()==='AVAILABLE');setRooms(visibleRooms);setTotal(Number.isFinite(d?.total) ? Math.max(visibleRooms.length, Number(d.total)) : visibleRooms.length);}).catch(e=>{if(alive){setRooms([]);setError(officeError(e));}}).finally(()=>{if(alive)setLoading(false);});return()=>{alive=false;};},[search,page,retry]);
  return <section data-room-availability className={embedded ? "w-full bg-slate-50 text-slate-900" : "min-h-0 flex-1 overflow-y-auto bg-slate-50 p-4 text-slate-900"}><div className="mx-auto max-w-5xl space-y-4"><div><h2 className="text-xl font-bold">Room Availability</h2><p className="text-sm text-slate-500">Reception का available rooms · Video र details</p></div><form onSubmit={e=>{e.preventDefault();setSearch(q.trim());setPage(0);}} className="flex gap-2"><input aria-label="Search available rooms" maxLength={300} value={q} onChange={e=>setQ(e.target.value)} placeholder="Room code, location or details…" className="min-w-0 flex-1 rounded-xl border bg-white p-3"/><button className="rounded-xl bg-slate-900 px-4 text-white">Search</button></form>{error && <div role="alert" className="space-y-2 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700"><p>Available rooms load भएन: {error}</p><button type="button" onClick={()=>setRetry(v=>v+1)} className="rounded-lg border border-red-300 bg-white px-3 py-2 font-semibold">Retry loading rooms</button></div>}{loading?<p role="status">Loading rooms…</p>:<><p className="text-sm text-slate-500">{total} available rooms</p><div className="grid gap-4 sm:grid-cols-2">{rooms.map(r=><AvailabilityCard key={r.id} room={r} hideContact={hideContact} onSelect={setSelectedRoom}/>)}</div>{!rooms.length && !error && <p>No matching rooms. अर्को location वा code खोज्नुहोस्।</p>}<div className="flex justify-between"><button disabled={page===0} onClick={()=>setPage(p=>p-1)} className="rounded-lg border px-4 py-2 disabled:opacity-40">Previous</button><button disabled={(page+1)*24>=total} onClick={()=>setPage(p=>p+1)} className="rounded-lg border px-4 py-2 disabled:opacity-40">Next</button></div></>}
- {selectedRoom && <div className="fixed inset-0 z-[100] flex justify-end bg-slate-950/60" onMouseDown={event=>{if(event.target===event.currentTarget)setSelectedRoom(null);}}>
-   <aside role="dialog" aria-modal="true" aria-label={`Room details: ${selectedRoom.code}`} className="flex h-full w-[min(92vw,440px)] flex-col overflow-hidden rounded-l-2xl bg-white text-slate-900 shadow-2xl">
-     <div className="flex shrink-0 items-center justify-between border-b px-4 py-3"><div><h2 className="text-lg font-bold">Room details</h2><p className="font-mono text-xs text-slate-500">{selectedRoom.code}</p></div><button type="button" aria-label="Close room details" className="rounded-lg border px-3 py-2 text-lg" onClick={()=>setSelectedRoom(null)}>✕</button></div>
-     <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4">
-       {selectedRoom.hasVideo !== false ? <video key={selectedRoom.id} controls playsInline preload="metadata" data-video-intent="room" className="aspect-video w-full rounded-xl bg-slate-950" src={officeBackend+'/office/availability/'+encodeURIComponent(selectedRoom.id)+'/video'}/> : <div className="flex aspect-video items-center justify-center rounded-xl bg-slate-100"><img src="/roomkhoj-logo.png" alt="RoomKhoj logo — no room video available" className="h-24 w-24 object-contain opacity-80" /></div>}
-       <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="text-xl font-bold">{selectedRoom.title}</h3><span className="rounded-lg bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">Available</span></div>
-       <p className="text-sm">📍 {selectedRoom.location}</p>
-       <p className="text-lg font-bold text-blue-700">रु {Number(selectedRoom.price).toLocaleString()}/month</p><details className="rounded-xl border border-slate-200 bg-white"><summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-blue-700">📋 View room details</summary><div className="space-y-3 border-t border-slate-100 p-2"><PublicRoomDetails room={selectedRoom}/><RoomContactUnlock roomId={selectedRoom.id}/></div></details>
-       {selectedRoom.tiktokUrl && <a className="block text-sm text-blue-700 underline" href={selectedRoom.tiktokUrl} target="_blank" rel="noopener noreferrer">Watch TikTok video ↗</a>}
-       
-     </div>
-   </aside>
- </div>}
+ {sharedRoomId && <SharedAvailabilityRoom id={sharedRoomId}/>}
+ {selectedRoom && <RoomListingDetails key={selectedRoom.id} room={selectedRoom} onClose={()=>setSelectedRoom(null)}/>} 
+
  </div></section>;
 }
 export function AdminContactKey({roomId}: {roomId:string}) {

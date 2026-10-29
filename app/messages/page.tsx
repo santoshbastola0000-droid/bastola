@@ -37,6 +37,8 @@ import {
   UserPlus,
   Heart,
 } from "lucide-react";
+import { playUiSound, playIncomingMessageSound } from "@/lib/ui-sounds";
+import { SoundToggle } from "@/components/SiteSoundEffects";
 import { AdminAiCallButton } from "@/components/messages/AdminAiCallButton";
 import { toast } from "sonner";
 import { io, Socket } from "socket.io-client";
@@ -728,6 +730,7 @@ const user = useUserStore(
     nextSocket.on(
       "message:new",
       (message: ChatMessage) => {
+        if(message?.receiverId===currentUserId)playIncomingMessageSound(message.id);
         if (
           message?.id &&
           message?.receiverId ===
@@ -1842,6 +1845,7 @@ const user = useUserStore(
           message,
         ]);
 
+        playUiSound("sent");
         setDraft("");
         setReplyingTo(null);
 
@@ -1979,6 +1983,7 @@ const user = useUserStore(
                   Chats
                 </h1>
               </div>
+              <SoundToggle/>
               <button
                 type="button"
                 onClick={toggleChatTheme}

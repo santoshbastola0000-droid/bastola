@@ -5,6 +5,8 @@ import { Phone, PhoneOff, Video } from "lucide-react";
 import { io, Socket } from "socket.io-client";
 import { usePathname, useRouter } from "next/navigation";
 
+import { playIncomingMessageSound } from "@/lib/ui-sounds";
+import { useUserStore } from "@/stores/user-store";
 import { Button } from "@/components/ui/button";
 import useTokenStore from "@/store";
 
@@ -52,9 +54,11 @@ export function GlobalIncomingCall() {
     );
 
     socketRef.current = socket;
+    socket.on("message:new",(message:{id?:string;receiverId?:string})=>{if(message.receiverId===useUserStore.getState().user?.id)playIncomingMessageSound(message.id);});
 
     socket.on("connect", () => {
       console.log("[GLOBAL CALL] connected", socket.id);
+      socket.emit("join-user",{});
     });
 
     socket.on("connect_error", (error) => {

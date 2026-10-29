@@ -159,6 +159,7 @@ export function MobileBottomNav() {
           }`}
         >
           <Link
+            data-ui-sound
             href={feedHref}
             onClick={(event) => {
               if (!isFeed) return;
@@ -178,6 +179,7 @@ export function MobileBottomNav() {
           </Link>
 
           <Link
+            data-ui-sound
             href="/rooms/availability"
             className={itemClass(isRoom)}
             aria-label="Room"
@@ -187,6 +189,7 @@ export function MobileBottomNav() {
           </Link>
 
           <Link
+            data-ui-sound
             href="/reels"
             className={itemClass(isReels)}
             aria-label="Reels"
@@ -196,6 +199,7 @@ export function MobileBottomNav() {
           </Link>
 
           <Link
+            data-ui-sound
             href="/messages"
             className={itemClass(isMessages)}
             aria-label="Messages"
@@ -212,6 +216,7 @@ export function MobileBottomNav() {
           </Link>
 
           <Link
+            data-ui-sound
             href="/user/dashboard/profile"
             className={itemClass(isProfile)}
             aria-label="Profile"
