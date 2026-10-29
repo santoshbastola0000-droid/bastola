@@ -1,7 +1,6 @@
 "use client";
 import { FormEvent, useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { playUiSound } from "@/lib/ui-sounds";
 import { SoundToggle } from "@/components/SiteSoundEffects";
 import { X, LockKeyhole, MapPin, MessageCircle, ChevronRight, CalendarDays } from "lucide-react";
@@ -20,7 +19,6 @@ const listingTime = new Intl.DateTimeFormat("en-GB",{day:"numeric",month:"short"
 function AdminRoomMessage({room,compact=false}: {room:AvailableRoom;compact?:boolean}) {
   const user=useUserStore(state=>state.user);
   const messageId=useId();
-  const router=useRouter();
   const [message,setMessage]=useState("नमस्ते, यो room अझै available छ?");
   const [busy,setBusy]=useState(false),[sent,setSent]=useState(false),[error,setError]=useState("");
   const pending=useRef(false);
@@ -28,11 +26,9 @@ function AdminRoomMessage({room,compact=false}: {room:AvailableRoom;compact?:boo
     event.preventDefault();if(pending.current||!user)return;
     pending.current=true;setBusy(true);setError("");
     try {
-      const r=await privateApi.post("/message/room-admin/rooms/"+encodeURIComponent(room.id)+"/send",{content:message.trim()});
-      const data=r.data?.data||r.data;
+      await privateApi.post("/message/room-admin/rooms/"+encodeURIComponent(room.id)+"/send",{content:message.trim()});
       setSent(true);playUiSound("sent");
       window.dispatchEvent(new Event("roomkhoj:unread-refresh"));
-      router.push("/messages?conversation="+encodeURIComponent(data.conversationId));
     } catch(e) {
       const status=(e as {response?:{status?:number}})?.response?.status;
       setError(status===404?"Chat अहिले उपलब्ध छैन। कृपया केही समयपछि प्रयास गर्नुहोस्।":officeError(e));
@@ -41,7 +37,7 @@ function AdminRoomMessage({room,compact=false}: {room:AvailableRoom;compact?:boo
   }
   return <section id={messageId+"-box"} className={compact?"rounded-xl border border-border bg-card p-2.5 text-card-foreground":"rounded-2xl border border-border bg-card p-3 text-card-foreground sm:p-4"}>
     <h3 className="flex items-center gap-1.5 text-xs font-semibold"><MessageCircle className="h-4 w-4 text-primary" aria-hidden="true"/>Message Room Khoj</h3>
-    {sent?<p role="status" className="mt-3 rounded-xl bg-primary/10 p-3 text-sm text-primary">Message पठाइयो। Messages box मा कुराकानी जारी राख्नुहोस्।</p>:user?<form onSubmit={send} className="mt-2 flex items-end gap-2">
+    {sent?<p role="status" className="mt-3 rounded-xl bg-primary/10 p-3 text-sm text-primary">Message पठाइयो। अरू room हेर्न सक्नुहुन्छ। Reply Messages मा आउँछ।</p>:user?<form onSubmit={send} className="mt-2 flex items-end gap-2">
       <label className="sr-only" htmlFor={messageId}>Your private message</label>
       <textarea id={messageId} required minLength={1} maxLength={2000} rows={1} value={message} onChange={e=>setMessage(e.target.value)} className="min-h-10 min-w-0 flex-1 resize-y rounded-xl border-0 bg-muted px-3 py-2 text-[16px] leading-6 sm:text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring" />
       <button disabled={busy||!message.trim()} className="inline-flex min-h-10 shrink-0 items-center justify-center rounded-lg bg-primary px-3 py-2 text-xs font-bold text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50">{busy?"Sending…":"Send"}</button>
