@@ -6,7 +6,7 @@ export function IntentVideoWarmup(){
  useEffect(()=>{
   const section=/^\/(?:jobs|job)(?:\/|$)/.test(pathname||'')?'job':/^\/(?:rooms|property|search)(?:\/|$)/.test(pathname||'')?'room':null;
   const connection=(navigator as Navigator & {connection?:{saveData?:boolean;effectiveType?:string}}).connection;
-  if(connection?.saveData || /(^|-)2g$/.test(connection?.effectiveType||''))return;
+  if(connection?.saveData || /(^|-)2g$|^3g$/.test(connection?.effectiveType||''))return;
   const queue:HTMLVideoElement[]=[];const seen=new WeakSet<HTMLVideoElement>();let current:HTMLVideoElement|null=null,stop=false,timer=0,idle=0;
   let release=()=>{};
   const eligible=(video:HTMLVideoElement)=>!video.closest('[data-reel-id]') && !video.autoplay && (video.dataset.videoIntent===section || (section==='job' && !video.dataset.videoIntent) || (video.dataset.videoIntent==='room' && !!video.closest('[data-room-availability]')));
@@ -17,7 +17,7 @@ export function IntentVideoWarmup(){
    current=video;
    const done=()=>{video.removeEventListener('loadedmetadata',done);video.removeEventListener('error',done);window.clearTimeout(timer);current=null;release=()=>{};timer=window.setTimeout(next,500);};
    release=done;
-   const load=()=>{if(stop || !video.isConnected){done();return;}video.addEventListener('loadedmetadata',done,{once:true});video.addEventListener('error',done,{once:true});video.preload='metadata';video.load();timer=window.setTimeout(done,6000);};
+   const load=()=>{if(stop || document.hidden || !video.isConnected || !video.paused || Number.isFinite(video.duration)){done();return;}video.addEventListener('loadedmetadata',done,{once:true});video.addEventListener('error',done,{once:true});video.preload='metadata';video.load();timer=window.setTimeout(done,6000);};
    if(typeof window.requestIdleCallback === 'function') idle=window.requestIdleCallback(load,{timeout:1500}); else timer=window.setTimeout(load,350);
   };
   const intersection=new IntersectionObserver(entries=>{
