@@ -7,7 +7,7 @@ import { messageService } from "@/http/services/message.service";
 import { useUserStore } from "@/stores/user-store";
 import {
   Home,
-  BriefcaseBusiness,
+  Building2,
   Clapperboard,
   MessageCircle,
   UserRound,
@@ -65,10 +65,8 @@ export function MobileBottomNav() {
   // Guests should land on the public room cards first. Once signed in,
   // the same Feed tab opens the social feed as before.
   const feedHref = user ? "/feed" : "/rooms";
-  const isFeed = user
-    ? pathname.startsWith("/feed")
-    : pathname.startsWith("/rooms");
-  const isJobs = pathname.startsWith("/jobs");
+  const isFeed = pathname.startsWith("/feed");
+  const isRoom = pathname.startsWith("/rooms");
   const isReels = pathname.startsWith("/reels");
   const isMessages = pathname.startsWith("/messages");
   const isProfile = pathname.startsWith("/user/dashboard/profile");
@@ -180,12 +178,12 @@ export function MobileBottomNav() {
           </Link>
 
           <Link
-            href="/jobs"
-            className={itemClass(isJobs)}
-            aria-label="Jobs"
+            href="/rooms"
+            className={itemClass(isRoom)}
+            aria-label="Room"
           >
-            <BriefcaseBusiness className={compactOnScroll ? "h-5 w-5" : "h-6 w-6"} strokeWidth={isJobs ? 2.6 : 2.1} />
-            <span>Jobs</span>
+            <Building2 className={compactOnScroll ? "h-5 w-5" : "h-6 w-6"} strokeWidth={isRoom ? 2.6 : 2.1} />
+            <span>Room</span>
           </Link>
 
           <Link
