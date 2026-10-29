@@ -25,7 +25,7 @@ export function AdminAgentChatbox() {
       <Headset aria-hidden="true" className="h-5 w-5"/>Agent
     </button>
     <dialog ref={dialog} aria-labelledby="admin-agent-title" onClose={() => setOpen(false)}
-      className="fixed inset-0 m-auto max-h-[90dvh] w-[calc(100%_-_1rem)] max-w-3xl overflow-y-auto rounded-2xl border bg-white p-0 text-slate-900 shadow-2xl backdrop:bg-black/40">
+      className="fixed inset-0 m-auto max-h-[90dvh] w-[calc(100%_-_1rem)] max-w-6xl overflow-y-auto rounded-2xl border bg-white p-0 text-slate-900 shadow-2xl backdrop:bg-black/40">
       <header className="sticky top-0 z-10 flex items-center justify-between border-b bg-white px-4 py-3">
         <div className="flex items-center gap-2"><Headset className="h-5 w-5 text-primary" aria-hidden="true"/><div><h2 id="admin-agent-title" className="font-bold">Room Khoj Agent</h2><p className="text-xs text-slate-500">Private customer messages · Admin only</p></div></div>
         <button type="button" onClick={() => setOpen(false)} aria-label="Close Agent chatbox" className="rounded-full p-2 hover:bg-slate-100"><X className="h-5 w-5"/></button>
@@ -34,3 +34,4 @@ export function AdminAgentChatbox() {
     </dialog>
   </>;
 }
+
