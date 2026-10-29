@@ -140,14 +140,27 @@ export function RoomAdminInbox() {
   },[]);
   const openChats=openIds.map(id=>conversations.find(conversation=>conversation.id===id)).filter((conversation):conversation is MessageConversation=>Boolean(conversation));
   return <section className="space-y-3">
-    <div className="flex flex-wrap items-center justify-between gap-2"><div><h2 className="text-lg font-bold">Room Khoj chatbox</h2><p className="text-xs text-slate-500">Admin only · हरेक user को छुट्टै chat र reply</p></div><SoundToggle/></div>
+    <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border bg-white px-4 py-3"><div><h2 className="text-lg font-bold">Messenger</h2><p className="text-xs text-slate-500">RoomKhoj Admin · Private customer messages</p></div><SoundToggle/></div>
     {error&&<p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>}
-    <div aria-label="Customer conversations" className="flex max-h-44 flex-wrap gap-2 overflow-y-auto rounded-xl border bg-white p-2">
-      {loading?<p className="p-2 text-xs">Loading chats…</p>:!conversations.length?<p className="p-2 text-xs text-slate-500">No room chats yet.</p>:conversations.map(conversation=><button key={conversation.id} type="button" aria-pressed={openIds.includes(conversation.id)} onClick={()=>setOpenIds(current=>current.includes(conversation.id)?current:[...current,conversation.id])} className={"flex min-w-0 max-w-56 items-center gap-2 rounded-lg border px-3 py-2 text-left "+(openIds.includes(conversation.id)?"border-primary/30 bg-primary/10":"hover:bg-slate-50")}>
-        <MessageCircle className="h-4 w-4 shrink-0 text-primary" aria-hidden="true"/><span className="min-w-0"><span className="block truncate text-xs font-bold">{conversation.otherUser?.name||"Client"}</span><span className="block truncate text-[10px] text-slate-500">{conversation.lastMessage?.content||"Open conversation"}</span></span>
-        {Number(conversation.unreadCount)>0&&<span className="rounded-full bg-primary px-1.5 text-[10px] font-bold text-primary-foreground">{conversation.unreadCount}<span className="sr-only"> unread</span></span>}
-      </button>)}
+    <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(260px,340px)_minmax(0,1fr)]">
+      <div aria-label="Customer conversations" className="min-w-0 overflow-hidden rounded-2xl border bg-white">
+        <div className="border-b px-4 py-3"><h3 className="font-semibold">Messages</h3><p className="text-xs text-slate-500">Customer inbox</p></div>
+        <div className="max-h-[65vh] overflow-y-auto">
+          {loading?<p className="p-4 text-sm text-slate-500">Loading chats…</p>:!conversations.length?<p className="p-4 text-sm text-slate-500">No room chats yet.</p>:conversations.map(conversation=>{
+            const customerName=conversation.otherUser?.name||"Client";
+            const initials=customerName.trim().split(/\s+/).slice(0,2).map(part=>part.charAt(0)).join("").toUpperCase()||"C";
+            const selected=openIds.includes(conversation.id);
+            return <button key={conversation.id} type="button" aria-pressed={selected} onClick={()=>setOpenIds(current=>current.includes(conversation.id)?current:[...current,conversation.id])} className={"flex w-full min-w-0 items-center gap-3 border-b px-3 py-3 text-left transition-colors "+(selected?"bg-primary/10":"hover:bg-slate-50")}>
+              <span className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">{initials}{Number(conversation.unreadCount)>0&&<span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white bg-green-500"/>}</span>
+              <span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold text-slate-900">{customerName}</span><span className="mt-1 block truncate text-xs text-slate-500">{conversation.lastMessage?.content||"Open conversation"}</span></span>
+              <span className="flex shrink-0 flex-col items-end gap-1">{conversation.lastMessageAt&&<span className="text-[10px] text-slate-400">{new Date(conversation.lastMessageAt).toLocaleDateString(undefined,{month:"short",day:"numeric"})}</span>}{Number(conversation.unreadCount)>0&&<span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-bold text-primary-foreground">{conversation.unreadCount}</span>}</span>
+            </button>;
+          })}
+        </div>
+      </div>
+      <div className="min-w-0 space-y-3">
+        {openChats.length?<div className="grid min-w-0 items-start gap-3 xl:grid-cols-2">{openChats.map(conversation=><UserChatBox key={conversation.id} conversation={conversation} officialAdminId={officialAdminId} onClose={()=>setOpenIds(current=>current.filter(id=>id!==conversation.id))}/>)}</div>:<div className="flex min-h-64 flex-col items-center justify-center rounded-2xl border border-dashed bg-white p-6 text-center"><MessageCircle className="mb-3 h-10 w-10 text-slate-300" aria-hidden="true"/><p className="font-semibold text-slate-700">Your messages</p><p className="mt-1 text-sm text-slate-500">ग्राहकको message हेर्न बायाँपट्टि नाम छान्नुहोस्। नयाँ unread message आउँदा chat आफैँ खुल्छ।</p></div>}
+      </div>
     </div>
-    {openChats.length?<div className="grid items-start gap-3 sm:grid-cols-2 xl:grid-cols-3">{openChats.map(conversation=><UserChatBox key={conversation.id} conversation={conversation} officialAdminId={officialAdminId} onClose={()=>setOpenIds(current=>current.filter(id=>id!==conversation.id))}/>)}</div>:<p className="rounded-xl border border-dashed p-6 text-center text-xs text-slate-500">User छानेर chat खोल्नुहोस्। नयाँ unread message आउँदा छुट्टै box खुल्छ।</p>}
   </section>;
 }
