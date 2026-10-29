@@ -1,10 +1,10 @@
 "use client";
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { FormEvent, useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { playUiSound } from "@/lib/ui-sounds";
 import { SoundToggle } from "@/components/SiteSoundEffects";
-import { X, LockKeyhole, Send, MapPin } from "lucide-react";
+import { X, LockKeyhole, MapPin, MessageCircle } from "lucide-react";
 import { useUserStore } from "@/stores/user-store";
 import { api } from "@/http/api/api";
 import { privateApi } from "@/http/api/privateApi";
@@ -15,6 +15,7 @@ import { RoomListingActions } from "./RoomListingActions";
 
 function AdminRoomMessage({room}: {room:AvailableRoom}) {
   const user=useUserStore(state=>state.user);
+  const messageId=useId();
   const router=useRouter();
   const [message,setMessage]=useState("नमस्ते, यो room अझै available छ?");
   const [busy,setBusy]=useState(false),[sent,setSent]=useState(false),[error,setError]=useState("");
@@ -31,16 +32,40 @@ function AdminRoomMessage({room}: {room:AvailableRoom}) {
     } catch(e) {setError(officeError(e));}
     finally {pending.current=false;setBusy(false);}
   }
-  return <section id={"admin-message-"+room.id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-    <h3 className="font-bold">Message Room Khoj admin</h3>
-    <p className="mt-1 flex items-center gap-1 text-xs text-slate-500"><LockKeyhole className="h-3 w-3" aria-hidden="true"/>यो message admin ले मात्र हेर्न मिल्छ।</p>
-    {sent?<p role="status" className="mt-3 rounded-xl bg-emerald-50 p-3 text-sm text-emerald-800">Message पठाइयो। Admin ले हेरेपछि तपाईंलाई सम्पर्क गर्न सक्नुहुन्छ।</p>:user?<form onSubmit={send} className="mt-3 space-y-2">
-      <label className="sr-only" htmlFor={"room-message-"+room.id}>Your private message</label>
-      <textarea id={"room-message-"+room.id} required minLength={1} maxLength={2000} value={message} onChange={e=>setMessage(e.target.value)} className="min-h-24 w-full resize-y rounded-xl border bg-slate-50 p-3 text-sm" />
-      <button disabled={busy||!message.trim()} className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"><Send className="h-4 w-4" aria-hidden="true"/>{busy?"Sending…":"Send to admin"}</button>
-    </form>:<Link href="/auth/login" className="mt-3 inline-block rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white">Log in to message admin</Link>}
-    {error&&<p role="alert" className="mt-2 text-sm text-red-700">{error}</p>}
+  return <section id={messageId+"-box"} className="rounded-2xl border border-border bg-card p-3 text-card-foreground shadow-[0_3px_16px_rgba(0,0,0,0.06)] sm:p-4">
+    <h3 className="flex items-center gap-2 text-sm font-bold"><MessageCircle className="h-5 w-5 text-primary" aria-hidden="true"/>Message Room Khoj</h3>
+    {sent?<p role="status" className="mt-3 rounded-xl bg-primary/10 p-3 text-sm text-primary">Message पठाइयो। Messages box मा कुराकानी जारी राख्नुहोस्।</p>:user?<form onSubmit={send} className="mt-3 flex items-end gap-2">
+      <label className="sr-only" htmlFor={messageId}>Your private message</label>
+      <textarea id={messageId} required minLength={1} maxLength={2000} rows={1} value={message} onChange={e=>setMessage(e.target.value)} className="min-h-12 min-w-0 flex-1 resize-y rounded-2xl border-0 bg-muted px-4 py-3 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring" />
+      <button disabled={busy||!message.trim()} className="inline-flex min-h-12 shrink-0 items-center justify-center rounded-xl bg-primary px-4 py-3 text-sm font-bold text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50">{busy?"Sending…":"Send"}</button>
+    </form>:<Link href="/auth/login" className="mt-3 block rounded-xl bg-primary px-4 py-3 text-center text-sm font-semibold text-primary-foreground">Log in to message admin</Link>}
+    <p className="mt-2 flex items-center gap-1 text-[11px] text-muted-foreground"><LockKeyhole className="h-3 w-3 shrink-0" aria-hidden="true"/>Private chat · Admin मात्र</p>
+    {error&&<p role="alert" className="mt-2 text-sm text-destructive">{error}</p>}
   </section>;
+
+}
+
+export function RoomListingBody({room,onDetails,compact=false}: {room:AvailableRoom;onDetails?:()=>void;compact?:boolean}) {
+  const container=useRef<HTMLDivElement>(null);
+  function message() {
+    const target=container.current?.querySelector<HTMLTextAreaElement>("textarea");
+    const box=container.current?.querySelector<HTMLElement>("section");
+    box?.scrollIntoView({behavior:"smooth",block:"center"});
+    target?.focus({preventScroll:true});
+  }
+  const rent=Number(room.price);
+  return <div ref={container} className="space-y-5 p-4 text-card-foreground sm:p-5">
+    <div>
+      <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="min-w-0 break-words text-xl font-extrabold leading-tight">{onDetails?<button type="button" onClick={onDetails} className="text-left hover:text-primary">{room.title||"Room for rent"}</button>:room.title||"Room for rent"}</h3><span className="rounded-full bg-primary/10 px-2.5 py-1 text-[10px] font-bold text-primary">Available</span></div>
+      <p className="mt-1 text-lg font-bold">{Number.isFinite(rent)&&rent>0?<>रु {rent.toLocaleString()}<span className="text-sm font-semibold">/month</span></>:<span className="text-sm">Ask reception for rent</span>}</p>
+      <p className="mt-3 flex items-start gap-1.5 text-sm font-medium text-muted-foreground"><MapPin className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true"/><span className="min-w-0 break-words">{room.location||"Location not entered"}</span></p>
+    </div>
+    <AdminRoomMessage room={room}/>
+    <RoomListingActions room={room} onMessage={message}/>
+    <section className="space-y-2"><h4 className="text-base font-extrabold">Description</h4><p className={"whitespace-pre-line break-words text-sm leading-relaxed "+(compact?"line-clamp-4":"")}>{room.details||("Room for rent in "+room.location+". Contact Room Khoj for availability and viewing.")}</p><p className="text-xs text-muted-foreground">Room code · <span className="font-mono">{room.code}</span></p></section>
+    {onDetails?<button type="button" onClick={onDetails} className="w-full rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm font-semibold text-primary hover:bg-primary/10">View all room details</button>:<><details className="rounded-xl border border-border"><summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-primary">Facilities & all room details</summary><div className="p-2"><PublicRoomDetails room={room}/></div></details><RoomContactUnlock roomId={room.id}/></>}
+    {room.tiktokUrl&&<a href={room.tiktokUrl} target="_blank" rel="noopener noreferrer" className="inline-block text-xs font-semibold text-primary underline underline-offset-4">Watch TikTok video ↗</a>}
+  </div>;
 }
 
 export function RoomListingDetails({room,onClose}: {room:AvailableRoom;onClose:()=>void}) {
@@ -50,22 +75,11 @@ export function RoomListingDetails({room,onClose}: {room:AvailableRoom;onClose:(
     node?.showModal();document.body.style.overflow="hidden";
     return ()=>{node?.close();document.body.style.overflow=previous;};
   },[]);
-  function message() {
-    document.getElementById("admin-message-"+room.id)?.scrollIntoView({behavior:"smooth",block:"center"});
-    document.getElementById("room-message-"+room.id)?.focus({preventScroll:true});
-  }
-  return <dialog ref={dialog} onCancel={event=>{event.preventDefault();onClose();}} aria-label={room.title+" details"} className="fixed inset-0 m-auto h-[100dvh] max-h-[100dvh] w-full max-w-none overflow-y-auto bg-white p-0 text-slate-900 backdrop:bg-slate-950/60 sm:h-[92dvh] sm:max-w-2xl sm:rounded-3xl">
-    <div className="sticky top-0 z-20 flex items-center justify-between border-b bg-white/95 px-4 py-3 backdrop-blur"><span className="font-mono text-sm font-semibold">{room.code}</span><button type="button" onClick={onClose} autoFocus aria-label="Close room details" className="rounded-full bg-slate-100 p-2"><X className="h-5 w-5"/></button></div>
-    {room.hasVideo!==false?<video data-video-intent="room" controls playsInline preload="metadata" aria-label={room.title+" room video"} className="aspect-video w-full bg-slate-950 object-contain" src={officeBackend+"/office/availability/"+encodeURIComponent(room.id)+"/video"}/>:<div className="flex aspect-video items-center justify-center bg-slate-100"><img src="/roomkhoj-logo.png" alt="RoomKhoj — no video available" className="h-24 w-24 object-contain"/></div>}
-    <div className="space-y-5 px-4 py-5 pb-12 sm:px-6">
-      <div><span className="inline-flex rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700">Available</span><h2 className="mt-2 break-words text-2xl font-extrabold">{room.title}</h2><p className="mt-1 text-xl font-bold">रु {Number(room.price).toLocaleString()}<span className="text-sm font-medium text-slate-500"> / month</span></p><p className="mt-2 flex items-start gap-1.5 text-sm text-slate-500"><MapPin className="h-4 w-4 shrink-0"/>{room.location}</p></div>
-      <div className="flex justify-end"><SoundToggle/></div>
-      <RoomListingActions room={room} onMessage={message}/>
-      <AdminRoomMessage key={room.id} room={room}/>
-      <section><h3 className="mb-3 text-lg font-bold">Room description & details</h3><PublicRoomDetails room={room}/></section>
-      <RoomContactUnlock roomId={room.id}/>
-      {room.tiktokUrl&&<a href={room.tiktokUrl} target="_blank" rel="noopener noreferrer" className="inline-block text-sm font-semibold text-blue-700 underline">Watch TikTok video ↗</a>}
-    </div>
+  return <dialog ref={dialog} onCancel={event=>{event.preventDefault();onClose();}} aria-label={room.title+" details"} className="fixed inset-0 m-auto h-[100dvh] max-h-[100dvh] w-full max-w-none overflow-y-auto bg-card p-0 text-card-foreground backdrop:bg-slate-950/60 sm:h-[92dvh] sm:max-w-2xl sm:rounded-3xl">
+    <div className="sticky top-0 z-20 flex items-center justify-between border-b border-border bg-card/95 px-4 py-3 backdrop-blur"><button type="button" onClick={onClose} autoFocus aria-label="Close room details" className="rounded-full p-2 hover:bg-muted"><X className="h-6 w-6"/></button><span className="font-mono text-xs text-muted-foreground">{room.code}</span><SoundToggle/></div>
+    {room.hasVideo!==false?<video data-video-intent="room" controls playsInline preload="metadata" aria-label={room.title+" room video"} className="aspect-[4/3] w-full bg-black object-contain" src={officeBackend+"/office/availability/"+encodeURIComponent(room.id)+"/video"}/>:<div className="flex aspect-video items-center justify-center bg-slate-100"><img src="/roomkhoj-logo.png" alt="RoomKhoj — no video available" className="h-24 w-24 object-contain"/></div>}
+    <RoomListingBody room={room}/>
+
   </dialog>;
 }
 

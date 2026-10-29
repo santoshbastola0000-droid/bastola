@@ -43,15 +43,16 @@ export function RoomListingActions({room,onMessage,side=false}: {room:AvailableR
     } finally {setSharing(false);}
   }
   const button = side
-    ? "flex h-11 w-11 flex-col items-center justify-center rounded-full border border-white/30 bg-slate-950/80 text-white shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
-    : "flex flex-1 flex-col items-center gap-1 rounded-xl bg-slate-50 px-3 py-3 text-xs font-semibold text-slate-700 hover:bg-slate-100";
+    ? "flex h-11 w-11 items-center justify-center rounded-full border border-white/30 bg-black/70 text-white shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
+    : "flex min-w-0 flex-1 flex-col items-center gap-2 rounded-xl py-2 text-xs font-semibold text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring";
+  const circle = side ? "" : "flex h-12 w-12 items-center justify-center rounded-full bg-muted transition-colors group-hover:bg-primary/10 group-hover:text-primary";
   return <div className={side?"absolute right-3 top-16 z-10 flex flex-col items-end gap-2":"space-y-2"}>
-    <div className={side?"flex flex-col gap-2":"flex gap-2"}>
-      <button type="button" onClick={save} className={button} aria-label={saved?"Unsave room":"Save room on this device"} aria-pressed={saved} title={saved?"Saved":"Save on this device"}><Bookmark className={"h-5 w-5 "+(saved?"fill-current":"")} aria-hidden="true"/>{!side&&<span>{saved?"Saved":"Save"}</span>}</button>
-      <button type="button" onClick={()=>void share()} disabled={sharing} className={button} aria-label="Share room" title="Share"><Share2 className="h-5 w-5" aria-hidden="true"/>{!side&&<span>Share</span>}</button>
-      <button type="button" onClick={onMessage} className={button} aria-label="Message admin privately" title="Message admin"><MessageCircle className="h-5 w-5" aria-hidden="true"/>{!side&&<span>Message admin</span>}</button>
+    <div className={side?"flex flex-col gap-2":"flex items-start justify-around gap-3"}>
+      <button type="button" onClick={onMessage} className={"group "+button} aria-label="Message admin privately" title="Message admin"><span className={circle}><MessageCircle className="h-6 w-6" aria-hidden="true"/></span>{!side&&<span>Message</span>}</button>
+      <button type="button" onClick={()=>void share()} disabled={sharing} className={"group "+button} aria-label="Share room" title="Share"><span className={circle}><Share2 className="h-6 w-6" aria-hidden="true"/></span>{!side&&<span>Share</span>}</button>
+      <button type="button" onClick={save} className={"group "+button} aria-label={saved?"Unsave room":"Save room on this device"} aria-pressed={saved} title={saved?"Saved":"Save on this device"}><span className={circle+" "+(saved?"bg-primary/10 text-primary":"")}><Bookmark className={"h-6 w-6 "+(saved?"fill-current":"")} aria-hidden="true"/></span>{!side&&<span>{saved?"Saved":"Save"}</span>}</button>
     </div>
-    {notice&&<p role="status" className="max-w-52 rounded-lg bg-white p-2 text-xs text-slate-700 shadow">{notice}</p>}
-    {fallback&&<label className="block max-w-56 rounded-lg bg-white p-2 text-xs text-slate-800 shadow">Copy room link<input aria-label="Room share link" readOnly value={fallback} onFocus={e=>e.target.select()} className="mt-1 w-full rounded border p-2"/></label>}
+    {notice&&<p role="status" className="rounded-lg bg-muted p-2 text-xs text-muted-foreground">{notice}</p>}
+    {fallback&&<label className="block rounded-lg border border-border bg-card p-2 text-xs text-card-foreground">Copy room link<input aria-label="Room share link" readOnly value={fallback} onFocus={e=>e.target.select()} className="mt-1 w-full rounded border border-input bg-background p-2"/></label>}
   </div>;
 }
