@@ -8,6 +8,7 @@ export const navItems: NavItem[] = [
   { title: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
   { title: "Traffic Tracker", href: "/admin/dashboard/traffic", icon: BarChart },
   { title: "Security Scanner", href: "/admin/dashboard/security-scanner", icon: ScanSearch },
+  { title: "Room Reports", href: "/admin/dashboard/room-reports", icon: ShieldCheck },
   { title: "Rooms", href: "/admin/dashboard/rooms", icon: Building2 },
   { title: "Pending Approvals", href: "/admin/dashboard/rooms/pending", icon: Building2 },
   { title: "Approved Rooms", href: "/admin/dashboard/rooms/approved", icon: Building2 },
@@ -45,7 +46,7 @@ export const navItems: NavItem[] = [
 export type NavGroup = "Office" | "Rooms" | "Users" | "AI" | "Finance" | "Settings" | "Others";
 const groupPaths: Record<NavGroup, string[]> = {
   Office: ["office", "room-chatbox", "vacancies", "candidates", "candidate-contacts", "records", "staff-tracking", "#inter-call"],
-  Rooms: ["rooms"],
+  Rooms: ["rooms", "room-reports"],
   Users: ["users", "user-band", "messages", "notifications", "referrals"],
   AI: ["bot-users", "bot-engagement", "ai-call", "ai-owner-calling", "ai-live-chatbox", "chatbot", "ai-profiles", "ai-learning", "ai-developer", "ai-flow-monitor"],
   Finance: ["wallet", "monetization", "commission"],

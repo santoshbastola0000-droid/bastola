@@ -11,6 +11,7 @@ import { privateApi } from "@/http/api/privateApi";
 import { officeBackend, officeError } from "@/http/services/office.service";
 import { PublicRoomDetails } from "./PublicRoomDetails";
 import { RoomContactUnlock, type AvailableRoom } from "./RoomAvailability";
+import { ReportRoom } from "./ReportRoom";
 import { RoomListingActions } from "./RoomListingActions";
 
 const listingDay = new Intl.DateTimeFormat("en-GB",{day:"numeric",month:"short",year:"numeric",timeZone:"Asia/Kathmandu"});
@@ -99,6 +100,7 @@ export function RoomListingDetails({room,onClose}: {room:AvailableRoom;onClose:(
     <div className="sticky top-0 z-20 flex items-center justify-between border-b border-border bg-card/95 px-4 py-3 backdrop-blur"><button type="button" onClick={onClose} autoFocus aria-label="Close room details" className="rounded-full p-2 hover:bg-muted"><X className="h-6 w-6"/></button><span className="font-mono text-xs text-muted-foreground">{room.code}</span><SoundToggle/></div>
     {room.hasVideo!==false?<video data-video-intent="room" controls playsInline preload="metadata" aria-label={room.title+" room video"} className="aspect-[4/3] w-full bg-black object-contain" src={officeBackend+"/office/availability/"+encodeURIComponent(room.id)+"/video"}/>:<div className="flex aspect-video items-center justify-center bg-slate-100"><img src="/roomkhoj-logo.png" alt="RoomKhoj — no video available" className="h-24 w-24 object-contain"/></div>}
     <RoomListingBody room={room}/>
+    <ReportRoom key={room.id} roomId={room.id}/>
 
   </dialog>;
 }
