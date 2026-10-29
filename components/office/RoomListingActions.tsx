@@ -33,7 +33,7 @@ export function RoomListingActions({room,onMessage,side=false,compact=false}: {r
   async function share() {
     if(sharing)return;
     setSharing(true);setNotice("");setFallback("");
-    const url=new URL("/rooms/availability",window.location.origin);
+    const url=new URL("/rooms",window.location.origin);
     url.searchParams.set("room",room.id);
     try {
       if(navigator.share)await navigator.share({title:room.title,text:room.code+" · "+room.location,url:url.href});

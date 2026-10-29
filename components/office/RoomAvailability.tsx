@@ -1,4 +1,5 @@
 "use client";
+import { useUserStore } from "@/stores/user-store";
 import { Bookmark, SlidersHorizontal } from "lucide-react";
 import { readSaved, SAVE_EVENT } from "./RoomListingActions";
 import { loadAvailabilityRooms } from "@/lib/availability-list";
@@ -30,6 +31,7 @@ export function AvailabilityCard({room,onSelect}: {room:AvailableRoom;hideContac
  </article>;
 }
 export function RoomAvailability({hideContact=true,embedded=false}: {hideContact?:boolean;embedded?:boolean} = {}) {
+ const user=useUserStore(state=>state.user);
  const filterPanelId=useId();
  const [sharedRoomId,setSharedRoomId]=useState('');
  useEffect(()=>{const id=new URL(window.location.href).searchParams.get('room');if(id && /^[0-9a-f-]{36}$/i.test(id))setSharedRoomId(id);},[]);
@@ -50,6 +52,15 @@ export function RoomAvailability({hideContact=true,embedded=false}: {hideContact
     .finally(()=>{if(!controller.signal.aborted)setLoading(false);});
    return()=>controller.abort();
  },[search,page,savedOnly,savedKey,maxRent,roomType,retry]);
+ function openRoom(room:AvailableRoom) {
+   if(!user) {
+     setSharedRoomId(room.id);
+     sessionStorage.setItem("roomkhoj_post_auth_redirect","/rooms?room="+encodeURIComponent(room.id));
+     window.dispatchEvent(new Event("roomkhoj:open-login"));
+     return;
+   }
+   setSelectedRoom(room);
+ }
  const chip="inline-flex min-h-8 items-center gap-1 rounded-full border px-3 py-1 text-[11px] font-semibold transition-colors";
  const activeChip="border-primary/25 bg-primary/10 text-primary",idleChip="border-border bg-card text-muted-foreground hover:text-primary";
  const filterCount=Number(maxRent>0)+Number(Boolean(roomType));
@@ -74,12 +85,12 @@ export function RoomAvailability({hideContact=true,embedded=false}: {hideContact
    {error&&<div role="alert" className="rounded-xl bg-destructive/10 p-3 text-xs text-destructive"><p>{error}</p><button type="button" onClick={()=>setRetry(v=>v+1)} className="mt-2 rounded-lg border px-3 py-1.5">Retry</button></div>}
    {loading?<p role="status" className="py-4 text-xs text-muted-foreground">Loading rooms…</p>:<>
     <p aria-live="polite" className="text-xs text-muted-foreground">{total} {savedOnly?'saved available':'available'} rooms</p>
-    <div className="grid gap-3 sm:grid-cols-2">{rooms.map(room=><AvailabilityCard key={room.id} room={room} hideContact={hideContact} onSelect={setSelectedRoom}/>)}</div>
+    <div className="grid gap-3 sm:grid-cols-2">{rooms.map(room=><AvailabilityCard key={room.id} room={room} hideContact={hideContact} onSelect={openRoom}/>)}</div>
     {!rooms.length&&!error&&<p className="rounded-xl border border-dashed p-5 text-center text-xs text-muted-foreground">{savedOnly&&!savedIds.length?'Card को Save थिचेर यहाँ rooms राख्नुहोस्।':'मिल्ने room भेटिएन। Search वा filters परिवर्तन गर्नुहोस्।'}</p>}
     {(page>0||total>24)&&<div className="flex justify-between"><button disabled={page===0} onClick={()=>setPage(p=>p-1)} className="rounded-lg border px-3 py-1.5 text-xs disabled:opacity-40">Previous</button><button disabled={(page+1)*24>=total} onClick={()=>setPage(p=>p+1)} className="rounded-lg border px-3 py-1.5 text-xs disabled:opacity-40">Next</button></div>}
    </>}
    {sharedRoomId&&<SharedAvailabilityRoom id={sharedRoomId}/>}
-   {selectedRoom&&<RoomListingDetails key={selectedRoom.id} room={selectedRoom} onClose={()=>setSelectedRoom(null)}/>}
+   {user&&selectedRoom&&<RoomListingDetails key={selectedRoom.id} room={selectedRoom} onClose={()=>setSelectedRoom(null)}/>}
   </div>
  </section>;
 }

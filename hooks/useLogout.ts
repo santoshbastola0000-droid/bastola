@@ -17,7 +17,7 @@ export const useLogout = () => {
     localStorage.removeItem("user-storage");
     localStorage.removeItem("auth-token");
 
-    router.push("/");
+    router.push("/rooms");
     router.refresh(); // Force a refresh to update server components
   };
 

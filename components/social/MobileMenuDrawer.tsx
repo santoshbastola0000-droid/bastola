@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import {
+  Clapperboard,
   Bell,
   BriefcaseBusiness,
   Compass,
@@ -38,7 +39,11 @@ export function MobileMenuDrawer({
 
   const mainLinks = [
     { label: "Home", href: "/", icon: House },
-    { label: "Feed", href: "/feed", icon: UsersRound },
+    { label: "Feed", href: "/feed", icon: Home },
+    { label: "Room", href: "/rooms", icon: Building2 },
+    { label: "Reels", href: "/reels", icon: Clapperboard },
+    { label: "Messages", href: "/messages", icon: MessageCircle },
+    { label: "Profile", href: "/user/dashboard/profile", icon: UserRound },
     { label: "Browse Rooms", href: "/rooms", icon: Compass },
     { label: "Find Jobs", href: "/jobs", icon: BriefcaseBusiness },
     { label: "Game", href: "/games", icon: Gamepad2 },

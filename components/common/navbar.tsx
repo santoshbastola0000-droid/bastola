@@ -9,7 +9,7 @@ import {
   Wallet,
   Loader2,
   Bell,
-  Home, PlusCircle, BriefcaseBusiness, MessageCircle, Truck,
+  Gamepad2, Clapperboard, UserRound, Home, PlusCircle, BriefcaseBusiness, MessageCircle, Truck,
   LayoutDashboard, Building2, Gift, ClipboardList, Settings,
   CircleHelp, ChevronDown, ChevronRight, LogOut, Wrench,
   Droplets, Sparkles, Wifi, PhoneCall, UsersRound, Keyboard, Search, type LucideIcon,
@@ -34,7 +34,7 @@ import {
 } from "@/components/ui/sheet";
 
 import { Logo } from "@/components/Logo";
-import { NavLinks } from "@/components/Navlinks";
+import { DesktopPrimaryNav } from "@/components/DesktopPrimaryNav";
 import { UserMenu } from "@/components/UserMenu";
 import { AuthButtons } from "@/components/AuthButtons";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
@@ -43,7 +43,7 @@ import { UserRole } from "@/types/user.types";
 import { useLanguage } from "@/components/providers/LanguageProvider";
 import { socialService, type GlobalSearchResult, type SearchSuggestion } from "@/http/services/social.service";
 
-export function NavBar() {
+export function NavBar({solid=false}:{solid?:boolean}={}) {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [showAllServices, setShowAllServices] = useState(false);
@@ -64,7 +64,7 @@ export function NavBar() {
   const router = useRouter();
 
   const isAuthenticated = !!user;
-  const isHomePage = pathname === "/";
+  const isHomePage = pathname === "/" && !solid;
   const dashboardHref = user?.role === UserRole.ADMIN ? "/admin/dashboard" : "/user/dashboard";
   const protectedHref = (href: string) => isAuthenticated ? href : "/auth/login";
   const { data: interCallStatus } = useQuery({
@@ -76,7 +76,10 @@ export function NavBar() {
   });
 
   const serviceTiles: { key: string; title: string; icon: LucideIcon; href?: string }[] = [
-    { key: "rooms", title: label("Rooms", "कोठाहरू"), icon: Home, href: "/rooms" },
+    { key: "feed", title: label("Feed", "फिड"), icon: Home, href: isAuthenticated?"/feed":"/rooms" },
+    { key: "rooms", title: label("Room", "कोठा"), icon: Building2, href: "/rooms" },
+    { key: "reels", title: label("Reels", "रिल्स"), icon: Clapperboard, href: "/reels" },
+    { key: "profile", title: label("Profile", "प्रोफाइल"), icon: UserRound, href: protectedHref("/user/dashboard/profile") },
     { key: "moving", title: label("Room shifting", "कोठा सार्ने सेवा"), icon: Truck },
     { key: "add", title: label("Post a room", "कोठा पोस्ट गर्नुहोस्"), icon: PlusCircle, href: protectedHref(user?.role === UserRole.ADMIN ? "/admin/dashboard/rooms/create" : "/user/dashboard/rooms/create") },
     { key: "jobs", title: label("Find jobs", "जागिर खोज्नुहोस्"), icon: BriefcaseBusiness, href: "/jobs" },
@@ -84,6 +87,7 @@ export function NavBar() {
     { key: "listings", title: label("My rooms", "मेरा कोठाहरू"), icon: Building2, href: protectedHref(user?.role === UserRole.ADMIN ? "/admin/dashboard/rooms" : "/user/dashboard/rooms") },
     { key: "wallet", title: label("Wallet", "वालेट"), icon: Wallet, href: protectedHref("/user/dashboard/wallet") },
     { key: "dashboard", title: label("Dashboard", "ड्यासबोर्ड"), icon: LayoutDashboard, href: protectedHref(dashboardHref) },
+    { key: "games", title: label("Game", "गेम"), icon: Gamepad2, href: "/games" },
     { key: "typing", title: label("Typing practice", "टाइपिङ सिक्नुहोस्"), icon: Keyboard, href: "/typing" },
     { key: "post-job", title: label("Post a job", "जागिर पोस्ट गर्नुहोस्"), icon: BriefcaseBusiness, href: protectedHref("/jobs/post") },
     { key: "referrals", title: label("Referrals", "रेफरल"), icon: Gift, href: protectedHref("/user/dashboard/referrals") },
@@ -228,9 +232,9 @@ export function NavBar() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
           <Logo variant={isHomePage ? "light" : "dark"} scrolled={scrolled} />
-          <div className="hidden md:flex md:items-center md:gap-5">
+          <div className="hidden md:flex md:items-center md:gap-2">
             <div className="relative">
-              <form onSubmit={submitGlobalSearch} className={`flex h-10 w-[240px] items-center rounded-full border px-3 transition-all ${scrolled || !isHomePage ? "border-slate-200 bg-white" : "border-white/20 bg-white/10 backdrop-blur-md"}`}>
+              <form onSubmit={submitGlobalSearch} className={`flex h-10 w-[140px] lg:w-[180px] xl:w-[220px] items-center rounded-full border px-3 transition-all ${scrolled || !isHomePage ? "border-slate-200 bg-white" : "border-white/20 bg-white/10 backdrop-blur-md"}`}>
                 <Search className={`h-4 w-4 shrink-0 ${scrolled || !isHomePage ? "text-slate-400" : "text-white/70"}`} />
                 <input
                   value={searchQuery}
@@ -286,25 +290,25 @@ export function NavBar() {
                 </div>
               )}
             </div>
-            <NavLinks scrolled={scrolled} isAuthenticated={isAuthenticated} userRole={user?.role} />
-            <Link href="/typing" className={`relative rounded-full px-3 py-2 text-sm font-semibold transition-all duration-200 ${pathname === "/typing" ? "text-[var(--primary)]" : scrolled || !isHomePage ? "text-slate-600 hover:text-slate-900" : "text-white/80 hover:text-white"}`}>{label("Typing", "टाइपिङ")}</Link>
-            <LanguageSwitcher />
-            {isAuthenticated && <Link href="/user/dashboard/wallet" className={`group flex items-center gap-2 rounded-full border px-3 py-2 transition-all duration-200 ${scrolled || !isHomePage ? "border-slate-200 bg-white hover:border-red-300 hover:bg-red-50" : "border-white/20 bg-white/10 backdrop-blur-md hover:bg-white/20"}`}><div className={`flex h-7 w-7 items-center justify-center rounded-full ${scrolled || !isHomePage ? "bg-red-50 text-red-600" : "bg-white/15 text-white"}`}><Wallet className="h-4 w-4" /></div><div className="flex flex-col leading-none"><span className={`text-[9px] font-medium opacity-60 ${walletTextColor}`}>Balance</span>{walletLoading ? <Loader2 className={`mt-1 h-3.5 w-3.5 animate-spin ${walletTextColor}`} /> : <span className={`mt-1 text-xs font-bold ${walletTextColor}`}>रू {Number(walletBalance?.balance ?? 0).toLocaleString("en-NP")}</span>}</div></Link>}
+            <DesktopPrimaryNav isAuthenticated={isAuthenticated} light={!scrolled&&isHomePage}/>
+            <Link href="/typing" className={`hidden xl:block relative rounded-full px-3 py-2 text-sm font-semibold transition-all duration-200 ${pathname === "/typing" ? "text-[var(--primary)]" : scrolled || !isHomePage ? "text-slate-600 hover:text-slate-900" : "text-white/80 hover:text-white"}`}>{label("Typing", "टाइपिङ")}</Link>
+            <div className="hidden xl:block"><LanguageSwitcher /></div>
+            {isAuthenticated && <Link href="/user/dashboard/wallet" className={`group hidden lg:flex items-center gap-2 rounded-full border px-3 py-2 transition-all duration-200 ${scrolled || !isHomePage ? "border-slate-200 bg-white hover:border-red-300 hover:bg-red-50" : "border-white/20 bg-white/10 backdrop-blur-md hover:bg-white/20"}`}><div className={`flex h-7 w-7 items-center justify-center rounded-full ${scrolled || !isHomePage ? "bg-red-50 text-red-600" : "bg-white/15 text-white"}`}><Wallet className="h-4 w-4" /></div><div className="flex flex-col leading-none"><span className={`text-[9px] font-medium opacity-60 ${walletTextColor}`}>Balance</span>{walletLoading ? <Loader2 className={`mt-1 h-3.5 w-3.5 animate-spin ${walletTextColor}`} /> : <span className={`mt-1 text-xs font-bold ${walletTextColor}`}>रू {Number(walletBalance?.balance ?? 0).toLocaleString("en-NP")}</span>}</div></Link>}
             {isAuthenticated && <Link href="/user/dashboard" aria-label="Notifications" className={`relative flex h-10 w-10 items-center justify-center rounded-full border transition-all duration-200 ${scrolled || !isHomePage ? "border-slate-200 bg-white text-slate-700 hover:bg-slate-50" : "border-white/20 bg-white/10 text-white backdrop-blur-md hover:bg-white/20"}`}><Bell className="h-5 w-5" /><span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-red-500 ring-2 ring-white" /></Link>}
             {isAuthenticated ? <UserMenu user={user} onLogout={handleLogout} scrolled={scrolled} /> : <AuthButtons scrolled={scrolled && !isHomePage} />}
           </div>
 
-          <div className="flex items-center gap-2 md:hidden">
+          <div className="flex items-center gap-2">
             <button
               type="button"
               aria-label="Search"
               onClick={() => router.push("/search")}
-              className={`flex h-9 w-9 items-center justify-center rounded-full transition-all ${scrolled || !isHomePage ? "border border-slate-200 bg-white text-slate-700" : "border border-white/20 bg-black/20 text-white"}`}
+              className={`flex md:hidden h-9 w-9 items-center justify-center rounded-full transition-all ${scrolled || !isHomePage ? "border border-slate-200 bg-white text-slate-700" : "border border-white/20 bg-black/20 text-white"}`}
             >
               <Search className="h-4.5 w-4.5" />
             </button>
-            {isAuthenticated && <Link href="/user/dashboard/wallet" aria-label="Wallet" className={`flex h-9 items-center gap-1.5 rounded-full px-2.5 text-xs font-bold shadow-sm backdrop-blur-md transition-all ${scrolled || !isHomePage ? "border border-slate-200 bg-white text-slate-800" : "border border-white/20 bg-black/20 text-white"}`}><Wallet className="h-4 w-4 text-red-500" />{walletLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <span>रू {Number(walletBalance?.balance ?? 0).toLocaleString("en-NP")}</span>}</Link>}
-            <Link href="/user/dashboard" aria-label="Notifications" className={`relative flex h-9 w-9 items-center justify-center rounded-full transition-all ${scrolled || !isHomePage ? "border border-slate-200 bg-white text-slate-700" : "border border-white/20 bg-black/20 text-white"}`}><Bell className="h-4.5 w-4.5" /><span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-red-500 ring-2 ring-white" /></Link>
+            {isAuthenticated && <Link href="/user/dashboard/wallet" aria-label="Wallet" className={`flex md:hidden h-9 items-center gap-1.5 rounded-full px-2.5 text-xs font-bold shadow-sm backdrop-blur-md transition-all ${scrolled || !isHomePage ? "border border-slate-200 bg-white text-slate-800" : "border border-white/20 bg-black/20 text-white"}`}><Wallet className="h-4 w-4 text-red-500" />{walletLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <span>रू {Number(walletBalance?.balance ?? 0).toLocaleString("en-NP")}</span>}</Link>}
+            <Link href="/user/dashboard" aria-label="Notifications" className={`relative flex md:hidden h-9 w-9 items-center justify-center rounded-full transition-all ${scrolled || !isHomePage ? "border border-slate-200 bg-white text-slate-700" : "border border-white/20 bg-black/20 text-white"}`}><Bell className="h-4.5 w-4.5" /><span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-red-500 ring-2 ring-white" /></Link>
 
             <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
               <SheetTrigger asChild><Button variant="ghost" size="icon" aria-label={label("Open services menu", "सेवा मेनु खोल्नुहोस्")} className={`relative ${scrolled || !isHomePage ? "text-slate-700" : "text-white"}`}>{mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}</Button></SheetTrigger>

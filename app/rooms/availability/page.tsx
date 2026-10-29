@@ -1,20 +1,9 @@
-import type { Metadata } from "next";
-import { NavBar } from "@/components/common/navbar";
-import { RoomAvailability } from "@/components/office/RoomAvailability";
-
-export const metadata: Metadata = {
-  title: "Room Availability | Room Khoj",
-  description: "Browse available rooms added by the Room Khoj office and reception.",
-  alternates: { canonical: "https://www.roomkhoj.com/rooms/availability" },
-};
-
-export default function RoomAvailabilityPage() {
-  return (
-    <>
-      <NavBar />
-      <main className="min-h-screen bg-slate-50 px-4 pt-24 pb-32">
-        <RoomAvailability embedded hideContact />
-      </main>
-    </>
-  );
+import { redirect } from "next/navigation";
+export default async function RoomAvailabilityAlias({searchParams}:{searchParams:Promise<Record<string,string|string[]|undefined>>}) {
+ const params=await searchParams,query=new URLSearchParams();
+ for(const [key,value] of Object.entries(params)) {
+  if(Array.isArray(value))value.forEach(item=>query.append(key,item));
+  else if(value!==undefined)query.set(key,value);
+ }
+ redirect("/rooms"+(query.size?"?"+query.toString():""));
 }

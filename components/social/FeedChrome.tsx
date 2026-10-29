@@ -1,5 +1,6 @@
 "use client";
 
+import { DesktopPrimaryNav } from "@/components/DesktopPrimaryNav";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
@@ -210,7 +211,7 @@ export function FeedChrome() {
       <FeedNetworkOptimizer />
 
       <header className={`sticky top-0 z-[120] border-b border-slate-200 bg-white shadow-[0_1px_0_rgba(15,23,42,0.05)] transition-transform duration-200 ${headerVisible ? "translate-y-0" : "-translate-y-full"}`}>
-        <div className="mx-auto flex h-[64px] max-w-[760px] items-center gap-2 px-3">
+        <div className="mx-auto flex h-[64px] max-w-7xl items-center gap-2 px-3">
           <button
             type="button"
             aria-label="Menu"
@@ -224,11 +225,12 @@ export function FeedChrome() {
           <Link
             href="/feed"
             aria-label="RoomKhoj Home"
-            className="min-w-0 flex-1 truncate text-[30px] font-black leading-none tracking-[-0.055em] text-red-600"
+            className="min-w-0 flex-1 md:flex-none truncate text-[30px] font-black leading-none tracking-[-0.055em] text-red-600"
           >
             roomkhoj
           </Link>
 
+          <DesktopPrimaryNav isAuthenticated={Boolean(user)} className="md:flex-1 md:justify-center"/>
           <button
             type="button"
             aria-label="Create post"

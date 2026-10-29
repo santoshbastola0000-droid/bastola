@@ -180,7 +180,7 @@ export function MobileBottomNav() {
 
           <Link
             data-ui-sound
-            href="/rooms/availability"
+            href="/rooms"
             className={itemClass(isRoom)}
             aria-label="Room"
           >

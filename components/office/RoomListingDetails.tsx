@@ -45,7 +45,7 @@ function AdminRoomMessage({room,compact=false}: {room:AvailableRoom;compact?:boo
       <label className="sr-only" htmlFor={messageId}>Your private message</label>
       <textarea id={messageId} required minLength={1} maxLength={2000} rows={1} value={message} onChange={e=>setMessage(e.target.value)} className="min-h-10 min-w-0 flex-1 resize-y rounded-xl border-0 bg-muted px-3 py-2 text-[16px] leading-6 sm:text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring" />
       <button disabled={busy||!message.trim()} className="inline-flex min-h-10 shrink-0 items-center justify-center rounded-lg bg-primary px-3 py-2 text-xs font-bold text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50">{busy?"Sending…":"Send"}</button>
-    </form>:<Link href="/auth/login" className="mt-3 block rounded-xl bg-primary px-4 py-3 text-center text-sm font-semibold text-primary-foreground">Log in to message admin</Link>}
+    </form>:<Link href="/auth/login" onClick={()=>sessionStorage.setItem("roomkhoj_post_auth_redirect","/rooms?room="+encodeURIComponent(room.id))} className="mt-3 block rounded-xl bg-primary px-4 py-3 text-center text-sm font-semibold text-primary-foreground">Log in to message admin</Link>}
     {!compact&&<p className="mt-2 flex items-center gap-1 text-[11px] text-muted-foreground"><LockKeyhole className="h-3 w-3 shrink-0" aria-hidden="true"/>Private chat · Admin मात्र</p>}
     {error&&<p role="alert" className="mt-2 break-words text-xs leading-snug text-destructive">{error}</p>}
   </section>;
@@ -90,12 +90,15 @@ export function RoomListingBody({room,onDetails,compact=false}: {room:AvailableR
 }
 
 export function RoomListingDetails({room,onClose}: {room:AvailableRoom;onClose:()=>void}) {
+  const user=useUserStore(state=>state.user);
   const dialog=useRef<HTMLDialogElement>(null);
   useEffect(()=>{
+    if(!user)return;
     const node=dialog.current,previous=document.body.style.overflow;
     node?.showModal();document.body.style.overflow="hidden";
     return ()=>{node?.close();document.body.style.overflow=previous;};
-  },[]);
+  },[user]);
+  if(!user)return null;
   return <dialog ref={dialog} onCancel={event=>{event.preventDefault();onClose();}} aria-label={room.title+" details"} className="fixed inset-0 m-auto h-[100dvh] max-h-[100dvh] w-full max-w-none overflow-y-auto bg-card p-0 text-card-foreground backdrop:bg-slate-950/60 sm:h-[92dvh] sm:max-w-2xl sm:rounded-3xl">
     <div className="sticky top-0 z-20 flex items-center justify-between border-b border-border bg-card/95 px-4 py-3 backdrop-blur"><button type="button" onClick={onClose} autoFocus aria-label="Close room details" className="rounded-full p-2 hover:bg-muted"><X className="h-6 w-6"/></button><span className="font-mono text-xs text-muted-foreground">{room.code}</span><SoundToggle/></div>
     {room.hasVideo!==false?<video data-video-intent="room" controls playsInline preload="metadata" aria-label={room.title+" room video"} className="aspect-[4/3] w-full bg-black object-contain" src={officeBackend+"/office/availability/"+encodeURIComponent(room.id)+"/video"}/>:<div className="flex aspect-video items-center justify-center bg-slate-100"><img src="/roomkhoj-logo.png" alt="RoomKhoj — no video available" className="h-24 w-24 object-contain"/></div>}
@@ -106,7 +109,14 @@ export function RoomListingDetails({room,onClose}: {room:AvailableRoom;onClose:(
 }
 
 export function SharedAvailabilityRoom({id}: {id:string}) {
+  const user=useUserStore(state=>state.user);
   const [room,setRoom]=useState<AvailableRoom|null>(null),[error,setError]=useState("");
-  useEffect(()=>{let alive=true;setRoom(null);setError("");api.get("/office/availability/"+encodeURIComponent(id)).then(r=>{if(alive)setRoom(r.data?.data||r.data);}).catch(()=>{if(alive)setError("यो room अहिले उपलब्ध छैन वा link मिलेन।");});return()=>{alive=false;};},[id]);
+  useEffect(()=>{
+    if(!user)return;
+    let alive=true;setRoom(null);setError("");
+    api.get("/office/availability/"+encodeURIComponent(id)).then(r=>{if(alive)setRoom(r.data?.data||r.data);}).catch(()=>{if(alive)setError("यो room अहिले उपलब्ध छैन वा link मिलेन।");});
+    return()=>{alive=false;};
+  },[id,user]);
+  if(!user)return <button type="button" onClick={()=>{sessionStorage.setItem("roomkhoj_post_auth_redirect","/rooms?room="+encodeURIComponent(id));window.dispatchEvent(new Event("roomkhoj:open-login"));}} className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm font-semibold text-primary">यो room को details हेर्न Login गर्नुहोस्</button>;
   return room?<RoomListingDetails room={room} onClose={()=>{const url=new URL(window.location.href);url.searchParams.delete("room");window.history.replaceState(null,"",url);setRoom(null);}}/>:error?<p role="alert" className="rounded-xl bg-amber-50 p-3 text-sm text-amber-900">{error}</p>:null;
 }

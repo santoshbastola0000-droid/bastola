@@ -1,7 +1,9 @@
-import { FeedChrome } from "@/components/social/FeedChrome";
-
+"use client";
+import dynamic from "next/dynamic";
+import { useUserStore } from "@/stores/user-store";
+import { RoomBrowseScreen } from "@/components/rooms/RoomBrowseScreen";
+const FeedChrome=dynamic(()=>import("@/components/social/FeedChrome").then(module=>module.FeedChrome));
 export default function Home() {
-  // Render the main feed directly so opening `/` does not pay for an extra
-  // server redirect + second navigation before the home UI can start loading.
-  return <FeedChrome />;
+ const user=useUserStore(state=>state.user);
+ return user?<FeedChrome/>:<RoomBrowseScreen/>;
 }
