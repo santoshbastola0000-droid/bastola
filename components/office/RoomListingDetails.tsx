@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { playUiSound } from "@/lib/ui-sounds";
 import { SoundToggle } from "@/components/SiteSoundEffects";
-import { X, LockKeyhole, MapPin, MessageCircle, ChevronRight } from "lucide-react";
+import { X, LockKeyhole, MapPin, MessageCircle, ChevronRight, CalendarDays } from "lucide-react";
 import { useUserStore } from "@/stores/user-store";
 import { api } from "@/http/api/api";
 import { privateApi } from "@/http/api/privateApi";
@@ -12,6 +12,9 @@ import { officeBackend, officeError } from "@/http/services/office.service";
 import { PublicRoomDetails } from "./PublicRoomDetails";
 import { RoomContactUnlock, type AvailableRoom } from "./RoomAvailability";
 import { RoomListingActions } from "./RoomListingActions";
+
+const listingDay = new Intl.DateTimeFormat("en-GB",{day:"numeric",month:"short",year:"numeric",timeZone:"Asia/Kathmandu"});
+const listingTime = new Intl.DateTimeFormat("en-GB",{day:"numeric",month:"short",year:"numeric",hour:"numeric",minute:"2-digit",hour12:true,timeZone:"Asia/Kathmandu"});
 
 function AdminRoomMessage({room,compact=false}: {room:AvailableRoom;compact?:boolean}) {
   const user=useUserStore(state=>state.user);
@@ -57,6 +60,8 @@ export function RoomListingBody({room,onDetails,compact=false}: {room:AvailableR
     target?.focus({preventScroll:true});
   }
   const rent=Number(room.price);
+  const listingDate=room.createdAt?new Date(room.createdAt):null;
+  const validListingDate=listingDate&&!Number.isNaN(listingDate.getTime())?listingDate:null;
   return <div ref={container} className={compact?"space-y-2 p-2.5 text-card-foreground":"space-y-4 p-4 text-card-foreground sm:p-5"}>
     {compact ? <div className="flex items-start justify-between gap-3">
       <div className="min-w-0 flex-1">
@@ -74,6 +79,7 @@ export function RoomListingBody({room,onDetails,compact=false}: {room:AvailableR
       <p className="mt-1.5 flex items-start gap-1 text-xs font-medium text-muted-foreground"><MapPin className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true"/><span className="min-w-0 break-words">{room.location||"Location not entered"}</span></p>
     </div>
     )}
+    {validListingDate&&<p className="flex items-center gap-1 text-[10px] text-muted-foreground"><CalendarDays className="h-3 w-3" aria-hidden="true"/><span>Listed · <time dateTime={validListingDate.toISOString()} title={listingTime.format(validListingDate)+" (Nepal time)"}>{compact?listingDay.format(validListingDate):listingTime.format(validListingDate)+" (Nepal time)"}</time></span></p>}
     <AdminRoomMessage room={room} compact={compact}/>
     <RoomListingActions room={room} onMessage={message} compact={compact}/>
     <section className={compact?"space-y-1 rounded-lg bg-muted/40 px-2.5 py-2":"space-y-1"}>{!compact&&<h4 className="text-base font-extrabold">Description</h4>}<p className={"whitespace-pre-line break-words "+(compact?"line-clamp-2 text-[11px] leading-4":"text-sm leading-relaxed")}>{room.details||("Room for rent in "+room.location+". Contact Room Khoj for availability and viewing.")}</p>{!compact&&<p className="text-[10px] text-muted-foreground">Room code · <span className="font-mono">{room.code}</span></p>}</section>

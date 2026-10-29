@@ -7,7 +7,7 @@ import { RoomListingBody, RoomListingDetails, SharedAvailabilityRoom } from './R
 import { api } from '@/http/api/api';
 import { privateApi } from '@/http/api/privateApi';
 import { officeBackend, officeError } from '@/http/services/office.service';
-export interface AvailableRoom { id: string; code: string; title: string; location: string; details: string; price: number | string; ownerName: string; status: string; tiktokUrl?: string; hasVideo?: boolean; matchProfile?: {exactAddress?: string; latitude?: number | null; longitude?: number | null; city?:string;area?:string;roomType?:string;capacity?:number;facilities?:string[];occupancy?:string;parkingVehicles?:string[]}; }
+export interface AvailableRoom { createdAt?: string; id: string; code: string; title: string; location: string; details: string; price: number | string; ownerName: string; status: string; tiktokUrl?: string; hasVideo?: boolean; matchProfile?: {exactAddress?: string; latitude?: number | null; longitude?: number | null; city?:string;area?:string;roomType?:string;capacity?:number;facilities?:string[];occupancy?:string;parkingVehicles?:string[]}; }
 const unwrap = <T,>(r: {data: T | {data:T}}): T => { const d=r.data;return d && typeof d==='object' && 'data' in d ? (d as {data:T}).data : d as T; };
 export function RoomContactUnlock({roomId}: {roomId:string}) {
  const [key,setKey]=useState(''), [unlocked,setUnlocked]=useState<{ownerPhone:string;ownerName?:string;exactAddress?:string;latitude?:number|null;longitude?:number|null}|null>(null), [error,setError]=useState(''), [busy,setBusy]=useState(false);
