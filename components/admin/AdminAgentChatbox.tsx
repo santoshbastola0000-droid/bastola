@@ -30,7 +30,7 @@ export function AdminAgentChatbox() {
         <div className="flex items-center gap-2"><Headset className="h-5 w-5 text-primary" aria-hidden="true"/><div><h2 id="admin-agent-title" className="font-bold">Room Khoj Agent</h2><p className="text-xs text-slate-500">Private customer messages · Admin only</p></div></div>
         <button type="button" onClick={() => setOpen(false)} aria-label="Close Agent chatbox" className="rounded-full p-2 hover:bg-slate-100"><X className="h-5 w-5"/></button>
       </header>
-      <div className="p-3 md:p-4">{open && <Inbox/>}</div>
+      <div className="p-3 md:p-4">{open && <Inbox messengerMode/>}</div>
     </dialog>
   </>;
 }
