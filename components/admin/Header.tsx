@@ -41,6 +41,7 @@ export function AdminHeader({ isSidebarCollapsed = false }: AdminHeaderProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { user } = useUserStore();
+  const displayName = user?.role === "Admin" ? "Room Khoj" : user?.name || "Room Khoj";
   const { logout } = useLogout();
   const { theme, setTheme } = useTheme();
 
@@ -151,14 +152,14 @@ export function AdminHeader({ isSidebarCollapsed = false }: AdminHeaderProps) {
                   aria-label="Open user menu"
                 >
                   <Avatar className="h-7 w-7 md:h-8 md:w-8">
-                    {profilePhoto ? <AvatarImage src={profilePhoto} alt={user?.name || "Admin"} className="object-cover" /> : null}
+                    {profilePhoto ? <AvatarImage src={profilePhoto} alt={displayName} className="object-cover" /> : null}
                     <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
                       {getInitials()}
                     </AvatarFallback>
                   </Avatar>
                   <div className="hidden lg:flex flex-col items-start">
                     <span className="text-sm font-medium leading-none">
-                      {user?.name || "Admin"}
+                      {displayName}
                     </span>
                     <span className="text-xs text-muted-foreground mt-0.5">
                       Administrator
@@ -175,7 +176,7 @@ export function AdminHeader({ isSidebarCollapsed = false }: AdminHeaderProps) {
                 <DropdownMenuLabel>
                   <div className="flex flex-col space-y-1">
                     <p className="text-sm font-medium leading-none">
-                      {user?.name || "Admin User"}
+                      {displayName}
                     </p>
                     <p className="text-xs text-muted-foreground">
                       {user?.email || "admin@example.com"}

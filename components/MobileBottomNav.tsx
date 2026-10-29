@@ -178,7 +178,7 @@ export function MobileBottomNav() {
           </Link>
 
           <Link
-            href="/rooms"
+            href="/rooms/availability"
             className={itemClass(isRoom)}
             aria-label="Room"
           >
