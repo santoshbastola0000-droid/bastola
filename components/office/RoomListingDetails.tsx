@@ -1,7 +1,7 @@
 "use client";
 import { FormEvent, useEffect, useId, useRef, useState } from "react";
 import Link from "next/link";
-import { playUiSound } from "@/lib/ui-sounds";
+import { playUiSound, unlockSounds } from "@/lib/ui-sounds";
 import { SoundToggle } from "@/components/SiteSoundEffects";
 import { X, LockKeyhole, MapPin, MessageCircle, ChevronRight, CalendarDays } from "lucide-react";
 import { useUserStore } from "@/stores/user-store";
@@ -24,6 +24,7 @@ function AdminRoomMessage({room,compact=false}: {room:AvailableRoom;compact?:boo
   const pending=useRef(false);
   async function send(event:FormEvent) {
     event.preventDefault();if(pending.current||!user)return;
+    unlockSounds();
     pending.current=true;setBusy(true);setError("");
     try {
       await privateApi.post("/message/room-admin/rooms/"+encodeURIComponent(room.id)+"/send",{content:message.trim()});
