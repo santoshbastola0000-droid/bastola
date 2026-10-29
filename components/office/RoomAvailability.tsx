@@ -15,9 +15,13 @@ export function RoomContactUnlock({roomId}: {roomId:string}) {
  <style jsx>{`@keyframes reveal{from{opacity:0;transform:translateY(8px) scale(.97)}to{opacity:1;transform:none}}.contact-reveal{animation:reveal .35s ease-out}@media(prefers-reduced-motion:reduce){.contact-reveal{animation:none}}`}</style></div>;
 }
 export function AvailabilityCard({room,onSelect}: {room:AvailableRoom;hideContact?:boolean;onSelect?: (room:AvailableRoom)=>void}) {
- return <article data-room-availability className="overflow-hidden rounded-2xl border border-border bg-card text-card-foreground shadow-[0_3px_18px_rgba(0,0,0,0.05)]">
+ return <article data-room-availability className="overflow-hidden rounded-[20px] border border-border bg-card text-card-foreground shadow-[0_4px_20px_rgba(0,0,0,0.06)] transition-shadow hover:shadow-[0_8px_28px_rgba(0,0,0,0.10)]">
    <div className="relative bg-black">
      {room.hasVideo!==false?<video data-video-intent="room" controls playsInline preload="none" aria-label={room.title+" room video"} className="aspect-[4/3] w-full object-contain" src={officeBackend+'/office/availability/'+encodeURIComponent(room.id)+'/video'}/>:<div className="flex aspect-[4/3] items-center justify-center bg-muted"><img src="/roomkhoj-logo.png" alt="RoomKhoj — no room video available" loading="lazy" className="h-20 w-20 rounded-xl object-contain"/></div>}
+     <div className="pointer-events-none absolute inset-x-0 top-0 flex items-center justify-between gap-2 bg-gradient-to-b from-black/45 to-transparent p-3 pb-8">
+       <span className="inline-flex items-center gap-1.5 rounded-full border border-white/30 bg-white px-2.5 py-1 text-[10px] font-bold text-primary shadow-sm"><span className="h-1.5 w-1.5 rounded-full bg-primary"/>Available</span>
+       <span className="rounded-lg border border-white/25 bg-black/60 px-2 py-1 font-mono text-[10px] font-medium tracking-wide text-white">{room.code}</span>
+     </div>
    </div>
    <RoomListingBody room={room} compact onDetails={onSelect?()=>onSelect(room):undefined}/>
  </article>;
