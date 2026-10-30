@@ -1,4 +1,5 @@
 "use client";
+import { OwnerVoiceCostPanel } from "@/components/OwnerVoiceCostPanel";
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
@@ -25,6 +26,9 @@ export default function OwnerCallingPage() {
   const [browserStatus, setBrowserStatus] = useState("");
   const [websiteCallId, setWebsiteCallId] = useState("");
   const websiteSocket = useRef<Socket | null>(null);
+  const [budget,setBudget]=useState(true);
+  const [lastCostCallId,setLastCostCallId]=useState("");
+  const [budgetReady,setBudgetReady]=useState(false);
   const [websiteCalling, setWebsiteCalling] = useState(false);
   const [dialStartedAt, setDialStartedAt] = useState<number | null>(null);
   const [dialSeconds, setDialSeconds] = useState(0);
@@ -35,6 +39,12 @@ export default function OwnerCallingPage() {
     tick(); const timer = setInterval(tick, 1000);
     return () => clearInterval(timer);
   }, [dialStartedAt, websiteCallPhase]);
+  useEffect(()=>{
+    setBudgetReady(false);if(!token)return;const abort=new AbortController();
+    void fetch(API+'/ai-owner/admin/voice-cost-config',{credentials:'include',signal:abort.signal,headers:{Authorization:`Bearer ${token}`}})
+      .then(async r=>{if(!r.ok)return;const p=await r.json();if(!abort.signal.aborted)setBudgetReady(typeof (p.data||p).budgetModel==='string');}).catch(()=>undefined);
+    return()=>abort.abort();
+  },[token]);
   useEffect(() => {
     setEligibility(null); setEligibilityError("");
     if (!selectedUserId || !token) return;
@@ -60,6 +70,8 @@ export default function OwnerCallingPage() {
   }
 
   function startWebsiteAiCall() {
+    if(budget&&!budgetReady){setBrowserStatus("Budget model backend update बाँकी छ; standard दरमा चुपचाप call सुरु हुँदैन।");return;}
+    setLastCostCallId("");
     if (!token || !selectedUserId || !eligibility?.optedIn || !eligibility.online || websiteCalling) return;
     websiteSocket.current?.disconnect();
     const socket = io(API + "/messages", {
@@ -71,13 +83,13 @@ export default function OwnerCallingPage() {
     setBrowserStatus("Connecting to RoomKhoj…");
     socket.once("connect", () => {
       socket.timeout(12000).emit("ai-owner:call",
-        {targetUserId:selectedUserId,consentConfirmed:true},
+        {targetUserId:selectedUserId,consentConfirmed:true,budget},
         (error: Error | null, response: {success?:boolean;error?:string;callId?:string}) => {
           if (error || !response?.success || !response.callId) {
             setBrowserStatus(response?.error || "Calling unavailable");
             setWebsiteCalling(false); setWebsiteCallPhase("failed"); setDialStartedAt(null); socket.disconnect(); return;
           }
-          setWebsiteCallId(response.callId);
+          setWebsiteCallId(response.callId);setLastCostCallId(response.callId);
           setWebsiteCallPhase("ringing");
           setBrowserStatus("Ringing user's RoomKhoj account…");
         });
@@ -111,7 +123,9 @@ export default function OwnerCallingPage() {
       <p className="text-sm">Select an online registered user above. The user must first enable AI calling in their privacy settings, remain logged in, and accept the incoming call. Continuous Nepali voice uses WebRTC.</p>
       <p className="text-sm">Calls are permitted only when the selected user's recorded opt-in is active.</p>
       {selectedUserId && <p className="text-sm">{eligibilityError || (eligibility ? `Calling consent: ${eligibility.optedIn?"Enabled":"Disabled"} · User: ${eligibility.online?"Online":"Offline"}` : "Checking consent and presence…")}</p>}
-      <button disabled={!selectedUserId || !eligibility?.optedIn || !eligibility.online || websiteCalling} onClick={() => startWebsiteAiCall()} className="rounded-lg bg-green-700 px-5 py-3 text-white disabled:opacity-50">Call selected user with AI</button>
+      <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={budget} disabled={websiteCalling} onChange={e=>setBudget(e.target.checked)}/>Budget Mini mode · रु. ३/min लक्ष्य {budget&&!budgetReady?'(backend पुष्टि बाँकी)':''}</label>
+      <button disabled={(budget&&!budgetReady)||!selectedUserId || !eligibility?.optedIn || !eligibility.online || websiteCalling} onClick={() => startWebsiteAiCall()} className="rounded-lg bg-green-700 px-5 py-3 text-white disabled:opacity-50">Call selected user with AI</button>
+      <OwnerVoiceCostPanel callId={lastCostCallId} poll={websiteCalling} />
       {websiteCallPhase !== "idle" && <div role="status" aria-live="polite" className="rounded-xl border bg-background p-4 space-y-2"><div className="flex items-center gap-3"><span className={`h-3 w-3 rounded-full ${["connecting","dialing","ringing"].includes(websiteCallPhase) ? "animate-pulse bg-amber-500" : websiteCallPhase === "connected" ? "bg-green-500" : "bg-gray-400"}`} /><strong>{websiteCallPhase === "connecting" ? "Connecting to server…" : websiteCallPhase === "ringing" ? "Dialing… Ringing user" : websiteCallPhase === "connected" ? "Call accepted / connected" : websiteCallPhase === "ended" ? "Call ended" : "Call failed or not answered"}</strong></div>{["connecting","dialing","ringing"].includes(websiteCallPhase) && <p className="text-sm tabular-nums">Waiting {Math.floor(dialSeconds / 60).toString().padStart(2,"0")}:{(dialSeconds % 60).toString().padStart(2,"0")} · Awaiting user acceptance</p>}<p className="text-xs text-muted-foreground">Ringing means the server accepted the call request; it does not confirm the user answered.</p></div>}
       {websiteCallId && <button type="button" onClick={endWebsiteAiCall} className="rounded-lg bg-red-700 px-5 py-3 text-white">End website AI call</button>}
       <p className="text-sm">User opt-in settings: <Link className="underline" href="/ai-call-privacy">roomkhoj.com/ai-call-privacy</Link></p>

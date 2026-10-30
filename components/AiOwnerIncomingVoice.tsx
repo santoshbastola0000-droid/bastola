@@ -1,4 +1,5 @@
 "use client";
+import { OwnerCostReporter, type OwnerCostReport } from '@/lib/voice/owner-cost-reporter';
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { io, type Socket } from "socket.io-client";
@@ -14,9 +15,10 @@ import dynamic from 'next/dynamic';
 const LocalOwnerVoice=dynamic(()=>import('@/components/LocalOwnerVoice'),{ssr:false});
 
 const API = (process.env.NEXT_PUBLIC_BACKEND_URL || "https://api.roomkhoj.com").replace(/\/$/, "");
-type TokenResult = { success?: boolean; token?: string; model?: string; error?: string; manualTurns?:boolean; acknowledgements?:boolean };
+type TokenResult = { success?: boolean; token?: string; model?: string; error?: string; manualTurns?:boolean; acknowledgements?:boolean;cost?:OwnerCostReport };
 
 export function AiOwnerIncomingVoice() {
+  const costReporter=useRef<OwnerCostReporter|null>(null);
   const token = useTokenStore(s => s.token);
   const socket = useRef<Socket | null>(null);
   const peer = useRef<RTCPeerConnection | null>(null);
@@ -51,6 +53,7 @@ export function AiOwnerIncomingVoice() {
   const [captureWarning,setCaptureWarning]=useState('');
 
   const stopAudio = useCallback(() => {
+    costReporter.current?.end();costReporter.current=null;
     setLocalVoiceActive(false);localTurn.current=null;
     mapLookup.current?.stop();mapLookup.current=null;setMapResult(null);
     turns.current?.stop();turns.current=null;
@@ -166,6 +169,13 @@ export function AiOwnerIncomingVoice() {
       if(!isCurrent())return;
       if (!result.success || !result.token) throw new Error(result.error || "Realtime AI unavailable");
       if (!isCurrent()) { stream.getTracks().forEach(track => track.stop()); return; }
+      if(result.cost?.id){
+        const costId=result.cost.id;
+        costReporter.current=new OwnerCostReporter(async event=>{
+          const response=await privateApi.post('/ai-owner/voice-cost/'+encodeURIComponent(costId)+'/events',event,{timeout:8000});
+          return response.data?.data||response.data;
+        },()=>undefined);
+      }
       const pc = new RTCPeerConnection();
       peer.current = pc;
       stream.getAudioTracks().forEach(track => pc.addTrack(track, stream));
@@ -179,7 +189,7 @@ export function AiOwnerIncomingVoice() {
       const ready=()=>{
         if(!isCurrent()||pc.connectionState!=='connected'||channel.readyState!=='open')return;
         if(watchdog.current)clearTimeout(watchdog.current);watchdog.current=null;
-        accepting.current=false;setConnecting(false);setConnected(true);setStatus('AI सँग live कुरा गर्नुहोस्');
+        accepting.current=false;setConnecting(false);setConnected(true);setStatus('AI सँग live कुरा गर्नुहोस्');costReporter.current?.start();
         socket.current?.emit('ai-owner:ready',{callId:id});
       };
       pc.onconnectionstatechange = () => {
@@ -208,6 +218,7 @@ export function AiOwnerIncomingVoice() {
         if(!isCurrent())return;
         try {
           const message = JSON.parse(event.data) as { type?: string; transcript?: string; item_id?: string; event_id?:string; content_index?:number; response?:{status?:string};name?:string;call_id?:string;arguments?:string };
+          costReporter.current?.handle(message);
           if(message.type==='error'||(message.type==='response.done'&&message.response?.status==='failed')){
             stopAudio();socket.current?.emit('ai-owner:end',{callId:id});setFinished(true);setStatus('AI आवाजमा समस्या भयो। फेरि call गर्नुहोस्।');return;
           }

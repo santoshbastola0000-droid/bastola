@@ -1,4 +1,5 @@
 "use client";
+import { OwnerVoiceCostPanel } from "@/components/OwnerVoiceCostPanel";
 import { useEffect, useRef, useState } from "react";
 import { privateApi } from "@/http/api/privateApi";
 import useTokenStore from "@/store";
@@ -54,6 +55,7 @@ export function AiAutoCalling({selectedPhone="",selectedName=""}:{selectedPhone?
         onClick={()=>void action(()=>privateApi.patch('/admin/ai-call/auto',{enabled:!state?.enabled}),state?.enabled?'Auto calling OFF गरियो। चलिरहेको call को stop status तल हेर्नुहोस्।':'Auto calling ON गरियो।')}
         className={`rounded-full px-6 py-3 font-bold text-white disabled:opacity-50 ${state?.enabled?'bg-green-700':'bg-gray-600'}`}>{busy?'Saving…':state?.enabled?'ON':'OFF'}</button>
     </div>
+    <OwnerVoiceCostPanel phone phoneSid={(state?.items.find(r=>r.callSid&&['ACTIVE','DIALING'].includes(r.status))||state?.items.find(r=>r.callSid))?.callSid||undefined} poll={state?.items.some(r=>['ACTIVE','DIALING'].includes(r.status))??false} />
     <p className="rounded-lg bg-muted p-3 text-sm">AI: “नमस्ते, म RoomKhoj को AI सहायक बोल्दै छु। तपाईंको घरमा भाडामा दिने कुनै खाली कोठा छ?”</p>
     {!state&&<p role="status">{token?'Status लोड हुँदैछ…':'Admin login आवश्यक छ।'}</p>}
     {state&&<p className="text-sm">Calling number: <strong>{state.from||'जोडिएको छैन'}</strong> · Phone provider: {state.configured?'तयार':'setup बाँकी'} · AI Calling: {state.voiceEnabled?'enabled':'disabled'}</p>}
