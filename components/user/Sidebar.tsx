@@ -1,4 +1,5 @@
 "use client";
+import { BrandImage } from "@/components/BrandImage";
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
@@ -169,19 +170,12 @@ function SidebarBody({
   return (
     <div className="flex flex-col h-full bg-gradient-to-b from-gray-900 via-gray-900 to-gray-800">
       {/* ── Logo / brand ── */}
-      <div className="flex items-center justify-between px-4 h-16 border-b border-white/10 shrink-0">
+      <div className={cn("flex items-center justify-between px-4 h-16 border-b border-white/10 shrink-0", collapsed && "h-auto flex-col gap-1 px-2 py-2")}>
         <div className="flex items-center gap-3 min-w-0">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-red-500 to-rose-600 flex items-center justify-center flex-shrink-0 shadow-lg">
-            <Home className="w-4 h-4 text-white" />
+          <div className="min-w-0">
+            <BrandImage compact={collapsed} className={collapsed ? undefined : "h-10 w-36 sm:w-36"} />
+            {!collapsed && <p className="text-[10px] text-gray-400">User Dashboard</p>}
           </div>
-          {!collapsed && (
-            <div className="min-w-0">
-              <p className="font-bold text-sm text-white leading-none truncate">
-                RoomKhoj
-              </p>
-              <p className="text-[10px] text-gray-400 mt-0.5">User Dashboard</p>
-            </div>
-          )}
         </div>
         {showCollapseBtn && (
           <button

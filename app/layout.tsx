@@ -43,7 +43,7 @@ const siteJsonLd = {
       url: "https://www.roomkhoj.com",
       logo: {
         "@type": "ImageObject",
-        url: "https://www.roomkhoj.com/roomkhoj-logo.png",
+        url: "https://www.roomkhoj.com/roomkhoj-logo-20261030.png",
       },
     },
     {
@@ -99,7 +99,7 @@ export const metadata: Metadata = {
     type: "website",
     images: [
       {
-        url: "/roomkhoj-logo.png",
+        url: "/roomkhoj-logo-20261030.png",
         width: 1254,
         height: 1254,
         alt: "RoomKhoj",
@@ -112,7 +112,7 @@ export const metadata: Metadata = {
     title: "RoomKhoj | Rooms for Rent & Jobs in Nepal",
     description:
       "Find rental rooms and job opportunities in Nepal with RoomKhoj.",
-    images: ["/roomkhoj-logo.png"],
+    images: ["/roomkhoj-logo-20261030.png"],
   },
 
   robots: {
@@ -128,8 +128,8 @@ export const metadata: Metadata = {
   },
 
   icons: {
-    icon: "/roomkhoj-logo.png",
-    apple: "/roomkhoj-logo.png",
+    icon: "/roomkhoj-logo-20261030.png",
+    apple: "/roomkhoj-logo-20261030.png",
   },
 };
 

@@ -20,7 +20,7 @@ const schema = {
     "@type": "Organization",
     name: "RoomKhoj",
     url: "https://www.roomkhoj.com",
-    logo: "https://www.roomkhoj.com/roomkhoj-logo.png",
+    logo: "https://www.roomkhoj.com/roomkhoj-logo-20261030.png",
   },
 };
 

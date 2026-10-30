@@ -1,4 +1,5 @@
 "use client";
+import { BrandImage } from "@/components/BrandImage";
 
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -178,7 +179,7 @@ const SocialCallbackPage = () => {
   return (
     <main className="flex min-h-[60vh] items-center justify-center px-4">
       <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <h1 className="text-center text-lg font-semibold text-slate-900">RoomKhoj</h1>
+        <div className="text-center"><BrandImage /></div>
 
         {!showPromoStep ? (
           <p className="mt-2 text-center text-sm text-slate-600">{message}</p>

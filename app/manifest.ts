@@ -11,8 +11,8 @@ export default function manifest(): MetadataRoute.Manifest {
     theme_color: "#ef233c",
     icons: [
       {
-        src: "/roomkhoj-logo.png",
-        sizes: "512x512",
+        src: "/roomkhoj-logo-20261030.png",
+        sizes: "1254x1254",
         type: "image/png",
         purpose: "any",
       },

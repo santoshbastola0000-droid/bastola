@@ -31,10 +31,10 @@ self.addEventListener(
         'तपाईंलाई नयाँ notification आएको छ।',
 
       icon:
-        '/roomkhoj-logo.png',
+        '/roomkhoj-logo-20261030.png',
 
       badge:
-        '/roomkhoj-logo.png',
+        '/roomkhoj-logo-20261030.png',
 
       tag:
         data.tag ||
