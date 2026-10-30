@@ -1,4 +1,6 @@
 "use client";
+import { OwnerVoiceCostPanel } from '@/components/OwnerVoiceCostPanel';
+import { OwnerCostReporter, type OwnerCostReport } from '@/lib/voice/owner-cost-reporter';
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import useTokenStore from "@/store";
@@ -18,6 +20,9 @@ type TrainingProps = { autoStart?: boolean; developerSessionId?: string; onUtter
 export default function OwnerRealtimeVoice({ autoStart=false, developerSessionId, onUtterance, feedback }: TrainingProps) {
   const token = useTokenStore(state => state.token);
   const autoStarted=useRef(false);
+  const [budget,setBudget]=useState(true);
+  const [costReport,setCostReport]=useState<OwnerCostReport|null>(null);
+  const costReporter=useRef<OwnerCostReporter|null>(null);
   const [phase, setPhase] = useState<Phase>("idle");
   const [localMode,setLocalMode]=useState(false);
   const [status, setStatus] = useState("Start थिचेर AI सँग कुरा गर्नुहोस्");
@@ -46,6 +51,7 @@ export default function OwnerRealtimeVoice({ autoStart=false, developerSessionId
   const disconnect = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const cleanup = useCallback(() => {
+    costReporter.current?.end();costReporter.current=null;
     mapLookup.current?.stop();mapLookup.current=null;setMapResult(null);
     stopMeter.current?.();stopMeter.current=null;setOwnerSpeaking(false);setLevels([]);
     epoch.current++;
@@ -68,7 +74,7 @@ export default function OwnerRealtimeVoice({ autoStart=false, developerSessionId
   }, [cleanup]);
 
   useEffect(() => {
-    cleanup(); setPhase("idle"); setHeard(""); setReply(""); setMuted(false); setPlayBlocked(false);
+    cleanup(); setCostReport(null); setPhase("idle"); setHeard(""); setReply(""); setMuted(false); setPlayBlocked(false);
     setStatus("Start थिचेर AI सँग कुरा गर्नुहोस्");
     return cleanup;
   }, [token, developerSessionId, cleanup]);
@@ -96,7 +102,7 @@ export default function OwnerRealtimeVoice({ autoStart=false, developerSessionId
       if (!current()) return;
       cleanup(); setPhase("error"); setStatus(message); setMuted(false);
     };
-    setPhase("connecting"); setHeard(""); setReply(""); setMuted(false); setPlayBlocked(false);
+    setCostReport(null);setPhase("connecting"); setHeard(""); setReply(""); setMuted(false); setPlayBlocked(false);
     setStatus("Microphone र AI जोड्दैछु…");
     // Prime this same audio element within the user gesture for mobile playback.
     if (audio.current) {
@@ -105,6 +111,13 @@ export default function OwnerRealtimeVoice({ autoStart=false, developerSessionId
     }
     watchdog.current = setTimeout(() => fail("AI जोडिन समय लाग्यो। फेरि Start थिच्नुहोस्।"), 30000);
     try {
+      let expectedBudgetModel:string|undefined;
+      if(!developerSessionId&&budget){
+        const configResponse=await fetch(API+'/ai-owner/admin/voice-cost-config',{credentials:'include',signal:abort.signal,headers:{Authorization:`Bearer ${token}`}});
+        if(!configResponse.ok)throw new Error('Budget voice backend अझै तयार छैन। Standard mode रोज्दा पुरानै दर लाग्न सक्छ।');
+        const configPayload=await configResponse.json();expectedBudgetModel=(configPayload.data||configPayload).budgetModel;
+        if(typeof expectedBudgetModel!=='string'||!expectedBudgetModel)throw new Error('Budget model configuration उपलब्ध छैन।');
+      }
       if(!developerSessionId){
         const runtimeResponse=await fetch(API+'/ai-owner/voice-runtime',{credentials:'include',signal:abort.signal,headers:{Authorization:`Bearer ${token}`}});
         if(!current())return;
@@ -128,7 +141,7 @@ export default function OwnerRealtimeVoice({ autoStart=false, developerSessionId
       const tokenResponse = await fetch(API + "/ai-owner/admin/voice-token", {
         method: "POST", credentials: "include", signal: abort.signal,
         headers: { Authorization: `Bearer ${token}`, "Content-Type":"application/json" },
-        body: JSON.stringify(developerSessionId ? { developerSessionId } : {mapTools:true}),
+        body: JSON.stringify(developerSessionId ? { developerSessionId } : {mapTools:true,budget}),
       });
       if (!current()) return;
       if (!tokenResponse.ok) {
@@ -140,6 +153,17 @@ export default function OwnerRealtimeVoice({ autoStart=false, developerSessionId
       const secret = payload?.data?.token || payload?.token;
       if (!current()) return;
       if (typeof secret !== "string" || !secret) throw new Error("AI voice token प्राप्त भएन।");
+      const issued=payload.data||payload;
+      if(!developerSessionId&&budget&&issued.model!==expectedBudgetModel)throw new Error('Budget model पुष्टि भएन; महँगो model मा call सुरु गरिएको छैन।');
+      if(issued.cost?.id){
+        setCostReport(issued.cost);
+        costReporter.current=new OwnerCostReporter(async event=>{
+          const response=await fetch(API+'/ai-owner/voice-cost/'+encodeURIComponent(issued.cost.id)+'/events',{
+            method:'POST',credentials:'include',signal:AbortSignal.timeout(8000),headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify(event)});
+          if(!response.ok)throw new Error('Usage telemetry unavailable');
+          const data=await response.json();return data.data||data;
+        },value=>{if(current())setCostReport(value);});
+      }
       const pc = new RTCPeerConnection(); peer.current = pc;
       const channel = pc.createDataChannel("oai-events"); dataChannel.current=channel;
       const coordinator = new OwnerVoiceTurns(event => {
@@ -174,6 +198,7 @@ export default function OwnerRealtimeVoice({ autoStart=false, developerSessionId
         if (!current()) return;
         if (watchdog.current) clearTimeout(watchdog.current); watchdog.current = null;
         setPhase("listening"); setStatus("AI जोडियो। सहज रूपमा कुरा गर्नुहोस्।");
+        costReporter.current?.start();
         coordinator.greet(Boolean(developerSessionId));
         ticker.current = setInterval(() => { if ((payload?.data?.acknowledgements??payload?.acknowledgements) !== false && mic.current?.getAudioTracks().some(t=>t.enabled)) coordinator.tick(performance.now()); }, 500);
         duration.current = setTimeout(() => {
@@ -187,6 +212,7 @@ export default function OwnerRealtimeVoice({ autoStart=false, developerSessionId
         if (!current()) return;
         let message: { type?: string; transcript?: string; response?: { status?: string };name?:string;call_id?:string;arguments?:string;item_id?:string;event_id?:string };
         try { message = JSON.parse(String(event.data)); } catch { return; }
+        costReporter.current?.handle(message);
         const type = message.type || "";
         if (type === "error" || (type === "response.done" && message.response?.status === "failed")) {
           fail("AI ले जवाफ दिन सकेन। फेरि Start थिच्नुहोस्।"); return;
@@ -261,6 +287,7 @@ export default function OwnerRealtimeVoice({ autoStart=false, developerSessionId
     {playBlocked && <button type="button" className="rounded-lg bg-white/20 px-4 py-3" onClick={() => {
       void audio.current?.play().then(() => setPlayBlocked(false)).catch(() => setPlayBlocked(true));
     }}>AI को आवाज सुन्नुहोस्</button>}
+    {!developerSessionId&&<label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={budget} disabled={active} onChange={e=>setBudget(e.target.checked)}/>Budget Mini mode · रु. ३/min लक्ष्य; खर्चको guarantee होइन</label>}
     <div className="flex flex-wrap gap-3">
       <button type="button" onClick={active ? stop : () => void start()} className={`rounded-xl px-6 py-3 font-semibold ${active ? "bg-red-700" : "bg-green-700"}`}>
         {active ? "End — कुरा बन्द गर्नुहोस्" : "Start — AI सँग कुरा गर्नुहोस्"}
@@ -271,6 +298,7 @@ export default function OwnerRealtimeVoice({ autoStart=false, developerSessionId
         setMuted(next);
       }}>{muted ? "Mic खोल्नुहोस्" : "Mic बन्द गर्नुहोस्"}</button>}
     </div>
+    {!developerSessionId&&<OwnerVoiceCostPanel report={costReport} sessionId={costReport?.id} />}
     {heard && <p className="text-sm text-white/70"><strong>तपाईं:</strong> {heard}</p>}
     {reply && <p className="text-sm text-white/70"><strong>AI:</strong> {reply}</p>}
     <OwnerMapCandidates result={mapResult}/>
