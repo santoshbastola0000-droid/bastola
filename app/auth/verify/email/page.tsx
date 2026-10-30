@@ -1,3 +1,4 @@
+import { BrandImage } from "@/components/BrandImage";
 import { Metadata } from "next";
 import { Suspense } from "react";
 import Link from "next/link";
@@ -16,7 +17,7 @@ const VerifyPage = () => {
         {/* Logo */}
         <div className="text-center mb-8">
           <Link href="/" className="inline-block">
-            <h1 className="text-3xl font-bold text-primary">RentalServise</h1>
+            <BrandImage />
           </Link>
         </div>
 
@@ -29,7 +30,7 @@ const VerifyPage = () => {
 
         {/* Footer */}
         <p className="text-center text-xs text-gray-500 mt-8">
-          © 2026 RentalServise. All rights reserved.
+          © 2026 RoomKhoj. All rights reserved.
         </p>
       </div>
     </div>

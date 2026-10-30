@@ -35,7 +35,7 @@ export const metadata: Metadata = {
     type: "website",
     images: [
       {
-        url: "https://www.roomkhoj.com/roomkhoj-logo.png",
+        url: "https://www.roomkhoj.com/roomkhoj-logo-20261030.png",
         width: 1254,
         height: 1254,
         alt: "RoomKhoj - Rooms for Rent in Nepal",
@@ -47,7 +47,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title,
     description,
-    images: ["https://www.roomkhoj.com/roomkhoj-logo.png"],
+    images: ["https://www.roomkhoj.com/roomkhoj-logo-20261030.png"],
   },
 
   robots: {

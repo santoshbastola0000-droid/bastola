@@ -1,5 +1,6 @@
 "use client";
 
+import { BrandImage } from "@/components/BrandImage";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 declare global {
@@ -165,11 +166,7 @@ export function SecurityChallengeGate() {
   return (
     <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
       <div className="w-full max-w-sm rounded-2xl bg-white p-6 text-center shadow-2xl dark:bg-zinc-950">
-        <img
-          src="/roomkhoj-logo.png"
-          alt="RoomKhoj"
-          className="mx-auto mb-3 h-14 w-14 rounded-xl object-cover"
-        />
+        <div className="mb-3"><BrandImage /></div>
         <h2 className="text-lg font-bold">Security check</h2>
         <p className="mt-2 text-sm text-muted-foreground">{status}</p>
         <div

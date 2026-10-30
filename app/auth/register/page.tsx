@@ -5,7 +5,7 @@ import RegisterForm from "@/components/auth/RegisterForm";
 
 export const metadata: Metadata = {
   title: "Create Account | RoomKhoj",
-  description: "Create your RoomHub account",
+  description: "Create your RoomKhoj account",
 };
 
 const RegisterPage = () => {
@@ -18,7 +18,7 @@ const RegisterPage = () => {
         </div>
 
         <p className="text-center text-xs text-gray-500 mt-8">
-          © 2026 RentalServise. All rights reserved.
+          © 2026 RoomKhoj. All rights reserved.
         </p>
       </div>
     </div>

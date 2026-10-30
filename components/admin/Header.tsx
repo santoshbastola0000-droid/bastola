@@ -1,8 +1,9 @@
 "use client";
+import { BrandImage } from "@/components/BrandImage";
 
 import { useState, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Search, ChevronDown, LogOut, Moon, Sun, Building2 } from "lucide-react";
+import { Search, ChevronDown, LogOut, Moon, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -93,8 +94,7 @@ export function AdminHeader({ isSidebarCollapsed = false }: AdminHeaderProps) {
         <div className="flex items-center justify-between h-full px-4 md:px-6">
           {/* ── Left: Page title ── */}
           <Link href="/admin/dashboard" className="flex shrink-0 items-center gap-2" aria-label="RoomKhoj admin home">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground"><Building2 className="h-5 w-5" /></span>
-            <span className="hidden sm:block"><span className="block text-base font-bold">RoomKhoj</span><span className="block text-xs text-muted-foreground">Admin workspace</span></span>
+            <BrandImage className="h-9 w-24 sm:w-36" />
           </Link>
 
           {/* ── Right: Actions ── */}

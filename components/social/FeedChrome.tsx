@@ -1,4 +1,5 @@
 "use client";
+import { BrandImage } from "@/components/BrandImage";
 
 import { DesktopPrimaryNav } from "@/components/DesktopPrimaryNav";
 import dynamic from "next/dynamic";
@@ -225,9 +226,9 @@ export function FeedChrome() {
           <Link
             href="/feed"
             aria-label="RoomKhoj Home"
-            className="min-w-0 flex-1 md:flex-none truncate text-[30px] font-black leading-none tracking-[-0.055em] text-red-600"
+            className="inline-flex min-w-0 flex-1 items-center md:flex-none"
           >
-            roomkhoj
+            <BrandImage priority className="h-10 w-28 sm:w-44" />
           </Link>
 
           <DesktopPrimaryNav isAuthenticated={Boolean(user)} className="md:flex-1 md:justify-center"/>

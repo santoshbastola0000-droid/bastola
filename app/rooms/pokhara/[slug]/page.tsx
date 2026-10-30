@@ -43,7 +43,7 @@ export async function generateMetadata({
       url: canonical,
       title: landing.title,
       description: landing.description,
-      images: ["/roomkhoj-logo.png"],
+      images: ["/roomkhoj-logo-20261030.png"],
     },
   };
 }
