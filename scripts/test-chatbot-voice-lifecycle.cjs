@@ -1,0 +1,28 @@
+const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm'),ts=require('typescript');
+const source=fs.readFileSync(require('node:path').join(__dirname,'../components/user/Chatbot.tsx'),'utf8');
+const ast=ts.createSourceFile('Chatbot.tsx',source,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);
+const component=ast.statements.find(n=>ts.isFunctionDeclaration(n)&&n.name.text==='Chatbot');
+const names=['stopMediaStream','stopBargeInMonitor','stopVoiceCaptureOnly','stopVoiceConversation','speakBotReply','transcribeRecordedAudio','startHandsFreeListening','startBargeInMonitor','scheduleHandsFreeListen'];
+const functions=component.body.statements.filter(n=>ts.isVariableStatement(n)&&n.declarationList.declarations.some(d=>names.includes(d.name.getText(ast))));
+assert.equal(functions.length,names.length);
+const code=ts.transpileModule(`(function(){${functions.map(n=>n.getText(ast)).join('\n')};return {${names.join(',')}};})()`,{compilerOptions:{target:ts.ScriptTarget.ES2020,module:ts.ModuleKind.CommonJS}}).outputText;
+const ref=value=>({current:value});
+function harness(){
+ let tracksStopped=0,recorderStopped=0,audioMade=0,played=0,fallback=0,chatCancelled=0,contextMade=0;const timers=[];
+ const g={voiceConversationRef:ref(true),voiceEpochRef:ref(1),voiceTtsRequestRef:ref(null),voiceSttRequestRef:ref(null),voiceVadFrameRef:ref(8),audioContextRef:ref({close:async()=>{}}),analyserRef:ref({}),mediaRecorderRef:ref({state:'recording',onstop(){throw Error('must detach')},ondataavailable(){},stop(){recorderStopped++;this.state='inactive'}}),recordedChunksRef:ref(['private audio']),voiceTurnProcessingRef:ref(true),voiceSilencePromptRef:ref(true),mediaStreamRef:ref({getTracks:()=>[{stop(){tracksStopped++}}]}),bargeInFrameRef:ref(9),bargeInStreamRef:ref(null),bargeInContextRef:ref(null),recognitionRef:ref(null),activeVoiceAudioRef:ref(null),token:'test-token',AbortController,FormData,Blob,URL:{createObjectURL:()=> 'blob:test',revokeObjectURL(){}},Audio:class{constructor(){audioMade++}async play(){played++}},console:{error(){}},cancelAnimationFrame(){},requestAnimationFrame(){return 1},setIsRecording(){},setVoiceStatus(){},setVoiceConversationMode(){},cancelChatRequest(){chatCancelled++},speakWithBrowserFallback(){fallback++},sendMessage:async()=>{throw Error('unexpected chat')},window:{speechSynthesis:{cancel(){}},setTimeout:f=>timers.push(f),AudioContext:class{constructor(){contextMade++}}},navigator:{mediaDevices:{getUserMedia:async()=>{throw Error('configure microphone')}}},fetch:async()=>{throw Error('configure fetch')}};
+ const api=vm.runInNewContext(code,g);
+ return {g,api,timers,stats:()=>({tracksStopped,recorderStopped,audioMade,played,fallback,chatCancelled,contextMade})};
+}
+(async()=>{
+ let h=harness();h.api.stopVoiceCaptureOnly();h.api.stopVoiceCaptureOnly();assert.equal(h.stats().recorderStopped,1);assert.equal(h.stats().tracksStopped,1);assert.equal(h.g.mediaRecorderRef.current,null);assert.equal(h.g.recordedChunksRef.current.length,0);assert.equal(h.g.voiceVadFrameRef.current,null);assert.equal(h.g.voiceTurnProcessingRef.current,false);
+ let resolve;h=harness();h.g.fetch=()=>new Promise(r=>resolve=r);const tts=h.api.speakBotReply('नमस्ते');h.api.stopVoiceConversation();resolve({ok:true,blob:async()=>new Blob(['audio'])});await tts;assert.equal(h.stats().played,0);assert.equal(h.stats().audioMade,0);assert.equal(h.stats().chatCancelled,1);
+ // A previous run must remain stale even if a new call is already active.
+ h=harness();h.g.fetch=()=>new Promise(r=>resolve=r);const old=h.api.speakBotReply('पुरानो उत्तर');h.api.stopVoiceConversation();h.g.voiceConversationRef.current=true;h.g.voiceEpochRef.current++;resolve({ok:true,blob:async()=>new Blob(['audio'])});await old;assert.equal(h.stats().played,0);
+ let reject;h=harness();h.g.fetch=()=>new Promise((r,j)=>reject=j);const failed=h.api.speakBotReply('नमस्ते');h.api.stopVoiceConversation();reject(Error('aborted'));await failed;assert.equal(h.stats().fallback,0,'Stopping must not trigger browser speech fallback');
+ h=harness();h.g.voiceTurnProcessingRef.current=false;h.g.activeVoiceAudioRef.current=null;h.g.mediaRecorderRef.current=null;h.g.navigator.mediaDevices.getUserMedia=()=>new Promise(r=>resolve=r);const capture=h.api.startHandsFreeListening();h.api.stopVoiceConversation();let lateTracks=0;resolve({getTracks:()=>[{stop(){lateTracks++}}]});await capture;assert.equal(lateTracks,1);assert.equal(h.stats().contextMade,0);
+ h=harness();h.g.voiceTurnProcessingRef.current=false;h.g.activeVoiceAudioRef.current={pause(){}};h.g.navigator.mediaDevices.getUserMedia=()=>new Promise(r=>resolve=r);const barge=h.api.startBargeInMonitor();h.api.stopVoiceConversation();lateTracks=0;resolve({getTracks:()=>[{stop(){lateTracks++}}]});await barge;assert.equal(lateTracks,1);assert.equal(h.stats().contextMade,0);
+ h=harness();h.g.voiceTurnProcessingRef.current=false;h.api.scheduleHandsFreeListen();h.api.stopVoiceConversation();h.g.voiceConversationRef.current=true;h.g.voiceEpochRef.current++;h.timers[0]();assert.equal(h.stats().contextMade,0);
+ h=harness();h.g.fetch=()=>new Promise(r=>resolve=r);const stt=h.api.transcribeRecordedAudio(new Blob(['private audio']));h.api.stopVoiceConversation();h.g.voiceConversationRef.current=true;h.g.voiceEpochRef.current++;resolve({ok:true,json:async()=>({data:{text:'old transcript'}})});assert.equal(await stt,'');
+ h=harness();h.g.fetch=async()=>({ok:true,blob:async()=>new Blob(['audio'])});await h.api.speakBotReply('भाडा कति हो?');assert.equal(h.stats().played,1,'Active current call must still play');
+ console.log('9 chatbot voice lifecycle regressions passed; no provider calls.');
+})().catch(e=>{console.error(e);process.exitCode=1});

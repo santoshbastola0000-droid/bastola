@@ -21,6 +21,7 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - run: node scripts/test-chatbot-voice-lifecycle.cjs
       - run: node scripts/test-owner-cost.cjs
       - run: node scripts/test-owner-voice.cjs
       - run: pnpm exec tsc --noEmit

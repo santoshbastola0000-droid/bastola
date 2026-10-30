@@ -269,6 +269,9 @@ useEffect(() => {
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const recordedChunksRef = useRef<BlobPart[]>([]);
   const voiceConversationRef = useRef(false);
+  const voiceEpochRef = useRef(0);
+  const voiceTtsRequestRef = useRef<AbortController | null>(null);
+  const voiceSttRequestRef = useRef<AbortController | null>(null);
   const activeVoiceAudioRef = useRef<HTMLAudioElement | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
@@ -317,6 +320,10 @@ useEffect(() => {
 
   useEffect(() => {
     return () => {
+      voiceConversationRef.current = false;
+      voiceEpochRef.current += 1;
+      voiceTtsRequestRef.current?.abort();
+      voiceSttRequestRef.current?.abort();
       if (selectedFile?.url) {
         URL.revokeObjectURL(selectedFile.url);
       }
@@ -441,6 +448,7 @@ useEffect(() => {
     }
 
     stopBargeInMonitor();
+    const epoch = voiceEpochRef.current;
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -451,6 +459,10 @@ useEffect(() => {
           channelCount: 1,
         },
       });
+      if (!voiceConversationRef.current || epoch !== voiceEpochRef.current || !activeVoiceAudioRef.current) {
+        stream.getTracks().forEach(track => track.stop());
+        return;
+      }
       bargeInStreamRef.current = stream;
 
       const AudioContextClass =
@@ -519,9 +531,11 @@ useEffect(() => {
   };
 
   const scheduleHandsFreeListen = () => {
+    const epoch = voiceEpochRef.current;
     window.setTimeout(() => {
       if (
         voiceConversationRef.current &&
+        epoch === voiceEpochRef.current &&
         !voiceTurnProcessingRef.current &&
         !activeVoiceAudioRef.current
       ) {
@@ -534,12 +548,14 @@ useEffect(() => {
     if (
       typeof window === "undefined" ||
       !("speechSynthesis" in window) ||
+      !voiceConversationRef.current ||
       !text.trim()
     ) {
       setVoiceStatus("यो browser मा voice playback उपलब्ध छैन");
       return;
     }
 
+    const epoch = voiceEpochRef.current;
     window.speechSynthesis.cancel();
 
     const utterance = new SpeechSynthesisUtterance(text.slice(0, 1200));
@@ -562,15 +578,18 @@ useEffect(() => {
     utterance.pitch = 1;
 
     utterance.onstart = () => {
+      if (!voiceConversationRef.current || epoch !== voiceEpochRef.current) return;
       setVoiceStatus("AI बोल्दैछ...");
       void startBargeInMonitor();
     };
     utterance.onend = () => {
+      if (!voiceConversationRef.current || epoch !== voiceEpochRef.current) return;
       stopBargeInMonitor();
       setVoiceStatus("सुन्दैछु...");
       scheduleHandsFreeListen();
     };
     utterance.onerror = () => {
+      if (!voiceConversationRef.current || epoch !== voiceEpochRef.current) return;
       stopBargeInMonitor();
       setVoiceStatus("Voice playback failed, फेरि सुन्दैछु...");
       scheduleHandsFreeListen();
@@ -603,6 +622,10 @@ useEffect(() => {
       return;
     }
 
+    const epoch = voiceEpochRef.current;
+    voiceTtsRequestRef.current?.abort();
+    const request = new AbortController();
+    voiceTtsRequestRef.current = request;
     try {
       setVoiceStatus("AI आवाज तयार गर्दैछ...");
 
@@ -614,6 +637,7 @@ useEffect(() => {
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
+          signal: request.signal,
           body: JSON.stringify({
             text: text.slice(0, 1200),
           }),
@@ -625,15 +649,18 @@ useEffect(() => {
       }
 
       const blob = await response.blob();
+      if (!voiceConversationRef.current || epoch !== voiceEpochRef.current || request.signal.aborted || voiceTtsRequestRef.current !== request) return;
       const audioUrl = URL.createObjectURL(blob);
       const audio = new Audio(audioUrl);
       activeVoiceAudioRef.current = audio;
 
       audio.onplay = () => {
+        if (!voiceConversationRef.current || epoch !== voiceEpochRef.current || activeVoiceAudioRef.current !== audio) { audio.pause(); URL.revokeObjectURL(audioUrl); return; }
         setVoiceStatus("AI बोल्दैछ...");
         void startBargeInMonitor();
       };
       audio.onended = () => {
+        if (!voiceConversationRef.current || epoch !== voiceEpochRef.current || activeVoiceAudioRef.current !== audio) { audio.pause(); URL.revokeObjectURL(audioUrl); return; }
         stopBargeInMonitor();
         URL.revokeObjectURL(audioUrl);
         if (activeVoiceAudioRef.current === audio) {
@@ -643,6 +670,7 @@ useEffect(() => {
         scheduleHandsFreeListen();
       };
       audio.onerror = () => {
+        if (!voiceConversationRef.current || epoch !== voiceEpochRef.current || activeVoiceAudioRef.current !== audio) { audio.pause(); URL.revokeObjectURL(audioUrl); return; }
         stopBargeInMonitor();
         URL.revokeObjectURL(audioUrl);
         if (activeVoiceAudioRef.current === audio) {
@@ -653,8 +681,11 @@ useEffect(() => {
 
       await audio.play();
     } catch (error) {
+      if (!voiceConversationRef.current || epoch !== voiceEpochRef.current || request.signal.aborted) return;
       console.error("Server TTS failed, using browser fallback:", error);
       speakWithBrowserFallback(text);
+    } finally {
+      if (voiceTtsRequestRef.current === request) voiceTtsRequestRef.current = null;
     }
   };
 
@@ -668,6 +699,10 @@ useEffect(() => {
       throw new Error("Live voice fallback requires login.");
     }
 
+    const epoch = voiceEpochRef.current;
+    voiceSttRequestRef.current?.abort();
+    const request = new AbortController();
+    voiceSttRequestRef.current = request;
     const form = new FormData();
     const extension = blob.type.includes("ogg")
       ? "ogg"
@@ -685,6 +720,7 @@ useEffect(() => {
           Authorization: `Bearer ${token}`,
         },
         body: form,
+        signal: request.signal,
       },
     );
 
@@ -698,6 +734,8 @@ useEffect(() => {
       );
     }
 
+    if (!voiceConversationRef.current || epoch !== voiceEpochRef.current || request.signal.aborted) return "";
+    if (voiceSttRequestRef.current === request) voiceSttRequestRef.current = null;
     return String(data?.data?.text || "").trim();
   };
 
@@ -713,7 +751,16 @@ useEffect(() => {
     }
     analyserRef.current = null;
 
-    stopVoiceCaptureOnly();
+    const recorder = mediaRecorderRef.current;
+    mediaRecorderRef.current = null;
+    if (recorder) {
+      recorder.onstop = null;
+      recorder.ondataavailable = null;
+      if (recorder.state === "recording") {
+        try { recorder.stop(); } catch { /* Already stopped. */ }
+      }
+    }
+    recordedChunksRef.current = [];
     stopBargeInMonitor();
     voiceTurnProcessingRef.current = false;
     voiceSilencePromptRef.current = false;
@@ -743,6 +790,7 @@ useEffect(() => {
       return;
     }
 
+    const epoch = voiceEpochRef.current;
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
@@ -752,6 +800,10 @@ useEffect(() => {
           channelCount: 1,
         },
       });
+      if (!voiceConversationRef.current || epoch !== voiceEpochRef.current) {
+        stream.getTracks().forEach(track => track.stop());
+        return;
+      }
       mediaStreamRef.current = stream;
 
       const AudioContextClass =
@@ -798,6 +850,7 @@ useEffect(() => {
       };
 
       recorder.onstop = async () => {
+        if (epoch !== voiceEpochRef.current) return;
         if (voiceVadFrameRef.current !== null) {
           cancelAnimationFrame(voiceVadFrameRef.current);
           voiceVadFrameRef.current = null;
@@ -855,6 +908,7 @@ useEffect(() => {
           recordedChunksRef.current = [];
 
           const transcript = await transcribeRecordedAudio(blob);
+          if (!voiceConversationRef.current || epoch !== voiceEpochRef.current) return;
 
           if (!transcript) {
             await speakBotReply(
@@ -866,12 +920,13 @@ useEffect(() => {
           setVoiceStatus(`सुनेँ: ${transcript}`);
           await sendMessage(transcript);
         } catch (error) {
+          if (!voiceConversationRef.current || epoch !== voiceEpochRef.current) return;
           console.error("Hands-free voice transcription error:", error);
           await speakBotReply(
             "आवाज बुझ्न समस्या आयो। कृपया फेरि बोल्नुहोस्।",
           );
         } finally {
-          voiceTurnProcessingRef.current = false;
+          if (epoch === voiceEpochRef.current) voiceTurnProcessingRef.current = false;
         }
       };
 
@@ -939,6 +994,7 @@ useEffect(() => {
 
       voiceVadFrameRef.current = requestAnimationFrame(monitor);
     } catch (error) {
+      if (epoch !== voiceEpochRef.current) return;
       console.error("Hands-free microphone error:", error);
       stopVoiceCaptureOnly();
       setVoiceStatus("Microphone access failed");
@@ -952,6 +1008,7 @@ useEffect(() => {
       return;
     }
 
+    voiceEpochRef.current += 1;
     voiceConversationRef.current = true;
     setVoiceConversationMode(true);
     voiceTurnProcessingRef.current = false;
@@ -963,7 +1020,15 @@ useEffect(() => {
   };
 
   const stopVoiceConversation = () => {
+    const wasVoiceActive = voiceConversationRef.current;
     voiceConversationRef.current = false;
+    if (wasVoiceActive) cancelChatRequest();
+    voiceEpochRef.current += 1;
+    voiceTtsRequestRef.current?.abort();
+    voiceSttRequestRef.current?.abort();
+    voiceTtsRequestRef.current = null;
+    voiceSttRequestRef.current = null;
+    stopVoiceCaptureOnly();
     setVoiceConversationMode(false);
     setVoiceStatus("");
     setIsRecording(false);
