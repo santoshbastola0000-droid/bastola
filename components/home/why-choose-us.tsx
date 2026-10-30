@@ -81,7 +81,7 @@ export function WhyChooseUs() {
             Why Choose Us
           </span>
           <h2 className="text-3xl md:text-5xl font-bold text-slate-900 mt-2">
-            The RoomServise Advantage
+            The RoomKhoj Advantage
           </h2>
           <p className="text-slate-600 mt-4 text-lg">
             We're redefining the rental experience with transparency, security,

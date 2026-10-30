@@ -286,7 +286,7 @@ const quickLinks = [
           <div className="flex flex-col lg:flex-row items-center justify-between gap-6">
             {/* Copyright */}
             <p className="text-slate-500 text-sm text-center lg:text-left">
-              &copy; {currentYear} RoomServise. All rights reserved.
+              &copy; {currentYear} RoomKhoj. All rights reserved.
               <span className="block sm:inline sm:ml-1">
                 Made with <span className="text-red-500">❤</span> for hosts and
                 guests.

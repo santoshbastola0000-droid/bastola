@@ -154,7 +154,7 @@ export default function ContactPage() {
         "We typically respond within 24 hours during business days. For urgent matters, please call us directly.",
     },
     {
-      question: "Can I list my property on RoomServise?",
+      question: "Can I list my property on RoomKhoj?",
       answer:
         "Yes! Contact our team through this form or visit our 'Become a Host' page to get started.",
     },
