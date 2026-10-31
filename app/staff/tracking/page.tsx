@@ -24,6 +24,10 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { staffTrackingService } from "@/http/services/staff-tracking.service";
 
+import { createStaffLocationTracker } from "@/lib/staff/location-tracker";
+
+import useTokenStore from "@/store";
+
 type PositionPayload = {
   latitude: number;
   longitude: number;
@@ -72,6 +76,8 @@ function money(value: unknown) {
 }
 
 export default function StaffTrackingPage() {
+  const token = useTokenStore(state => state.token);
+  const loadEpoch = useRef(0);
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -82,26 +88,31 @@ export default function StaffTrackingPage() {
   const [permissionState, setPermissionState] = useState<string>("unknown");
   const [currentDistanceKm, setCurrentDistanceKm] = useState<number | null>(null);
   const [visit, setVisit] = useState({ leadName: "", note: "", roomId: "" });
-  const watchIdRef = useRef<number | null>(null);
-  const syncTimerRef = useRef<number | null>(null);
-  const syncInFlightRef = useRef(false);
+  const trackerRef = useRef<ReturnType<typeof createStaffLocationTracker> | null>(null);
   const resumeSyncRef = useRef<(() => void) | null>(null);
-  const lastPingRef = useRef(0);
   const dueToastShownRef = useRef(false);
 
   const load = async () => {
+    const epoch = ++loadEpoch.current;
     try {
-      setData(await staffTrackingService.getMe());
+      const next = await staffTrackingService.getMe();
+      if (epoch === loadEpoch.current) setData(next);
     } catch (error: any) {
+      if (epoch !== loadEpoch.current) return;
+      if ([401,403].includes(error?.response?.status)) { stopWatcher(); setData(null); }
       toast.error(error?.response?.data?.message || "Staff profile भेटिएन");
     } finally {
-      setLoading(false);
+      if (epoch === loadEpoch.current) setLoading(false);
     }
   };
 
   useEffect(() => {
+    setData(null);
+    setLoading(true);
     void load();
-  }, []);
+    return () => { loadEpoch.current += 1; stopWatcher(); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]);
 
   useEffect(() => {
     const timer = window.setInterval(() => setClockNow(Date.now()), 30_000);
@@ -110,6 +121,7 @@ export default function StaffTrackingPage() {
 
   useEffect(() => {
     let active = true;
+    let permission: PermissionStatus | null = null;
     const updatePermission = async () => {
       try {
         if (!("permissions" in navigator)) return;
@@ -117,6 +129,7 @@ export default function StaffTrackingPage() {
           name: "geolocation" as PermissionName,
         });
         if (!active) return;
+        permission = status;
         setPermissionState(status.state);
         status.onchange = () => setPermissionState(status.state);
       } catch {
@@ -126,19 +139,13 @@ export default function StaffTrackingPage() {
     void updatePermission();
     return () => {
       active = false;
+      if (permission) permission.onchange = null;
     };
   }, []);
 
   const stopWatcher = () => {
-    if (watchIdRef.current !== null && navigator.geolocation) {
-      navigator.geolocation.clearWatch(watchIdRef.current);
-    }
-    if (syncTimerRef.current !== null) {
-      window.clearInterval(syncTimerRef.current);
-    }
-    watchIdRef.current = null;
-    syncTimerRef.current = null;
-    syncInFlightRef.current = false;
+    trackerRef.current?.stop();
+    trackerRef.current = null;
     resumeSyncRef.current = null;
     setTrackingState("Stopped");
   };
@@ -162,89 +169,47 @@ export default function StaffTrackingPage() {
   };
 
   const startWatcher = () => {
-    if (
-      !navigator.geolocation ||
-      data?.profile?.staffType !== "MARKETING" ||
-      watchIdRef.current !== null ||
-      syncTimerRef.current !== null
-    ) {
-      return;
-    }
-
-    const syncPosition = async (position: GeolocationPosition) => {
-      const now = Date.now();
-      if (syncInFlightRef.current || now - lastPingRef.current < 45_000) return;
-
-      syncInFlightRef.current = true;
-      try {
-        const result = await staffTrackingService.pingLocation({
-          ...positionPayload(position),
-          source: "AUTO",
-        });
-        lastPingRef.current = Date.now();
-        setLastLocationAt(new Date().toISOString());
-        setTrackingState("Tracking active");
+    if (!navigator.geolocation || !data?.activeSession?.id || data?.profile?.staffType !== "MARKETING" || trackerRef.current) return;
+    const tracker = createStaffLocationTracker({
+      geolocation: navigator.geolocation,
+      send: (payload, signal) => {
+        if (useTokenStore.getState().token !== token) return Promise.reject({response:{status:401}});
+        return staffTrackingService.pingLocation(payload, signal);
+      },
+      setInterval: (callback, ms) => window.setInterval(callback, ms),
+      clearInterval: id => window.clearInterval(id),
+      onResult: result => {
+        setLastLocationAt(result?.receivedAt || new Date().toISOString());
+        setTrackingState(result?.autoCompleted ? "Shift completed" : "Tracking active");
         setPermissionState("granted");
-
-        if (Number.isFinite(Number(result?.distanceFromStartKm))) {
-          setCurrentDistanceKm(Number(result.distanceFromStartKm));
-        }
-
+        if (result?.distanceFromStartKm != null && Number.isFinite(Number(result.distanceFromStartKm))) setCurrentDistanceKm(Number(result.distanceFromStartKm));
         if (result?.autoCompleted) {
           stopWatcher();
-          await handleCreditResult(result.credit, true);
-          await load();
+          void handleCreditResult(result.credit, true);
+          void load();
         }
-      } catch {
-        setTrackingState("Tracking gap / sync failed");
-      } finally {
-        syncInFlightRef.current = false;
-      }
-    };
-
-    const syncCurrentPosition = () => {
-      if (!navigator.geolocation || syncInFlightRef.current) return;
-
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          void syncPosition(position);
-        },
-        (error) => {
-          setTrackingState("Location permission/offline gap");
-          if (error.code === error.PERMISSION_DENIED) {
-            setPermissionState("denied");
-          }
-        },
-        { enableHighAccuracy: true, maximumAge: 30_000, timeout: 20_000 },
-      );
-    };
-
-    // Mobile Safari/Chrome can pause timers while the tab is hidden. Keep a
-    // one-shot sync callback so returning to the app immediately repairs the gap.
-    resumeSyncRef.current = syncCurrentPosition;
-
+      },
+      onError: error => {
+        if (error?.response?.status === 401 || error?.response?.status === 403) {
+          stopWatcher();
+          setTrackingState("Login / tracking access required");
+        } else if (error?.code === 1) {
+          stopWatcher();
+          setPermissionState("denied");
+          setTrackingState("Location permission denied — refresh after allowing location");
+        } else setTrackingState("Tracking gap / sync failed — retrying while page is open");
+      },
+    });
+    trackerRef.current = tracker;
+    resumeSyncRef.current = tracker.resume;
     setTrackingState("Starting GPS tracking...");
-
-    // watchPosition gives fast movement updates while the browser is active.
-    watchIdRef.current = navigator.geolocation.watchPosition(
-      (position) => {
-        void syncPosition(position);
-      },
-      (error) => {
-        setTrackingState("Location permission/offline gap");
-        if (error.code === error.PERMISSION_DENIED) setPermissionState("denied");
-      },
-      { enableHighAccuracy: true, maximumAge: 20_000, timeout: 20_000 },
-    );
-
-    // Some mobile browsers throttle watchPosition when the device is stationary.
-    // Keep an explicit foreground heartbeat so the server still receives GPS points.
-    syncTimerRef.current = window.setInterval(syncCurrentPosition, 60_000);
-    syncCurrentPosition();
+    tracker.start();
   };
 
   useEffect(() => {
     if (data?.activeSession && data?.profile?.staffType === "MARKETING") {
+      setCurrentDistanceKm(null);
+      setLastLocationAt(null);
       startWatcher();
     }
     return () => stopWatcher();
@@ -279,7 +244,8 @@ export default function StaffTrackingPage() {
     }
 
     const key = `roomkhoj_staff_location_check_${session.id}`;
-    const saved = window.localStorage.getItem(key);
+    let saved: string | null = null;
+    try { saved = window.localStorage.getItem(key); } catch { /* Optional reminder persistence. */ }
     const initial = saved || session.startedAt;
     setLastRequiredCheckAt(initial);
   }, [data?.activeSession?.id, data?.activeSession?.startedAt, data?.profile?.staffType]);
@@ -319,6 +285,7 @@ export default function StaffTrackingPage() {
       setBusy(true);
       const payload =
         data.profile.staffType === "MARKETING" ? await getPosition() : {};
+      if (useTokenStore.getState().token !== token) return;
       await staffTrackingService.start({ ...payload, source: "START" });
       if (data.profile.staffType === "MARKETING") {
         setPermissionState("granted");
@@ -346,15 +313,13 @@ export default function StaffTrackingPage() {
     try {
       setBusy(true);
       const location = await getPosition();
+      if (useTokenStore.getState().token !== token) return;
       const result = await staffTrackingService.pingLocation({
         ...location,
         source: "MANUAL_3H",
       });
       const checkedAt = new Date().toISOString();
-      window.localStorage.setItem(
-        `roomkhoj_staff_location_check_${session.id}`,
-        checkedAt,
-      );
+      try { window.localStorage.setItem(`roomkhoj_staff_location_check_${session.id}`, checkedAt); } catch { /* GPS was accepted; storage failure is not verification failure. */ }
       setLastRequiredCheckAt(checkedAt);
       setLastLocationAt(checkedAt);
       setTrackingState("Tracking active");
@@ -394,6 +359,7 @@ export default function StaffTrackingPage() {
         // If location fails, keep the session active so the staff member can retry.
         payload = await getPosition();
       }
+      if (useTokenStore.getState().token !== token) return;
       const result = await staffTrackingService.end(payload);
       stopWatcher();
       if (data.profile.staffType === "MARKETING") {
@@ -419,6 +385,7 @@ export default function StaffTrackingPage() {
     try {
       setBusy(true);
       const location = await getPosition();
+      if (useTokenStore.getState().token !== token) return;
       const result = await staffTrackingService.addVisit({ ...location, ...visit });
       setVisit({ leadName: "", note: "", roomId: "" });
       setPermissionState("granted");
@@ -474,7 +441,7 @@ export default function StaffTrackingPage() {
             : "Reception Shift"}
         </h1>
         <p className="text-sm text-muted-foreground">
-          Tracking work session सुरु भएपछि मात्र active हुन्छ।
+          Tracking work session सुरु भएपछि मात्र active हुन्छ। Browser खुला र location अनुमति ON हुनुपर्छ; screen lock वा app बन्द हुँदा GPS रोकिन सक्छ।
         </p>
       </div>
 
