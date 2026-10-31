@@ -41,3 +41,9 @@ export function staffWorkDate(now: Date = new Date(), timezone='Asia/Kathmandu')
   const v=(t:string)=>p.find(x=>x.type===t)!.value;
   return `${v('year')}-${v('month')}-${v('day')}`;
 }
+
+export function staffWeekStart(now: Date = new Date()): string {
+  const day=new Date(staffWorkDate(now)+'T12:00:00Z');
+  day.setUTCDate(day.getUTCDate()-((day.getUTCDay()+6)%7));
+  return day.toISOString().slice(0,10);
+}

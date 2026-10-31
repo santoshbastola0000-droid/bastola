@@ -1,0 +1,8 @@
+const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),ts=require('typescript'),React=require('react'),{renderToStaticMarkup}=require('react-dom/server');
+const effects=[],exportsBox={};let writes=0,gets=0;
+const hooks={...React,useState:v=>[typeof v==='function'?v():v,()=>{}],useRef:v=>({current:v}),useEffect:f=>effects.push(f)};
+const mocks={react:hooks,'@/http/api/privateApi':{privateApi:{get:async()=>{gets++;return {data:{enabled:false}}},post:()=>{writes++;throw Error('disabled')},patch:()=>{writes++;throw Error('disabled')}}},'@/lib/staff/location-tracker':{staffWeekStart:()=> '2026-10-26'},'@/components/ui/button':{Button:({children,...props})=>React.createElement('button',props,children)},sonner:{toast:{success(){},error(){}}}};
+const file=path.join(__dirname,'../components/staff/FieldWorkPolicy.tsx');vm.runInNewContext(ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{target:ts.ScriptTarget.ES2020,module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.ReactJSX}}).outputText,{exports:exportsBox,require:n=>mocks[n]||require(n),process:{env:{}},Promise,Date,Number});
+const html=renderToStaticMarkup(React.createElement(exportsBox.FieldWorkAdmin,{profiles:[]}));assert.match(html,/अझै सक्रिय/);assert.match(html,/disabled/);assert.match(html,/प्रमाणित rental fix/);
+for(const effect of effects)effect();
+Promise.resolve().then(()=>{assert.equal(writes,0);assert.equal(gets,1);assert.equal(renderToStaticMarkup(React.createElement(exportsBox.StaffOutcomeForm)), '');console.log('PASS: disabled field policy never loads Google SDK or writes assignments/outcomes; explicit unavailable state and verified-only labels render.');}).catch(e=>{console.error(e);process.exitCode=1});
