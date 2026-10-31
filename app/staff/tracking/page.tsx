@@ -78,6 +78,7 @@ function money(value: unknown) {
 export default function StaffTrackingPage() {
   const token = useTokenStore(state => state.token);
   const loadEpoch = useRef(0);
+  const loadedTokenRef = useRef<string | null>(null);
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -96,7 +97,7 @@ export default function StaffTrackingPage() {
     const epoch = ++loadEpoch.current;
     try {
       const next = await staffTrackingService.getMe();
-      if (epoch === loadEpoch.current) setData(next);
+      if (epoch === loadEpoch.current) { loadedTokenRef.current = token; setData(next); }
     } catch (error: any) {
       if (epoch !== loadEpoch.current) return;
       if ([401,403].includes(error?.response?.status)) { stopWatcher(); setData(null); }
@@ -107,6 +108,7 @@ export default function StaffTrackingPage() {
   };
 
   useEffect(() => {
+    loadedTokenRef.current = null;
     setData(null);
     setLoading(true);
     void load();
@@ -169,7 +171,7 @@ export default function StaffTrackingPage() {
   };
 
   const startWatcher = () => {
-    if (!navigator.geolocation || !data?.activeSession?.id || data?.profile?.staffType !== "MARKETING" || trackerRef.current) return;
+    if (loadedTokenRef.current !== token || !navigator.geolocation || !data?.activeSession?.id || data?.profile?.staffType !== "MARKETING" || trackerRef.current) return;
     const tracker = createStaffLocationTracker({
       geolocation: navigator.geolocation,
       send: (payload, signal) => {
@@ -214,7 +216,7 @@ export default function StaffTrackingPage() {
     }
     return () => stopWatcher();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data?.activeSession?.id, data?.profile?.staffType]);
+  }, [data, token]);
 
   useEffect(() => {
     const resumeTracking = () => {
