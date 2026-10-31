@@ -28,6 +28,8 @@ import { createStaffLocationTracker } from "@/lib/staff/location-tracker";
 
 import useTokenStore from "@/store";
 
+import { StaffOutcomeForm } from "@/components/staff/FieldWorkPolicy";
+
 type PositionPayload = {
   latitude: number;
   longitude: number;
@@ -427,7 +429,7 @@ export default function StaffTrackingPage() {
   const calendar = data.calendar || {};
   const maxRadiusKm = Number(data?.policy?.maxRadiusKm || profile.maxRadiusKm || 2);
   const outsideZone =
-    currentDistanceKm !== null && currentDistanceKm > maxRadiusKm;
+    !data?.policy?.fieldPolicyV2 && currentDistanceKm !== null && currentDistanceKm > maxRadiusKm;
   const startTime = timeLabel(profile.allowedStartTime);
   const endTime = timeLabel(profile.expectedEndTime);
 
@@ -455,7 +457,7 @@ export default function StaffTrackingPage() {
               <div>
                 <h2 className="font-black text-blue-950">आजको Marketing Rule</h2>
                 <p className="mt-1 text-sm leading-6 text-blue-900">
-                  आफ्नो काम सुरु हुने समयमा <b>Start Field Work</b> थिच्नुहोस्। तपाईंको shift <b>{startTime}–{endTime}</b> हो र यो समयभित्र RoomKhoj ले location tracking गर्नेछ। Room खोज्दा आजको start location बाट <b>{maxRadiusKm} km भित्र</b> रहनुपर्छ। साँझ <b>{endTime}</b> मा location update प्राप्त भयो, GPS gap/radius rule पूरा भयो भने आजको credit wallet मा स्वतः जान्छ; नत्र credit हुँदैन।
+                  {data?.policy?.fieldPolicyV2 ? <>Admin ले तोकेका area मा १०–५ काम गर्नुहोस्। ९:४५ पछि तयारी सुरु गर्न मिल्छ; १० बजेभित्र Start गर्नुहोस्। GPS gap १५ मिनेटभन्दा बढी, area बाहिरको प्रमाण वा अस्पष्ट GPS भए automatic credit हुँदैन र review चाहिन्छ। Location लाई Google Maps मा ठाउँको नामका लागि प्रयोग गर्न सकिन्छ।</> : <>आफ्नो काम सुरु हुने समयमा <b>Start Field Work</b> थिच्नुहोस्। तपाईंको shift <b>{startTime}–{endTime}</b> हो र यो समयभित्र RoomKhoj ले location tracking गर्नेछ। Room खोज्दा आजको start location बाट <b>{maxRadiusKm} km भित्र</b> रहनुपर्छ। साँझ <b>{endTime}</b> मा location update प्राप्त भयो, GPS gap/radius rule पूरा भयो भने आजको credit wallet मा स्वतः जान्छ; नत्र credit हुँदैन।</>}
                 </p>
               </div>
             </div>
@@ -702,6 +704,7 @@ export default function StaffTrackingPage() {
           </div>
         </div>
       )}
+      {profile.staffType === "MARKETING" && <StaffOutcomeForm/>}
     </main>
   );
 }

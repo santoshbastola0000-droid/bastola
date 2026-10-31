@@ -34,6 +34,8 @@ import {
 
 import { staffWorkDate } from "@/lib/staff/location-tracker";
 
+import { FieldWorkAdmin, NamedStaffPlace } from "@/components/staff/FieldWorkPolicy";
+
 const money = (value: unknown) =>
   `Rs. ${Number(value || 0).toLocaleString(undefined, {
     maximumFractionDigits: 2,
@@ -50,11 +52,7 @@ const weekdays = [
 ];
 
 function formatLocation(point?: any) {
-  if (!point) return "No location";
-  const lat = Number(point.latitude);
-  const lng = Number(point.longitude);
-  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return "No location";
-  return `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+  return point?.assignedAreaName || 'ठाउँको नाम उपलब्ध छैन — map मा हेर्नुहोस्';
 }
 
 function locationCheckState(row: any) {
@@ -131,7 +129,7 @@ export default function StaffTrackingAdminPage() {
   const [routeData, setRouteData] = useState<any>(null);
   const [form, setForm] = useState({
     monthlySalary: "",
-    allowedStartTime: "13:00",
+    allowedStartTime: "10:00",
     expectedEndTime: "17:00",
     maxRadiusKm: "2",
     trackingIntervalHours: "3",
@@ -234,7 +232,7 @@ export default function StaffTrackingAdminPage() {
   const resetForm = (staffType: StaffType = type) => {
     setForm({
       monthlySalary: "",
-      allowedStartTime: staffType === "MARKETING" ? "13:00" : "09:00",
+      allowedStartTime: staffType === "MARKETING" ? "10:00" : "09:00",
       expectedEndTime: "17:00",
       maxRadiusKm: "2",
       trackingIntervalHours: "3",
@@ -262,7 +260,7 @@ export default function StaffTrackingAdminPage() {
       setType(existingProfile.staffType);
       setForm({
         monthlySalary: String(existingProfile.monthlySalary || ""),
-        allowedStartTime: String(existingProfile.allowedStartTime || "13:00").slice(0, 5),
+        allowedStartTime: String(existingProfile.allowedStartTime || "10:00").slice(0, 5),
         expectedEndTime: String(existingProfile.expectedEndTime || "17:00").slice(0, 5),
         maxRadiusKm: String(existingProfile.maxRadiusKm || 2),
         trackingIntervalHours: String(existingProfile.trackingIntervalHours || 3),
@@ -389,7 +387,7 @@ export default function StaffTrackingAdminPage() {
         <div>
           <h1 className="text-2xl font-bold">Staff Tracking System</h1>
           <p className="text-sm text-muted-foreground">
-            Marketing 1–5 shift, 2 km work-zone, GPS verification र daily wallet credit एउटै ठाउँबाट manage गर्नुहोस्।
+            Marketing 10–5 shift, 2 km work-zone, GPS verification र daily wallet credit एउटै ठाउँबाट manage गर्नुहोस्।
           </p>
         </div>
         <div className="flex gap-2">
@@ -591,7 +589,7 @@ export default function StaffTrackingAdminPage() {
 
           <div className="flex flex-col gap-3 rounded-lg border bg-muted/40 p-3 text-sm md:flex-row md:items-center md:justify-between">
             <span>
-              Marketing default: 13:00–17:00, 2 km radius, 3-hour GPS check, Saturday weekly off। Shift end मा valid location आए मात्र daily rate wallet मा credit हुन्छ; weekly off मा काम गरे configured +Rs.100 bonus थपिन्छ।
+              Marketing default: 10:00–17:00, 2 km radius, 3-hour GPS check, Saturday weekly off। Shift end मा valid location आए मात्र daily rate wallet मा credit हुन्छ; weekly off मा काम गरे configured +Rs.100 bonus थपिन्छ।
             </span>
             <Button onClick={() => void saveStaff()} disabled={saving || !selectedUser}>
               {saving ? "Saving..." : "Save to Staff Tracking"}
@@ -713,7 +711,7 @@ export default function StaffTrackingAdminPage() {
                         <Td>
                           {r.startLatitude != null ? (
                             <div>
-                              <span className="inline-flex items-center gap-1"><MapPin className="h-3.5 w-3.5" />{formatLocation({ latitude: r.startLatitude, longitude: r.startLongitude })}</span>
+                              <span className="inline-flex items-center gap-1"><MapPin className="h-3.5 w-3.5" />Start point — map मा हेर्नुहोस्</span>
                             </div>
                           ) : "No start GPS"}
                         </Td>
@@ -722,7 +720,7 @@ export default function StaffTrackingAdminPage() {
                         <Td>
                           {r.lastLocationAt ? (
                             <div>
-                              <span className="inline-flex items-center gap-1"><MapPin className="h-3.5 w-3.5" />{Number(r.lastLatitude).toFixed(5)}, {Number(r.lastLongitude).toFixed(5)}</span>
+                              <span className="inline-flex items-center gap-1"><MapPin className="h-3.5 w-3.5" /><NamedStaffPlace sessionId={r.sessionId} updatedAt={r.lastLocationAt}/></span>
                               <div className="text-xs text-muted-foreground">{new Date(r.lastLocationAt).toLocaleTimeString()} · {Number(r.lastDistanceKm || 0).toFixed(2)} km</div>
                             </div>
                           ) : "No location"}
@@ -734,9 +732,9 @@ export default function StaffTrackingAdminPage() {
                             variant="outline"
                             className={outCount > 0 ? "border-red-200 bg-red-50 text-red-700" : "border-emerald-200 bg-emerald-50 text-emerald-700"}
                           >
-                            {outCount > 0 ? `${outCount} outside` : "Inside zone"}
+                            {r.fieldPolicySnapshot ? (Number(r.assignedOutsideCount)>0 ? `${r.assignedOutsideCount} outside assigned areas` : r.areaAssessment || "GPS unknown") : outCount > 0 ? `${outCount} outside` : "Legacy radius check"}
                           </Badge>
-                          <div className="mt-1 text-xs text-muted-foreground">Max {maxDistance.toFixed(2)} / {Number(r.maxRadiusKm || 2)} km</div>
+                          <div className="mt-1 text-xs text-muted-foreground">{r.fieldPolicySnapshot ? "Admin-assigned work areas" : `Max ${maxDistance.toFixed(2)} / ${Number(r.maxRadiusKm || 2)} km`}</div>
                         </Td>
                       )}
                       {type === "MARKETING" && (
@@ -806,11 +804,13 @@ export default function StaffTrackingAdminPage() {
           <div className="flex items-start gap-2">
             <CheckCircle2 className="mt-0.5 h-5 w-5 flex-shrink-0 text-blue-700" />
             <div>
-              <b>Wallet credit rule:</b> Marketing staff ले configured start window भित्र काम सुरु गरेको, GPS gap configured limit ननाघेको, start location बाट work radius बाहिर नगएको र shift end (+ grace) भित्र final location server मा पठाएको अवस्थामा मात्र daily salary rate wallet मा credit हुन्छ। Weekly off मा काम गरे normal daily rate माथि configured bonus थपिन्छ।
+              <b>Wallet credit rule:</b> Marketing staff ले legacy वा नयाँ assigned-area policy अनुसार server ले जाँच गर्छ। नयाँ policy सक्रिय भएपछि १०–५ को coverage, assigned area, GPS certainty र final verification पूरा भएमा मात्र automatic credit हुन्छ। Weekly off मा काम गरे normal daily rate माथि configured bonus थपिन्छ।
             </div>
           </div>
         </CardContent>
       </Card>
+
+      <FieldWorkAdmin profiles={profiles} onSaved={()=>void loadProfiles()}/>
 
       {routeData && (
         <Card className="border-primary/30">
@@ -823,7 +823,7 @@ export default function StaffTrackingAdminPage() {
           <CardContent className="space-y-4">
             <div className="grid gap-3 md:grid-cols-3">
               <Policy label="Start location" value={formatLocation(routeData.points?.[0])} />
-              <Policy label="Work radius" value={`${Number(routeData.session?.maxRadiusKm || 2)} km`} />
+              <Policy label="Work area" value={routeData.session?.fieldPolicySnapshot?.zones?.map((z:any)=>z.name).join(", ") || `Legacy ${Number(routeData.session?.maxRadiusKm || 2)} km radius`} />
               <Policy
                 label="Wallet credit"
                 value={routeData.credit ? `${routeData.credit.eligible ? "CREDITED" : "NO CREDIT"} ${routeData.credit.eligible ? money(routeData.credit.totalAmount) : ""}` : "Pending"}
@@ -845,9 +845,9 @@ export default function StaffTrackingAdminPage() {
                 <h3 className="mb-2 font-semibold">Location points ({routeData.points?.length || 0})</h3>
                 <div className="max-h-80 space-y-1 overflow-y-auto text-xs">
                   {routeData.points?.map((p: any) => (
-                    <div key={p.id} className={`rounded border p-2 ${p.withinRadius === false ? "border-red-200 bg-red-50" : ""}`}>
-                      <div className="font-semibold">{p.source || "AUTO"} · {Number(p.distanceFromStartKm || 0).toFixed(2)} km · {p.withinRadius === false ? "OUTSIDE" : "inside"}</div>
-                      <div>{Number(p.latitude).toFixed(5)}, {Number(p.longitude).toFixed(5)} · ±{Math.round(Number(p.accuracy || 0))}m</div>
+                    <div key={p.id} className={`rounded border p-2 ${(p.areaAssessment ? p.areaAssessment === "OUTSIDE" : p.withinRadius === false) ? "border-red-200 bg-red-50" : ""}`}>
+                      <div className="font-semibold">{p.source || "AUTO"} · {Number(p.distanceFromStartKm || 0).toFixed(2)} km · {p.areaAssessment || (p.withinRadius === false ? "OUTSIDE" : p.withinRadius === true ? "INSIDE" : "UNKNOWN")}</div>
+                      <div>{formatLocation(p)} · accuracy: {p.accuracy == null ? "unknown" : `${Math.round(Number(p.accuracy))}m`}</div>
                       <div className="text-muted-foreground">{new Date(p.receivedAt).toLocaleString()}</div>
                     </div>
                   ))}
