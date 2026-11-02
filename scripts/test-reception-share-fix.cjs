@@ -18,7 +18,7 @@ tree=renderHistory({roomId:'room',canFix:false,onFix:()=>{},onSaved:()=>{}},valu
 assert.ok(!nodes(tree).some(x=>x.children?.includes('Fix Room to this Client')));
 const dashboard=fs.readFileSync('components/office/OfficeDashboard.tsx','utf8');
 const share=dashboard.slice(dashboard.indexOf('  async function shareAddRoomLink()'),dashboard.indexOf('  async function saveRoom'));
-async function run(shareFn,clipboard){const effects=[];await vm.runInNewContext('('+share.trim()+')()',{window:{location:{origin:'https://roomkhoj.com'}},navigator:{share:shareFn,clipboard:{writeText:clipboard}},setAddRoomLink:v=>effects.push(v),setNotice:v=>effects.push(v)});return effects;}
+async function run(shareFn,clipboard){const effects=[];await vm.runInNewContext(ts.transpileModule('('+share.trim()+')()',{compilerOptions:{target:ts.ScriptTarget.ES2020}}).outputText,{window:{location:{origin:'https://roomkhoj.com'}},navigator:{share:shareFn,clipboard:{writeText:clipboard}},setAddRoomLink:v=>effects.push(v),setNotice:v=>effects.push(v)});return effects;}
 (async()=>{
  let payload;await run(async p=>payload=p,async()=>assert.fail());assert.equal(payload.url,'https://roomkhoj.com/office/add-room');assert.ok(!JSON.stringify(payload).includes('token'));
  await run(async()=>{throw {name:'AbortError'}},async()=>assert.fail('cancel must not copy'));
