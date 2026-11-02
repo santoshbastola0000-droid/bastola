@@ -111,7 +111,7 @@ function HistoryRow({ entry, serial, busy, formFilled, onSend, onOutcome }: {
           <label className="block space-y-1 text-sm">Reception / outcome notes<textarea className="w-full rounded-lg border bg-white p-3" rows={2} maxLength={5000} value={notes} onChange={event => setNotes(event.target.value)}/></label>
           <div className="flex flex-wrap gap-2">
             <button type="button" className={secondary} disabled={busy || entry.status === 'RENTED'} onClick={() => onSend({ ...entry, id: entry.roomId }, { clientName: entry.clientName, clientPhone: entry.clientPhone, recordId: entry.recordId, notes: '' })}>Send this room again</button>
-            {(['MOVED_IN', 'NOT_MOVED_IN'] as const).map(outcome => <button type="button" key={outcome} className={secondary} disabled={busy||(outcome==='NOT_MOVED_IN'&&!notes.trim())} onClick={() => onOutcome(entry, outcome, notes)}>{outcome === 'MOVED_IN' ? 'बसेको / Moved in' : 'नबसेको / Not moved in'}</button>)}
+            {(['MOVED_IN', 'NOT_MOVED_IN'] as const).map(outcome => <button type="button" key={outcome} className={secondary} disabled={busy||(outcome==='NOT_MOVED_IN'&&!notes.trim())} onClick={() => onOutcome(entry, outcome, notes)}>{outcome === 'MOVED_IN' ? 'Fix Room to this Client' : 'नबसेको / Not moved in'}</button>)}
           </div>
         </div>
       </div>}</div>
