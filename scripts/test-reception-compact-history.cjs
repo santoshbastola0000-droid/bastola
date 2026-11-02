@@ -1,7 +1,7 @@
 const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict'),ts=require('typescript');
 function compile(source,extra={}) {
  const module={exports:{}};
- const js=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.React}}).outputText;
+ const js=ts.transpileModule(source,{compilerOptions:{target:ts.ScriptTarget.ES2020,module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.React}}).outputText;
  vm.runInNewContext(js,{module,exports:module.exports,require:()=>({}),console,...extra});
  return module.exports;
 }
@@ -14,7 +14,7 @@ const history=fs.readFileSync('components/office/ReceptionHistory.tsx','utf8');
 assert.ok(!history.includes('<RoomDetails'));assert.ok(history.includes('row.clientId===client.clientId'));
 const React={createElement:(type,props,...children)=>({type,props:props||{},children:children.flat(Infinity)}),useState:v=>[v,()=>{}],useRef:v=>({current:v}),useEffect:()=>{}};
 const uiModule= {exports:{}};
-const js=ts.transpileModule(history+'\nexport { CompactClientRoom };',{compilerOptions:{module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.React}}).outputText;
+const js=ts.transpileModule(history+'\nexport { CompactClientRoom };',{compilerOptions:{target:ts.ScriptTarget.ES2020,module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.React}}).outputText;
 vm.runInNewContext(js,{module:uiModule,exports:uiModule.exports,require:n=>n==='react'?React:{},React,console});
 function nodes(x){return [x,...(x.children||[]).filter(v=>v&&typeof v==='object').flatMap(nodes)];}
 let calls=0,release;
