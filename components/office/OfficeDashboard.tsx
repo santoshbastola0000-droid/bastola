@@ -115,7 +115,7 @@ export function OfficeDashboard({ addRoomOnOpen = false }: { addRoomOnOpen?: boo
   const [error,setError] = useState('');
   const [notice,setNotice] = useState('');
 
-  useEffect(() => { let alive=true; setAccessFailed(false); setServiceUnavailable(false); officeService.access().then(a => { if (alive) setAccess(a); }).catch(e => { if (alive) { setError(officeError(e)); setServiceUnavailable(e?.response?.status===404 || e?.response?.status>=500 || !e?.response); setAccessFailed(true); } }); return () => { alive=false; }; },[accessAttempt]);
+  useEffect(() => { let alive=true; setAccessFailed(false); setServiceUnavailable(false); officeService.access().then(a => { if (alive) setAccess(a); }).catch(e => { if (alive) { setError(officeError(e)); setServiceUnavailable(e?.response?.status===404 || e?.response?.status>=500 || !e?.response); setAccessFailed(true); if (addRoomOnOpen && e?.response?.status===401) window.location.assign('/auth/login?redirect='+encodeURIComponent('/office/add-room')); } }); return () => { alive=false; }; },[accessAttempt,addRoomOnOpen]);
   useEffect(() => { const q=params.get('q') || ''; setQuery(q); setSearch(q); setPage(0);  setHistoryRoom(undefined); setTab(['history','requests','search','requirements'].includes(params.get('tab') || '') ? params.get('tab')! : q ? 'search' : 'rooms'); },[params]);
 
   const reloadRooms = useCallback(async () => {
@@ -214,7 +214,7 @@ export function OfficeDashboard({ addRoomOnOpen = false }: { addRoomOnOpen?: boo
       setNotice('Client outcome saved as a new permanent history entry.');
     });
   }
-  if (!access) return <div className="rounded-2xl border bg-white p-8"><Armchair className="mb-4 h-10 w-10 text-emerald-600"/><h1 className="mb-3 text-2xl font-bold">Office / Reception</h1>{accessFailed ? <div role="alert" className="space-y-4"><p>{serviceUnavailable ? 'Reception is temporarily unavailable. Please try again in a moment.' : error}</p><button className={button} onClick={()=>setAccessAttempt(value=>value+1)}>Try again</button>{!serviceUnavailable && <Link href="/auth/login" className="ml-4 underline">Log in</Link>}</div> : <p>Checking Office access…</p>}</div>;
+  if (!access) return <div className="rounded-2xl border bg-white p-8"><Armchair className="mb-4 h-10 w-10 text-emerald-600"/><h1 className="mb-3 text-2xl font-bold">Office / Reception</h1>{accessFailed ? <div role="alert" className="space-y-4"><p>{serviceUnavailable ? 'Reception is temporarily unavailable. Please try again in a moment.' : error}</p><button className={button} onClick={()=>setAccessAttempt(value=>value+1)}>Try again</button>{!serviceUnavailable && <Link href={addRoomOnOpen?"/auth/login?redirect=%2Foffice%2Fadd-room":"/auth/login"} className="ml-4 underline">Log in</Link>}</div> : <p>Checking Office access…</p>}</div>;
   if (!access.allowed) return <div className="rounded-xl border bg-white p-8"><h1 className="text-2xl font-bold">Office / Reception</h1><p className="mt-3">Ask an admin to grant your account Office access. To view a room, open the link reception shared with you.</p><Link className="mt-4 inline-block underline" href="/user/dashboard/office">View my shared rooms</Link></div>;
 
   return <div className="grid items-start gap-4 text-slate-900"><div className="space-y-4">
