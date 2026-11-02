@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from 'react';
-import { officeService, officeError } from '@/http/services/office.service';
+import { officeService, officeError, ClientInput } from '@/http/services/office.service';
 
 const input = 'w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm';
 const statuses = [
@@ -11,7 +11,7 @@ const statuses = [
   { value:'NOT_MOVED_IN',label:'Not rented' }
 ];
 
-export function AddClientHistory({roomId,onSaved}:{roomId:string;onSaved:()=>void}) {
+export function AddClientHistory({roomId,onSaved,onFix,canFix=false}:{roomId:string;onSaved:()=>void;onFix?:(client:ClientInput)=>void;canFix?:boolean}) {
   const [open,setOpen]=useState(false);
   const [name,setName]=useState('');
   const [phone,setPhone]=useState('');
@@ -38,6 +38,11 @@ export function AddClientHistory({roomId,onSaved}:{roomId:string;onSaved:()=>voi
       <label className="block text-xs font-semibold">Event date and time (optional)<input className={input} type="datetime-local" value={date} onChange={e=>setDate(e.target.value)}/></label>
       <label className="block text-xs font-semibold">Reception notes<textarea className={input} rows={3} maxLength={5000} value={notes} onChange={e=>setNotes(e.target.value)}/></label>
       {error&&<p role="alert" className="text-sm text-rose-700">{error}</p>}
+      {canFix&&onFix&&<button type="button" disabled={busy} className="mr-2 rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50" onClick={event=>{
+        const form=event.currentTarget.form;
+        if(!form?.reportValidity())return;
+        onFix({clientName:name.trim(),clientPhone:phone.trim(),notes:notes.trim()});
+      }}>Fix Room to this Client</button>}
       <button disabled={busy} className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{busy?'Saving…':'Save to client history'}</button>
     </form>}
   </section>;
