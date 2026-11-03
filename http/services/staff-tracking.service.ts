@@ -32,8 +32,8 @@ export const staffTrackingService = {
     },
   start: async (payload: any) =>
     (await privateApi.post("/staff-tracking/start", payload)).data,
-  pingLocation: async (payload: any) =>
-    (await privateApi.post("/staff-tracking/location", payload)).data,
+  pingLocation: async (payload: any, signal?: AbortSignal) =>
+    (await privateApi.post("/staff-tracking/location", payload, { signal })).data,
   addVisit: async (payload: any) =>
     (await privateApi.post("/staff-tracking/visit", payload)).data,
   end: async (payload: any) =>

@@ -21,6 +21,7 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - run: node scripts/test-staff-tracking.cjs
       - run: node scripts/test-chatbot-voice-lifecycle.cjs
       - run: node scripts/test-reception-folders.cjs
       - run: node scripts/test-reception-share-fix.cjs
