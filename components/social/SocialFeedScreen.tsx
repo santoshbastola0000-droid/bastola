@@ -1197,6 +1197,90 @@ function PeopleStrip({
   );
 }
 
+function RoomFeedCard({
+  item,
+  widthClass,
+}: {
+  item: Extract<SocialFeedItem, { type: "ROOM" }>;
+  widthClass: string;
+}) {
+  const cardRef = useRef<HTMLAnchorElement>(null);
+  const [viewCount, setViewCount] = useState<number | null>(null);
+  const sent = useRef(false);
+
+  useEffect(() => {
+    const node = cardRef.current;
+    if (!node || sent.current || typeof IntersectionObserver === "undefined") return;
+    const observer = new IntersectionObserver((entries) => {
+      if (!entries.some((entry) => entry.isIntersecting && entry.intersectionRatio >= 0.5) || sent.current) return;
+      sent.current = true;
+      observer.disconnect();
+      void (async () => {
+        try {
+          const storageKey = "roomkhoj:feed-impression-visitor";
+          let visitorKey = localStorage.getItem(storageKey);
+          if (!visitorKey) {
+            visitorKey = crypto.randomUUID().replace(/-/g, "");
+            localStorage.setItem(storageKey, visitorKey);
+          }
+          const response = await fetch(
+            `${backendUrl}/public/social/rooms/${encodeURIComponent(item.room.id)}/impression`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ visitorKey }),
+              keepalive: true,
+            },
+          );
+          if (!response.ok) return;
+          const result = await response.json();
+          const count = Number(result?.viewCount ?? result?.data?.viewCount);
+          if (Number.isFinite(count) && count >= 0) setViewCount(count);
+        } catch {
+          // Feed browsing must keep working if analytics is temporarily unavailable.
+        }
+      })();
+    }, { threshold: [0.5] });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [item.room.id]);
+
+  return (
+    <Link
+      ref={cardRef}
+      href={`/property/${item.room.id}`}
+      className={`relative block shrink-0 snap-center overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm ${widthClass}`}
+    >
+      {item.room.image ? (
+        <img
+          src={media(item.room.image)}
+          alt={item.room.title}
+          loading="lazy"
+          decoding="async"
+          className="h-[300px] w-full object-cover sm:h-[360px]"
+        />
+      ) : (
+        <div className="flex h-[220px] w-full items-center justify-center bg-slate-100 text-sm font-semibold text-slate-400 sm:h-[280px]">
+          Room photo
+        </div>
+      )}
+      <div className="absolute right-3 top-3 flex items-center gap-1 rounded-full bg-white/95 px-2 py-1 text-xs font-semibold text-slate-700 shadow-sm" aria-label={viewCount === null ? "Room feed views loading" : `${viewCount} unique feed viewers`}>
+        <Eye className="h-3.5 w-3.5" aria-hidden="true" />
+        <span>{viewCount === null ? "—" : viewCount.toLocaleString()}</span>
+      </div>
+      <div className="p-3">
+        <div className="text-[11px] font-bold uppercase tracking-wide text-red-600">Room near you</div>
+        <div className="mt-0.5 line-clamp-2 text-[16px] font-semibold leading-tight">{item.room.title}</div>
+        <div className="mt-1 text-[15px] font-bold text-red-600">Rs. {Number(item.room.price).toLocaleString("en-IN")}/mo</div>
+        <div className="mt-1 flex items-center gap-1 text-[12px] text-slate-500">
+          <MapPin className="h-3.5 w-3.5 shrink-0" />
+          <span className="truncate">{item.room.area || item.room.city || "Nepal"}</span>
+        </div>
+      </div>
+    </Link>
+  );
+}
+
 function RoomCarousel({
   items,
 }: {
@@ -1208,64 +1292,18 @@ function RoomCarousel({
     <section className="overflow-hidden border-y bg-white py-2 shadow-sm sm:rounded-xl sm:border">
       <div className="flex items-center justify-between px-3 pb-2">
         <div>
-          <div className="text-[11px] font-bold uppercase tracking-wide text-red-600">
-            Rooms near you
-          </div>
-          <p className="mt-0.5 text-[11px] text-slate-500">
-            Side swipe गरेर अरू room हेर्नुहोस्
-          </p>
+          <div className="text-[11px] font-bold uppercase tracking-wide text-red-600">Rooms near you</div>
+          <p className="mt-0.5 text-[11px] text-slate-500">Side swipe गरेर अरू room हेर्नुहोस्</p>
         </div>
-
-        {items.length > 1 && (
-          <div className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-500">
-            {items.length} rooms
-          </div>
-        )}
+        {items.length > 1 && <div className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-500">{items.length} rooms</div>}
       </div>
-
       <div className="flex snap-x snap-mandatory gap-2 overflow-x-auto overscroll-x-contain px-2 pb-1 touch-pan-x [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {items.map((item) => (
-          <Link
+          <RoomFeedCard
             key={item.id}
-            href={`/property/${item.room.id}`}
-            className={`block shrink-0 snap-center overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm ${
-              items.length > 1
-                ? "w-[92%] sm:w-[72%]"
-                : "w-full"
-            }`}
-          >
-            {item.room.image ? (
-              <img
-                src={media(item.room.image)}
-                alt={item.room.title}
-                loading="lazy"
-                decoding="async"
-                className="h-[300px] w-full object-cover sm:h-[360px]"
-              />
-            ) : (
-              <div className="flex h-[220px] w-full items-center justify-center bg-slate-100 text-sm font-semibold text-slate-400 sm:h-[280px]">
-                Room photo
-              </div>
-            )}
-
-            <div className="p-3">
-              <div className="text-[11px] font-bold uppercase tracking-wide text-red-600">
-                Room near you
-              </div>
-              <div className="mt-0.5 line-clamp-2 text-[16px] font-semibold leading-tight">
-                {item.room.title}
-              </div>
-              <div className="mt-1 text-[15px] font-bold text-red-600">
-                Rs. {Number(item.room.price).toLocaleString("en-IN")}/mo
-              </div>
-              <div className="mt-1 flex items-center gap-1 text-[12px] text-slate-500">
-                <MapPin className="h-3.5 w-3.5 shrink-0" />
-                <span className="truncate">
-                  {item.room.area || item.room.city || "Nepal"}
-                </span>
-              </div>
-            </div>
-          </Link>
+            item={item}
+            widthClass={items.length > 1 ? "w-[92%] sm:w-[72%]" : "w-full"}
+          />
         ))}
       </div>
     </section>
