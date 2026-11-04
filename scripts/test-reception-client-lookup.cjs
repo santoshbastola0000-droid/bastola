@@ -31,6 +31,10 @@ function lookup(tree){return nodes(tree).find(n=>n.type==='input'&&n.props.place
  const h=harness([true,'','','','SENT','',false,'','9812345678'],async()=>({clients:[client('a')],total:1}),async()=>visits++);
  h.render();const cleanup=h.effect();h.runTimers();await flush();assert.equal(h.state[1],'Client a');assert.equal(h.state[2],'9812345678');assert.equal(visits,0);
  let tree=h.render();lookup(tree).props.onChange({target:{value:'9800000000'}});assert.equal(h.state[1],'');assert.equal(h.state[2],'');cleanup();
+ const phoneEdit=harness([true,'','','','SENT','',false,'','9812345678'],async()=>({clients:[client('a')],total:1}));
+ phoneEdit.render();phoneEdit.effect();phoneEdit.runTimers();await flush();tree=phoneEdit.render();
+ nodes(tree).find(n=>n.type==='input'&&n.props.maxLength===24).props.onChange({target:{value:'9800000000'}});
+ assert.equal(phoneEdit.state[1],'');assert.equal(phoneEdit.state[2],'9800000000');
  let resolve;const delayed=new Promise(r=>resolve=r);
  const stale=harness([true,'','','','SENT','',false,'','9812345678'],()=>delayed);
  stale.render();stale.effect();stale.runTimers();

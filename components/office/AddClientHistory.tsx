@@ -42,7 +42,7 @@ export function AddClientHistory({roomId,onSaved,onFix,canFix=false}:{roomId:str
     generation.current++;autoFilled.current=null;setLookup('');setMatches([]);setLookupMessage('');setSearching(false);
   }
   function resetForm(){
-    manualEntry();setName('');setPhone('');setDate('');setStatus('SENT');setNotes('');
+    manualEntry();setName('');setPhone('');setDate('');setStatus('SENT');setNotes('');setError('');
   }
   useEffect(()=>{
     let active=true;const ticket=++generation.current;
@@ -78,7 +78,7 @@ export function AddClientHistory({roomId,onSaved,onFix,canFix=false}:{roomId:str
       {lookupMessage&&<p role="status" className="text-xs text-slate-600">{lookupMessage}</p>}
       {matches.length>1&&<div className="flex flex-wrap gap-1">{matches.map(client=><button type="button" key={client.id} className="rounded border bg-white px-2 py-1 text-xs" onClick={()=>selectClient(client)}>{client.name}</button>)}</div>}
       <label className="block text-xs font-semibold">Client name<input className={input} required maxLength={150} value={name} disabled={busy} onChange={e=>{manualEntry();setName(e.target.value);}}/></label>
-      <label className="block text-xs font-semibold">Phone number<input className={input} type="tel" required maxLength={24} value={phone} disabled={busy} onChange={e=>{manualEntry();setPhone(e.target.value);}}/></label>
+      <label className="block text-xs font-semibold">Phone number<input className={input} type="tel" required maxLength={24} value={phone} disabled={busy} onChange={e=>{changeLookup('');setPhone(e.target.value);}}/></label>
       <label className="block text-xs font-semibold">Status<select className={input} value={status} onChange={e=>setStatus(e.target.value)}>{statuses.map(s=><option key={s.value} value={s.value}>{s.label}</option>)}</select></label>
       <label className="block text-xs font-semibold">Event date and time (optional)<input className={input} type="datetime-local" value={date} onChange={e=>setDate(e.target.value)}/></label>
       <label className="block text-xs font-semibold">Reception notes<textarea className={input} rows={3} maxLength={5000} value={notes} onChange={e=>setNotes(e.target.value)}/></label>
