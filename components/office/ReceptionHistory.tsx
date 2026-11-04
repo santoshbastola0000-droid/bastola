@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { officeError, officeService } from '@/http/services/office.service';
 import type { ClientInput, OfficeHistory, OfficeRoom } from '@/http/services/office.service';
+import { ClientHistoryDetails } from './ClientHistoryDetails';
 import { PhoneReveal } from './PhoneReveal';
 import { OfficeVideo } from './OfficeVideo';
 import { clientHistoryGroups, clientRoomHistory } from '@/lib/reception-client-history';
@@ -116,6 +117,7 @@ function HistoryRow({ entries, serial, busy, formFilled, onSend, onOutcome }: {
       {formFilled&&<span className="text-[10px] text-emerald-700">✓ Form filled</span>}
       <PhoneReveal phone={client.clientPhone} label="Client phone" highlighted={formFilled}/>
     </div>
+    <ClientHistoryDetails key={client.clientId} clientId={client.clientId} phone={client.clientPhone}/>
     <ul className="space-y-2" aria-label="Rooms shown to this client">
       {rooms.map(entry=><CompactClientRoom key={entry.roomId} entry={entry} busy={busy} onSend={onSend} onOutcome={onOutcome}/>)}
     </ul>
