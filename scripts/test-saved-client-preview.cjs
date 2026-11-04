@@ -20,7 +20,7 @@ function text(x){return typeof x==='string'?x:(x?.children||[]).map(text).join('
  assert.equal(ui.updates[4].values.paymentCode,undefined);assert.equal(ui.updates[4].values.documentNumber,undefined);assert.equal(ui.requests.length,0);
  ui=render({3:{[client.id]:{id:'paper / a'}},14:[client]});
  await nodes(ui.tree).find(x=>x.type==='button'&&text(x)==='Form Preview').props.onClick();
- await Promise.resolve();assert.equal(ui.requests[0],'/office/paper-forms/paper%20%2F%20a');
+ await new Promise(resolve=>setImmediate(resolve));assert.equal(ui.requests[0],'/office/paper-forms/paper%20%2F%20a');
  assert.equal(ui.updates[4].id,'paper-a');
  const phoneFn=source.match(/const phoneKey=(.*);/)[1];assert.equal(vm.runInNewContext('('+phoneFn+')')('+977 981-234-5678'),'9812345678');
  const paper=fs.readFileSync('components/admin/records/PaperClientForm.tsx','utf8');
