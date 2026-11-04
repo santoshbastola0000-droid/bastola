@@ -118,6 +118,7 @@ function HistoryRow({ entries, serial, busy, formFilled, onSend, onOutcome }: {
       <PhoneReveal phone={client.clientPhone} label="Client phone" highlighted={formFilled}/>
     </div>
     <ClientHistoryDetails key={client.clientId} clientId={client.clientId} phone={client.clientPhone}/>
+    <div className="mb-2 flex items-center gap-2"><span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded border border-blue-200 bg-blue-50 text-xs font-bold text-blue-800" aria-label={`${rooms.length} distinct rooms loaded`}>{rooms.length}</span><span className="text-[10px] text-slate-500">{page>=0&&!hasMore?'देखाएका rooms':'अहिले देखिएका rooms · अरू तलबाट हेर्नुहोस्'}</span></div>
     <ul className="space-y-2" aria-label="Rooms shown to this client">
       {rooms.map(entry=><CompactClientRoom key={entry.roomId} entry={entry} busy={busy} onSend={onSend} onOutcome={onOutcome}/>)}
     </ul>
