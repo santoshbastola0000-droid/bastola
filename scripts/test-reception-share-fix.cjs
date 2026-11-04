@@ -5,7 +5,7 @@ function load(path,mocks){
 }
 function renderHistory(props,values){
  let index=0;
- const react={useEffect:()=>{},useState:initial=>[index<values.length?values[index++]:initial,()=>{}],createElement:(type,props,...children)=>({type,props:props||{},children:children.flat(Infinity)})};
+ const react={useEffect:()=>{},useRef:v=>({current:v}),useState:initial=>[index<values.length?values[index++]:initial,()=>{}],createElement:(type,props,...children)=>({type,props:props||{},children:children.flat(Infinity)})};
  return load('components/office/AddClientHistory.tsx',{react}).AddClientHistory(props);
 }
 function nodes(tree){return [tree,...(tree?.children||[]).filter(x=>x&&typeof x==='object').flatMap(nodes)];}
