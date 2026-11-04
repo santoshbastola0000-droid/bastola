@@ -1,7 +1,7 @@
 "use client";
 
-import { FormEvent, useState } from 'react';
-import { officeService, officeError, ClientInput } from '@/http/services/office.service';
+import { FormEvent, useEffect, useState } from 'react';
+import { officeService, officeError, ClientInput, ReceptionClient } from '@/http/services/office.service';
 
 const input = 'w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm';
 const statuses = [
@@ -20,6 +20,27 @@ export function AddClientHistory({roomId,onSaved,onFix,canFix=false}:{roomId:str
   const [notes,setNotes]=useState('');
   const [busy,setBusy]=useState(false);
   const [error,setError]=useState('');
+  const [lookup,setLookup]=useState('');
+  const [matches,setMatches]=useState<ReceptionClient[]>([]);
+  const [searching,setSearching]=useState(false);
+  const [lookupMessage,setLookupMessage]=useState('');
+  useEffect(()=>{
+    let active=true;
+    const digits=lookup.replace(/[^0-9]/g,'').replace(/^00977/,'').replace(/^977(?=9[0-9]{9}$)/,'');
+    setMatches([]);setLookupMessage('');
+    if(!open||!/^9[0-9]{9}$/.test(digits)){setSearching(false);return;}
+    setSearching(true);
+    const timer=window.setTimeout(()=>{
+      void officeService.clients(digits).then(result=>{
+        if(!active)return;
+        const found=result.clients.filter(client=>client.phone.replace(/[^0-9]/g,'').slice(-10)===digits);
+        setMatches(found);
+        if(found.length===1){setName(found[0].name);setPhone(found[0].phone);setLookupMessage('Saved client found. Name and phone filled.');}
+        else setLookupMessage(found.length?'Choose the matching saved client.':'No exact saved client found. Enter details below.');
+      }).catch(()=>{if(active)setLookupMessage('Could not search saved clients. Retry or enter details manually.');}).finally(()=>{if(active)setSearching(false);});
+    },350);
+    return()=>{active=false;window.clearTimeout(timer);};
+  },[lookup,open]);
   async function save(event:FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setBusy(true);setError('');
@@ -32,6 +53,10 @@ export function AddClientHistory({roomId,onSaved,onFix,canFix=false}:{roomId:str
   return <section className="space-y-2">
     <button type="button" onClick={()=>setOpen(v=>!v)} className="w-full rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700">{open?'Cancel':'＋ Add Client History'}</button>
     {open&&<form onSubmit={save} className="space-y-3 rounded-xl border bg-blue-50/50 p-3">
+      <label className="block text-xs font-semibold">Search saved client by phone<input className={input} type="tel" value={lookup} onChange={e=>setLookup(e.target.value)} placeholder="98XXXXXXXX" disabled={busy}/></label>
+      {searching&&<p role="status" className="text-xs">Searching saved clients…</p>}
+      {lookupMessage&&<p role="status" className="text-xs text-slate-600">{lookupMessage}</p>}
+      {matches.length>1&&<div className="flex flex-wrap gap-1">{matches.map(client=><button type="button" key={client.id} className="rounded border bg-white px-2 py-1 text-xs" onClick={()=>{setName(client.name);setPhone(client.phone);setLookupMessage('Selected saved client. Name and phone filled.');}}>{client.name}</button>)}</div>}
       <label className="block text-xs font-semibold">Client name<input className={input} required maxLength={150} value={name} onChange={e=>setName(e.target.value)}/></label>
       <label className="block text-xs font-semibold">Phone number<input className={input} type="tel" required maxLength={24} value={phone} onChange={e=>setPhone(e.target.value)}/></label>
       <label className="block text-xs font-semibold">Status<select className={input} value={status} onChange={e=>setStatus(e.target.value)}>{statuses.map(s=><option key={s.value} value={s.value}>{s.label}</option>)}</select></label>
