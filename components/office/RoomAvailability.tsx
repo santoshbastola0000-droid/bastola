@@ -1,5 +1,6 @@
 "use client";
 import { useUserStore } from "@/stores/user-store";
+import { PendingClientIntake } from "./PendingClientIntake";
 import { Bookmark, SlidersHorizontal } from "lucide-react";
 import { readSaved, SAVE_EVENT } from "./RoomListingActions";
 import { loadAvailabilityRooms } from "@/lib/availability-list";
@@ -75,6 +76,7 @@ export function RoomAvailability({hideContact=true,embedded=false}: {hideContact
     <button type="button" aria-pressed={!savedOnly} onClick={()=>{setSavedOnly(false);setPage(0);}} className={chip+" "+(!savedOnly?activeChip:idleChip)}>All rooms</button>
     <button type="button" aria-pressed={savedOnly} onClick={()=>{setSavedOnly(true);setPage(0);}} className={chip+" "+(savedOnly?activeChip:idleChip)}><Bookmark className="h-3.5 w-3.5" aria-hidden="true"/>Saved <span className="text-[10px]">({savedIds.length})</span></button>
     <button type="button" aria-expanded={filterOpen} aria-controls={filterPanelId} onClick={()=>setFilterOpen(v=>!v)} className={chip+" "+(filterCount?activeChip:idleChip)}><SlidersHorizontal className="h-3.5 w-3.5" aria-hidden="true"/>Filter{filterCount>0?" ("+filterCount+")":""}</button>
+    {user?.id&&<PendingClientIntake key={user.id}/>}
     {(filterCount>0||search)&&<button type="button" className="px-1 py-1 text-[10px] text-muted-foreground underline" onClick={()=>{setMaxRent(0);setRoomType('');setQ('');setSearch('');setPage(0);}}>Clear filters</button>}
    </div>
    {filterOpen&&<div id={filterPanelId} className="grid grid-cols-2 gap-2 rounded-xl border border-border bg-card p-2.5">
