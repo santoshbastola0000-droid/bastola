@@ -22,7 +22,7 @@ function text(x){return typeof x==='string'?x:(x?.children||[]).map(text).join('
  await nodes(ui.tree).find(x=>x.type==='button'&&text(x)==='Form Preview').props.onClick();
  await new Promise(resolve=>setImmediate(resolve));assert.equal(ui.requests[0],'/office/paper-forms/paper%20%2F%20a');
  assert.equal(ui.updates[4].id,'paper-a');
- const phoneFn=source.match(/const phoneKey=(.*);/)[1];assert.equal(vm.runInNewContext('('+phoneFn+')')('+977 981-234-5678'),'9812345678');
+ const phoneFn=source.match(/const phoneKey=(.*);/)[1].replace('(v:string)','(v)');assert.equal(vm.runInNewContext('('+phoneFn+')')('+977 981-234-5678'),'9812345678');
  const paper=fs.readFileSync('components/admin/records/PaperClientForm.tsx','utf8');
  assert.ok(paper.includes('if(!allowBrowserDraft)return;'));assert.ok(source.includes('allowBrowserDraft={false}'));
  console.log('PASS add-client action, saved-data preview, blank sensitive/payment fields, authorized encoded paper fetch, formatted phone matching and embedded draft isolation');
