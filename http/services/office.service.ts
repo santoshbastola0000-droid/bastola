@@ -13,7 +13,7 @@ export interface OfficeRoom {
 export type SharedOfficeRoom = Pick<OfficeRoom, 'id' | 'code' | 'title' | 'location' | 'details' | 'tiktokUrl' | 'price' | 'status'>;
 export interface OfficeRental { id: string; number: number; clientName?: string; clientPhone?: string; startedAt: string; endedAt?: string | null; staffName?: string; origin: string; tenant?: TenantDetails; }
 export interface RoomMatchProfile { exactAddress?: string; latitude?: number | null; longitude?: number | null; city?: string; area?: string; roomType?: string; capacity?: number; facilities?: string[]; occupancy?: string; parkingVehicles?: string[]; }
-export interface TenantRequirements { city: string; area: string; roomType: string; people: number; minRent: number; maxRent: number; facilities: string[]; alternativeAreas?: string[]; occupancy?: string; parkingRequired?: boolean; vehicle?: string; vehicleCount?: number; rentalEndsOn?: string; moveInDate?: string; }
+export interface TenantRequirements { staffIntake?: {paymentState: 'PENDING'}; city: string; area: string; roomType: string; people: number; minRent: number; maxRent: number; facilities: string[]; alternativeAreas?: string[]; occupancy?: string; parkingRequired?: boolean; vehicle?: string; vehicleCount?: number; rentalEndsOn?: string; moveInDate?: string; }
 export interface ReceptionClient { id: string; name: string; phone: string; notes: string; active: boolean; requirements: TenantRequirements; createdAt: string; updatedAt?: string; reasons?: string[]; mismatches?: string[]; score?: number; }
 export interface OfficeHistory extends OfficeRoom {
   roomId: string; clientId: string; clientName: string; clientPhone: string;
@@ -59,8 +59,9 @@ export const officeService = {
   sendMessage: async (id: string,message: string) => privateApi.post(`/office/requests/${id}/messages`,{message}),
   uploadDocument: async (file: File) => { const data = new FormData(); data.append('document',file); return unwrap<{id:string}>(await privateApi.post(`${officeBackend}/office/tenant-documents`,data)); },
   document: async (id: string) => (await privateApi.get<Blob>(`${officeBackend}/office/tenant-documents/${id}`,{responseType:'blob'})).data,
-  access: async () => unwrap<{ allowed: boolean; isAdmin: boolean }>(await privateApi.get('/office/access')),
+  access: async () => unwrap<{ allowed: boolean; isAdmin: boolean; pendingClientIntake?: boolean }>(await privateApi.get('/office/access')),
   clients: async (q = '',page = 0) => unwrap<{ clients: ReceptionClient[]; total: number }>(await privateApi.get('/office/clients',{ params: { q,page } })),
+  createPendingClient: async (data: {clientName:string;clientPhone:string;notes:string;requirements:TenantRequirements;confirmedUnpaid:true}) => unwrap<ReceptionClient>(await privateApi.post('/office/clients/pending-intake',data)),
   saveClient: async (data: { clientName: string; clientPhone: string; notes: string; requirements: TenantRequirements }) => unwrap<ReceptionClient>(await privateApi.post('/office/clients',data)),
   clientActive: async (id: string,active: boolean) => privateApi.patch(`/office/clients/${id}/active`,{ active }),
   matchingClients: async (id: string,page = 0) => unwrap<{ clients: ReceptionClient[]; total: number; needsRoomDetails: boolean }>(await privateApi.get(`/office/rooms/${id}/matching-clients`,{ params: { page } })),
