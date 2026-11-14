@@ -35,7 +35,7 @@ import { walletService } from "@/http/services/wallet.service";
 import useTokenStore from "@/store";
 import { RoomAvailability, AvailabilityCard, type AvailableRoom } from "@/components/office/RoomAvailability";
 import { ChatServiceForm, requestedChatForm, type ChatService } from "./ChatServiceForm";
-import { MonkeyHead } from "./MonkeyHead";
+import { AIAssistantAvatar } from "./AIAssistantAvatar";
 
 interface RoomItem {
   id?: string;
@@ -1370,10 +1370,8 @@ useEffect(() => {
                   <PanelLeft className="w-4 h-4" />
                 </button>
 
-                <div className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50 via-white to-orange-100 shadow-sm dark:border-amber-400/30 dark:from-amber-300/15 dark:via-white/5 dark:to-orange-400/10">
-                  <div className="h-10 w-10 overflow-hidden rounded-xl">
-                    <MonkeyHead />
-                  </div>
+                <div className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+                  <AIAssistantAvatar compact />
                   <span className="absolute -bottom-1 -right-1 h-3.5 w-3.5 rounded-full border-2 border-white bg-emerald-500 dark:border-[#171717]" />
                 </div>
                 <div className="min-w-0">
