@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
   Banknote,
@@ -31,6 +31,8 @@ import {
   staffTrackingService,
   StaffType,
 } from "@/http/services/staff-tracking.service";
+
+import { staffWorkDate } from "@/lib/staff/location-tracker";
 
 const money = (value: unknown) =>
   `Rs. ${Number(value || 0).toLocaleString(undefined, {
@@ -116,7 +118,7 @@ function calendarBreakdown(profile: any, date: string) {
 
 export default function StaffTrackingAdminPage() {
   const [type, setType] = useState<StaffType>("MARKETING");
-  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(() => staffWorkDate());
   const [rows, setRows] = useState<any[]>([]);
   const [profiles, setProfiles] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -139,14 +141,18 @@ export default function StaffTrackingAdminPage() {
     offDayBonus: "100",
   });
 
-  const load = async () => {
+  const loadEpoch = useRef(0);
+  const load = async (clear = false) => {
+    const epoch = ++loadEpoch.current;
     try {
       setLoading(true);
-      setRows(await staffTrackingService.dashboard(type, date));
+      if (clear) setRows([]);
+      const next = await staffTrackingService.dashboard(type, date);
+      if (epoch === loadEpoch.current) setRows(next);
     } catch (error: any) {
-      toast.error(error?.response?.data?.message || "Staff tracking load failed");
+      if (epoch === loadEpoch.current) toast.error(error?.response?.data?.message || "Staff tracking load failed");
     } finally {
-      setLoading(false);
+      if (epoch === loadEpoch.current) setLoading(false);
     }
   };
 
@@ -162,7 +168,17 @@ export default function StaffTrackingAdminPage() {
   };
 
   useEffect(() => {
-    void load();
+    void load(true);
+    const refresh = () => { if (document.visibilityState === "visible") void load(); };
+    const timer = window.setInterval(refresh, 30000);
+    window.addEventListener("focus", refresh);
+    window.addEventListener("online", refresh);
+    return () => {
+      loadEpoch.current += 1;
+      window.clearInterval(timer);
+      window.removeEventListener("focus", refresh);
+      window.removeEventListener("online", refresh);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [type, date]);
 
@@ -177,15 +193,17 @@ export default function StaffTrackingAdminPage() {
       return;
     }
 
+    let cancelled = false;
     const timer = window.setTimeout(async () => {
       try {
-        setUserResults(await staffTrackingService.searchUsers(q));
+        const found = await staffTrackingService.searchUsers(q);
+        if (!cancelled) setUserResults(found);
       } catch {
-        setUserResults([]);
+        if (!cancelled) setUserResults([]);
       }
     }, 300);
 
-    return () => window.clearTimeout(timer);
+    return () => { cancelled = true; window.clearTimeout(timer); };
   }, [search, selectedUser]);
 
   const activeCount = useMemo(
