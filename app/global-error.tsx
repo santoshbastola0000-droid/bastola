@@ -1,34 +1,24 @@
 "use client";
 
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
-
-export default function GlobalError({
-  error,
-  reset,
-}: {
+export default function GlobalError({ error, reset }: {
   error: Error & { digest?: string };
   reset: () => void;
 }) {
-  console.error("Global runtime error:", error);
-
+  const chunkFailure = /ChunkLoadError|Failed to load chunk|Loading chunk|dynamically imported module/i.test(error?.message || "");
   return (
-    <html lang="en">
-      <body className="min-h-screen bg-slate-50 px-4 flex items-center justify-center">
-        <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-sm">
-          <h2 className="text-xl font-bold text-slate-900">
-            Application temporarily unavailable
-          </h2>
-          <p className="mt-2 text-sm text-slate-600">
-            {error?.message || "Unknown runtime error"}
-          </p>
-          <div className="mt-5 flex items-center justify-center gap-3">
-            <Button onClick={reset}>Retry</Button>
-            <Button asChild variant="outline">
-              <Link href="/">Go home</Link>
-            </Button>
-          </div>
-        </div>
+    <html lang="ne">
+      <body style={{ margin: 0, padding: 24, fontFamily: "system-ui, sans-serif", background: "#f8fafc", color: "#0f172a" }}>
+        <main style={{ maxWidth: 440, margin: "15vh auto", padding: 24, background: "white", borderRadius: 16 }}>
+          <h1 style={{ fontSize: 22 }}>पृष्ठ खोल्न सकिएन</h1>
+          <p>{chunkFailure
+            ? "Website को नयाँ version लोड गर्न पृष्ठ फेरि खोल्नुहोस्।"
+            : "अस्थायी समस्या आयो। फेरि प्रयास गर्नुहोस्।"}</p>
+          <button type="button" onClick={() => chunkFailure ? window.location.reload() : reset()}
+            style={{ padding: "12px 18px", borderRadius: 8, cursor: "pointer" }}>
+            {chunkFailure ? "Reload page" : "Retry"}
+          </button>
+          <a href="/" style={{ marginLeft: 20 }}>Go home</a>
+        </main>
       </body>
     </html>
   );
