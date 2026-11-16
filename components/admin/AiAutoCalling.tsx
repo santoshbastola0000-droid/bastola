@@ -63,6 +63,7 @@ export function AiAutoCalling({selectedPhone="",selectedName=""}:{selectedPhone?
     <label className="block text-sm" htmlFor="auto-owner-numbers">Owner नम्बरहरू — प्रत्येक line मा एउटा (+977… वा 98…)</label>
     <textarea id="auto-owner-numbers" rows={3} maxLength={2500} value={numbers} onChange={e=>setNumbers(e.target.value)} className="w-full rounded-lg border bg-background p-3" placeholder={"+97798XXXXXXXX\n+97797XXXXXXXX"}/>
     <label className="flex items-start gap-2 text-sm"><input type="checkbox" checked={consent} onChange={e=>setConsent(e.target.checked)}/><span>यी owner ले RoomKhoj AI बाट availability call लिन अनुमति दिएका छन्।</span></label>
+    <p className="text-xs text-muted-foreground">यो checkbox ले अनुमति आफैँ सिर्जना गर्दैन। प्रत्येक owner बाट पहिले स्पष्ट सहमति लिनुहोस्। RoomKhoj account मा AI call नचाहने preference राखिएको छ भने backend ले queue मा राख्न रोक्छ।</p>
     <div className="flex flex-wrap gap-2">
       <button disabled={busy||!consent||!numbers.trim()} className="rounded-lg bg-blue-700 px-4 py-2 text-white disabled:opacity-40" onClick={()=>add(numbers.split(/\r?\n/).map(phone=>phone.trim()).filter(Boolean).map(phone=>({phone,name:""})))}>नम्बर queue मा थप्नुहोस्</button>
       {selectedPhone&&<button disabled={busy||!consent} className="rounded-lg border px-4 py-2 disabled:opacity-40" onClick={()=>add([{phone:selectedPhone,name:selectedName.slice(0,120)}])}>छानिएको owner थप्नुहोस् ({selectedName||selectedPhone})</button>}
