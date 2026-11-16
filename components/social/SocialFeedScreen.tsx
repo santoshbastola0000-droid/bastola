@@ -895,6 +895,8 @@ function PostCard({
   onChanged: () => void | Promise<void>;
 }) {
   const [postMenu, setPostMenu] = useState(false);
+  const broadcastBusy = useRef(false);
+  const [sendingBroadcast, setSendingBroadcast] = useState(false);
   const own = post.author.id === currentUserId;
 
   return (
@@ -965,6 +967,24 @@ function PostCard({
                   toast.success("Report submitted");
                 }} />
               </>
+            )}
+            {isAdmin && post.visibility === "PUBLIC" && (
+              <ActionButton label={sendingBroadcast ? "Sending..." : "Send notification"} onClick={async () => {
+                if (broadcastBusy.current) return;
+                if (!window.confirm("यो post को preview र link email-enabled users लाई पठाउने? एउटै post फेरि पठाइँदैन।")) return;
+                broadcastBusy.current = true;
+                setSendingBroadcast(true);
+                try {
+                  const result = await socialService.broadcastPostEmail(post.id);
+                  toast.success(`Email campaign: ${result?.status || "queued"} (accepted: ${result?.sent || 0})`);
+                  setPostMenu(false);
+                } catch (error: any) {
+                  toast.error(error?.response?.data?.message || "Email campaign सुरु गर्न सकिएन।");
+                } finally {
+                  broadcastBusy.current = false;
+                  setSendingBroadcast(false);
+                }
+              }} />
             )}
           </div>
         )}

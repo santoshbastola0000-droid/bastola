@@ -250,6 +250,10 @@ export type SearchSuggestion = {
 };
 
 export const socialService = {
+  async broadcastPostEmail(postId: string) {
+    const response = await privateApi.post('/social/posts/' + encodeURIComponent(postId) + '/broadcast-email');
+    return response.data;
+  },
   async userPosts(userId: string, limit = 50): Promise<SocialPost[]> {
     const response = await privateApi.get(
       `/social/users/${userId}/posts`,
