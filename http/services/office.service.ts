@@ -89,6 +89,7 @@ export const officeService = {
   requestStatus: async (id: string,status: string) => privateApi.patch(`/office/requests/${id}`,{ status }),
   search: async (q: string) => unwrap<OfficeSearch>(await privateApi.get('/office/search',{ params: { q } })),
   video: async (id: string) => (await privateApi.get<Blob>(`${officeBackend}/office/rooms/${id}/video`,{ responseType: 'blob',timeout: 15*60*1000 })).data,
+  downloadVideo: async (id: string) => (await privateApi.get<Blob>(`${officeBackend}/office/rooms/${id}/video/download`,{ responseType: 'blob',timeout: 15*60*1000 })).data,
   shared: async (token: string) => unwrap<SharedOfficeRoom>(await api.get(`/office/shared/${token}`,{ headers: { 'Cache-Control': 'no-cache' } })),
   request: async (token: string,data: { name: string; phone: string; message: string }) => api.post(`/office/shared/${token}/request`,data),
 };
