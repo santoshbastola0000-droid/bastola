@@ -13,7 +13,7 @@ export function OfficeVideo({ roomId, recipient = false, available = false, comp
   const download = async () => {
     if (downloading) return;
     setDownloading(true); setError('');
-    try { await saveVideoBlob(await officeService.downloadVideo(roomId),`RoomKhoj-${roomId}.mp4`); }
+    try { await saveVideoBlob(await (recipient ? officeService.downloadMyVideo(roomId) : officeService.downloadVideo(roomId)),`RoomKhoj-${roomId}.mp4`); }
     catch (e) { setError(officeError(e)); }
     finally { setDownloading(false); }
   };
