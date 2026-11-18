@@ -1,5 +1,5 @@
 "use client";
-import { useState } from 'react';
+import { MouseEvent, useState } from 'react';
 import { Download } from 'lucide-react';
 import { officeService, officeError } from '@/http/services/office.service';
 import { saveVideoBlob } from '@/lib/save-video-blob';
@@ -7,7 +7,7 @@ import { saveVideoBlob } from '@/lib/save-video-blob';
 export function OfficeVideoDownloadButton({roomId}:{roomId:string}) {
   const [busy,setBusy]=useState(false);
   const [error,setError]=useState('');
-  async function download(e:React.MouseEvent<HTMLButtonElement>) {
+  async function download(e:MouseEvent<HTMLButtonElement>) {
     e.stopPropagation();
     if(busy)return;
     setBusy(true);setError('');
