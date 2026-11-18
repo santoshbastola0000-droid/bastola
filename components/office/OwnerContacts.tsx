@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { Search, Plus, ArrowUpDown, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { officeService, officeError, OwnerContact } from '@/http/services/office.service';
 import { OfficeVideo } from './OfficeVideo';
@@ -39,7 +39,7 @@ export function OwnerContacts() {
     });
   },[items,q,sort,ascending]);
 
-  async function submit(e:React.FormEvent){
+  async function submit(e:FormEvent){
     e.preventDefault();setBusy(true);setError('');setNotice('');
     try{
       await officeService.createOwnerContact({ownerName:ownerName.trim(),ownerPhone:ownerPhone.trim(),location:location.trim(),roomType:roomType.trim(),notes:notes.trim()});
