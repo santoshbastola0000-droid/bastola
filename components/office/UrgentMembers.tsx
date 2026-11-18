@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { officeError, officeService, ReceptionClient, OfficeRoom, UrgentMember } from '@/http/services/office.service';
 
-const blankRequirements = { city:'',area:'',roomType:'',people:1,minRent:0,maxRent:0,facilities:[] as string[] };
+const blankRequirements = { city:'Any',area:'',roomType:'ANY',people:1,minRent:0,maxRent:9999999999,facilities:[] as string[] };
 const input = 'w-full rounded-lg border border-slate-200 bg-white p-3 text-slate-900';
 
 export function UrgentMembers({ revision=0, onChanged }: { revision?:number; onChanged?:()=>void }) {
