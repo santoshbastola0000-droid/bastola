@@ -27,6 +27,9 @@ export function AvailabilityCard({room,onSelect}: {room:AvailableRoom;hideContac
        <span className="rounded-lg border border-white/25 bg-black/60 px-2 py-1 font-mono text-[10px] font-medium tracking-wide text-white">{room.code}</span>
      </div>
    </div>
+   {room.hasVideo!==false&&<div className="flex justify-end border-b border-border bg-card px-3 py-2">
+     <a href={officeBackend+'/office/availability/'+encodeURIComponent(room.id)+'/video/download'} download className="inline-flex min-h-9 items-center rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-xs font-semibold text-primary hover:bg-primary/10">↓ Download video</a>
+   </div>}
    <RoomListingBody room={room} compact onDetails={onSelect?()=>onSelect(room):undefined}/>
  </article>;
 }
