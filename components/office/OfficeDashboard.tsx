@@ -3,7 +3,7 @@
 import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { Armchair, FolderCheck, FolderClosed, Plus, Search, Users, Video, LayoutGrid, History, ClipboardList, FileText, ShieldCheck, UserRoundSearch, Share2 } from 'lucide-react';
+import { Armchair, FolderCheck, FolderClosed, Plus, Search, Users, Video, LayoutGrid, History, ClipboardList, FileText, ShieldCheck, UserRoundSearch, Share2, Phone } from 'lucide-react';
 import { officeService, officeError, OfficeRoom, OfficeHistory, OfficeStaff, OfficeRequest, OfficeForm, OfficeOwnerSummary, ClientInput, MatchedRoom, ReceptionClient } from '@/http/services/office.service';
 import { OfficeVideo } from './OfficeVideo';
 import { PhoneReveal } from './PhoneReveal';
@@ -13,6 +13,7 @@ import { ReceptionHistory } from './ReceptionHistory';
 import { AddClientHistory } from './AddClientHistory';
 import { ClientSidebar } from './ClientSidebar';
 import { SavedClients, RoomMatchedClients } from './SavedClients';
+import { OwnerContacts } from './OwnerContacts';
 import { UrgentMembers } from './UrgentMembers';
 import { MatchingClients } from './MatchingClients';
 import { RentalSummary } from './RentalSummary';
@@ -25,8 +26,8 @@ import { ClientRequirements } from './ClientRequirements';
 import { blankMatch, MatchingFields } from './MatchingFields';
 
 const field = 'w-full rounded-lg border border-slate-200 bg-white p-3 text-slate-900';
-const button = 'rounded-lg bg-blue-600 px-4 py-2.5 font-semibold text-white disabled:opacity-50 hover:bg-blue-700';
-const secondary = 'rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-slate-800 hover:bg-slate-50 disabled:opacity-50';
+const button = 'rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50 hover:bg-blue-700';
+const secondary = 'rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 hover:bg-slate-50 disabled:opacity-50';
 const blankRoom = { code: '',title: '',location: '',details: '',ownerName: '',ownerPhone: '',tiktokUrl: '',price: '' };
 const receptionQuestions = [
   ['Water / Electricity','Water / Electricity'],
@@ -237,21 +238,23 @@ export function OfficeDashboard({ addRoomOnOpen = false }: { addRoomOnOpen?: boo
   return <div className="grid items-start gap-4 text-slate-900"><div className="space-y-4">
     <div className="flex items-center gap-3"><Armchair className="h-7 w-7 text-blue-600"/><div><h1 className="text-2xl font-bold">Reception</h1><p className="text-sm text-slate-500">Manage rooms, clients and visits</p></div></div>
     <nav aria-label="Reception actions" className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
-      <button type="button" className="flex min-h-14 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-semibold shadow-sm hover:bg-blue-50" onClick={()=>{setTab("requirements");setNotice("");}}><UserRoundSearch className="h-5 w-5 shrink-0"/>Client Requirements</button>
-      <button type="button" className="flex min-h-14 items-center justify-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-3 text-sm font-semibold text-rose-700 shadow-sm hover:bg-rose-100" onClick={()=>{setTab("urgent");setNotice("");}}><span className="text-lg">🚨</span>Urgent</button>
-      <button type="button" aria-pressed={showSavedClients} className={`flex min-h-14 items-center justify-center gap-2 rounded-xl border px-3 py-3 text-sm font-semibold shadow-sm ${showSavedClients?'border-blue-600 bg-blue-600 text-white':'border-slate-200 bg-white hover:bg-blue-50'}`} onClick={()=>setShowSavedClients(v=>!v)}><Users className="h-5 w-5 shrink-0"/>Saved Clients</button>
-      <button type="button" className="flex min-h-14 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-semibold shadow-sm hover:bg-blue-50" onClick={() => openEditor()}><Video className="h-5 w-5 shrink-0"/>Add room video</button>
+      <button type="button" className="flex min-h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-2 py-2 text-xs font-semibold shadow-sm hover:bg-blue-50" onClick={()=>{setTab("requirements");setNotice("");}}><UserRoundSearch className="h-4 w-4 shrink-0"/>Client Requirements</button>
+      <button type="button" className="flex min-h-11 items-center justify-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-2 py-2 text-xs font-semibold text-rose-700 shadow-sm hover:bg-rose-100" onClick={()=>{setTab("urgent");setNotice("");}}><span className="text-lg">🚨</span>Urgent</button>
+      <button type="button" aria-pressed={showSavedClients} className={`flex min-h-11 items-center justify-center gap-2 rounded-xl border px-2 py-2 text-xs font-semibold shadow-sm ${showSavedClients?'border-blue-600 bg-blue-600 text-white':'border-slate-200 bg-white hover:bg-blue-50'}`} onClick={()=>setShowSavedClients(v=>!v)}><Users className="h-4 w-4 shrink-0"/>Saved Clients</button>
+      <button type="button" className="flex min-h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-2 py-2 text-xs font-semibold shadow-sm hover:bg-blue-50" onClick={() => openEditor()}><Video className="h-4 w-4 shrink-0"/>Add room video</button>
+      <button type="button" aria-pressed={tab==='owner-contacts'} className={tab==='owner-contacts'?'flex min-h-11 items-center justify-center gap-2 rounded-xl border border-blue-600 bg-blue-600 px-2 py-2 text-xs font-semibold text-white shadow-sm':'flex min-h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-2 py-2 text-xs font-semibold shadow-sm hover:bg-blue-50'} onClick={()=>{setTab('owner-contacts');setNotice('');}}><Phone className="h-4 w-4 shrink-0"/>Owner Contact Details</button>
       <button type="button" className={secondary} onClick={()=>void shareAddRoomLink()}><Share2 className="mr-2 inline h-4 w-4"/>Share Add Room Link</button>
       {([
         ['rooms','Rooms',LayoutGrid],['rented-archive','Rented History',History],['search','Reception search',Search],['history','Client & owner history',History],['requests','Room requests',ClipboardList],['requirements','Client Requirements',FileText],
         ...(access.isAdmin ? [['admin-inquiries','Room chatbox',ClipboardList] as const, ['staff','Staff access',ShieldCheck] as const] : []),
-      ] as const).map(([id,label,Icon])=><button type="button" key={id} aria-pressed={tab===id} className={`flex min-h-14 items-center justify-center gap-2 rounded-xl border px-3 py-3 text-sm font-semibold shadow-sm ${tab===id?'border-blue-600 bg-blue-600 text-white':'border-slate-200 bg-white hover:bg-blue-50'}`} onClick={() => { setTab(id); setNotice(''); }}><Icon className="h-5 w-5 shrink-0"/><span>{label}</span></button>)}
+      ] as const).map(([id,label,Icon])=><button type="button" key={id} aria-pressed={tab===id} className={`flex min-h-11 items-center justify-center gap-2 rounded-xl border px-2 py-2 text-xs font-semibold shadow-sm ${tab===id?'border-blue-600 bg-blue-600 text-white':'border-slate-200 bg-white hover:bg-blue-50'}`} onClick={() => { setTab(id); setNotice(''); }}><Icon className="h-4 w-4 shrink-0"/><span>{label}</span></button>)}
     </nav>
     {addRoomLink&&<div className="rounded-xl border bg-white p-3"><label className="block text-sm font-semibold">Staff Add Room link<input readOnly className={field} value={addRoomLink} onFocus={e=>e.target.select()}/></label><p className="mt-1 text-xs text-slate-500">This link grants no permission. An authorized staff login is required.</p></div>}
     {showSavedClients&&<SavedClients revision={matchingRevision}/>}
     {error && <p role="alert" className="rounded-xl bg-red-50 p-4 text-red-700">{error}</p>}{notice && <p role="status" className="rounded-xl bg-emerald-50 p-4 text-emerald-800">{notice}</p>}
     {tab==='urgent' && <UrgentMembers revision={matchingRevision} onChanged={()=>setMatchingRevision(v=>v+1)}/>}
     {tab==='rented-archive' && <RentedRoomArchive/>}
+    {tab==='owner-contacts' && <OwnerContacts/>}
     {(tab==='rooms'||tab==='history'||tab==='search') && <form className="flex gap-2" onSubmit={e => { e.preventDefault(); setSearch(query); setPage(0);  setHistoryRoom(undefined); setTab(query.trim() ? 'search' : 'rooms'); }}><input className={field} aria-label="Search Reception only" placeholder="Search by room code, location, price, or owner…" value={query} onChange={e => setQuery(e.target.value)} /><button className={button} aria-label="Search Reception"><Search className="mr-2 inline h-5 w-5"/>Search</button></form>}
     {tab==='search' && !loading && owners.length>0 && <section className="space-y-3" aria-label="Reception owner summaries"><h2 className="text-lg font-semibold">Owner details & related rooms</h2>{owners.map(owner=><article key={owner.ownerKey} className="space-y-3 rounded-xl border bg-white p-4"><div><h3 className="font-semibold">{owner.ownerNames.join(' / ') || 'Owner name not recorded'}</h3>{access?.isAdmin&&<PhoneReveal phone={owner.ownerPhone} label="Owner phone"/>}</div><p className="text-sm">📍 {owner.locations.join(' · ')}</p><div className="flex flex-wrap gap-3 text-sm"><span className="rounded-lg bg-slate-100 px-3 py-2">{owner.totalRooms} related rooms</span><span className="rounded-lg bg-emerald-50 px-3 py-2">{owner.availableRooms} available</span><span className="rounded-lg bg-amber-50 px-3 py-2">{owner.rentedRooms} rented</span><span className="rounded-lg bg-slate-100 px-3 py-2">{owner.totalClients} clients</span><span className="rounded-lg bg-slate-100 px-3 py-2">{owner.sentClients} sent</span><span className="rounded-lg bg-slate-100 px-3 py-2">{owner.visitedClients} visited</span><span className="rounded-lg bg-slate-100 px-3 py-2">{owner.movedInClients} moved in recorded</span></div><button className={secondary} onClick={()=>{setQuery(owner.ownerPhone);setSearch(owner.ownerPhone);setPage(0);setHistoryRoom(undefined);}}>View all rooms & clients for this owner</button></article>)}</section>}
     {(tab==='rooms'||tab==='search') && <>
