@@ -25,6 +25,8 @@ export interface OfficeHistory extends OfficeRoom {
   createdAt: string;
 }
 export interface OfficeForm { id: string; name: string; customerNumber: string; status: string; customerDestination?: string; }
+export interface OwnerContactMatch { id:string; code:string; title:string; location:string; roomType:string; status:'AVAILABLE'|'RENTED'; hasVideo:boolean; }
+export interface OwnerContact { id:string; ownerName:string; ownerPhone:string; location:string; roomType:string; notes:string; createdAt:string; updatedAt:string; duplicateCount:number; matchedRoomCount:number; matches:OwnerContactMatch[]; }
 export interface OfficeOwnerSummary {
   ownerKey: string; ownerPhone: string; ownerNames: string[]; locations: string[];
   totalRooms: number; availableRooms: number; rentedRooms: number;
@@ -74,6 +76,8 @@ export const officeService = {
   myVideo: async (id: string) => (await privateApi.get<Blob>(`${officeBackend}/office/my-rooms/${id}/video`,{ responseType: 'blob',timeout: 15*60*1000 })).data,
   downloadMyVideo: async (id: string) => (await privateApi.get<Blob>(`${officeBackend}/office/my-rooms/${id}/video/download`,{ responseType: 'blob',timeout: 15*60*1000 })).data,
   myRequest: async (id: string,message: string) => privateApi.post(`/office/my-rooms/${id}/request`,{ message }),
+  ownerContacts: async (q = '') => unwrap<{contacts:OwnerContact[];total:number}>(await privateApi.get('/office/owner-contacts',{params:{q}})),
+  createOwnerContact: async (data:{ownerName:string;ownerPhone:string;location:string;roomType:string;notes:string}) => unwrap<OwnerContact>(await privateApi.post('/office/owner-contacts',data)),
   rooms: async (q: string,status: string,page = 0) => unwrap<{ rooms: OfficeRoom[]; total: number; counts: { status: string; total: number }[]; owners: OfficeOwnerSummary[] }>(await privateApi.get('/office/rooms',{ params: { q,status,page } })),
   room: async (id: string) => unwrap<OfficeRoom>(await privateApi.get(`/office/rooms/${id}`)),
   create: async (data: FormData,onProgress: (percent: number) => void) => unwrap<OfficeRoom>(await privateApi.post(`${officeBackend}/office/rooms`,data,{
