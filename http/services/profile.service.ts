@@ -21,12 +21,13 @@ export interface PublicProfile {
   jobs: any[];
 }
 
-export type FriendStatus =
+export type FollowStatus =
   | "SELF"
   | "NONE"
-  | "REQUEST_SENT"
-  | "REQUEST_RECEIVED"
-  | "FRIENDS";
+  | "FOLLOWING"
+  | "FOLLOWED_BY"
+  | "MUTUAL"
+  | "BLOCKED";
 
 export type ProfileViewSummary = {
   totalViews: number;
@@ -126,13 +127,13 @@ export const profileService = {
     return res.data;
   },
 
-  getFriendStatus: async (
+  getFollowStatus: async (
     userId: string,
   ): Promise<{
-    status: FriendStatus;
+    status: FollowStatus;
   }> => {
     const res = await privateApi.get(
-      `/friend/status/${userId}`,
+      `/friend/follow-status/${userId}`,
     );
 
     return res.data;
@@ -142,7 +143,7 @@ export const profileService = {
     userId: string,
   ) => {
     const res = await privateApi.post(
-      `/friend/request/${userId}`,
+      `/friend/follow/${userId}`,
     );
 
     return res.data;
@@ -152,7 +153,7 @@ export const profileService = {
     userId: string,
   ) => {
     const res = await privateApi.post(
-      `/friend/accept/${userId}`,
+      `/friend/follow/${userId}`,
     );
 
     return res.data;
@@ -162,9 +163,24 @@ export const profileService = {
     userId: string,
   ) => {
     const res = await privateApi.delete(
-      `/friend/${userId}`,
+      `/friend/follow/${userId}`,
     );
 
+    return res.data;
+  },
+
+  unfollow: async (userId: string) => {
+    const res = await privateApi.delete(`/friend/follow/${userId}`);
+    return res.data;
+  },
+
+  getFollowCounts: async (userId: string): Promise<{ followers: number; following: number }> => {
+    const res = await privateApi.get(`/friend/follow-counts/${userId}`);
+    return res.data;
+  },
+
+  getFollowing: async (userId: string) => {
+    const res = await privateApi.get(`/friend/following/${userId}`);
     return res.data;
   },
 
@@ -172,7 +188,7 @@ export const profileService = {
     userId: string,
   ) => {
     const res = await privateApi.get(
-      `/friend/list/${userId}`,
+      `/friend/followers/${userId}`,
     );
 
     return res.data;
