@@ -466,7 +466,7 @@ export default function PublicProfilePage() {
                 <div className="grid grid-cols-3 gap-2 rounded-2xl bg-slate-50 px-3 py-3 text-center sm:mt-3 sm:max-w-md">
                   <div className="min-w-0">
                     <p className="text-lg font-black tabular-nums">{friends.length}</p>
-                    <p className="text-xs font-semibold text-slate-600">Friends</p>
+                    <p className="text-xs font-semibold text-slate-600">Followers</p>
                   </div>
                   <div className="min-w-0">
                     <p className="text-lg font-black tabular-nums">{profile.rooms.length}</p>
@@ -546,7 +546,7 @@ export default function PublicProfilePage() {
                   ["posts", "All"],
                   ["rooms", "Rooms"],
                   ["jobs", "Jobs"],
-                  ["friends", "Friends"],
+                  ["friends", "Followers"],
                   ["about", "About"],
                 ].map(([value, label]) => (
                   <button
