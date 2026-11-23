@@ -2426,7 +2426,7 @@ const user = useUserStore(
                                     ),
                                 );
                                 toast.success(
-                                  "Friend request पठाइयो।",
+                                  "Follow गर्नुभयो।",
                                 );
                               } catch (
                                 error: any
@@ -2434,7 +2434,7 @@ const user = useUserStore(
                                 toast.error(
                                   error?.response?.data
                                     ?.message ||
-                                    "Friend request पठाउन सकिएन।",
+                                    "Follow गर्न सकिएन।",
                                 );
                               } finally {
                                 setSuggestionBusyId(
