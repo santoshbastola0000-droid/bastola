@@ -511,14 +511,13 @@ export default function PublicProfilePage() {
                         onClick={handleFriend}
                         disabled={
                           friendLoading ||
-                          friendStatus === "REQUEST_SENT" ||
-                          friendStatus === "FRIENDS"
+                          false
                         }
                         className="h-11 min-w-0 rounded-xl bg-red-600 px-2 text-sm font-bold text-white hover:bg-red-700"
                       >
                         {friendStatus === "FOLLOWING" || friendStatus === "MUTUAL" ? (
                           <Check className="mr-1.5 h-4 w-4 shrink-0" />
-                        ) : friendStatus === "REQUEST_SENT" ? (
+                        ) : false ? (
                           <Clock3 className="mr-1.5 h-4 w-4 shrink-0" />
                         ) : (
                           <UserPlus className="mr-1.5 h-4 w-4 shrink-0" />
