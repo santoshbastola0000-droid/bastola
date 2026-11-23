@@ -180,7 +180,7 @@ export function SocialFeedScreen() {
   const [text, setText] = useState("");
   const [mentionUserIds, setMentionUserIds] = useState<string[]>([]);
   const [files, setFiles] = useState<File[]>([]);
-  const [visibility, setVisibility] = useState<"PUBLIC" | "FRIENDS" | "GROUP">("PUBLIC");
+  const [visibility, setVisibility] = useState<"PUBLIC" | "FOLLOWING" | "GROUP">("PUBLIC");
   const [groupId, setGroupId] = useState("");
   const [posting, setPosting] = useState(false);
 
@@ -520,11 +520,11 @@ export function SocialFeedScreen() {
                 await socialService.acceptFriendRequest(id);
                 setRequests((current) => current.filter((item) => item.id !== id));
                 setSuggestions((current) => current.filter((item) => item.id !== id));
-                toast.success("Friend request accepted");
+                toast.success("Follow back भयो");
               } catch (error: any) {
                 toast.error(
                   error?.response?.data?.message ||
-                    "Friend request accept गर्न सकिएन।",
+                    "Follow गर्न सकिएन।",
                 );
               } finally {
                 setPeopleBusyId(null);
@@ -536,7 +536,7 @@ export function SocialFeedScreen() {
                 setPeopleBusyId(id);
                 const result = await socialService.sendFriendRequest(id);
 
-                if (String(result?.status || "") === "FRIENDS") {
+                if (String(result?.status || "") === "FOLLOWING") {
                   setSuggestions((current) =>
                     current.filter((item) => item.id !== id),
                   );
@@ -787,8 +787,8 @@ function Composer({
   files: File[];
   setFiles: (files: File[]) => void;
   previews: string[];
-  visibility: "PUBLIC" | "FRIENDS" | "GROUP";
-  setVisibility: (value: "PUBLIC" | "FRIENDS" | "GROUP") => void;
+  visibility: "PUBLIC" | "FOLLOWING" | "GROUP";
+  setVisibility: (value: "PUBLIC" | "FOLLOWING" | "GROUP") => void;
   groupId: string;
   setGroupId: (value: string) => void;
   groups: SocialGroup[];
@@ -848,14 +848,14 @@ function Composer({
               setVisibility("GROUP");
               setGroupId(value.slice(6));
             } else {
-              setVisibility(value as "PUBLIC" | "FRIENDS");
+              setVisibility(value as "PUBLIC" | "FOLLOWING");
               setGroupId("");
             }
           }}
           className="min-w-0 rounded-lg border border-slate-200 bg-white px-2 py-2 text-[13px] font-semibold"
         >
           <option value="PUBLIC">Public</option>
-          <option value="FRIENDS">Friends</option>
+          <option value="FOLLOWING">Friends</option>
           {groups
             .filter((group) => group.membership === "ACTIVE")
             .map((group) => (
@@ -912,7 +912,7 @@ function PostCard({
             {post.author.name}
           </Link>
           <div className="mt-0.5 text-[12px] font-medium leading-tight text-slate-500">
-            {ago(post.createdAt)} · {post.visibility === "FRIENDS" ? "Friends" : post.visibility === "GROUP" ? "Group" : "Public"}
+            {ago(post.createdAt)} · {post.visibility === "FOLLOWING" ? "Friends" : post.visibility === "GROUP" ? "Group" : "Public"}
           </div>
         </div>
         <button onClick={() => setPostMenu((value) => !value)} className="rounded-full p-2 hover:bg-slate-100">
