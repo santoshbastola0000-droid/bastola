@@ -419,10 +419,10 @@ export default function PublicProfilePage() {
           : "Add Friend";
 
   return (
-    <main className="min-h-screen bg-muted/30 pb-24">
-      <div className="mx-auto max-w-5xl">
-        <section className="overflow-hidden bg-background shadow-sm sm:rounded-b-[28px]">
-          <div className="relative h-56 bg-gradient-to-br from-primary/90 via-primary to-primary/75 sm:h-80">
+    <main className="min-h-screen bg-white pb-24 text-slate-950">
+      <div className="mx-auto max-w-5xl sm:px-3">
+        <section className="overflow-hidden bg-white sm:rounded-b-[24px] sm:shadow-sm">
+          <div className="relative h-20 bg-gradient-to-r from-red-700 via-red-600 to-red-500 sm:h-28">
             {coverPhoto ? (
               <img
                 src={coverPhoto}
@@ -435,11 +435,11 @@ export default function PublicProfilePage() {
           </div>
 
           <div className="relative px-4 pb-4 sm:px-8">
-            <div className="-mt-20 flex flex-col items-center text-center sm:-mt-24">
+            <div className="-mt-12 flex flex-row items-center gap-4 text-left sm:-mt-16 sm:gap-7">
               <button
                 type="button"
                 onClick={() => setPhotoViewerOpen(true)}
-                className={`relative h-40 w-40 shrink-0 overflow-hidden rounded-full border-[5px] border-background shadow-xl transition active:scale-[0.98] sm:h-48 sm:w-48 ${profile.user.isBanned ? "bg-white" : "bg-primary"}`}
+                className={`relative h-28 w-28 shrink-0 overflow-hidden rounded-full border-4 border-white shadow-lg transition active:scale-[0.98] sm:h-36 sm:w-36 ${profile.user.isBanned ? "bg-white" : "bg-red-600"}`}
                 aria-label="Open profile photo"
               >
                 {profilePhoto ? (
@@ -475,8 +475,8 @@ export default function PublicProfilePage() {
                 />
               )}
 
-              <div className="mt-3 flex max-w-full items-center justify-center gap-2">
-                <h1 className="truncate text-[30px] font-black tracking-tight sm:text-4xl">
+              <div className="mt-1 flex min-w-0 max-w-full items-center justify-start gap-2">
+                <h1 className="truncate text-[22px] font-black tracking-tight sm:text-3xl">
                   {profile.user.name}
                 </h1>
                 {verifiedBadgeEnabled && profile.user.isVerified && (
@@ -484,7 +484,7 @@ export default function PublicProfilePage() {
                 )}
               </div>
 
-              <p className="mt-1 text-sm font-bold text-muted-foreground sm:text-base">
+              <p className="mt-2 text-sm font-bold text-slate-700 sm:text-base">
                 {friends.length} {friends.length === 1 ? "friend" : "friends"}
                 <span className="mx-1.5">•</span>
                 {profile.rooms.length} rooms
@@ -493,12 +493,12 @@ export default function PublicProfilePage() {
               </p>
 
               {profile.user.bio && (
-                <p className="mt-4 max-w-2xl whitespace-pre-wrap text-[15px] font-medium leading-6">
+                <p className="mt-2 max-w-2xl whitespace-pre-wrap text-[14px] font-medium leading-5 text-slate-700">
                   {profile.user.bio}
                 </p>
               )}
 
-              <div className="mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-sm font-semibold text-muted-foreground">
+              <div className="mt-2 flex flex-wrap items-center justify-start gap-x-3 gap-y-2 text-xs font-semibold text-slate-600">
                 {profile.user.location && (
                   <span className="inline-flex items-center gap-1.5">
                     <MapPin className="h-4 w-4 text-primary" />
@@ -554,7 +554,7 @@ export default function PublicProfilePage() {
               )}
             </div>
 
-            <div className="mt-5 border-t border-border">
+            <div className="mt-5 border-t border-slate-200">
               <div className="flex overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                 {[
                   ["posts", "All"],
@@ -567,11 +567,11 @@ export default function PublicProfilePage() {
                     key={value}
                     type="button"
                     onClick={() => setTab(value as Tab)}
-                    className={`relative min-w-fit px-5 py-4 text-sm font-black transition sm:px-7 ${tab === value ? "text-primary" : "text-foreground"}`}
+                    className={`relative min-w-fit px-5 py-4 text-sm font-black transition sm:px-7 ${tab === value ? "text-red-700" : "text-slate-600"}`}
                   >
                     {label}
                     {tab === value && (
-                      <span className="absolute inset-x-3 bottom-0 h-[3px] rounded-full bg-primary" />
+                      <span className="absolute inset-x-3 bottom-0 h-[3px] rounded-full bg-red-600" />
                     )}
                   </button>
                 ))}
@@ -580,7 +580,7 @@ export default function PublicProfilePage() {
           </div>
         </section>
 
-        <div className="grid gap-4 p-3 sm:p-5 lg:grid-cols-[320px_1fr]">
+        <div className="grid gap-4 p-3 sm:p-5 lg:grid-cols-[300px_1fr]">
           <aside className="space-y-4">
             <section className="rounded-2xl bg-background p-5 shadow-sm">
               <h2 className="mb-4 text-lg font-bold">
