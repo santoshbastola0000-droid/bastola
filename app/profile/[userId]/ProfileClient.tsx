@@ -31,7 +31,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   profileService,
-  type FriendStatus,
+  type FollowStatus,
   type PublicProfile,
 } from "@/http/services/profile.service";
 import { profileMediaUrl } from "@/lib/profile-media";
@@ -74,7 +74,7 @@ export default function PublicProfilePage() {
     friendStatus,
     setFriendStatus,
   ] =
-    useState<FriendStatus>("NONE");
+    useState<FollowStatus>("NONE");
 
   const [friends, setFriends] =
     useState<any[]>([]);
@@ -219,43 +219,14 @@ export default function PublicProfilePage() {
     try {
       setFriendLoading(true);
 
-      if (
-        friendStatus ===
-        "REQUEST_RECEIVED"
-      ) {
-        const result =
-          await profileService
-            .acceptFriendRequest(
-              userId,
-            );
-
-        setFriendStatus(
-          result.status,
-        );
-
-        toast.success(
-          "Friend request accepted",
-        );
-
-        return;
-      }
-
-      if (
-        friendStatus === "NONE"
-      ) {
-        const result =
-          await profileService
-            .sendFriendRequest(
-              userId,
-            );
-
-        setFriendStatus(
-          result.status,
-        );
-
-        toast.success(
-          "Friend request sent",
-        );
+      if (friendStatus === "FOLLOWING" || friendStatus === "MUTUAL") {
+        await profileService.unfollow(userId);
+        setFriendStatus(friendStatus === "MUTUAL" ? "FOLLOWED_BY" : "NONE");
+        toast.success("Unfollow भयो");
+      } else {
+        const result = await profileService.sendFriendRequest(userId);
+        setFriendStatus(result.status);
+        toast.success("Follow गर्नुभयो");
       }
     } catch (error: any) {
       toast.error(
@@ -408,15 +379,11 @@ export default function PublicProfilePage() {
     );
 
   const friendLabel =
-    friendStatus === "FRIENDS"
-      ? "Friends"
-      : friendStatus ===
-          "REQUEST_SENT"
-        ? "Request Sent"
-        : friendStatus ===
-            "REQUEST_RECEIVED"
-          ? "Confirm"
-          : "Add Friend";
+    friendStatus === "FOLLOWING" || friendStatus === "MUTUAL"
+      ? "Following"
+      : friendStatus === "FOLLOWED_BY"
+        ? "Follow back"
+        : "Follow";
 
   return (
     <main className="min-h-screen bg-white pb-24 text-slate-950">
@@ -499,7 +466,7 @@ export default function PublicProfilePage() {
                 <div className="grid grid-cols-3 gap-2 rounded-2xl bg-slate-50 px-3 py-3 text-center sm:mt-3 sm:max-w-md">
                   <div className="min-w-0">
                     <p className="text-lg font-black tabular-nums">{friends.length}</p>
-                    <p className="text-xs font-semibold text-slate-600">Friends</p>
+                    <p className="text-xs font-semibold text-slate-600">Followers</p>
                   </div>
                   <div className="min-w-0">
                     <p className="text-lg font-black tabular-nums">{profile.rooms.length}</p>
@@ -544,14 +511,13 @@ export default function PublicProfilePage() {
                         onClick={handleFriend}
                         disabled={
                           friendLoading ||
-                          friendStatus === "REQUEST_SENT" ||
-                          friendStatus === "FRIENDS"
+                          false
                         }
                         className="h-11 min-w-0 rounded-xl bg-red-600 px-2 text-sm font-bold text-white hover:bg-red-700"
                       >
-                        {friendStatus === "FRIENDS" ? (
+                        {friendStatus === "FOLLOWING" || friendStatus === "MUTUAL" ? (
                           <Check className="mr-1.5 h-4 w-4 shrink-0" />
-                        ) : friendStatus === "REQUEST_SENT" ? (
+                        ) : false ? (
                           <Clock3 className="mr-1.5 h-4 w-4 shrink-0" />
                         ) : (
                           <UserPlus className="mr-1.5 h-4 w-4 shrink-0" />
@@ -579,7 +545,7 @@ export default function PublicProfilePage() {
                   ["posts", "All"],
                   ["rooms", "Rooms"],
                   ["jobs", "Jobs"],
-                  ["friends", "Friends"],
+                  ["friends", "Followers"],
                   ["about", "About"],
                 ].map(([value, label]) => (
                   <button
@@ -650,7 +616,7 @@ export default function PublicProfilePage() {
             <section className="rounded-2xl bg-background p-5 shadow-sm">
               <div className="mb-4 flex items-center justify-between">
                 <h2 className="text-lg font-bold">
-                  Friends
+                  Followers
                 </h2>
 
                 <button

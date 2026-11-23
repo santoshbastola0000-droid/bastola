@@ -778,17 +778,17 @@ export const socialService = {
   },
 
   async sendFriendRequest(userId: string) {
-    const response = await privateApi.post(`/friend/request/${userId}`);
+    const response = await privateApi.post(`/friend/follow/${userId}`);
     return response.data;
   },
 
   async acceptFriendRequest(userId: string) {
-    const response = await privateApi.post(`/friend/accept/${userId}`);
+    const response = await privateApi.post(`/friend/follow/${userId}`);
     return response.data;
   },
 
   async rejectFriendRequest(userId: string) {
-    const response = await privateApi.delete(`/friend/${userId}`);
+    const response = await privateApi.delete(`/friend/follow/${userId}`);
     return response.data;
   },
 
