@@ -422,7 +422,7 @@ export default function PublicProfilePage() {
     <main className="min-h-screen bg-white pb-24 text-slate-950">
       <div className="mx-auto max-w-5xl sm:px-3">
         <section className="overflow-hidden bg-white sm:rounded-b-[24px] sm:shadow-sm">
-          <div className="relative h-20 bg-gradient-to-r from-red-700 via-red-600 to-red-500 sm:h-28">
+          <div className="relative h-32 bg-gradient-to-r from-red-700 via-red-600 to-red-500 sm:h-48">
             {coverPhoto ? (
               <img
                 src={coverPhoto}
@@ -435,123 +435,142 @@ export default function PublicProfilePage() {
           </div>
 
           <div className="relative px-4 pb-4 sm:px-8">
-            <div className="-mt-12 flex flex-row items-center gap-4 text-left sm:-mt-16 sm:gap-7">
-              <button
-                type="button"
-                onClick={() => setPhotoViewerOpen(true)}
-                className={`relative h-28 w-28 shrink-0 overflow-hidden rounded-full border-4 border-white shadow-lg transition active:scale-[0.98] sm:h-36 sm:w-36 ${profile.user.isBanned ? "bg-white" : "bg-red-600"}`}
-                aria-label="Open profile photo"
-              >
-                {profilePhoto ? (
-                  <img
-                    src={profilePhoto}
-                    alt={`${profile.user.name} profile photo`}
-                    className="h-full w-full object-cover"
-                    onError={(e) => {
-                      e.currentTarget.style.display = "none";
-                    }}
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:gap-6">
+              <div className="flex min-w-0 items-end gap-3 sm:block">
+                <button
+                  type="button"
+                  onClick={() => setPhotoViewerOpen(true)}
+                  className={`relative -mt-14 h-28 w-28 shrink-0 overflow-hidden rounded-full border-4 border-white shadow-lg transition active:scale-[0.98] sm:-mt-16 sm:h-36 sm:w-36 ${profile.user.isBanned ? "bg-white" : "bg-red-600"}`}
+                  aria-label="Open profile photo"
+                >
+                  {profilePhoto ? (
+                    <img
+                      src={profilePhoto}
+                      alt={`${profile.user.name} profile photo`}
+                      className="h-full w-full object-cover"
+                      onError={(e) => {
+                        e.currentTarget.style.display = "none";
+                      }}
+                    />
+                  ) : profile.user.isBanned ? (
+                    <div className="h-full w-full bg-white" />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center text-4xl font-black text-white">
+                      {initials}
+                    </div>
+                  )}
+                  {isOwnProfile && (
+                    <span className="absolute bottom-2 right-2 flex h-8 w-8 items-center justify-center rounded-full border-2 border-white bg-black/75 text-white shadow-lg">
+                      <Camera className="h-4 w-4" />
+                    </span>
+                  )}
+                </button>
+                {isOwnProfile && (
+                  <input
+                    ref={profilePhotoInputRef}
+                    type="file"
+                    accept="image/*,.heic,.heif"
+                    className="hidden"
+                    onChange={handleProfilePhotoChange}
                   />
-                ) : profile.user.isBanned ? (
-                  <div className="h-full w-full bg-white" />
-                ) : (
-                  <div className="flex h-full w-full items-center justify-center text-4xl font-black text-primary-foreground">
-                    {initials}
+                )}
+                <div className="min-w-0 pb-1 sm:hidden">
+                  <div className="flex min-w-0 items-center gap-1.5">
+                    <h1 className="truncate text-xl font-black tracking-tight">
+                      {profile.user.name}
+                    </h1>
+                    {verifiedBadgeEnabled && profile.user.isVerified && (
+                      <BadgeCheck className="h-5 w-5 shrink-0 text-red-600" />
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="min-w-0 flex-1">
+                <div className="hidden min-w-0 items-center gap-2 sm:flex">
+                  <h1 className="truncate text-2xl font-black tracking-tight sm:text-3xl">
+                    {profile.user.name}
+                  </h1>
+                  {verifiedBadgeEnabled && profile.user.isVerified && (
+                    <BadgeCheck className="h-6 w-6 shrink-0 text-red-600" />
+                  )}
+                </div>
+
+                <div className="grid grid-cols-3 gap-2 rounded-2xl bg-slate-50 px-3 py-3 text-center sm:mt-3 sm:max-w-md">
+                  <div className="min-w-0">
+                    <p className="text-lg font-black tabular-nums">{friends.length}</p>
+                    <p className="text-xs font-semibold text-slate-600">Friends</p>
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-lg font-black tabular-nums">{profile.rooms.length}</p>
+                    <p className="text-xs font-semibold text-slate-600">Rooms</p>
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-lg font-black tabular-nums">{profile.jobs.length}</p>
+                    <p className="text-xs font-semibold text-slate-600">Jobs</p>
+                  </div>
+                </div>
+
+                {profile.user.bio && (
+                  <p className="mt-3 max-w-2xl whitespace-pre-wrap text-sm font-medium leading-5 text-slate-700">
+                    {profile.user.bio}
+                  </p>
+                )}
+
+                <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2 text-xs font-semibold text-slate-600">
+                  {profile.user.location && (
+                    <span className="inline-flex items-center gap-1.5">
+                      <MapPin className="h-4 w-4 shrink-0 text-red-600" />
+                      <span className="break-words">{profile.user.location}</span>
+                    </span>
+                  )}
+                  {profile.user.website && (
+                    <a
+                      href={profile.user.website}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1.5 text-red-700 hover:underline"
+                    >
+                      <Globe2 className="h-4 w-4" />
+                      Website
+                    </a>
+                  )}
+                </div>
+
+                {friendStatus !== "SELF" && !isOwnProfile && (
+                  <div className={`mt-4 grid w-full gap-2 ${profile.user.isSynthetic ? "grid-cols-1" : "grid-cols-2"} sm:max-w-md`}>
+                    {!profile.user.isSynthetic && (
+                      <Button
+                        onClick={handleFriend}
+                        disabled={
+                          friendLoading ||
+                          friendStatus === "REQUEST_SENT" ||
+                          friendStatus === "FRIENDS"
+                        }
+                        className="h-11 min-w-0 rounded-xl bg-red-600 px-2 text-sm font-bold text-white hover:bg-red-700"
+                      >
+                        {friendStatus === "FRIENDS" ? (
+                          <Check className="mr-1.5 h-4 w-4 shrink-0" />
+                        ) : friendStatus === "REQUEST_SENT" ? (
+                          <Clock3 className="mr-1.5 h-4 w-4 shrink-0" />
+                        ) : (
+                          <UserPlus className="mr-1.5 h-4 w-4 shrink-0" />
+                        )}
+                        <span className="truncate">{friendLabel}</span>
+                      </Button>
+                    )}
+                    <Button
+                      variant="secondary"
+                      className="h-11 min-w-0 rounded-xl px-2 text-sm font-bold"
+                      onClick={handleMessage}
+                      disabled={messageLoading}
+                    >
+                      <MessageCircle className="mr-1.5 h-4 w-4 shrink-0" />
+                      <span className="truncate">{messageLoading ? "Opening..." : "Message"}</span>
+                    </Button>
                   </div>
                 )}
-                {isOwnProfile && (
-                  <span className="absolute bottom-2 right-2 flex h-9 w-9 items-center justify-center rounded-full border-2 border-white bg-black/75 text-white shadow-lg">
-                    <Camera className="h-4 w-4" />
-                  </span>
-                )}
-              </button>
-
-              {isOwnProfile && (
-                <input
-                  ref={profilePhotoInputRef}
-                  type="file"
-                  accept="image/*,.heic,.heif"
-                  className="hidden"
-                  onChange={handleProfilePhotoChange}
-                />
-              )}
-
-              <div className="mt-1 flex min-w-0 max-w-full items-center justify-start gap-2">
-                <h1 className="truncate text-[22px] font-black tracking-tight sm:text-3xl">
-                  {profile.user.name}
-                </h1>
-                {verifiedBadgeEnabled && profile.user.isVerified && (
-                  <BadgeCheck className="h-6 w-6 shrink-0 text-primary" />
-                )}
               </div>
-
-              <p className="mt-2 text-sm font-bold text-slate-700 sm:text-base">
-                {friends.length} {friends.length === 1 ? "friend" : "friends"}
-                <span className="mx-1.5">•</span>
-                {profile.rooms.length} rooms
-                <span className="mx-1.5">•</span>
-                {profile.jobs.length} jobs
-              </p>
-
-              {profile.user.bio && (
-                <p className="mt-2 max-w-2xl whitespace-pre-wrap text-[14px] font-medium leading-5 text-slate-700">
-                  {profile.user.bio}
-                </p>
-              )}
-
-              <div className="mt-2 flex flex-wrap items-center justify-start gap-x-3 gap-y-2 text-xs font-semibold text-slate-600">
-                {profile.user.location && (
-                  <span className="inline-flex items-center gap-1.5">
-                    <MapPin className="h-4 w-4 text-primary" />
-                    {profile.user.location}
-                  </span>
-                )}
-
-                {profile.user.website && (
-                  <a
-                    href={profile.user.website}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-1.5 text-primary hover:underline"
-                  >
-                    <Globe2 className="h-4 w-4" />
-                    Website
-                  </a>
-                )}
-              </div>
-
-              {friendStatus !== "SELF" && !isOwnProfile && (
-                <div
-                  className={`mt-5 grid w-full max-w-xl ${profile.user.isSynthetic ? "grid-cols-1" : "grid-cols-2"} gap-2`}
-                >
-                  {!profile.user.isSynthetic && <Button
-                    onClick={handleFriend}
-                    disabled={
-                      friendLoading ||
-                      friendStatus === "REQUEST_SENT" ||
-                      friendStatus === "FRIENDS"
-                    }
-                    className="h-11 rounded-xl bg-primary font-bold text-primary-foreground hover:bg-primary/90"
-                  >
-                    {friendStatus === "FRIENDS" ? (
-                      <Check className="mr-2 h-4 w-4" />
-                    ) : friendStatus === "REQUEST_SENT" ? (
-                      <Clock3 className="mr-2 h-4 w-4" />
-                    ) : (
-                      <UserPlus className="mr-2 h-4 w-4" />
-                    )}
-                    {friendLabel}
-                  </Button>}
-                  <Button
-                    variant="secondary"
-                    className="h-11 rounded-xl font-bold"
-                    onClick={handleMessage}
-                    disabled={messageLoading}
-                  >
-                    <MessageCircle className="mr-2 h-4 w-4" />
-                    {messageLoading ? "Opening..." : "Message"}
-                  </Button>
-                </div>
-              )}
             </div>
 
             <div className="mt-5 border-t border-slate-200">
