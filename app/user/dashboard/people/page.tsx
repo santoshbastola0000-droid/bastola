@@ -100,7 +100,7 @@ export default function PeoplePage() {
 
   const [requests, setRequests] =
     useState<IncomingFriend[]>([]);
-  const [friends, setFriends] =
+  const [friends, setFollowing] =
     useState<ExistingFriend[]>([]);
   const [suggestions, setSuggestions] =
     useState<SocialUser[]>([]);
@@ -127,7 +127,7 @@ export default function PeoplePage() {
         suggestionResult,
       ] = await Promise.allSettled([
         socialService.friendRequests(),
-        profileService.getFriends(
+        profileService.getFollowing(
           String(user.id),
         ),
         socialService.friendSuggestions(),
@@ -152,7 +152,7 @@ export default function PeoplePage() {
         friendResult.status ===
         "fulfilled"
       ) {
-        setFriends(
+        setFollowing(
           Array.isArray(friendResult.value)
             ? friendResult.value
             : [],
@@ -216,7 +216,7 @@ export default function PeoplePage() {
     return rows;
   }, [friends, requests]);
 
-  const visibleNewFriends = expanded
+  const visibleNewFollowing = expanded
     ? newFriendRows
     : newFriendRows.slice(0, 3);
 
@@ -243,7 +243,7 @@ export default function PeoplePage() {
             item.id !== person.id,
         ),
       );
-      setFriends((current) => [
+      setFollowing((current) => [
         person,
         ...current.filter(
           (item) =>
@@ -258,7 +258,7 @@ export default function PeoplePage() {
       );
 
       toast.success(
-        "अब तपाईंहरू friends हुनुहुन्छ।",
+        "Follow गर्नुभयो।",
       );
     } catch (error: any) {
       toast.error(
@@ -314,7 +314,7 @@ export default function PeoplePage() {
           response?.status || "",
         ) === "FRIENDS"
       ) {
-        setFriends((current) => [
+        setFollowing((current) => [
           person,
           ...current.filter(
             (item) =>
@@ -322,11 +322,11 @@ export default function PeoplePage() {
           ),
         ]);
         toast.success(
-          "अब तपाईंहरू friends हुनुहुन्छ।",
+          "Follow गर्नुभयो।",
         );
       } else {
         toast.success(
-          "Friend request पठाइयो।",
+          "Follow गर्नुभयो।",
         );
       }
 
@@ -340,7 +340,7 @@ export default function PeoplePage() {
     } catch (error: any) {
       toast.error(
         error?.response?.data?.message ||
-          "Friend request पठाउन सकिएन।",
+          "Follow गर्न सकिएन।",
       );
     } finally {
       setBusyId(null);
@@ -361,7 +361,7 @@ export default function PeoplePage() {
           </button>
 
           <h1 className="pointer-events-none absolute left-1/2 -translate-x-1/2 text-xl font-black tracking-tight">
-            New friends
+            Discover people
           </h1>
         </div>
       </header>
@@ -373,11 +373,11 @@ export default function PeoplePage() {
           </div>
         ) : (
           <>
-            {visibleNewFriends.length >
+            {visibleNewFollowing.length >
               0 && (
               <section className="pt-4">
                 <div className="space-y-2">
-                  {visibleNewFriends.map(
+                  {visibleNewFollowing.map(
                     (row) => {
                       const {
                         person,
@@ -510,7 +510,7 @@ export default function PeoplePage() {
 
             <section
               className={
-                visibleNewFriends.length >
+                visibleNewFollowing.length >
                 0
                   ? "border-t border-border/60 pt-5"
                   : "pt-5"
@@ -699,7 +699,7 @@ export default function PeoplePage() {
                               person.id ? (
                                 <Loader2 className="h-4 w-4 animate-spin" />
                               ) : (
-                                "Add friend"
+                                "Follow"
                               )}
                             </Button>
                           </div>
