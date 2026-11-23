@@ -100,7 +100,7 @@ export default function PeoplePage() {
 
   const [requests, setRequests] =
     useState<IncomingFriend[]>([]);
-  const [friends, setFollowing] =
+  const [friends, setFriends] =
     useState<ExistingFriend[]>([]);
   const [suggestions, setSuggestions] =
     useState<SocialUser[]>([]);
@@ -263,7 +263,7 @@ export default function PeoplePage() {
     } catch (error: any) {
       toast.error(
         error?.response?.data?.message ||
-          "Friend request accept गर्न सकिएन।",
+          "Follow गर्न सकिएन।",
       );
     } finally {
       setBusyId(null);
@@ -312,7 +312,7 @@ export default function PeoplePage() {
       if (
         String(
           response?.status || "",
-        ) === "FRIENDS"
+        ) === "FOLLOWING"
       ) {
         setFollowing((current) => [
           person,
