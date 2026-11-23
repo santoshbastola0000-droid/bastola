@@ -616,7 +616,7 @@ export default function PublicProfilePage() {
             <section className="rounded-2xl bg-background p-5 shadow-sm">
               <div className="mb-4 flex items-center justify-between">
                 <h2 className="text-lg font-bold">
-                  Friends
+                  Followers
                 </h2>
 
                 <button
