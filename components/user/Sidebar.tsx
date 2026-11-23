@@ -42,7 +42,7 @@ const navItems = [
   { title: "Office", href: "/user/dashboard/office", icon: Armchair },
   { title: "Dashboard", href: "/user/dashboard", icon: Home },
   { title: "Profile", href: "/user/dashboard/profile", icon: UserCircle },
-  { title: "Friends", href: "/user/dashboard/people", icon: Users },
+  { title: "Discover people", href: "/user/dashboard/people", icon: Users },
   {
     title: "Alert Preferences",
     href: "/user/dashboard/preferences",
