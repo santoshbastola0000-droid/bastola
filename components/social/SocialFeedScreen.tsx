@@ -418,13 +418,13 @@ export function SocialFeedScreen() {
                     friendOnboarding.remaining <= 1
                   ) {
                     toast.success(
-                      "5 friend requests पूरा भयो। अब feed खुल्यो।",
+                      "5 follows पूरा भयो। अब feed खुल्यो।",
                     );
                   }
                 } catch (error: any) {
                   toast.error(
                     error?.response?.data?.message ||
-                      "Friend request पठाउन सकिएन।",
+                      "Follow गर्न सकिएन।",
                   );
                 } finally {
                   setOnboardingBusyId(null);
@@ -553,7 +553,7 @@ export function SocialFeedScreen() {
               } catch (error: any) {
                 toast.error(
                   error?.response?.data?.message ||
-                    "Friend request पठाउन सकिएन।",
+                    "Follow गर्न सकिएन।",
                 );
               } finally {
                 setPeopleBusyId(null);
@@ -700,7 +700,7 @@ function NewUserFriendOnboarding({
               ) : (
                 <UserPlus className="h-4 w-4" />
               )}
-              Add friend
+              Follow
             </button>
           </div>
         ))}
