@@ -198,6 +198,15 @@ export function SocialFeedScreen() {
 
 
   useEffect(() => {
+    if (!user) return;
+    let active = true;
+    socialService.creatorAiSettings()
+      .then((settings) => { if (active) setAiEnabled(Boolean(settings.enabled)); })
+      .catch(() => { if (active) setAiEnabled(false); });
+    return () => { active = false; };
+  }, [user]);
+
+  useEffect(() => {
     const handleScroll = () => {
       const y = Math.max(0, window.scrollY);
       const delta = y - lastScrollY.current;
@@ -482,6 +491,12 @@ export function SocialFeedScreen() {
           posting={posting}
           onPublish={publish}
           postInput={postInput}
+          aiEnabled={aiEnabled}
+          aiBusy={aiBusy}
+          aiTopic={aiTopic}
+          setAiTopic={setAiTopic}
+          onGenerateAiText={generateAiText}
+          onGenerateAiImage={generateAiImage}
         />}
 
         <Link
@@ -808,6 +823,12 @@ function Composer({
   posting,
   onPublish,
   postInput,
+  aiEnabled,
+  aiBusy,
+  aiTopic,
+  setAiTopic,
+  onGenerateAiText,
+  onGenerateAiImage,
 }: {
   userId: string;
   userName: string;
@@ -826,6 +847,12 @@ function Composer({
   posting: boolean;
   onPublish: () => void | Promise<void>;
   postInput: React.RefObject<HTMLInputElement | null>;
+  aiEnabled: boolean;
+  aiBusy: boolean;
+  aiTopic: string;
+  setAiTopic: (value: string) => void;
+  onGenerateAiText: () => void | Promise<void>;
+  onGenerateAiImage: () => void | Promise<void>;
 }) {
   return (
     <section id="feed-composer" className="scroll-mt-20 border-y bg-white p-3 shadow-sm sm:rounded-xl sm:border">
