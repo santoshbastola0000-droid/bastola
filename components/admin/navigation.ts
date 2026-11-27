@@ -33,6 +33,7 @@ export const navItems: NavItem[] = [
   { title: "Wallet", href: "/admin/dashboard/wallet", icon: Wallet },
   { title: "Wallet Top-Up", href: "/admin/dashboard/wallet/topup", icon: Wallet },
   { title: "Account Monetize", href: "/admin/dashboard/monetization", icon: ShieldCheck },
+  { title: "Creator Monetization", href: "/admin/dashboard/creator-monetization", icon: Percent },
   { title: "Commission", href: "/admin/dashboard/commission", icon: Percent },
   { title: "Records", href: "/admin/dashboard/records", icon: BarChart },
   { title: "Staff Tracking", href: "/admin/dashboard/staff-tracking", icon: Users },

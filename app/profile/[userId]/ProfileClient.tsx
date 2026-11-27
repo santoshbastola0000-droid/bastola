@@ -43,6 +43,7 @@ import {
   type SocialPost,
 } from "@/http/services/social.service";
 import { ProfileSocialPostCard } from "@/components/social/ProfileSocialPostCard";
+import { ProfileAdSlot } from "@/components/ads/ProfileAdSlot";
 
 type Tab =
   | "posts"
@@ -598,6 +599,8 @@ export default function PublicProfilePage() {
             </div>
           </div>
         </section>
+
+        <div className="px-3 pt-4 sm:px-5"><ProfileAdSlot /></div>
 
         <div className="grid gap-4 p-3 sm:p-5 lg:grid-cols-[300px_1fr]">
           <aside className="space-y-4">
