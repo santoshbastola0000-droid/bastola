@@ -182,7 +182,10 @@ export function SocialFeedScreen() {
   const [files, setFiles] = useState<File[]>([]);
   const [visibility, setVisibility] = useState<"PUBLIC" | "FRIENDS" | "GROUP">("PUBLIC");
   const [groupId, setGroupId] = useState("");
-  const [posting, setPosting] = useState(false);\n  const [aiEnabled, setAiEnabled] = useState(false);\n  const [aiBusy, setAiBusy] = useState(false);\n  const [aiTopic, setAiTopic] = useState("");
+  const [posting, setPosting] = useState(false);
+  const [aiEnabled, setAiEnabled] = useState(false);
+  const [aiBusy, setAiBusy] = useState(false);
+  const [aiTopic, setAiTopic] = useState("");
 
   const [openComments, setOpenComments] = useState<Record<string, boolean>>({});
   const [activeStory, setActiveStory] = useState<SocialStory | null>(null);
