@@ -189,9 +189,29 @@ export function EngagementTracker() {
     const isEntry = sessionStorage.getItem(TRAFFIC_ENTRY_SENT_KEY) !== "1";
     if (isEntry) sessionStorage.setItem(TRAFFIC_ENTRY_SENT_KEY, "1");
 
+    const userAgent = navigator.userAgent || "";
+    const deviceType = /ipad|tablet/i.test(userAgent)
+      ? "TABLET"
+      : /mobile|android|iphone|ipod/i.test(userAgent)
+        ? "MOBILE"
+        : "DESKTOP";
+    const browser = /edg\//i.test(userAgent) ? "Edge"
+      : /firefox\//i.test(userAgent) ? "Firefox"
+      : /opr\//i.test(userAgent) ? "Opera"
+      : /chrome\//i.test(userAgent) ? "Chrome"
+      : /safari\//i.test(userAgent) ? "Safari" : "Other";
+    const operatingSystem = /windows/i.test(userAgent) ? "Windows"
+      : /android/i.test(userAgent) ? "Android"
+      : /iphone|ipad|ipod/i.test(userAgent) ? "iOS"
+      : /mac os/i.test(userAgent) ? "macOS"
+      : /linux/i.test(userAgent) ? "Linux" : "Other";
+
     api
       .post("/notifications/traffic/visit", {
         sessionId,
+        deviceType,
+        browser,
+        operatingSystem,
         source: context.source,
         path,
         landingPath: context.landingPath,
