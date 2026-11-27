@@ -183,6 +183,9 @@ export function SocialFeedScreen() {
   const [visibility, setVisibility] = useState<"PUBLIC" | "FRIENDS" | "GROUP">("PUBLIC");
   const [groupId, setGroupId] = useState("");
   const [posting, setPosting] = useState(false);
+  const [aiEnabled, setAiEnabled] = useState(false);
+  const [aiBusy, setAiBusy] = useState(false);
+  const [aiTopic, setAiTopic] = useState("");
 
   const [openComments, setOpenComments] = useState<Record<string, boolean>>({});
   const [activeStory, setActiveStory] = useState<SocialStory | null>(null);
@@ -193,6 +196,15 @@ export function SocialFeedScreen() {
   const postInput = useRef<HTMLInputElement>(null);
   const sentinel = useRef<HTMLDivElement>(null);
 
+
+  useEffect(() => {
+    if (!user) return;
+    let active = true;
+    socialService.creatorAiSettings()
+      .then((settings) => { if (active) setAiEnabled(Boolean(settings.enabled)); })
+      .catch(() => { if (active) setAiEnabled(false); });
+    return () => { active = false; };
+  }, [user]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -320,6 +332,34 @@ export function SocialFeedScreen() {
     () => () => previews.forEach((url) => URL.revokeObjectURL(url)),
     [previews],
   );
+
+  const generateAiText = async () => {
+    if (!aiTopic.trim() || aiBusy) return;
+    setAiBusy(true);
+    try {
+      const result = await socialService.generateCreatorPostText({ topic: aiTopic, language: "Nepali" });
+      setText(result.text);
+      toast.success(`AI पोस्ट तयार भयो · आज ${result.remaining} पटक बाँकी`);
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || "AI पोस्ट बनाउन सकिएन।");
+    } finally { setAiBusy(false); }
+  };
+
+  const generateAiImage = async () => {
+    if (!aiTopic.trim() || aiBusy) return;
+    setAiBusy(true);
+    try {
+      const result = await socialService.generateCreatorPostImage(aiTopic);
+      const binary = atob(result.imageBase64);
+      const bytes = new Uint8Array(binary.length);
+      for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+      const file = new File([bytes], `roomkhoj-ai-${Date.now()}.png`, { type: result.mimeType || "image/png" });
+      setFiles((current) => [...current.filter((item) => item.type.startsWith("image/")), file].slice(0, 6));
+      toast.success(`AI फोटो तयार भयो · आज ${result.remaining} पटक बाँकी`);
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || "AI फोटो बनाउन सकिएन।");
+    } finally { setAiBusy(false); }
+  };
 
   const publish = async () => {
     if ((!text.trim() && !files.length) || posting) return;
@@ -451,6 +491,12 @@ export function SocialFeedScreen() {
           posting={posting}
           onPublish={publish}
           postInput={postInput}
+          aiEnabled={aiEnabled}
+          aiBusy={aiBusy}
+          aiTopic={aiTopic}
+          setAiTopic={setAiTopic}
+          onGenerateAiText={generateAiText}
+          onGenerateAiImage={generateAiImage}
         />}
 
         <Link
@@ -777,6 +823,12 @@ function Composer({
   posting,
   onPublish,
   postInput,
+  aiEnabled,
+  aiBusy,
+  aiTopic,
+  setAiTopic,
+  onGenerateAiText,
+  onGenerateAiImage,
 }: {
   userId: string;
   userName: string;
@@ -795,6 +847,12 @@ function Composer({
   posting: boolean;
   onPublish: () => void | Promise<void>;
   postInput: React.RefObject<HTMLInputElement | null>;
+  aiEnabled: boolean;
+  aiBusy: boolean;
+  aiTopic: string;
+  setAiTopic: (value: string) => void;
+  onGenerateAiText: () => void | Promise<void>;
+  onGenerateAiImage: () => void | Promise<void>;
 }) {
   return (
     <section id="feed-composer" className="scroll-mt-20 border-y bg-white p-3 shadow-sm sm:rounded-xl sm:border">
@@ -812,6 +870,17 @@ function Composer({
           maxLength={3000}
         />
       </div>
+      {aiEnabled && (
+        <div className="mt-3 rounded-xl border border-violet-200 bg-violet-50 p-3">
+          <div className="mb-2 text-sm font-bold text-violet-900">✨ AI पोस्ट र फोटो बनाउनुहोस्</div>
+          <input value={aiTopic} onChange={(event) => setAiTopic(event.target.value)} maxLength={500} placeholder="पोस्टको विषय लेख्नुहोस्…" className="w-full rounded-lg border border-violet-200 bg-white px-3 py-2 text-sm outline-none" />
+          <div className="mt-2 flex flex-wrap gap-2">
+            <button type="button" disabled={aiBusy || aiTopic.trim().length < 3} onClick={onGenerateAiText} className="rounded-lg bg-violet-700 px-3 py-2 text-xs font-bold text-white disabled:opacity-40">{aiBusy ? "बनाउँदै…" : "AI पोस्ट लेख्नुहोस्"}</button>
+            <button type="button" disabled={aiBusy || aiTopic.trim().length < 5 || files.length >= 6} onClick={onGenerateAiImage} className="rounded-lg border border-violet-300 bg-white px-3 py-2 text-xs font-bold text-violet-800 disabled:opacity-40">AI फोटो बनाउनुहोस्</button>
+          </div>
+          <p className="mt-2 text-[11px] text-violet-800">AI सामग्री पोस्ट गर्नुअघि जाँच्नुहोस्। AI फोटो तयार भएपछि सामान्य फोटो जस्तै Preview गरेर पोस्ट गर्न सकिन्छ।</p>
+        </div>
+      )}
       {previews.length > 0 && (
         <div className="mt-3 grid grid-cols-2 gap-1 overflow-hidden rounded-xl">
           {previews.slice(0, 4).map((url, index) =>
