@@ -33,6 +33,7 @@ export const navItems: NavItem[] = [
   { title: "Wallet", href: "/admin/dashboard/wallet", icon: Wallet },
   { title: "Wallet Top-Up", href: "/admin/dashboard/wallet/topup", icon: Wallet },
   { title: "Account Monetize", href: "/admin/dashboard/monetization", icon: ShieldCheck },
+  { title: "Creator Ad Revenue", href: "/admin/dashboard/creator-monetization", icon: Percent },
   { title: "Commission", href: "/admin/dashboard/commission", icon: Percent },
   { title: "Records", href: "/admin/dashboard/records", icon: BarChart },
   { title: "Staff Tracking", href: "/admin/dashboard/staff-tracking", icon: Users },
@@ -49,7 +50,7 @@ const groupPaths: Record<NavGroup, string[]> = {
   Rooms: ["rooms", "room-reports"],
   Users: ["users", "user-band", "messages", "notifications", "referrals"],
   AI: ["bot-users", "bot-engagement", "ai-call", "ai-owner-calling", "ai-live-chatbox", "chatbot", "ai-profiles", "ai-learning", "ai-developer", "ai-flow-monitor"],
-  Finance: ["wallet", "monetization", "commission"],
+  Finance: ["wallet", "monetization", "creator-monetization", "commission"],
   Settings: ["profile-ui", "site-notice", "security-scanner"],
   Others: ["traffic", "scheduled-posts", "tiktok"],
 };
