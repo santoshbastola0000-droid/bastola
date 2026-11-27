@@ -520,6 +520,21 @@ export const socialService = {
     return response.data as { profilePhotoUrl: string | null; createdAt: string | null };
   },
 
+  async creatorAiSettings() {
+    const response = await privateApi.get("/social/ai-content/settings");
+    return response.data as { enabled: boolean; dailyLimit: number };
+  },
+
+  async generateCreatorPostText(input: { topic: string; language?: string; tone?: string }) {
+    const response = await privateApi.post("/social/ai-content/generate-text", input);
+    return response.data as { text: string; remaining: number };
+  },
+
+  async generateCreatorPostImage(prompt: string) {
+    const response = await privateApi.post("/social/ai-content/generate-image", { prompt });
+    return response.data as { imageBase64: string; mimeType: string; remaining: number };
+  },
+
   async createPost(input: {
     content: string;
     visibility: "PUBLIC" | "FRIENDS" | "GROUP";
