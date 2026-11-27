@@ -83,6 +83,11 @@ type TrafficAnalytics = {
     source: string;
     sessions: number;
   }>;
+  devices?: Array<{ device: string; pageViews: number; uniqueSessions: number }>;
+  browsers?: Array<{ browser: string; pageViews: number }>;
+  hourly?: Array<{ hour: number; pageViews: number }>;
+  loggedIn?: { loggedInUsers: number; loggedInVisits: number };
+  users?: Array<{ userId: string; name: string; email: string; visits: number; lastVisit: string }>;
 };
 
 const sourceLabels: Record<string, string> = {
@@ -474,8 +479,58 @@ export default function AdminTrafficPage() {
             </Card>
           </div>
 
+          <div className="grid gap-5 xl:grid-cols-2">
+            <Card>
+              <CardHeader><CardTitle className="text-lg">Device-wise visitors</CardTitle></CardHeader>
+              <CardContent className="space-y-3">
+                {(data.devices || []).map((item) => (
+                  <div key={item.device} className="flex items-center justify-between rounded-xl border p-3">
+                    <span className="font-semibold">{item.device}</span>
+                    <span className="text-sm">{number(item.uniqueSessions)} visitors · {number(item.pageViews)} page requests</span>
+                  </div>
+                ))}
+                {(data.browsers || []).length > 0 && <div className="border-t pt-3">
+                  <p className="mb-2 text-sm font-bold">Browser-wise requests</p>
+                  {(data.browsers || []).map((item) => <div key={item.browser} className="flex justify-between py-1 text-sm"><span>{item.browser}</span><b>{number(item.pageViews)}</b></div>)}
+                </div>}
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader><CardTitle className="text-lg">Busy hours (Nepal time)</CardTitle></CardHeader>
+              <CardContent className="space-y-2">
+                {(data.hourly || []).slice().sort((a,b) => a.hour-b.hour).map((item) => (
+                  <div key={item.hour} className="grid grid-cols-[76px_1fr_auto] items-center gap-3 text-sm">
+                    <span>{String(item.hour).padStart(2,"0")}:00</span>
+                    <div className="h-2 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary" style={{width: `${Math.max(2, item.pageViews / Math.max(1,...(data.hourly || []).map(x=>x.pageViews))*100)}%`}} /></div>
+                    <b>{number(item.pageViews)}</b>
+                  </div>
+                ))}
+                <p className="pt-2 text-xs text-muted-foreground">सबैभन्दा धेरै requests भएको घण्टा माथिको सूचीमा देखिन्छ।</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          <Card>
+            <CardHeader><CardTitle className="text-lg">Logged-in users</CardTitle></CardHeader>
+            <CardContent>
+              <div className="mb-4 grid gap-3 sm:grid-cols-2">
+                <div className="rounded-xl bg-muted/50 p-4"><p className="text-sm text-muted-foreground">Unique logged-in users</p><p className="text-2xl font-black">{number(data.loggedIn?.loggedInUsers)}</p></div>
+                <div className="rounded-xl bg-muted/50 p-4"><p className="text-sm text-muted-foreground">Logged-in visits</p><p className="text-2xl font-black">{number(data.loggedIn?.loggedInVisits)}</p></div>
+              </div>
+              <div className="space-y-2">
+                {(data.users || []).map((user) => (
+                  <div key={user.userId} className="flex flex-col justify-between gap-1 rounded-xl border p-3 sm:flex-row sm:items-center">
+                    <div className="min-w-0"><p className="font-semibold">{user.name}</p><p className="break-all text-xs text-muted-foreground">{user.email}</p></div>
+                    <div className="text-sm sm:text-right"><b>{number(user.visits)} visits</b><p className="text-xs text-muted-foreground">{new Date(user.lastVisit).toLocaleString()}</p></div>
+                  </div>
+                ))}
+                {(data.users || []).length === 0 && <p className="text-sm text-muted-foreground">यस अवधिमा login user visit data छैन।</p>}
+              </div>
+            </CardContent>
+          </Card>
+
           <p className="text-xs leading-5 text-muted-foreground">
-            Privacy: यो tracker ले traffic source/session/landing page मात्र aggregate गर्छ। IP address वा precise location analytics table मा store गर्दैन।
+            Privacy: Device/browser विवरण User-Agent बाट अनुमान गरिन्छ। Logged-in user visit authenticated session बाट गणना हुन्छ। IP address वा precise location store गरिँदैन।
           </p>
         </>
       )}
